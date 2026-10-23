@@ -3,7 +3,7 @@
 - Requirements basis: [PRD-v1.md](<PRD-v1.md>).
 - Decision basis: the user has confirmed **MyGo Native UI + Go**, using a pure Go native interface.
 - Status: the desktop framework and language are confirmed; the remaining items in the table below are recommended defaults. **The BT engine, Mikan history traversal, the Windows native interface and the desktop lifecycle have been verified on this machine**; see the [validation overview](<VALIDATION-v1.md>).
-- Scope: this document is the current implementation direction; [earlier technical research](<TECH-RESEARCH-v1.md>) keeps the data-source evidence and candidate comparison, and the older Tauri, Electron, Wails and Rust recommendations no longer serve as the primary approach.
+- Scope: this document is the current implementation direction. The earlier research that weighed Tauri, Electron, Qt, Wails and a Rust core was written before the stack was settled; those candidates are no longer the plan, and the data-source evidence that still matters is recorded in the [source subsystem page](docs/subsystems/source.md).
 
 ## 1. Recommended Stack
 
