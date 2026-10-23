@@ -260,15 +260,15 @@ These are design acceptance criteria; the actual execution level and untested sc
 
 | Deliverable | Location |
 | --- | --- |
-| Windows MVP | [启动入口 (launch entry)](start.cmd), [程序 (program)](bin/dipper.exe), [使用说明 (usage guide)](README.md) |
+| Launch | [启动入口 (launch entry)](start.cmd), [程序 (program)](bin/dipper.exe), [使用说明 (usage guide)](README.md) |
 | Page images | [浏览 (Browse)](evidence/ui/01-browse.png), [筛选 (Filtering)](evidence/ui/02-filter.png), [追番 (Following)](evidence/ui/03-following.png), [下载 (Downloads)](evidence/ui/04-downloads.png), [设置 (Settings)](evidence/ui/05-settings.png), [来源故障 (Source error)](evidence/ui/06-source-error.png), [补下 (Backfill)](evidence/ui/07-backfill.png) |
-| MVP acceptance | [MVP-v1.md](MVP-v1.md) |
+| Subsystem pages | [docs/subsystems/](docs/subsystems/README.md) |
 
-The shipping program uses MyGo v0.5.5 and Go 1.27.1, and stores follow rules, read/skipped records, and download state in SQLite. Source verification samples come from the 2026-10-21 Mikan fall snapshot; see [MVP-v1.md](MVP-v1.md) for the verification boundaries of real RSS, BT downloads, and the native UI.
+The shipping program uses MyGo v0.5.5 and Go 1.27.1, and stores follow rules, read/skipped records, and download state in SQLite. Source verification samples come from the 2026-10-21 Mikan fall snapshot; the boundaries of real RSS, BT downloads and the native UI are in [README.md](README.md#verification-and-boundaries).
 
 `scripts/build.ps1 -Test -Render` covers UI regression, `go vet`, the build, and native view screenshots. The real Windows window has been checked for in-place version selection, match-count feedback, and repeated undo and redo; screenshots are generated from the same native views and cannot replace acceptance of system windows, input methods, or actual rendering performance.
 
-The MVP connects to real RSS and the built-in BT downloader. macOS/Linux, real input method candidates, sustained frame rate, and install/distribution are outside this version's acceptance conclusions.
+The app connects to real RSS and the built-in BT downloader. macOS/Linux, real input method candidates, sustained frame rate, and install/distribution are outside this version's acceptance conclusions.
 
 ## 11. Design sources
 

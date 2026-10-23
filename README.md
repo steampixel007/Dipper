@@ -1,6 +1,7 @@
-# Dipper 0.1.0 MVP
+# Dipper
 
-A native anime-following desktop app built on MyGo Native UI + Go. It carries forward the confirmed [interaction design](DESIGN-v1.md) and connects to the real Mikan catalog, historical releases, RSS, and the built-in BT downloader.
+A native anime-following desktop app built on MyGo Native UI + Go. It connects to
+the real Mikan catalog, historical releases, RSS, and the built-in BT downloader.
 
 ## Launch
 
@@ -51,6 +52,14 @@ Development diagnostic flags:
 
 ## Verification and boundaries
 
-See the [MVP acceptance record](MVP-v1.md) for concrete results. CI configuration for three systems is provided; local results and target-system verification that was not executed are recorded separately.
+`go test ./...`, `go vet ./...` and `gofmt -l cmd internal` are the checks; CI runs
+them on Windows, macOS and Linux. Acceptance criteria and how to prove a test
+catches a bug are in [docs/code-standards.md](docs/code-standards.md).
 
-This version is a portable MVP; it ships no installer, code signing, auto-update, third-party plugin marketplace, or cloud sync. The four business capabilities are composed from built-in Go modules and interfaces, and there is no registration/version protocol for installable plugins yet. Native windows, tray, input methods, and install paths on macOS/Linux require acceptance on real hardware. Unsigned Windows builds may be blocked by SmartScreen; the "未知发布者" (Unknown publisher) prompt can only be avoided by signing with a release certificate. On non-Windows platforms, network availability is inferred from active network interfaces and does not prove verified public connectivity.
+What is not verified: native windows, the tray, input methods and install paths
+on macOS and Linux need acceptance on real hardware — a cross-compile only shows
+the code builds. On non-Windows platforms network availability is inferred from
+an active interface and does not prove the internet is reachable. The cover cache
+has no eviction policy. Unsigned Windows builds may be blocked by SmartScreen; the
+"未知发布者" (Unknown publisher) prompt can only be avoided by signing with a
+release certificate.

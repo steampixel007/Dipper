@@ -111,6 +111,108 @@ The downloader contract in `types.go` is the reason this can be retried:
 `Ensure` must be idempotent by hash and must durably accept the task before
 returning nil.
 
+## Using it
+
+`core` has no UI dependency. `Open(path, Options)` initializes SQLite and returns
+`*Core`; call `Start()` after the feed and downloader are ready. `Start` is
+idempotent and returns immediately. `Close` cancels active work, waits for it,
+then closes SQLite. Shut the downloader down **after** closing core.
+
+```go
+kernel, err := core.Open(databasePath, core.Options{
+    DownloadRoot: root,
+    Feed: func(ctx context.Context, animeID, groupID string) ([]core.Resource, error) {
+        items, err := sourceClient.Feed(ctx, animeID, groupID)
+        if err != nil {
+            return nil, err
+        }
+        out := make([]core.Resource, len(items))
+        for i, item := range items {
+            out[i] = core.Resource{
+                ID: item.ID, Title: item.Title, Published: item.Published,
+                Magnet: item.Magnet, TorrentURL: item.TorrentURL, Size: item.Size,
+            }
+        }
+        return out, nil
+    },
+    Downloader: adapter,
+})
+```
+
+The adapter implements `Ensure(core.DownloadTask) error`. It maps `Hash` to the
+downloader's task ID and `Directory` to its folder, preserves `Context`, and
+passes `Resource.Magnet` and `Resource.TorrentURL` through. `Hash` is a lowercase
+40-character BT v1 info hash. A source resource ID and a torrent filename are
+never treated as a BT identity.
+
+An opaque torrent is fetched with cancellation, a 30-second timeout and an 8 MiB
+limit, and the exact bencoded `info` bytes determine the hash. Core persists a
+magnet for that confirmed hash, and the downloader must verify any torrent it
+fetches against the expected hash.
+
+Public actions:
+
+```go
+CreateSubscription(ctx, anime, group, rule, completeHistory, selectedIDs) (Subscription, error)
+DownloadExisting(ctx, subscriptionID, history, selectedIDs) error
+UpdateRule(ctx, subscriptionID, rule) error
+SetPaused(ctx, subscriptionID, paused) error
+Check(ctx, subscriptionID) error
+RetryPending(ctx) error
+PreviewDirectory(anime) (string, error)
+Snapshot() (State, error)
+GetSettings() (Settings, error)
+SetSettings(settings) error
+Subscriptions() ([]Subscription, error)
+ListTasks() ([]TaskRecord, error)
+Anime() ([]AnimeRecord, error)
+Start() error
+Close() error
+```
+
+`Snapshot` is an independent read transaction and is safe to call from a UI
+worker. Settings, anime directories, subscriptions and outbox task records are
+durable.
+
+The default upload limit is 1 MiB/s. A saved limit of zero means unlimited, and
+the UI adapter must translate that to the downloader's unlimited value: core
+persists the setting, the UI applies it to the running downloader.
+
+Subscriptions are unique by anime and group. Creation takes the full fetched
+history and an explicit selected-ID slice; `nil` selects nothing. Skipped,
+excluded and pending items are committed atomically before any download is
+submitted. An error after that commit returns a populated subscription, so the UI
+refreshes rather than assuming the creation was rolled back. Pending items stay
+unread on failure.
+
+Task acceptance and the read transitions commit together, and the unique hash
+table plus an idempotent downloader close the crash window between acceptance and
+commit.
+
+`Start` replays every accepted task — including those of paused subscriptions —
+to restore transfers that were already running, and retries durable pending
+intents.
+
+A paused subscription neither fetches nor marks items read. Pausing or changing a
+rule cancels active checks and pending admission contexts, and the revision check
+rejects an old response even when the source ignores cancellation. The downloader
+must cooperate with cancellation. Transfers already accepted keep running. A
+manual backfill on a paused subscription is saved pending until resume. A rule
+edit preserves every existing item decision; an explicit `DownloadExisting`
+overrides only the selected items and changes neither the rule nor the others.
+
+The default check interval is 15 minutes. A source or admission failure backs off
+exponentially from 1 minute to 1 hour. A manual check and `RetryPending` retry
+immediately. The scheduler never fetches complete history to backfill RSS gaps.
+
+`PreviewDirectory` uses the same allocator as creation without persisting
+anything. Subscriptions to the same anime share the first saved directory across
+group, title and root changes. Different anime whose names collide get distinct
+directories. Each BT task gets a hash subdirectory, so the torrent's own file
+names stay isolated. A settings change or another creation between preview and
+commit can change a new anime's allocation, so use the returned subscription's
+directory after commit.
+
 ## Tests
 
 `internal/core` tests open a real SQLite file in `t.TempDir()` through

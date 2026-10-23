@@ -75,6 +75,18 @@ without a live source or database. It is how a layout change is checked in
 isolation, and it is the reason `view_test.go` can assert on rendering without
 network access.
 
+## Covers
+
+`covers.go` loads a cover on a background goroutine and decodes it on the UI
+thread, because the bitmap cache belongs to that thread. The file is named by the
+SHA-256 of its URL and cached under `data/covers/`.
+
+**Known limit:** the cache has no size cap and no eviction. A cover is fetched
+once and then kept forever, so the folder grows with every anime ever browsed.
+Adding eviction is a real change, not a tidy-up: it must decide what a browsing
+session can afford to re-fetch, and it must not delete a cover the current page
+is still showing.
+
 ## UI text
 
 Every string the user sees is Chinese and lives in `view.go` or the bridge
