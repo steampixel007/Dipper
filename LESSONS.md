@@ -1,30 +1,32 @@
 <!-- reviewed-through: bb68d3c (2026-10-24) -->
 # Lessons from merged work
 
-每次改动合进来之后，回头看一遍：哪些修完又返工了、哪些压根不该合、哪些验证做得太薄。
-学到的东西记在这里。改代码之前先读它。
+Each time a change merges, look back at it: what had to be fixed again, what
+should not have merged, and what was verified too thinly. What we learn is kept
+here. Read this before changing code.
 
-一条教训是一句规则，然后为什么，然后证据（提交号或 issue 号）。
-末尾的 `Seen` 记这条在几个不同的日子被复盘到过。
+A lesson is a rule, then why, then the evidence (a commit or an issue). The
+`Seen` count records the days a review found it.
 
-**一条教训在 3 个不同日子的复盘里都出现，就挪进
-[docs/code-standards.md](docs/code-standards.md)，从经验变成硬规则**，
-之后每次审查都逐条对。挪走之后在下面「已转正」一节留个索引。
+**A lesson seen on three or more separate days moves into
+[docs/code-standards.md](docs/code-standards.md)**, from experience into a hard
+rule that every review checks. Leave a line under "Moved to the code standards"
+once it moves.
 
-## 记一条的格式
+## The shape of one lesson
 
 ```
-**<一句话规则>**
-- <哪个提交 / 问题出的事，后果是什么>
-- <修复的提交>
-- Done right: <做对的例子，可以没有>
+**<one-line rule>**
+- <which commit or issue it came from, and what went wrong>
+- <the commit that fixed it>
+- Done right: <a good example, optional>
 - Seen N× (YYYY-MM-DD, YYYY-MM-DD).
 ```
 
-## 当前教训
+## Current lessons
 
-（还没有。第一次复盘之后往这里加。）
+(None yet. Add one after the first review.)
 
-## 已转正
+## Moved to the code standards
 
-（还没有。转正一条就往这里加一行索引。）
+(None yet. Add a line here when a lesson is promoted.)

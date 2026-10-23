@@ -1,61 +1,61 @@
-# Dipper 0.1.0 MVP 验收
+# Dipper 0.1.0 MVP Acceptance
 
-日期：2026-10-23。环境：Windows amd64，Go 1.27.1，MyGo v0.5.5，anacrolix/torrent v1.61.0，modernc SQLite v1.48.0（SQLite 3.51.3），CGO_ENABLED=0。
+Date: 2026-10-23. Environment: Windows amd64, Go 1.27.1, MyGo v0.5.5, anacrolix/torrent v1.61.0, modernc SQLite v1.48.0 (SQLite 3.51.3), CGO_ENABLED=0.
 
-## 已完成
+## Completed
 
-| 能力 | 实现及验证 |
+| Capability | Implementation and verification |
 | --- | --- |
-| 真实来源 | 当前季度、往年季度、星期筛选、字幕组、完整历史、RSS；长历史 1522 条与 RSS 100 条分别验证 |
-| 标题筛选 | 包含／排除／任意词组、全角 ASCII 与大小写规范化、逐条原因；UI 与后台复用同一纯函数；原始标题内部空白保留 |
-| 资源选择 | 匹配资源默认全选、同集多个资源保留、未知大小明确显示、取消勾选持久跳过、手动补下 |
-| 订阅内核 | SQLite WAL + FULL，规则／已读／跳过持久化、先保存提交意图再幂等接纳、确认 BT hash 全局去重、启动重放 |
-| RSS 调度 | 15 分钟默认检查、手动检查、失败退避、暂停不 fetch 不标读、恢复处理仍在 RSS 的未读条目、进行中请求可取消 |
-| 内置 BT | 真实磁力／种子、元数据优先 HTTP、校验身份、原始文件名／目录、安全根目录与独立资源子目录 |
-| 下载状态 | 真实总／单任务速度和进度、暂停／继续／重试、打开目录、暂停完成任务仍可恢复 |
-| 做种 | 全局共享上传预算、累计 payload 与有效时长、1:1 或 3600 秒停止、手停跨重启保持、退出停止传输 |
-| 目录 | 同番剧跨组固定目录、同名番剧区分、更改全局根目录不搬动旧番剧 |
-| 原生程序 | Windows 实际窗口启动、真实目录／字幕组／历史／点词筛选；正常退出记录完整 |
+| Real sources | Current season, past seasons, weekday filter, fansub groups, full history, RSS; verified separately with a 1522-entry long history and 100 RSS entries |
+| Title filtering | Include/exclude/any-of groups, full-width ASCII and case normalization, per-entry reasons; UI and background share the same pure function; internal whitespace in original titles preserved |
+| Release selection | Matching releases selected by default, multiple releases for the same episode kept, unknown size shown explicitly, unchecked entries persistently skipped, manual re-download |
+| Subscription kernel | SQLite WAL + FULL, rules/read state/skips persisted, save the submission intent before idempotent acceptance, global deduplication after confirming the BT hash, replay at startup |
+| RSS scheduling | 15-minute default check, manual check, failure backoff, pause neither fetches nor marks read, resume processes unread entries still in the RSS, in-flight requests can be cancelled |
+| Built-in BT | Real magnets/torrents, metadata via HTTP first, identity verification, original file names/directories, safe root directory and separate per-release subdirectories |
+| Download state | Real total/per-task speed and progress, pause/resume/retry, open directory, paused completed tasks can still be resumed |
+| Seeding | Globally shared upload budget, cumulative payload and effective duration, stop at 1:1 or 3600 seconds, manual stop persists across restarts, quit stops transfer |
+| Directories | Fixed directory per anime across groups, same-named anime distinguished, changing the global root does not move old anime |
+| Native program | Actual Windows window launch, real catalog/fansub groups/history/click-to-filter; clean exit records complete |
 
-## 自动化结果
+## Automated Results
 
-根模块 61 个顶层测试通过，覆盖 UI、来源、持久内核、BT 与 core→真实 BT 组合链路。记录：[tests.log](evidence/tests.log)。`go vet ./...` 通过：[vet.log](evidence/vet.log)；`gofmt -l cmd internal` 无输出。
+61 top-level tests in the root module pass, covering UI, sources, the persistent kernel, BT, and the combined core→real BT path. Record: [tests.log](evidence/tests.log). `go vet ./...` passes: [vet.log](evidence/vet.log); `gofmt -l cmd internal` produces no output.
 
-BT 使用测试自主生成的本地种子，绑定 127.0.0.1 并关闭外部发现。验证真实多文件／字幕／空文件 SHA-256、断点恢复、暂停与退出后 payload 停止、共享限速、真实 1:1 自动停止。1 小时策略使用可控时钟；未用公网动画文件验证传输。详见 [BT 接入说明](internal/downloader/README.md)。
+BT uses locally generated torrents from the tests, bound to 127.0.0.1 with external discovery disabled. Verified real multi-file/subtitle/empty-file SHA-256, resume after interruption, payload stopping after pause and quit, shared rate limiting, and real 1:1 automatic stop. The 1-hour policy uses a controllable clock; transfer was not verified with public anime files. See [BT integration notes](internal/downloader/README.md).
 
-来源以既有真实 HTML／XML 样本经本地 HTTP 服务验证；另以最终产品程序实际访问公开蜜柑站点，目录返回 83 部，示例番剧 4063 详情返回 4 个字幕组，370 组历史与 RSS 各返回 3 条，结果保存在 [source-live.json](evidence/source-live.json)。该实测只读取公开页面和 RSS，未提交媒体下载。
+Sources are verified through a local HTTP server serving existing real HTML/XML samples; in addition, the final product program accessed the public Mikan site, the catalog returned 83 anime, the sample anime 4063 detail returned 4 fansub groups, and group 370's history and RSS each returned 3 entries, with results saved in [source-live.json](evidence/source-live.json). That live run only read public pages and RSS and submitted no media downloads.
 
-Windows 真实窗口通过 computer-use 实际搜索“魔法少女育成计划”，打开 restart，选择 Kirara Fantasia 后加载 6 条真实资源，展示同集 2 个版本；点击 `mkv` 并选择“只要”后，从 6 条缩小为 3 条，摘要由 3.56 GB 变为 2.26 GB，其他条目标明“缺少必需词：mkv”。测试未点击真实资源的下载确认。
+The real Windows window was driven through computer-use to actually search "魔法少女育成计划", open restart, and after selecting Kirara Fantasia load 6 real releases, showing 2 versions of the same episode; after clicking `mkv` and choosing "只要", the list narrowed from 6 to 3 entries and the summary changed from 3.56 GB to 2.26 GB, with the other entries marked "缺少必需词：mkv" (missing required term: mkv). The test did not click the download confirmation for a real release.
 
-## 产物
+## Artifacts
 
-- `bin/dipper.exe`：Windows amd64 原生便携程序，约 46 MB；根 `start.cmd` 可直接启动。
-- `bin/dipper-linux-amd64`、`bin/dipper-darwin-arm64`、`bin/dipper-darwin-amd64`：交叉编译通过的裸可执行文件。
-- [界面截图](evidence/ui/)：7 个状态，由开发夹具调用同一原生视图生成，已检查筛选页及下载页布局；不代替真实窗口或下载验证。
-- `.github/workflows/check.yml`：三系统格式／vet／测试／构建配置；尚未提交到远端触发 CI。
+- `bin/dipper.exe`: Windows amd64 native portable program, about 46 MB; the root `start.cmd` launches it directly.
+- `bin/dipper-linux-amd64`, `bin/dipper-darwin-arm64`, `bin/dipper-darwin-amd64`: bare executables that pass cross-compilation.
+- [UI screenshots](evidence/ui/): 7 states generated by development fixtures calling the same native view; the filter page and download page layouts were checked; these do not replace real-window or download verification.
+- `.github/workflows/check.yml`: format/vet/test/build configuration for the three systems; not yet pushed to the remote to trigger CI.
 
-## 待目标环境验收
+## Pending Acceptance in Target Environments
 
-macOS/Linux 实机窗口、系统运行依赖、托盘、输入法、签名和安装器未验收。交叉编译通过不表示三系统安装流程已通过。
+macOS/Linux real-machine windows, system runtime dependencies, tray, input methods, signing, and installers are not accepted yet. Passing cross-compilation does not mean the three-system install flow has passed.
 
-Windows 托盘菜单点击、真实输入法候选未完成实机复核。关闭到托盘后再次启动唤回同一窗口已在下述修复中完成实测。定时完全退出可见 `evidence/native-final/app.log` 的 ready／stopped 记录，不以此替代托盘菜单交互验收。
+Windows tray menu clicks and real input-method candidates have not been re-checked on a real machine. Closing to the tray and then launching again to bring back the same window was verified in practice in the fix described below. Scheduled full exit can be seen in the ready/stopped records of `evidence/native-final/app.log`; this does not replace tray menu interaction acceptance.
 
-Windows 已连接 MyGo 休眠／恢复事件和系统联网提示；实际断网、整机休眠、连续真实 1 小时的测试未运行。非 Windows 按 Up/Running 网卡和单播地址判断网络可用，不保证公网可达；需要对应系统的进一步验证。
+Windows has connected MyGo sleep/resume events and system network-status notifications; tests of actual disconnection, full-machine sleep, and a continuous real 1-hour run have not been run. Non-Windows platforms judge network availability by an Up/Running network interface and a unicast address, which does not guarantee public internet reachability; further verification on those systems is needed.
 
-本版四类业务能力通过内置 Go 模块和接口组合，插件注册／版本协商、第三方安装、自动更新与签名分发尚未实现。日志与海报均本机保存；海报缓存目前未设置容量淘汰策略。
+The four business capabilities in this version are composed of built-in Go modules and interfaces; plugin registration/version negotiation, third-party installation, automatic updates, and signed distribution are not implemented. Logs and posters are stored locally; the poster cache currently has no capacity eviction policy.
 
-## 默认视频目录调整
+## Default Video Directory Change
 
-默认下载根目录已改为系统用户视频目录下的 `Dipper` 文件夹。Windows 读取 Known Folder 的 Videos 路径，支持系统配置的目录重定向；macOS 使用 Movies，Linux 遵循 XDG 视频目录。旧默认 Downloads/Dipper 在重新启动时更新；自定义下载根目录与已有订阅的固定目录保留。
+The default download root has been changed to a `Dipper` folder under the system user's Videos directory. Windows reads the Known Folder Videos path and supports directory redirection configured in the system; macOS uses Movies, and Linux follows the XDG videos directory. The old default Downloads/Dipper is updated on the next start; custom download roots and the fixed directories of existing subscriptions are preserved.
 
-本次修改后 core、UI 回归和 `go vet` 通过，新增回归覆盖旧默认迁移、自定义路径保留及已有番剧目录固定。Windows 程序已重建。
+After this change, core, UI regression, and `go vet` pass, and the new regression covers migration of the old default, preservation of custom paths, and the fixed directories of existing anime. The Windows program has been rebuilt.
 
-## 单实例唤醒修复
+## Single-Instance Wake Fix
 
-修复后台实例存在时，再次双击程序无法唤醒窗口、第二个进程争用 BT 分片数据库的问题。以数据目录的系统文件锁确定唯一所有者；后续启动通过带随机令牌的本机回环通道通知原进程显示／恢复／聚焦窗口，然后结束启动流程。所有权检查在数据库和 BT 引擎初始化前完成；唤醒失败不会继续初始化下载状态，Windows 启动错误有可见提示。
+Fixed the problem that, when a background instance existed, double-clicking the program again could not wake the window and the second process contended for the BT piece database. A system file lock on the data directory determines the single owner; subsequent launches notify the original process over a local loopback channel carrying a random token to show/restore/focus the window, then end the launch. The ownership check runs before database and BT engine initialization; a failed wake does not continue initializing download state, and Windows launch errors have a visible prompt.
 
-多进程回归验证激活转发、8 次并发启动只有一个所有者、后台实例无响应时不启动第二个所有者、拒绝无效令牌、进程异常退出后的锁恢复。完整回归通过：[tests-instance-fix.log](evidence/tests-instance-fix.log)；`go vet` 和三平台构建通过。
+Multi-process regression verified activation forwarding, only one owner among 8 concurrent launches, no second owner started when the background instance is unresponsive, rejection of invalid tokens, and lock recovery after an abnormal process exit. Full regression passes: [tests-instance-fix.log](evidence/tests-instance-fix.log); `go vet` and three-platform builds pass.
 
-Windows 原生窗口实测：关闭后日志记录 `window hidden; background active`，再次启动后记录 `existing instance activated`；最小化后再次启动也恢复并聚焦同一窗口。两条路径前后主进程均为同一 PID，第二次启动未进入下载引擎初始化。三平台产物重建后的最终 Windows 构建再次完成关闭、唤醒验证，主进程 PID 保持为 19344，日志记录 `visible=true`、`focused=true`、`minimized=false`。应用已恢复并保留打开，原有设置和状态文件保留。
+Verified on the real Windows window: after closing, the log records `window hidden; background active`, and after launching again it records `existing instance activated`; launching again after minimizing also restores and focuses the same window. In both paths the main process is the same PID before and after, and the second launch did not enter download engine initialization. The final Windows build after rebuilding the three-platform artifacts again completed close and wake verification, the main process PID stayed at 19344, and the log recorded `visible=true`, `focused=true`, `minimized=false`. The app has been restored and left open, and the existing settings and state files are preserved.
 
-从资源管理器双击未签名的 `bin/dipper.exe` 时，Windows SmartScreen 会先显示“未知发布者”提示；该提示在单实例检查之前，未选择继续运行时程序不会启动。代码签名属于正式分发工作，当前便携 MVP 未配置签名证书。
+When `bin/dipper.exe` is double-clicked from File Explorer while unsigned, Windows SmartScreen first shows an "unknown publisher" prompt; that prompt comes before the single-instance check, and the program does not start unless the user chooses to continue. Code signing belongs to formal distribution work, and the current portable MVP has no signing certificate configured.

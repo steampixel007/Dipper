@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// 判定逻辑是这个工具的全部价值，所以它自己的每一种输入形态都要有测试。
-// 这里的样例取自 go test 真实会打印的形状。
+// The judge is the whole value of this tool, so every shape of input it can
+// meet has a test here. The samples are the shapes go test really prints.
 
 func TestJudgeRealRed(t *testing.T) {
 	out := `=== RUN   TestFoo
@@ -18,15 +18,16 @@ FAIL	dipper.local/dipper/internal/core	0.012s
 `
 	v, reason, detail := judge(out)
 	if v != verdictRealRed {
-		t.Fatalf("判定为 %v，期望真红：%s", v, reason)
+		t.Fatalf("judged %v, want a real red: %s", v, reason)
 	}
 	if detail == "" || !contains(detail, "got 10, want 73") {
-		t.Fatalf("断言文本没取到：%q", detail)
+		t.Fatalf("no assertion text: %q", detail)
 	}
 }
 
 func TestJudgeRealRedWithoutVerbose(t *testing.T) {
-	// 不带 -v 时 go test 先打 --- FAIL 再打报错。这是最常见的形态。
+	// Without -v, go test prints --- FAIL before the error. This is the most
+	// common shape.
 	out := `--- FAIL: TestRealFail (0.00s)
     probe_test.go:8: got 10, want 73
 FAIL
@@ -34,15 +35,15 @@ FAIL	dipper.local/dipper/internal/core	0.455s
 `
 	v, reason, detail := judge(out)
 	if v != verdictRealRed {
-		t.Fatalf("判定为 %v，期望真红：%s", v, reason)
+		t.Fatalf("judged %v, want a real red: %s", v, reason)
 	}
 	if !contains(detail, "got 10, want 73") {
-		t.Fatalf("断言文本没取到：%q", detail)
+		t.Fatalf("no assertion text: %q", detail)
 	}
 }
 
 func TestJudgeRealRedVerbose(t *testing.T) {
-	// 带 -v 时先打报错再打 --- FAIL。
+	// With -v, the error comes before --- FAIL.
 	out := `=== RUN   TestFoo
     foo_test.go:42: got 10, want 73
 --- FAIL: TestFoo (0.00s)
@@ -50,10 +51,10 @@ FAIL
 `
 	v, reason, detail := judge(out)
 	if v != verdictRealRed {
-		t.Fatalf("判定为 %v，期望真红：%s", v, reason)
+		t.Fatalf("judged %v, want a real red: %s", v, reason)
 	}
 	if !contains(detail, "got 10, want 73") {
-		t.Fatalf("断言文本没取到：%q", detail)
+		t.Fatalf("no assertion text: %q", detail)
 	}
 }
 
@@ -62,7 +63,7 @@ func TestJudgeNotRed(t *testing.T) {
 `
 	v, reason, _ := judge(out)
 	if v != verdictNotRed {
-		t.Fatalf("判定为 %v，期望假绿：%s", v, reason)
+		t.Fatalf("judged %v, want not red: %s", v, reason)
 	}
 }
 
@@ -74,12 +75,13 @@ FAIL
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
-		t.Fatalf("判定为 %v，期望假红：%s", v, reason)
+		t.Fatalf("judged %v, want a false red: %s", v, reason)
 	}
 }
 
 func TestJudgeCompileErrorWinsOverOtherPackagesFail(t *testing.T) {
-	// 一个包编译不过，另一个包真红：编译错必须先判，否则会误当真红。
+	// One package does not compile while another really fails: the compile
+	// error must be judged first, or the run is miscalled a real red.
 	out := `# dipper.local/dipper/internal/source [dipper.local/dipper/internal/source.test]
 internal/source/html.go:5:1: syntax error: unexpected EOF
 FAIL	dipper.local/dipper/internal/source [build failed]
@@ -89,7 +91,7 @@ FAIL
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
-		t.Fatalf("判定为 %v，期望假红：%s", v, reason)
+		t.Fatalf("judged %v, want a false red: %s", v, reason)
 	}
 }
 
@@ -102,7 +104,7 @@ ok  	dipper.local/dipper/internal/core	0.010s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
-		t.Fatalf("判定为 %v，期望假红：%s", v, reason)
+		t.Fatalf("judged %v, want a false red: %s", v, reason)
 	}
 }
 
@@ -114,7 +116,7 @@ FAIL	dipper.local/dipper/internal/core	0.020s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
-		t.Fatalf("判定为 %v，期望假红：%s", v, reason)
+		t.Fatalf("judged %v, want a false red: %s", v, reason)
 	}
 }
 
@@ -127,7 +129,7 @@ FAIL	dipper.local/dipper/internal/core	0.030s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
-		t.Fatalf("判定为 %v，期望假红：%s", v, reason)
+		t.Fatalf("judged %v, want a false red: %s", v, reason)
 	}
 }
 
@@ -138,7 +140,7 @@ FAIL	dipper.local/dipper/internal/core	600.010s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
-		t.Fatalf("判定为 %v，期望假红：%s", v, reason)
+		t.Fatalf("judged %v, want a false red: %s", v, reason)
 	}
 }
 
@@ -149,19 +151,20 @@ ok  	dipper.local/dipper/internal/core	0.010s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
-		t.Fatalf("判定为 %v，期望假红：%s", v, reason)
+		t.Fatalf("judged %v, want a false red: %s", v, reason)
 	}
 }
 
 func TestJudgeFailWithoutAssertionIsNotRed(t *testing.T) {
-	// 有 --- FAIL 但下面没有任何 _test.go:NN 的报错：无法确认红在断言上。
+	// A --- FAIL with no _test.go:NN line under it cannot be confirmed to have
+	// failed on an assertion.
 	out := `=== RUN   TestFoo
 --- FAIL: TestFoo (0.00s)
 FAIL
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
-		t.Fatalf("判定为 %v，期望假红：%s", v, reason)
+		t.Fatalf("judged %v, want a false red: %s", v, reason)
 	}
 }
 
@@ -175,27 +178,30 @@ FAIL
 `
 	v, reason, detail := judge(out)
 	if v != verdictRealRed {
-		t.Fatalf("判定为 %v，期望真红：%s", v, reason)
+		t.Fatalf("judged %v, want a real red: %s", v, reason)
 	}
 	if !contains(detail, "case one: got 1, want 2") {
-		t.Fatalf("断言文本没取到：%q", detail)
+		t.Fatalf("no assertion text: %q", detail)
 	}
 }
 
 func TestAssertionDoesNotLeakIntoNextTest(t *testing.T) {
-	// 两个测试都失败，只有后一个有断言文本。前一个不能借用后一个的报错。
+	// Two tests fail, only the second prints an assertion. The first must not
+	// borrow the second's error.
 	out := `--- FAIL: TestBare (0.00s)
 --- FAIL: TestReal (0.00s)
     real_test.go:9: got 1, want 2
 FAIL	dipper.local/dipper/internal/core	0.010s
 `
 	if got, ok := assertionFor(out, "TestBare"); ok {
-		t.Fatalf("把别的测试的报错算给了 TestBare：%q", got)
+		t.Fatalf("counted another test's error for TestBare: %q", got)
 	}
-	if got, ok := assertionFor(out, "TestReal"); !ok {
-		t.Fatal("TestReal 的断言文本没取到")
-	} else if !contains(got, "got 1, want 2") {
-		t.Fatalf("取到了别的行：%q", got)
+	got, ok := assertionFor(out, "TestReal")
+	if !ok {
+		t.Fatal("no assertion text for TestReal")
+	}
+	if !contains(got, "got 1, want 2") {
+		t.Fatalf("took the wrong line: %q", got)
 	}
 }
 

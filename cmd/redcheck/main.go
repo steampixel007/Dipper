@@ -1,8 +1,10 @@
-// redcheck 判定一次 go test 的输出是不是「真红」：把修复改回旧版后，
-// 新写的测试必须红在断言上，而不是红在编译、跳过或超时上。
+// Command redcheck judges whether a `go test` run is a real red: with the fix
+// put back to its old version, a new test must fail on an assertion, not on a
+// compile error, a skip or a timeout.
 //
-// 它不负责改回代码。改回哪一处是语义判断，只有读懂代码的人或 agent 能做；
-// 这个程序只回答「这次红算不算数」。
+// It does not put the code back. Which place to revert is a semantic judgment
+// that only someone reading the code can make; this program only answers
+// whether the red counts.
 package main
 
 import (
@@ -15,12 +17,13 @@ import (
 	"strings"
 )
 
-// 判定结果。退出码让调用方（人、agent、CI）能机械区分，不必解析输出。
+// Exit codes let a caller — a person, an agent, a CI job — tell the outcomes
+// apart without parsing the output.
 const (
-	exitRealRed  = 0 // 真红：有 FAIL，且有断言文本
-	exitNotRed   = 1 // 假绿：测试没红，说明这个测试抓不住该 bug
-	exitFalseRed = 2 // 假红：编译错、被跳过、超时、panic、数据竞争
-	exitUsage    = 3 // 用法错误，或环境不满足
+	exitRealRed  = 0 // a real red: a FAIL with assertion text, or the test passed
+	exitNotRed   = 1 // not red: the test still passes, so it does not catch the bug
+	exitFalseRed = 2 // a false red: compile error, skip, timeout, panic, data race
+	exitUsage    = 3 // bad usage, or the environment is not usable
 )
 
 type verdict int
@@ -34,34 +37,36 @@ const (
 func (v verdict) String() string {
 	switch v {
 	case verdictRealRed:
-		return "真红"
+		return "real red"
 	case verdictNotRed:
-		return "假绿"
+		return "not red"
 	default:
-		return "假红"
+		return "false red"
 	}
 }
 
-// 假红的证据。顺序有意义：编译错要先于 FAIL 判，因为一个包编译不过时
-// go test 仍会为其他包打印 FAIL 行，不先判会把编译错当成真红。
+// Evidence of a false red. Order matters: a compile error is judged before a
+// FAIL, because when one package does not compile `go test` still prints FAIL
+// lines for the others, and judging FAIL first would call it a real red.
 var falseRedMarkers = []struct {
 	re     *regexp.Regexp
 	reason string
 }{
-	{regexp.MustCompile(`(?m)^# .*\n.*\.go:\d+:\d+: `), "编译失败：测试或被测代码没能编译"},
-	{regexp.MustCompile(`(?m)\[build failed\]`), "编译失败：包没能编译"},
-	{regexp.MustCompile(`(?m)\[setup failed\]`), "setup 失败：测试的准备工作没跑起来"},
-	{regexp.MustCompile(`(?m)^\s*--- SKIP:`), "被跳过：SKIP 不算验证"},
-	{regexp.MustCompile(`(?m)^\s*--- FAIL: \w+ \(.*\)\n\s+\w+_test\.go:\d+: panic:`), "panic：不是断言失败"},
-	{regexp.MustCompile(`(?m)^panic: `), "panic：不是断言失败"},
-	{regexp.MustCompile(`(?m)WARNING: DATA RACE`), "数据竞争：不是断言失败"},
-	{regexp.MustCompile(`(?m)^testing: timed out after`), "超时：不是断言失败"},
-	{regexp.MustCompile(`(?m)no test files|no tests to run|^testing: warning: no tests to run`), "没有测试被跑到"},
-	{regexp.MustCompile(`(?m)undefined: |cannot use |declared and not used|imported and not used`), "编译失败：符号或类型对不上"},
+	{regexp.MustCompile(`(?m)^# .*\n.*\.go:\d+:\d+: `), "compile error: the test or the code under test did not compile"},
+	{regexp.MustCompile(`(?m)\[build failed\]`), "compile error: a package did not build"},
+	{regexp.MustCompile(`(?m)\[setup failed\]`), "setup failed: the test's preparation did not run"},
+	{regexp.MustCompile(`(?m)^\s*--- SKIP:`), "skipped: a SKIP proves nothing"},
+	{regexp.MustCompile(`(?m)^\s*--- FAIL: \w+ \(.*\)\n\s+\w+_test\.go:\d+: panic:`), "panic: not an assertion failure"},
+	{regexp.MustCompile(`(?m)^panic: `), "panic: not an assertion failure"},
+	{regexp.MustCompile(`(?m)WARNING: DATA RACE`), "data race: not an assertion failure"},
+	{regexp.MustCompile(`(?m)^testing: timed out after`), "timeout: not an assertion failure"},
+	{regexp.MustCompile(`(?m)no test files|no tests to run|^testing: warning: no tests to run`), "no test was run"},
+	{regexp.MustCompile(`(?m)undefined: |cannot use |declared and not used|imported and not used`), "compile error: a symbol or type does not line up"},
 }
 
-// 断言文本的行首形态：测试文件里的 t.Errorf / t.Fatalf 输出，或标准库的
-// 断言格式。go test 把测试的报错打印在 `--- FAIL:` 行之前，所以要往前找。
+// The shape of an assertion line: what t.Errorf / t.Fatalf prints from a test
+// file. go test prints it before the `--- FAIL:` line under -v and after it
+// without -v, so both directions are searched.
 var (
 	reFailLine    = regexp.MustCompile(`(?m)^\s*--- FAIL: ([\w/]+)`)
 	reAssertion   = regexp.MustCompile(`^\s+\S+_test\.go:\d+: .+`)
@@ -70,61 +75,59 @@ var (
 
 func main() {
 	var (
-		testPattern = flag.String("test", "", "要跑的测试名，作为 -run 的正则；留空跑全部")
-		pkg         = flag.String("pkg", "./...", "要跑的包")
-		outputFile  = flag.String("out", "", "把 go test 的完整输出存到这个文件；留空则不存")
-		expect      = flag.String("expect", "fail", "期望的结果：fail（改回旧代码后，应当真红）或 pass（带着修复，应当通过）")
-		count       = flag.Int("count", 1, "go test -count；偶发的红不是证据，可用 -count=5 连跑")
-		race        = flag.Bool("race", false, "加 -race")
+		testPattern = flag.String("test", "", "test name to run, as a -run regexp; empty runs everything")
+		pkg         = flag.String("pkg", "./...", "packages to run")
+		outputFile  = flag.String("out", "", "write the full go test output to this file; empty writes nothing")
+		expect      = flag.String("expect", "fail", "expected result: fail (with the old code back, it should be a real red) or pass (with the fix, it should pass)")
+		count       = flag.Int("count", 1, "go test -count; an intermittent red is not evidence, so -count=5 runs it five times")
+		race        = flag.Bool("race", false, "add -race")
 		timeout     = flag.String("timeout", "10m", "go test -timeout")
-		quiet       = flag.Bool("quiet", false, "只打印结论，不打印判定依据")
+		quiet       = flag.Bool("quiet", false, "print the conclusion only, not the reasoning")
 	)
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "redcheck: 判定 go test 的红是不是真红。\n\n用法:\n")
+		fmt.Fprintf(os.Stderr, "redcheck: judge whether a go test red is a real red.\n\nUsage:\n")
 		fmt.Fprintf(os.Stderr, "  go run ./cmd/redcheck -test '^TestFoo$'\n\n")
-		fmt.Fprintf(os.Stderr, "先自己把修复改回旧版（或保留修复），再跑这一条：\n")
-		fmt.Fprintf(os.Stderr, "  -expect fail  改回旧版后跑，判定这次红算不算数\n")
-		fmt.Fprintf(os.Stderr, "  -expect pass  带着修复跑，判定测试是否真的通过\n\n参数:\n")
+		fmt.Fprintf(os.Stderr, "Put the fix back by hand first (or leave it in place), then run one of:\n")
+		fmt.Fprintf(os.Stderr, "  -expect fail  with the old code back, judge whether this red counts\n")
+		fmt.Fprintf(os.Stderr, "  -expect pass  with the fix in place, judge whether the test passes\n\nFlags:\n")
 		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\n退出码: 0 真红/通过, 1 假绿/未通过, 2 假红, 3 用法或环境错误\n")
+		fmt.Fprintf(os.Stderr, "\nExit codes: 0 real red or passed, 1 not red or did not pass, 2 false red, 3 usage or environment error\n")
 	}
 	flag.Parse()
 
 	if *testPattern == "" && !*quiet {
-		fmt.Fprintln(os.Stderr, "redcheck: 没有给 -test；将跑全部测试。")
+		fmt.Fprintln(os.Stderr, "redcheck: no -test given; running every test.")
 	}
 	if *expect != "fail" && *expect != "pass" {
-		fmt.Fprintf(os.Stderr, "redcheck: -expect 只能是 fail 或 pass，收到 %q\n", *expect)
+		fmt.Fprintf(os.Stderr, "redcheck: -expect takes fail or pass, got %q\n", *expect)
 		os.Exit(exitUsage)
 	}
 	if *count < 1 {
-		fmt.Fprintf(os.Stderr, "redcheck: -count 至少为 1，收到 %d\n", *count)
+		fmt.Fprintf(os.Stderr, "redcheck: -count is at least 1, got %d\n", *count)
 		os.Exit(exitUsage)
 	}
 	if _, err := exec.LookPath("go"); err != nil {
-		fmt.Fprintln(os.Stderr, "redcheck: PATH 里找不到 go。")
+		fmt.Fprintln(os.Stderr, "redcheck: no go in PATH.")
 		os.Exit(exitUsage)
 	}
 
 	out, runErr := runGoTest(*pkg, *testPattern, *count, *race, *timeout)
 	if *outputFile != "" {
 		if err := os.MkdirAll(filepath.Dir(absOrDot(*outputFile)), 0o755); err != nil {
-			fmt.Fprintf(os.Stderr, "redcheck: 建输出目录失败: %v\n", err)
+			fmt.Fprintf(os.Stderr, "redcheck: cannot create the output folder: %v\n", err)
 		}
 		if err := os.WriteFile(*outputFile, []byte(out), 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "redcheck: 写输出文件失败: %v\n", err)
+			fmt.Fprintf(os.Stderr, "redcheck: cannot write the output file: %v\n", err)
 		}
 	}
 
 	if *expect == "pass" {
-		code := reportPass(out, runErr, *testPattern, *quiet)
-		os.Exit(code)
+		os.Exit(reportPass(out, runErr, *testPattern, *quiet))
 	}
-	code := reportFail(out, runErr, *testPattern, *quiet)
-	os.Exit(code)
+	os.Exit(reportFail(out, runErr, *testPattern, *quiet))
 }
 
-// runGoTest 跑 go test 并把 stdout 与 stderr 合起来返回。
+// runGoTest runs go test and returns its stdout and stderr together.
 func runGoTest(pkg, pattern string, count int, race bool, timeout string) (string, error) {
 	args := []string{"test", fmt.Sprintf("-count=%d", count), "-timeout", timeout}
 	if pattern != "" {
@@ -136,19 +139,20 @@ func runGoTest(pkg, pattern string, count int, race bool, timeout string) (strin
 	args = append(args, pkg)
 
 	cmd := exec.Command("go", args...)
-	// 不设 cmd.Env：测试要用到调用方的环境。设 GOFLAGS 会改变调用方的
-	// 构建方式，所以只在需要时追加。
+	// The environment is not replaced: the tests need the caller's. Adding
+	// GOFLAGS would change how the caller's build works.
 	combined, err := cmd.CombinedOutput()
 	header := fmt.Sprintf("$ go %s\n\n", strings.Join(args, " "))
 	return header + string(combined), err
 }
 
-// reportFail 判定「改回旧版后应当红」的那次运行。
+// reportFail judges the run where the old code was put back and the test should
+// fail.
 func reportFail(out string, runErr error, pattern string, quiet bool) int {
 	v, reason, detail := judge(out)
 
 	if !quiet {
-		fmt.Println("── 判定依据 ──")
+		fmt.Println("-- how this was judged --")
 		fmt.Println(reason)
 		if detail != "" {
 			fmt.Println()
@@ -159,51 +163,52 @@ func reportFail(out string, runErr error, pattern string, quiet bool) int {
 
 	switch v {
 	case verdictRealRed:
-		fmt.Printf("✅ 真红：%s 红在断言上。\n", describeTest(pattern))
-		fmt.Println("   这次红算数：测试确实抓到了改回去的那个 bug。")
+		fmt.Printf("REAL RED: %s failed on an assertion.\n", describeTest(pattern))
+		fmt.Println("  This red counts: the test caught the bug that was put back.")
 		if runErr == nil {
-			fmt.Println("   注意：go test 的退出码是 0，说明有别的包过了；红在哪个包以上面的 FAIL 行为准。")
+			fmt.Println("  Note: go test exited 0, so other packages passed; the FAIL lines above say which one failed.")
 		}
 		return exitRealRed
 	case verdictFalseRed:
-		fmt.Printf("❌ 假红：%s\n", reason)
-		fmt.Println("   编译错、跳过、超时、panic 都不算验证。这个测试没能证明任何事。")
-		fmt.Println("   若是编译错，说明改回去的位置动了接口，换个位置再试。")
+		fmt.Printf("FALSE RED: %s\n", reason)
+		fmt.Println("  A compile error, a skip, a timeout or a panic is not verification. This test proved nothing.")
+		fmt.Println("  If it was a compile error, the place put back changed an interface; put back a different place and try again.")
 		return exitFalseRed
 	default:
-		fmt.Printf("❌ 假绿：%s 在改回旧版后仍然通过。\n", describeTest(pattern))
-		fmt.Println("   这个测试抓不住它声称要守的那个 bug。先让它在旧代码上红，再谈修复。")
+		fmt.Printf("NOT RED: %s still passes with the old code back.\n", describeTest(pattern))
+		fmt.Println("  This test does not catch the bug it claims to guard. Make it fail on the old code first.")
 		return exitNotRed
 	}
 }
 
-// reportPass 判定「带着修复应当通过」的那次运行。
+// reportPass judges the run with the fix in place, which should pass.
 func reportPass(out string, runErr error, pattern string, quiet bool) int {
 	if runErr == nil {
 		if !quiet {
-			fmt.Printf("✅ 通过：%s 在带修复的代码上通过。\n", describeTest(pattern))
-			fmt.Println("   接下来把修复改回旧版，用 -expect fail 再跑一次。")
+			fmt.Printf("PASSED: %s passes with the fix in place.\n", describeTest(pattern))
+			fmt.Println("  Next, put the fix back by hand and run again with -expect fail.")
 		}
 		return exitRealRed
 	}
 	v, reason, _ := judge(out)
 	if !quiet {
-		fmt.Println("── 判定依据 ──")
+		fmt.Println("-- how this was judged --")
 		fmt.Println(reason)
 		fmt.Println()
 	}
 	switch v {
 	case verdictFalseRed:
-		fmt.Printf("❌ 没跑起来：%s\n", reason)
+		fmt.Printf("DID NOT RUN: %s\n", reason)
 		return exitFalseRed
 	default:
-		fmt.Printf("❌ 未通过：%s 在带修复的代码上仍然失败。\n", describeTest(pattern))
+		fmt.Printf("FAILED: %s still fails with the fix in place.\n", describeTest(pattern))
 		return exitNotRed
 	}
 }
 
-// judge 从 go test 的输出里判定结果。假红先于真红判：一个包编译不过时，
-// go test 仍会为其他包打印 FAIL 行，不先判就会把编译错当成真红。
+// judge decides the outcome from go test's output. A false red is judged before
+// a real red: when one package does not compile, go test still prints FAIL lines
+// for the others, and judging FAIL first would call the compile error a red.
 func judge(out string) (verdict, string, string) {
 	for _, m := range falseRedMarkers {
 		if loc := m.re.FindStringIndex(out); loc != nil {
@@ -214,25 +219,27 @@ func judge(out string) (verdict, string, string) {
 	fails := reFailLine.FindAllStringSubmatch(out, -1)
 	if len(fails) == 0 {
 		if reSummaryFail.MatchString(out) {
-			// 有 FAIL 但没有任何 --- FAIL 行：多半是包级失败
-			return verdictFalseRed, "有 FAIL 行但没有具体的测试失败：包级失败，不是断言", firstLines(out, 6)
+			// A FAIL line with no --- FAIL line is a package-level failure.
+			return verdictFalseRed, "a FAIL line with no test failure: a package failed, not an assertion", firstLines(out, 6)
 		}
-		return verdictNotRed, "没有任何测试失败", ""
+		return verdictNotRed, "no test failed", ""
 	}
 
-	// 要求失败测试下面紧跟断言文本，证明它红在断言上。
+	// The failing test needs assertion text under it to show it failed on an
+	// assertion rather than on something else.
 	for _, f := range fails {
 		name := f[1]
 		if detail, ok := assertionFor(out, name); ok {
 			return verdictRealRed,
-				fmt.Sprintf("%s 失败，并给出了断言文本", name),
+				fmt.Sprintf("%s failed and printed an assertion", name),
 				detail
 		}
 	}
 	seen := make(map[string]bool, len(fails))
 	names := make([]string, 0, len(fails))
 	for _, f := range fails {
-		// 子测试失败时父测试也会打印一行 FAIL，名字会重复。
+		// A failing subtest makes its parent print a FAIL line too, so a name
+		// can repeat.
 		if seen[f[1]] {
 			continue
 		}
@@ -240,13 +247,14 @@ func judge(out string) (verdict, string, string) {
 		names = append(names, f[1])
 	}
 	return verdictFalseRed,
-		fmt.Sprintf("%s 失败，但没给出断言文本", strings.Join(names, ", ")),
-		"FAIL 行上面没有 `_test.go:NN: ...` 形式的报错，无法确认红在断言上。"
+		fmt.Sprintf("%s failed with no assertion text", strings.Join(names, ", ")),
+		"No `_test.go:NN: ...` line sits beside the FAIL line, so there is no telling whether it failed on an assertion."
 }
 
-// assertionFor 找出某个测试的断言文本。go test 的两种排版都要认：
-// 带 -v 时先打报错再打 `--- FAIL:`，不带 -v 时先打 `--- FAIL:` 再打报错。
-// 两个方向都找，碰到别的测试的边界就停，免得把别人的报错算过来。
+// assertionFor finds a test's assertion text. Both layouts are accepted: under
+// -v the error comes before `--- FAIL:`, without -v it comes after. Both
+// directions are searched, stopping at another test's boundary so one test's
+// error is never counted for another.
 func assertionFor(out, testName string) (string, bool) {
 	lines := strings.Split(out, "\n")
 	at := -1
@@ -288,14 +296,14 @@ func assertionFor(out, testName string) (string, bool) {
 	return strings.Join(got, "\n"), true
 }
 
-// isTestBoundary 说这一行是不是另一个测试的开始或结束。
+// isTestBoundary says whether a line starts or ends another test.
 func isTestBoundary(ln string) bool {
 	return strings.Contains(ln, "--- FAIL:") || strings.Contains(ln, "--- PASS:") ||
 		strings.Contains(ln, "--- SKIP:") || strings.HasPrefix(ln, "=== RUN") ||
 		strings.HasPrefix(ln, "=== PAUSE") || strings.HasPrefix(ln, "=== CONT")
 }
 
-// excerpt 取出某个位置附近的行，供人核对判定依据。
+// excerpt takes the lines around a position, so a reader can check the verdict.
 func excerpt(out string, at int) string {
 	lines := strings.Split(out[:at], "\n")
 	from := len(lines) - 4
@@ -321,7 +329,7 @@ func firstLines(out string, n int) string {
 
 func describeTest(pattern string) string {
 	if pattern == "" {
-		return "全部测试"
+		return "every test"
 	}
 	return pattern
 }

@@ -65,7 +65,9 @@ func idFromURL(raw, prefix string) (string, error) {
 	return strings.TrimSuffix(u.Path[len(prefix):], "/"), nil
 }
 
-// Catalog accepts 冬/春/夏/秋 (or their English season names).
+// Catalog takes a season as the source site writes it (the four Chinese season
+// characters) or as its English name. The Chinese characters are the site's
+// own vocabulary and stay untranslated.
 func (c *Client) Catalog(ctx context.Context, year int, season string) ([]Anime, error) {
 	seasons := map[string]string{"冬": "冬", "春": "春", "夏": "夏", "秋": "秋", "winter": "冬", "spring": "春", "summer": "夏", "autumn": "秋", "fall": "秋"}
 	s, ok := seasons[strings.ToLower(strings.TrimSpace(season))]

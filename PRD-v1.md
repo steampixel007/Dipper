@@ -1,149 +1,149 @@
-# Dipper 第一版产品需求文档
+# Dipper V1 Product Requirements Document
 
-- 版本：V1 草案
-- 日期：2026-10-19
-- 状态：核心产品行为已确认；文末列出待定的实现细节
+- Version: V1 draft
+- Date: 2026-10-19
+- Status: Core product behavior confirmed; pending implementation details are listed at the end of this document
 
-## 1. 产品定位
+## 1. Product Positioning
 
-Dipper 是面向不熟悉 RSS、BT 下载器和正则表达式的用户的跨平台桌面追番软件。用户可以在软件里浏览番剧、选择字幕组、直观地筛选该组发布的资源，并让软件在后续更新时按同一规则自动下载。
+Dipper is a cross-platform desktop anime-following app for users who are not familiar with RSS, BT downloaders, or regular expressions. Users can browse anime in the app, choose a fansub group, visually filter the releases that group publishes, and let the app automatically download future updates with the same rules.
 
-第一版的核心体验是：**浏览番剧 → 查看字幕组的实际资源 → 从标题中点选包含／排除词并预览 → 默认勾选已有的匹配资源 → 下载并开启后续自动追番。**用户无需自行寻找 RSS 地址、编写正则表达式，或安装配置外部下载器。
+The core experience of V1 is: **browse anime → view the fansub group's actual releases → click include/exclude terms in the title and preview → matching existing releases are selected by default → download and enable ongoing automatic following.** Users do not need to find RSS URLs themselves, write regular expressions, or install and configure an external downloader.
 
-## 2. 第一版范围
+## 2. V1 Scope
 
-### 2.1 首发平台和资源来源
+### 2.1 Launch Platforms and Release Sources
 
-- 提供 Windows、macOS 和 Linux 桌面版本；三端具有一致的核心操作流程。
-- 首发资源来源为[蜜柑计划](https://mikanani.me/)：读取其番剧目录、番剧详情、字幕组及资源列表；后续更新使用所选番剧与字幕组对应的 RSS。
-- 蜜柑 RSS 提供资源标题、发布时间、大小和种子链接；资源详情页可提供磁力链接。用户无需直接接触这些地址。
-- 资源站无法访问时，明确展示加载失败及重试入口，不将其显示成「暂无番剧」或「暂无更新」。
+- Desktop builds for Windows, macOS, and Linux; all three platforms share the same core workflow.
+- The launch source is [Mikan Project](https://mikanani.me/): read its anime catalog, anime detail, fansub groups, and release lists; later updates use the RSS for the selected anime and fansub group.
+- Mikan RSS provides the release title, publish time, size, and torrent link; the release detail page may provide a magnet link. Users never have to handle these addresses directly.
+- When the source site is unreachable, show an explicit load failure with a retry entry; do not display it as "暂无番剧" (no anime) or "暂无更新" (no updates).
 
-### 2.2 用户操作流程
+### 2.2 User Workflow
 
-1. 启动软件，默认进入当前年份和季度的番剧列表。
-2. 切换年份与春、夏、秋、冬季度，浏览其他季度；进入某部番剧的详情。
-3. 查看该番剧的字幕组，以及每组实际发布的资源；选择希望追的字幕组。
-4. 在该组的资源列表中点选关键词，加入「必须包含」或「不得包含」，也可自行输入文字；列表即时显示筛选结果和原因。
-5. 查看符合条件的已有资源。资源**默认全部勾选**；用户可以取消任意条目，并在开始前看到资源数量与预计总大小。
-6. 启动下载并保存筛选条件。软件随后定时检查该字幕组 RSS，自动下载新出现且符合条件的资源。
-7. 关闭窗口后软件留在系统托盘，继续检查更新与下载；选择「完全退出」才停止运行。
+1. Launch the app; it opens by default on the anime list for the current year and season.
+2. Switch year and the spring, summer, fall, or winter season to browse other seasons; open an anime's detail page.
+3. View the anime's fansub groups and the releases each group actually published; choose the group to follow.
+4. In that group's release list, click words to add them to "必须包含" (must include) or "不得包含" (must not include), or type text manually; the list shows the filter results and reasons immediately.
+5. Review the existing releases that match. Releases are **selected by default**; users can uncheck any entry and see the release count and estimated total size before starting.
+6. Start the download and save the filter conditions. The app then checks that fansub group's RSS on a schedule and automatically downloads new releases that match.
+7. Closing the window leaves the app in the system tray, still checking for updates and downloading; only "完全退出" (quit completely) stops it.
 
-### 2.3 主页面
+### 2.3 Main Pages
 
-- **浏览番剧**：按年份和季度浏览；在番剧详情中查看字幕组、筛选资源并开始追番。番剧详情与筛选是浏览流程中的页面，不单独占用主导航。
-- **我的追番**：查看、调整、暂停或恢复已保存的追番任务，并查看最近一次 RSS 检查结果；恢复后继续处理 RSS 中未读的条目。
-- **下载**：查看资源下载、完成和做种状态；页面展示实时总下载速度、总上传速度，各资源任务展示自身的下载与上传速度，并提供暂停、重试及打开文件夹等操作。
-- **设置**：配置下载根目录、全局上传限速等选项；上传限速默认 **1 MB/s**，用户可修改。
+- **Browse Anime**: Browse by year and season; in anime detail, view fansub groups, filter releases, and start following. Anime detail and filtering are pages within the browse flow and do not take separate main navigation slots.
+- **My Follows**: View, adjust, pause, or resume saved follow tasks, and view the result of the most recent RSS check; after resuming, continue processing unread entries in the RSS.
+- **Downloads**: View downloading, completed, and seeding states; the page shows live total download speed and total upload speed, each release task shows its own download and upload speed, and the page provides pause, retry, and open folder actions.
+- **Settings**: Configure the download root directory, the global upload rate limit, and other options; the upload rate limit defaults to **1 MB/s** and is user-editable.
 
-## 3. 功能需求
+## 3. Functional Requirements
 
-### F01 番剧浏览与详情
+### F01 Anime Browsing and Detail
 
-- 首页默认展示当前季度；提供年份选择、春／夏／秋／冬切换，以及上一季／下一季导航。跨年切换时同步更新年份。
-- 可以浏览蜜柑已收录的往年季度，而非限制在当季。某年某季没有可用数据时显示明确的空状态。
-- 番剧卡片进入详情页；详情页展示可获得的番剧信息及其字幕组列表。返回列表时保留原来的年份、季度及浏览位置。
-- 字幕组列表展示实际可获得的资源数量或近期发布情况。不能从数据源获得的指标不展示为确定值。
+- The home page shows the current season by default; it provides a year selector, spring/summer/fall/winter switching, and previous/next season navigation. Switching across a year boundary updates the year at the same time.
+- Users can browse past seasons that Mikan has indexed, rather than being limited to the current season. When a given year and season has no available data, show an explicit empty state.
+- An anime card opens the detail page; the detail page shows the available anime information and its fansub group list. Returning to the list preserves the previous year, season, and browse position.
+- The fansub group list shows the number of releases actually available or recent publishing activity. Metrics that cannot be obtained from the data source are not shown as definite values.
 
-### F02 字幕组资源列表
+### F02 Fansub Group Release List
 
-- 进入字幕组后，显示其已发布的资源，包括**原始标题**、发布时间、大小，以及能从标题识别出的集数等辅助标签。
-- 尽量按集数组织列表；无法识别集数的资源单独展示原始标题，不影响对标题进行筛选和下载。
-- 同一集的多个不同资源分别展示；不因集数相同而折叠或合并下载资格。
-- 从来源页面获得的番剧和字幕组关联优先使用来源信息，不依赖从标题猜测字幕组。
+- After entering a fansub group, show its published releases, including the **original title**, publish time, size, and auxiliary labels such as the episode number that can be recognized from the title.
+- Organize the list by episode number where possible; releases whose episode number cannot be recognized show their original title on their own and still allow filtering and downloading by title.
+- Multiple distinct releases for the same episode are shown separately; they are not collapsed or merged in download eligibility because the episode number is the same.
+- For anime and fansub group associations obtained from source pages, prefer the source information; do not rely on guessing the fansub group from the title.
 
-### F03 可视化标题筛选
+### F03 Visual Title Filtering
 
-- 每条筛选条件是对**资源原始标题**的文字匹配：
-  - 「必须包含」：标题须包含指定词；多个必需词之间为**全部满足**。
-  - 「不得包含」：标题不能包含指定词；命中任一排除词即不符合。
-  - 「包含其中任意一个」：为同一偏好添加多种写法，例如 `简日内嵌`、`CHS`；标题命中其中任意一个即可满足这一组条件；若有多组，仍须逐组满足。
-  - 没有设置任何条件时，所有资源都符合条件；只有排除词时，未出现排除词的资源符合条件。
-- 用户可以点击资源标题中的文字或建议标签添加条件，也可以自行输入或删除关键词；无需输入正则表达式。在某条资源上选择「按这条生成建议条件」时，软件只提供从该标题观察到的候选词，交由用户查看其他资源的匹配预览并确认；集数不作为默认建议词。
-- 筛选结果随条件变化即时更新，并逐条说明「符合条件」或「缺少某个必需词／包含某个排除词」。若规则设置了必需词，而标题未出现该词，则该资源不符合条件、不自动下载，也无需进入待确认队列。
-- 如果规则**只设置排除词**，标题未提及该词的资源同样符合条件。界面预览须清楚展示这种结果，避免用户误以为软件能判断视频中实际包含什么。
-- 筛选对象是标题文字，而非下载后的视频实际内容。标题识别出的清晰度、字幕等标签用于辅助阅读和建议条件，不暗中增加用户没有保存的下载限制。
-- 正则表达式不作为第一版完成筛选的必备功能。
+- Each filter condition is a text match against the **release's original title**:
+  - "必须包含" (must include): the title must contain the specified term; multiple required terms must **all** match.
+  - "不得包含" (must not include): the title must not contain the specified term; matching any excluded term fails the condition.
+  - "包含其中任意一个" (include any of): add multiple spellings for the same preference, for example `简日内嵌`, `CHS`; the title matching any one of them satisfies that condition group; if there are multiple groups, each group must still be satisfied.
+  - When no condition is set, every release matches; when only exclusion terms are set, releases in which no excluded term appears match.
+- Users can click words in a release title or suggested labels to add conditions, and can also type or delete keywords themselves; no regular expression input is required. When the user selects "按这条生成建议条件" (generate suggested conditions from this release) on a release, the app offers only candidate terms observed in that title and leaves the user to check the match preview on other releases and confirm; the episode number is not used as a default suggested term.
+- Filter results update immediately as conditions change, with a per-release explanation of "符合条件" (matches) or "缺少某个必需词／包含某个排除词" (missing a required term / contains an excluded term). If the rules set required terms and the title does not contain one, that release does not match, is not downloaded automatically, and does not need to enter a pending-confirmation queue.
+- If the rules **set only exclusion terms**, releases whose titles do not mention those terms also match. The UI preview must show this result clearly, so users do not mistakenly believe the app can judge what the video actually contains.
+- Filtering targets the title text, not the actual content of the downloaded video. Labels recognized from the title, such as resolution and subtitles, serve reading and condition suggestions and do not silently add download restrictions the user did not save.
+- Regular expressions are not a required feature for completing filtering in V1.
 
-### F04 筛选预览和已有资源下载
+### F04 Filter Preview and Downloading Existing Releases
 
-- 实时展示匹配资源数量、覆盖集数（可识别时）、预计总大小，以及每条资源的匹配原因。
-- 同一集有多条资源匹配时，标示「本集匹配 N 条」，并帮助用户查看标题差异；**不阻止下载，也不擅自只选一条**。用户可选择通过包含／排除词缩小范围。
-- 已有的匹配资源默认全部勾选；用户可以逐条取消勾选。勾选状态只决定**此次下载哪些现有资源**，不会悄悄改变已保存的未来筛选条件。
-- 开始下载的操作清楚显示实际将提交的资源数量与总大小；未匹配的资源不自动勾选。
+- Show live the number of matching releases, the episodes covered (when recognizable), the estimated total size, and the match reason for each release.
+- When multiple releases for the same episode match, label it "本集匹配 N 条" (N releases match this episode) and help the user compare title differences; **do not block the download, and do not arbitrarily select only one**. Users can narrow the range with include/exclude terms.
+- All existing matching releases are selected by default; users can uncheck them one by one. The selection state only decides **which existing releases are downloaded this time** and never silently changes the saved future filter conditions.
+- The start-download action clearly shows the number of releases actually submitted and the total size; unmatched releases are not selected automatically.
 
-### F05 RSS 自动追番与去重
+### F05 RSS Automatic Following and Deduplication
 
-- 为每个追番任务保存所选番剧、字幕组及筛选条件，定时读取对应的字幕组 RSS。
-- RSS 条目逐条处理：**未读且原始标题符合已保存规则的条目提交下载**；不符合规则的条目也记为已读，之后不因调整规则自动回头下载。已读状态在软件重启后保留；提交下载任务失败时保留未读，供下次重试。同一集的不同 BT 资源都可下载。
-- 同一 BT 资源即使在 RSS 中重复出现，也只提交一次；不能以「集数相同」作为去重依据。
-- 展示追番任务的最近检查时间、成功／失败状态、匹配与排除记录；网络或来源故障后可重试。
-- 创建追番任务时，用户勾选的已有资源按选择提交下载；取消勾选的已有资源记录为已跳过，之后即使在 RSS 中出现也不自动下载，用户仍可主动选择下载。
-- 暂停追番时不读取或标记该订阅的 RSS 条目；已提交的下载和做种任务继续运行。恢复后只读取**当时 RSS 中仍能获取到的未读条目**，按当前保存的标题规则处理；已读条目及已提交过的 BT 资源不重复下载。
+- For each follow task, save the selected anime, fansub group, and filter conditions, and read the corresponding fansub group RSS on a schedule.
+- Process RSS entries one by one: **entries that are unread and whose original title matches the saved rules are submitted for download**; entries that do not match the rules are also marked read and are not downloaded retroactively after the rules are adjusted. Read state survives an app restart; if submitting a download task fails, the entry stays unread for the next retry. Different BT releases for the same episode can all be downloaded.
+- The same BT release is submitted only once even if it appears repeatedly in the RSS; "same episode number" is not a valid basis for deduplication.
+- Show the last check time, success/failure state, and match and exclusion records of each follow task; retry is available after a network or source failure.
+- When a follow task is created, the existing releases the user selected are submitted for download as selected; existing releases the user unchecked are recorded as skipped and are not downloaded automatically even if they appear in the RSS later, although the user can still choose to download them.
+- Pausing a follow neither reads nor marks that subscription's RSS entries; downloads already submitted and seeding tasks keep running. After resuming, only **the unread entries still obtainable in the RSS at that moment** are read, and they are processed with the currently saved title rules; read entries and BT releases already submitted are not downloaded again.
 
-### F06 内置磁力下载与番剧文件夹
+### F06 Built-in Magnet Downloads and Anime Folders
 
-- 内置 BT 下载能力，能直接处理磁力链接；用户无需安装、配置 BitComet 或 qBittorrent。所有任务共用上传限速，默认 **1 MB/s**，在设置中可修改；下载期间与下载完成后的做种都受此上限约束。
-- 首次使用给出可直接使用的默认下载根目录，同时允许用户选择其他根目录。每部番剧在订阅时选定的根目录下有一个以**番剧名称**命名的文件夹，例如 `下载目录/番剧名称/`；这部番剧的历史资源与后续 RSS 下载均归入此文件夹，不因字幕组不同而分散到其他番剧目录。用户后来更改全局下载根目录时，已订阅的番剧仍沿用原文件夹，新订阅的番剧使用新的根目录；设置页说明此规则，不自动搬动已有文件。
-- 番剧文件夹名称以来源的番剧名称为基础；对操作系统不允许的字符进行安全处理。名称相同但确属不同番剧时须区分目录，避免误合并；同一番剧后续下载持续使用已建立的目录。
-- 保留种子内文件的**原始文件名及相对目录结构**，不自动按集数重命名视频或字幕。不同资源出现同名文件时，用独立的资源子目录隔离，避免覆盖已有内容；所有内容仍位于对应番剧文件夹下。
-- BT 下载期间可能同时上传。单个资源下载完成后继续做种，直到**该资源累计上传量达到其下载量（1:1）**，或**下载完成后累计做种满 1 小时**，以先到者为准；停止做种不删除已下载文件。上传量从该资源开始下载起累计；做种时长只累计软件运行、网络可用且任务正在做种的时间，即使暂时没有其他用户下载也计时。暂停任务、断网、系统休眠或完全退出期间不计时。
-- 保存每个资源已上传量和累计做种时长；完全退出立即停止上传，重新启动时继续未达到停止条件的做种任务，直到满足其中一项。用户可手动停止单个资源的做种，手动停止后重启不自动恢复。
-- 下载页分别展示**当前总下载速度、当前总上传速度**，各资源任务分别展示其**当前下载速度和当前上传速度**；下载完成并做种时仍显示上传速度，没有传输时显示为零。页面同时展示任务名称、保存位置、下载进度与做种状态；支持暂停、继续、重试，并在软件重启后恢复未完成任务。
-- 下载失败应展示可理解的原因，例如磁盘空间不足、无法连接资源或来源不可访问。
+- Built-in BT downloading handles magnet links directly; users do not need to install or configure BitComet or qBittorrent. All tasks share one upload rate limit, **1 MB/s** by default, editable in settings; both downloading and seeding after download completion are bound by this cap.
+- First use provides a default download root directory that works out of the box, while also letting the user choose another root. Each anime has a folder named after the **anime name** under the root directory selected at subscription time, for example `DownloadRoot/AnimeName/`; this anime's past releases and later RSS downloads all go into this folder and are not scattered into other anime directories because of a different fansub group. When the user later changes the global download root, already-subscribed anime keep their original folders and newly subscribed anime use the new root; the settings page explains this rule and existing files are not moved automatically.
+- Anime folder names are based on the source anime name, with characters the operating system does not allow sanitized. When anime share a name but are genuinely different, their directories must be distinguished to avoid an incorrect merge; later downloads for the same anime keep using the directory already created.
+- Preserve the **original file names and relative directory structure** of the files inside the torrent; do not automatically rename videos or subtitles by episode number. When different releases contain files with the same name, isolate them in a separate per-release subdirectory to avoid overwriting existing content; all content still sits under the corresponding anime folder.
+- A BT download may also upload while it runs. After a single release finishes downloading it keeps seeding until **its cumulative uploaded amount reaches its downloaded amount (1:1)** or **cumulative seeding reaches 1 hour after download completion**, whichever comes first; stopping seeding does not delete downloaded files. Upload volume accumulates from when that release starts downloading; seeding time counts only while the app is running, the network is available, and the task is seeding, and it counts even when no other peer is downloading at that moment. Time while a task is paused, the network is down, the system is asleep, or the app has fully quit does not count.
+- Persist each release's uploaded amount and cumulative seeding time; fully quitting stops uploading immediately, and on restart seeding tasks that have not met a stop condition continue until one of the two is satisfied. Users can manually stop seeding a single release, and after a manual stop it does not resume automatically on restart.
+- The download page shows **current total download speed and current total upload speed**, and each release task shows its **current download speed and current upload speed**; upload speed is still shown while seeding after download completion, and shows zero when there is no transfer. The page also shows task names, save locations, download progress, and seeding state; it supports pause, resume, and retry, and restores unfinished tasks after an app restart.
+- A download failure should show an understandable reason, such as insufficient disk space, an unreachable release, or an inaccessible source.
 
-### F07 系统托盘与跨平台运行
+### F07 System Tray and Cross-Platform Operation
 
-- 点击窗口关闭按钮后隐藏至系统托盘，继续 RSS 检查、下载与做种；托盘入口可重新打开窗口或完全退出。
-- 完全退出时停止 RSS 检查、下载与做种；重启软件后恢复追番任务、未完成下载及尚未满足停止条件且未被手动停止的做种任务。
-- Windows、macOS、Linux 均应完成「安装 → 浏览 → 筛选 → 下载 → 托盘运行」主流程。
+- Clicking the window close button hides the app to the system tray, where RSS checks, downloads, and seeding continue; the tray entry can reopen the window or quit completely.
+- Quitting completely stops RSS checks, downloads, and seeding; after an app restart, follow tasks, unfinished downloads, and seeding tasks that have not met a stop condition and were not manually stopped are restored.
+- Windows, macOS, and Linux must each complete the main flow "install → browse → filter → download → run in tray".
 
-### F08 插件化能力
+### F08 Plugin Capabilities
 
-- 桌面内核提供统一界面、插件加载与生命周期、持久化配置、任务调度及插件间的数据契约。
-- 第一版预装并默认启用：**蜜柑资源源插件、标题识别插件、标题筛选插件、内置下载插件**。插件化不增加普通用户的首次配置步骤。
-- 标题识别插件接收原始标题以及来源已知的番剧、字幕组信息，尽可能输出集数、字幕描述、清晰度、编码、格式等辅助字段；识别不了就保留未知及原始标题。
-- 标题识别用于辅助展示和建议可点击的词；**自动下载以用户保存的原始标题匹配规则为准**。未来可增加针对不同字幕组的识别插件，不改变用户筛选规则的含义。
-- 单个插件或资源源报错时，界面展示对应错误，并保留用户的追番规则和下载记录。
+- The desktop kernel provides a unified UI, plugin loading and lifecycle, persistent configuration, task scheduling, and data contracts between plugins.
+- V1 preinstalls and enables by default: **the Mikan release source plugin, the title recognition plugin, the title filtering plugin, and the built-in download plugin**. The plugin architecture adds no first-time configuration steps for ordinary users.
+- The title recognition plugin receives the original title and anime and fansub group information known from the source, and outputs auxiliary fields such as episode number, subtitle description, resolution, codec, and format where possible; when it cannot recognize something, it keeps the value unknown and keeps the original title.
+- Title recognition serves display and clickable term suggestions; **automatic downloading follows the original-title matching rules the user saved**. Recognition plugins for specific fansub groups may be added later without changing the meaning of the user's filter rules.
+- When a single plugin or release source errors, the UI shows the corresponding error and the user's follow rules and download records are preserved.
 
-## 4. 关键验收场景
+## 4. Key Acceptance Scenarios
 
-1. 用户从当前季度切换到往年某一季度，打开番剧详情，能够查看该番剧的字幕组和各组资源，并返回原列表位置。
-2. 用户选定一个字幕组，将 `1080p` 与 `简日内嵌` 设为「必须包含」、将 `合集` 设为「不得包含」；缺少任一必需词或包含 `合集` 的标题立即在预览中标为不匹配。
-3. 同一集有两条不同磁力资源符合条件时，两条均默认勾选、均可下载；预览明确标示该集命中两条。用户额外添加关键词后，列表和数量立即更新。
-4. 已有资源默认全部勾选；用户取消其中一条后，本次不下载该条，后续 RSS 检查及软件重启也不因它再次出现而自动下载。此后新发布的条目仍按保存的标题条件判断。
-5. 同一磁力资源在 RSS 中重复出现或软件重启后再次出现，不产生第二个下载任务；相同集数但磁力不同的资源仍各自下载。
-6. 关闭窗口后可从托盘重新打开，RSS 检查与下载继续运行；完全退出后停止，重新启动后恢复任务。
-7. 标题识别插件无法识别某个标题的字幕或集数时，用户仍能看到原始标题，使用包含／排除词筛选；实际下载结果只由已保存规则决定。
-8. 用户选定下载根目录后，同一番剧从不同字幕组下载的资源均位于以该番剧名称命名的目录下；下载的视频、字幕保持种子内原名。不同番剧名称相同或不同资源内文件同名时，不误合并、不覆盖已有文件；同名资源通过子目录区分。
-9. 一个资源下载完成后，累计做种 25 分钟即完全退出；退出期间不上传、不累计时长。下次启动恢复做种，累计满剩余 35 分钟或先达到 1:1 时停止；已下载文件仍保留。若用户手动停止做种，重启后不自动恢复。
-10. 下载页同时显示实时总下载速度和总上传速度，任务列表分别显示各任务的下载与上传速度；资源下载完成后继续做种时仍可看到上传速度，停止传输后显示为零。
-11. 用户暂停追番时，已开始的下载继续进行，暂停期间 RSS 新增两条不同资源；恢复时若两条仍在 RSS，软件只按当前规则下载符合条件的未读条目，另一条标为已读。再次刷新或重启不重复提交；如果某条已不在可读取的 RSS 中，第一版不从字幕组资源列表追溯补查。
-12. 用户把下载根目录从 A 改为 B 后，已订阅番剧的新资源仍进入其在 A 下原有的番剧文件夹；新订阅的番剧在 B 下建立番剧文件夹，已有文件不自动搬动。
+1. A user switches from the current season to a past season, opens an anime's detail page, can view that anime's fansub groups and each group's releases, and returns to the original list position.
+2. A user selects a fansub group, sets `1080p` and `简日内嵌` as "必须包含" (must include) and `合集` as "不得包含" (must not include); titles missing either required term or containing `合集` are immediately marked as not matching in the preview.
+3. When two different magnet releases for the same episode match, both are selected by default and both can be downloaded; the preview clearly indicates that the episode has two matches. After the user adds another keyword, the list and counts update immediately.
+4. All existing releases are selected by default; after the user unchecks one, that release is not downloaded this time, and later RSS checks and app restarts do not download it automatically when it reappears. Entries published after that are still judged by the saved title conditions.
+5. The same magnet release appearing repeatedly in the RSS or appearing again after an app restart does not produce a second download task; releases with the same episode number but different magnets are still downloaded individually.
+6. After the window is closed it can be reopened from the tray, and RSS checks and downloads keep running; quitting completely stops them, and restarting restores the tasks.
+7. When the title recognition plugin cannot recognize the subtitles or episode number of a title, the user can still see the original title and filter with include/exclude terms; the actual download result is determined only by the saved rules.
+8. After the user selects a download root, releases downloaded for the same anime from different fansub groups all sit under the directory named after that anime; downloaded videos and subtitles keep the names they had inside the torrent. When different anime share a name or different releases contain files with the same name, nothing is merged incorrectly and no existing file is overwritten; releases with the same name are distinguished by subdirectories.
+9. After a release finishes downloading, the app quits completely at 25 minutes of cumulative seeding; nothing uploads and no time accumulates while it is closed. The next start resumes seeding and stops once the remaining 35 minutes are reached or 1:1 is hit first; downloaded files are still kept. If the user manually stopped seeding, it does not resume automatically after restart.
+10. The download page shows live total download speed and total upload speed at the same time, and the task list shows each task's download and upload speed; upload speed is still visible while a release keeps seeding after its download completes, and shows zero once transfer stops.
+11. When the user pauses a follow, downloads already started keep running, and two different releases are added to the RSS during the pause; on resume, if both are still in the RSS, the app downloads only the unread entries that match the current rules and marks the other as read. Further refreshes or restarts do not submit them again; if an entry is no longer in the readable RSS, V1 does not back-fill it from the fansub group's release list.
+12. After the user changes the download root from A to B, new releases for already-subscribed anime still go into their existing anime folders under A; newly subscribed anime get anime folders under B, and existing files are not moved automatically.
 
-## 5. 第一版暂不要求
+## 5. Not Required in V1
 
-- 要求用户注册蜜柑账户、手动复制 RSS 链接或连接外部下载器。
-- 将正则表达式作为普通用户配置追番的必经步骤。
-- 把「每集只下一个版本」当作默认规则，或强制用户处理同集多资源的冲突。
-- 内置播放器、观看进度同步、云端账号与跨设备同步。
-- 首发多资源站接入、面向普通用户的第三方插件市场。
-- 修改关键词后自动重新筛选并下载已经读过的 RSS 条目。
-- 自动按集数重命名视频或字幕、为媒体库生成另一套规范化文件名。
+- Requiring users to register a Mikan account, copy RSS links manually, or connect an external downloader.
+- Making regular expressions a mandatory step for ordinary users configuring a follow.
+- Treating "download only one version per episode" as a default rule, or forcing users to resolve conflicts between multiple releases of the same episode.
+- A built-in player, watch progress sync, cloud accounts, and cross-device sync.
+- Multi-source integration at launch, and a third-party plugin marketplace for ordinary users.
+- Automatically re-filtering and downloading already-read RSS entries after keywords change.
+- Automatically renaming videos or subtitles by episode number, or generating another set of normalized file names for a media library.
 
-## 6. 待设计或技术验证的事项
+## 6. Items Pending Design or Technical Validation
 
-以下事项不改变上述核心行为，在交互设计和技术方案阶段确定：
+The following items do not change the core behavior above and are settled during interaction design and technical planning:
 
-- 蜜柑的数据接入方式、站点使用条款、可访问性和合理的 RSS 检查频率；站点页面或 RSS 格式变化时的适配方式。
-- 标题文字匹配的大小写、全半角与标点规范化策略，以及关键词建议在不同字幕组写法下的呈现方式。规范化不得悄悄改变简体／繁体等筛选含义。
-- 空间不足时的任务恢复细节，例如用户腾出磁盘空间后如何重试。
-- 插件接口版本、跨平台打包方式，以及未来安装第三方插件的安全和更新机制。
+- Mikan's data access method, the site's terms of use, accessibility, and a reasonable RSS check frequency; how to adapt when site pages or the RSS format change.
+- Normalization strategy for case, full-width/half-width, and punctuation in title text matching, and how keyword suggestions appear under different fansub group spellings. Normalization must not silently change filter meaning such as simplified versus traditional Chinese.
+- Task recovery details when space runs out, for example how to retry after the user frees disk space.
+- Plugin interface versioning, cross-platform packaging, and the security and update mechanism for installing third-party plugins in the future.
 
-## 7. 参考资源
+## 7. Reference Resources
 
-- [蜜柑计划](https://mikanani.me/)
-- [蜜柑番剧详情示例](https://mikanime.tv/Home/Bangumi/4063)：可看到字幕组、资源及字幕组 RSS 入口。
-- [字幕组 RSS 示例](https://mikanime.tv/RSS/Bangumi?bangumiId=4063&subgroupid=370)：可看到标题、时间、大小和种子链接。
-- [资源详情示例](https://mikanime.tv/Home/Episode/9dd7eb5c920bddd3cd46c9256decda56d3d36008)：可看到磁力链接。
-- [Jellyfin 剧集文件组织说明](https://jellyfin.org/docs/general/server/media/shows/)与 [Plex 剧集文件命名说明](https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/)：媒体库命名格式的背景资料；Dipper V1 保留种子内原始文件名。
+- [Mikan Project](https://mikanani.me/)
+- [Mikan anime detail example](https://mikanime.tv/Home/Bangumi/4063): shows fansub groups, releases, and the fansub group RSS entry.
+- [Fansub group RSS example](https://mikanime.tv/RSS/Bangumi?bangumiId=4063&subgroupid=370): shows titles, times, sizes, and torrent links.
+- [Release detail example](https://mikanime.tv/Home/Episode/9dd7eb5c920bddd3cd46c9256decda56d3d36008): shows magnet links.
+- [Jellyfin show file organization documentation](https://jellyfin.org/docs/general/server/media/shows/) and [Plex TV show file naming documentation](https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/): background on media library naming conventions; Dipper V1 keeps the original file names inside the torrent.

@@ -1,0 +1,108 @@
+# gui
+
+`cmd/dipper` is the window. It renders state, forwards user actions to `core`,
+`downloader` and `source`, and owns no domain logic of its own.
+
+## What it owns
+
+- The window, its pages, and the navigation between them.
+- The `State` the pages render.
+- Which async load is in flight, and which one it replaced.
+- Startup: single-instance acquisition, then opening the database.
+
+## Files
+
+| File | Holds |
+| --- | --- |
+| `main.go` | Process start: single instance, data directory, engine and core construction, the window |
+| `model.go` | `State`, `Saved`, the update loop, and the helpers that turn core types into UI types |
+| `view.go` | The pages: browse, detail, following, downloads, settings |
+| `core_ui.go` | The bridge to `core`: subscriptions, tasks, settings |
+| `source_ui.go` | The bridge to `source`: catalog, detail, history, covers |
+| `covers.go` | Cover image loading and its cache |
+| `appearance.go` | Fonts, sizing, theme values |
+| `ui_render.go` | Deterministic sample state for layout rendering |
+| `startup_error_windows.go`, `startup_error_other.go` | Reporting a failure before the window exists |
+
+## State and the update loop
+
+`State` embeds `Saved`, which is the part persisted to `data/preferences.json`;
+the rest is per-run. UI code reads `State` and calls `Update` to schedule a
+repaint, and never mutates it from another goroutine without going through
+`Update`.
+
+Each async load has a revision and a cancel pair:
+
+```
+catalogRevision, detailRevision, historyRevision   uint64
+catalogCancel,  detailCancel,  historyCancel       context.CancelFunc
+```
+
+Starting a load increments its revision and cancels the previous one. A result
+that arrives with a stale revision is dropped rather than applied. This is the
+same pattern `core` uses for subscriptions, and for the same reason: without it,
+a slow catalog fetch for a season the user already navigated away from would
+overwrite the newer page.
+
+## Pages
+
+`Page` is one of `browse`, `detail`, `following`, `downloads`, `settings`. Each
+page is a function over `State` in `view.go`; a page never calls `core` directly,
+it calls the bridge in `core_ui.go` or `source_ui.go`.
+
+The detail page runs in one of two modes, distinguished by `Backfill`:
+
+- **Subscribe** — choose a group and a rule, preview which existing releases
+  match, and confirm. Existing matches are selected by default.
+- **Backfill** — pick releases from an existing subscription's history to
+  download now, without changing the rule.
+
+The two modes share the resource list but not the confirm action. Keeping them
+distinct is what makes "I cancelled this one release" not change what future
+releases are matched against.
+
+## Startup
+
+`main` acquires the single instance first, before opening the database or
+starting the engine. If activation of an already-running window fails, the
+process exits with an error instead of continuing — two processes on one data
+directory would corrupt the SQLite file and the task folder.
+
+## Rendering
+
+`ui_render.go` holds a fixed sample state used to render each page's layout
+without a live source or database. It is how a layout change is checked in
+isolation, and it is the reason `view_test.go` can assert on rendering without
+network access.
+
+## UI text
+
+Every string the user sees is Chinese and lives in `view.go` or the bridge
+files. This is product copy, not code documentation: it stays Chinese even
+though comments and docs are English. See the language rule in
+[code-standards.md](../code-standards.md).
+
+Source-side Chinese literals — season names, weekday names, the `放送日期：`
+label read from the page — are in `internal/source`, not here, and are data from
+the upstream site.
+
+## Tests
+
+`view_test.go` renders pages from `ui_render.go`'s sample state and asserts on
+what the page produces. Tests do not open a window, do not touch the network, and
+do not read the user's real data directory.
+
+Points a change is expected to prove:
+
+- A stale catalog result does not overwrite a newer one.
+- Switching from subscribe to backfill does not change the subscription's rule.
+- Cancelling a selected release skips only that release.
+- A page with an empty list shows its empty state, not a blank area.
+
+## Invariants a change must preserve
+
+- Every async load increments a revision and drops a stale result.
+- The single instance is acquired before any state is opened.
+- A page never calls a package directly; it goes through the bridge.
+- A click never moves the page's scroll position.
+- User-visible strings stay Chinese; comments and docs are English.

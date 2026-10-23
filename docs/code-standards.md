@@ -1,111 +1,143 @@
 # Code standards
 
-这些规矩来自反复出现的返工。每条都写明「审查时看什么」，以及踩过的坑。
-一次改动只有逐条满足才算完成。
+These rules come from work that had to be done twice. Each one says what a
+reviewer looks at, and the failure that put it here. A change is done only when
+it shows each of them.
 
-## 改动包含什么
+## What a change contains
 
-| 规矩 | 审查时看什么 |
+| Rule | What a reviewer looks at |
 | --- | --- |
-| 一次改动只做它的目标需要的事。 | 每个行为变化都有理由。顺手的重构、额外的功能、策略调整另开一次改动。 |
-| 修 bug 要覆盖它该覆盖的全部情形。 | 哪些情形变了、哪些相邻情形没变，都要说清。不同的错误不要当成一种处理。 |
-| 改动要在整条路径上成立。 | 从用户输入跟到最终结果，穿过调用方、它改的状态和副作用。一个函数对，不代表整个操作对。 |
-| 修一处要修掉同一形状的所有兄弟。 | 用 grep 找同样的模式：同形状的守卫、同一判断的其他调用方、同一操作的另一个分支、指向同一端点的其他提示语。只修报告里那一个，是返工的主要来源。 |
-| 改动要重新推导建立在它之上的一切。 | 改公式、改列表、改布局断点、改异步步骤的时机时，找出每个假定旧含义的调用方、存档副本和测试，跑一遍。 |
-| 读失败、解析失败、校验失败都算「未知」。 | 不能当成「空」「没有」「相等」。保留之前读到的内容，写覆盖前把解析不了的文件另存一份，修共用的读取器而不是在旁边写个更严的。守卫访问的列表（白名单、数量上限）在文件读不到时必须 fail closed。要用「文件不可读」来测。 |
-| 别的应用的值要来自那个应用本身。 | 写别人的文件或替它说话时，每个字段的类型和取值都要从那个应用自己的数据、二进制、合并代码或文档里来，不能只看字段名。 |
-| 会被阻塞的调用不许在读者需要的锁下面跑。 | 持锁时不要发 channel、不要调可能阻塞的东西。跨 goroutine 交接前先把共享状态设好。按值拷贝一个含 map 的结构体不是拷贝。启了 goroutine 或定时器的改动，推之前跑 `-race`。 |
-| 默认值不许盖掉用户自己设的值。 | 写一个键之前，列清楚这个设置所有被读取的地方，并带着「用户已设值」测一遍。迁移改写设置时要点名哪些用户自己设过，保留他们的值，或者在发布说明里讲清为什么不保留。 |
-| 检查覆盖改动碰到的边界。 | 数字要测边界。路径要测每个平台。并发要测竞态和过期状态。按风险挑检查项。 |
+| A change does only what its goal needs. | Every behavior change has a reason. Unrelated refactors, extra features and policy changes go in a change of their own. |
+| A fix covers exactly the cases it means to. | Say which cases change and which neighboring ones do not. Different errors are not handled as one. |
+| A change holds on the whole path. | Follow it from the user's input to the end result, through the callers, the state it changes and the side effects. One correct function does not make the whole operation correct. |
+| A fix reaches every sibling of the bug. | Grep for the same shape: another branch of the same operation, another caller of a changed predicate, another message naming the same endpoint. Fixing only the case in the report is the main source of rework. |
+| A change re-derives everything built on what it changes. | When a change alters a formula, a list, a layout breakpoint or the timing of an async step, find every caller, saved copy and test that assumed the old meaning, and run it. |
+| A failed read, parse or hash means *unknown*. | Never *empty*, *none* or *equal*. Keep what was read before; copy a file that does not parse aside before writing over it; fix the shared reader rather than adding a stricter one beside it. A list that guards access fails closed when its file cannot be read. Test with the file unreadable. |
+| Another app's values come from that app. | When writing another app's file or speaking for it, take each field's type and value from that app's own data, binary, merge code or docs, not only from its field names. |
+| Nothing that can block runs under a lock its reader needs. | Do not send on a channel or call anything that can block while holding a lock the receiver takes first. Set shared state before the handoff that lets another goroutine see it. A struct copied by value that holds a map is not a copy. A change that starts a goroutine or a timer runs `-race` before it is pushed. |
+| A default never overrides a value the user set. | Before writing a key, list everywhere the setting is read from, and test with a user-set value present. A migration that rewrites a setting names the users who set it themselves and leaves their value alone. |
+| Checks cover the edges the change touches. | For numbers, check the boundaries. For paths, check each platform. For concurrency, check races and stale state. Pick checks by risk. |
 
-## 测试
+## Tests
 
-| 规矩 | 审查时看什么 |
+| Rule | What a reviewer looks at |
 | --- | --- |
-| 修 bug 必须带一个「不带修复就会失败」的测试。 | 把旧代码放回去跑这个测试，它必须失败，且失败要给出断言文本。用 [cmd/redcheck](../cmd/redcheck) 判定，别只看「变红了」。编译错、被跳过、超时、panic 都不算。 |
-| 测试不许碰网络。 | 厂商的页面或接口用 `httptest` 从真实响应存下来的字节里造。依赖来自 `go.sum` 锁定的版本，不是仓库里的最新版。把改动改坏，看测试的请求打到哪儿去。 |
-| 测试用真实输入。 | 夹具要像真实请求、真实序列化输出、真实磁盘文件。包括缺字段、空值和默认值。`internal/source/testdata/` 下的页面样本就是这个用法。 |
-| 测试检查行为，不检查实现。 | 断言用户或调用方需要的东西。格式化改动和内部重构不该弄坏测试，除非要求就是精确字节。 |
-| 在基线（`HEAD`）上就红的测试是现在就要修的 bug。 | 「在基线上也一样红」不是理由，「全量跑红、单跑绿」也不是。在原因处修掉，或者单开一次改动把原因记成 issue，再往上叠。判定一个 Go 测试是不是偶发之前，先跑 `go test -race -count=20 -run X`。 |
-| 测试不许碰真机器。 | 用 `t.TempDir()` 造目录，不读写用户真实的数据目录、配置文件或 `~/`。`internal/source` 的联网用例加 `testing.Short()` 跳过。 |
-| 测试启动的东西要在测试结束时停掉。 | 假进程、goroutine、异步刷新都要在测试返回前停掉或等掉，否则它会写进下一个测试的目录（"directory not empty"），或者转好几天。 |
-| 时间相关的测试两边都要留余量。 | 不许用加载中的机器可能超出的墙钟时间卡测试，阈值分类器的夹具要远离每个阈值。时间失败要靠在注入延迟上复现（持住一次写、让第一次到达变晚），不是重跑到它挂。修的时候把这个测试里所有时间假定列出来。 |
+| A fix comes with a test that fails without it. | Put the old code back and run the test: it must fail with a real `FAIL` that names the behavior. Judge it with [cmd/redcheck](../cmd/redcheck), not by eye. A compile error, a skipped test, a timeout or a panic does not count. |
+| A test never reaches the network. | A vendor's page or API is served from `httptest`, built from bytes saved from the real response. A dependency comes from a version pinned in `go.sum`, not from the registry's latest. Break the change and watch where the test's requests go. |
+| Tests use real inputs. | Fixtures look like real requests, real serialized output and real files on disk, including missing fields, empty values and defaults. `internal/source/testdata/` holds pages captured from the real site for exactly this. |
+| Tests check behavior, not implementation. | Assert what the user or caller needs. A formatting change and an internal refactor should not break a test, unless exact bytes are the requirement. |
+| A test that fails on the baseline is a bug to fix now. | "It fails the same on `HEAD`" is not a baseline, and neither is "it fails under the full run but passes alone". Fix it at its cause, or open an issue naming the cause in a change of its own, before building on top of it. Before calling a Go test flaky, run `go test -race -count=20 -run X`. |
+| Tests stay out of the real machine. | Use `t.TempDir()`. Never read or write the user's real data directory, preferences or home. A test that needs the live source is skipped under `testing.Short()`. |
+| Whatever a test starts ends when the test does. | A fake process, a goroutine or an async refresh is stopped or waited for before the test returns, or it writes into the next test's folder ("directory not empty") or spins for days. |
+| A timing test leaves room on both sides. | Never bound a test by wall-clock time a loaded machine can exceed, and keep a threshold's fixture far from every threshold it has. Reproduce a timing failure by injecting the delay (a held write, a late first arrival), not by rerunning until it fails. List every timing assumption in the test when fixing one. |
 
-## 验收标准
+## Acceptance criteria
 
-一次改动只有在逐条给出下列结果后才能算完成。要说明哪几条跑了、打印了什么。
-没跑的检查要写成「没跑」，不许省略。
+A change is done only when it shows each of the following. Say which ones were
+run and what they printed. A check that was not run is listed as not run, never
+left out.
 
-1. **不带修复就会失败的测试。** 把旧代码放回去跑新测试。它必须给出真正的 `FAIL`，
-   且失败信息指出是哪个行为错了。编译错、被跳过的测试不算。说明哪个测试失败、
-   失败信息是什么。然后恢复修复，确认测试通过。
+1. **A test that fails without the change.** Put the old code back and run the
+   new test. It must fail with a real `FAIL` that names the behavior. A compile
+   error or a skipped test does not count. Say which test fails and what it
+   failed with. Then restore the change and check the test passes.
 
-   用 `redcheck` 判定，别用眼睛判：
+   Judge it with `redcheck`, not by eye:
 
    ```
-   # 1. 带着修复跑，确认通过
+   # 1. With the change, confirm the test passes.
    go run ./cmd/redcheck -test '^TestFoo$' -expect pass
 
-   # 2. 手工把修复改回旧版（改哪一处由你判断，工具不替你决定）
+   # 2. Put the old code back by hand. Which code is yours to decide;
+   #    the tool does not choose it.
 
-   # 3. 判定这次红算不算数
+   # 3. Judge whether this red counts.
    go run ./cmd/redcheck -test '^TestFoo$' -expect fail
 
-   # 4. 恢复修复
+   # 4. Restore the change.
    ```
 
-   退出码：`0` 真红/通过，`1` 假绿/未通过，`2` 假红（编译、跳过、超时、panic），
-   `3` 用法或环境错误。判为假红时，多半是改回去的位置动了接口，换一处再试。
+   Exit codes: `0` real red (or passed), `1` not red (or did not pass), `2`
+   false red (compile error, skip, timeout, panic), `3` usage or environment
+   error. A false red usually means the code put back changed an interface —
+   put back a different place and try again.
 
-2. **故意改坏。** 一次只改坏一处，检查新测试是否抓得住，记录每次挂了哪些测试、
-   报什么错。覆盖本次改动的几个分支，不是随机删代码。
+2. **Break it on purpose.** Break one place at a time and check that the new
+   test catches each break. Record which tests failed and what they printed.
+   Cover the branches this change touches, not random lines.
 
-3. **构建与全量套件。** 跑 `scripts/build.ps1 -Test`，它执行
-   `go test -count=1 -timeout 5m ./...` 和 `go vet ./...`。另外：
-   - `gofmt -l cmd internal` 无输出
+3. **The build and the whole suite.** Run `scripts/build.ps1 -Test`, which does
+   `go test -count=1 -timeout 5m ./...` and `go vet ./...`. Also:
+
+   - `gofmt -l cmd internal` prints nothing
    - `CGO_ENABLED=0 GOOS=linux go build ./cmd/dipper`
    - `CGO_ENABLED=0 GOOS=darwin go build ./cmd/dipper`
 
-   跑 `./...`，不要只跑你以为改到的包。
+   Run `./...`, not the packages you think you touched.
 
-4. **真的用一次。** 改到下载器、抓取源或单实例的部分，要在真实数据目录上跑一次
-   `bin/dipper.exe`（或 `go run ./cmd/dipper`），确认行为符合预期。做不到就写明没做到。
-   没实测过的功能，不许在上面继续开发，也不许跟用户说能用。
+4. **Real use where possible.** A change to the downloader, the source reader or
+   the single-instance path is also checked by running the app against a real
+   data directory. If that is not possible, say so. What was not tried is not
+   built on and is not told to users as working.
 
-5. **平台差异。** 改了 `*_windows.go` 或 `*_other.go`，两个平台都要验。
-   交叉编译不算测试，它只证明能编译。
+5. **Platforms.** A change to `*_windows.go` or `*_other.go` is checked on both.
+   A cross-compile is not a test; it only shows that it compiles.
 
-6. **界面规则**见下节。
+6. **The UI rules** below hold.
 
-## 审查一次改动
+## Reviewing a change
 
-- **跑起来。** 拉下来、合到当前 `HEAD`、跑验收标准。只看 diff 不算审查。
-- **故意弄坏。** 撤掉修复，或者把它守着的代码从几个方向改坏，看新测试是否每次都抓到。
-- **核对上游，不是核对改动方的说法。** 涉及厂商行为时读上游源码或真实响应。
-- **每个平台都看。** arm64 上安全的 `int` 转换在 amd64 上可能回绕。
-- **跟着整条路径走。** 值存的时候用一个 id、读的时候用另一个，是最常见的一类。
-- **分类要窄。** 一个标记或错误类别只覆盖它描述的那种情形。
-- **预览不写盘。** dry run、plan、preview 不许有副作用。
-- **不推翻已经定下的决定。** 交互设计上的取舍由项目负责人定，改动的目标不该顺手改掉它。
-- **文档要对得上源码。** 指向的代码要真的存在，链接要能打开。
-- **改动保持在目标范围内。** 无关的测试和重构另开一次。
+- **Run it.** Pull it, merge it onto current `HEAD`, and run the acceptance
+  criteria. Reading the diff alone is not a review.
+- **Break it on purpose.** Revert the fix, or break the code it guards in
+  several ways, and check that the new tests catch each break.
+- **Check the source, not the change's account of it.** When it depends on
+  upstream behavior, read the upstream source or a real response.
+- **Check each platform.** An `int` conversion that is safe on arm64 can wrap on
+  amd64.
+- **Follow the whole path.** A value saved under one id and read under another
+  is the most common class of bug here.
+- **Classify narrowly.** A mark or an error class covers only the case it
+  describes.
+- **A preview writes nothing.** A dry run, plan or preview has no side effects.
+- **Do not reverse a deliberate decision.** Interaction trade-offs belong to the
+  project owner; a change's goal does not include quietly changing one.
+- **Docs match the source.** A reference points at code that exists, and every
+  link resolves.
+- **Keep the change to its goal.** Unrelated tests and refactors go in a change
+  of their own.
 
-## 提交
+## Commits
 
-提交标题先点名改动涉及的部位，再用行为描述用户看到的变化。
-正文写清怎么验的、哪个测试不带修复就会失败、哪些没跑。
+A commit subject names the area it changes, then says what the user now sees,
+written as plain behavior. The body says how it was verified, which test fails
+without the change, and what was not run.
 
-记录写在提交正文里，后续审查要能读到。没有正文的大改动事后无法审查。
+The record of what was run lives in the commit body, where a later review can
+read it. A large change with no body cannot be reviewed afterwards.
 
 ## Go
 
-- 写 `any`，不写 `interface{}`。
-- 注释只说代码没能表达清楚的东西：意图、不明显的约束、为什么这样而不那样。
-  冗余的注释、记录改动历史或位置标记的注释，都删掉。
-- 错误要带上下文，用 `fmt.Errorf("...: %w", err)` 包住原因。
+- Write `any`, not `interface{}`.
+- A comment says what the code could not: the intent, an unobvious constraint,
+  why this and not that. Delete comments that restate the code, record change
+  history, or mark positions.
+- An error carries context: `fmt.Errorf("...: %w", err)`.
 
-## 界面
+## Language
 
-- 用户能看到的文案统一走一处，方便日后做多语言。
-- 点击不改变滚动位置。
-- 状态用点或色块标，不用彩色左边框。
+- Documentation and code comments are English.
+- A string the user sees stays Chinese. It is product copy, not documentation,
+  and it is not translated.
+- A Chinese literal read from the source site — a season name, a weekday name, a
+  page label such as `放送日期：` — is data. It is never translated, because
+  translating it would stop it matching the page.
+- An identifier, a config key, a CLI flag and a log field stay ASCII.
+
+## UI
+
+- Every string the user sees goes through one place, so translations can be
+  added later.
+- A click never moves the page's scroll position.
+- Mark state with a dot or a swatch, not a colored left-border stripe.

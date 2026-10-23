@@ -1,39 +1,62 @@
 # Notes for coding agents
 
-这个文件只做一件事：告诉你干活之前该翻哪一份文档。规则本身不写在这里，
-写在被指向的文件里。别往这个文件里加规则。
+This file does one thing: it tells you which document to read before you work.
+The rules themselves are not here; they are in the files this points at. Do not
+add rules to this file.
 
-## 改代码之前
+## Before changing code
 
-读 [LESSONS.md](LESSONS.md)：最近合进来的改动出了什么错，以及哪条规矩能提前拦住它。
+Read [LESSONS.md](LESSONS.md): what recent merged work got wrong, and the rule
+that would have caught it.
 
-## 写代码、审代码
+## Writing and reviewing code
 
-对照 [docs/code-standards.md](docs/code-standards.md)。改动的验收标准在那里，
-包括那条「测试必须在不带修复时失败」和怎么证明它。
+Follow [docs/code-standards.md](docs/code-standards.md). The acceptance criteria
+for a change are there, including the rule that a test must fail without the
+change and how to prove it.
 
-## 按子系统翻文档
+## By subsystem
 
-| 要改的东西 | 先读 |
+Read the page for a subsystem before changing it. Each page names the files that
+carry it, the invariants a change must preserve, and what its tests prove.
+
+| To change | Read first |
 | --- | --- |
-| `internal/core` 的集成、状态库、规则、下载根目录 | [internal/core/README.md](internal/core/README.md) |
-| `internal/downloader` 的 BT 引擎、分片校验、传输策略、共享限速 | [internal/downloader/README.md](internal/downloader/README.md) |
-| `internal/source` 的抓取、HTML 解析、标题匹配 | 直接读 `internal/source/` 下的源码；`testdata/` 里存着真实页面样本 |
-| `internal/instance` 的单实例锁与窗口唤醒 | 直接读 `internal/instance/` 下的源码，注意 `lock_windows.go` 与 `lock_other.go` 的平台差异 |
-| `cmd/dipper` 的界面与交互 | [DESIGN-v1.md](DESIGN-v1.md) 定交互，`cmd/dipper/view.go` 是渲染主体 |
+| The subscription model, SQLite state, matching, hash identity, the scheduler, the outbox | [docs/subsystems/core.md](docs/subsystems/core.md) |
+| The BT engine, piece storage, transfer policy, the shared upload limit | [docs/subsystems/downloader.md](docs/subsystems/downloader.md) |
+| Fetching and parsing the catalog, a group's history, RSS, covers | [docs/subsystems/source.md](docs/subsystems/source.md) |
+| The single-instance lock and window activation | [docs/subsystems/instance.md](docs/subsystems/instance.md) |
+| The window, its pages and the state it renders | [docs/subsystems/gui.md](docs/subsystems/gui.md) |
 
-## 平台差异
+[docs/subsystems/README.md](docs/subsystems/README.md) is the index, and lists the
+cross-cutting rules that hold in every subsystem.
 
-`*_windows.go` 与 `*_other.go` 是同一件事的两套实现，改一边必须看另一边。
-构建要过三个平台，见 `.github/workflows/check.yml`。
+## Platform splits
 
-## 抓取相关的测试
+`*_windows.go` and `*_other.go` are two implementations of one thing. Changing
+one means reading the other. The build must pass on all three platforms; see
+`.github/workflows/check.yml`.
 
-`internal/source` 会碰真网络。写这类测试时用 `testdata/` 里的页面样本，
-不要请求线上站点；确需联网的用例加 `testing.Short()` 跳过，并在 PR 里说明没跑。
+## Tests that touch the source
 
-## 提交之前
+`internal/source` is the only package that talks to a real host, and its tests
+must not. Serve the page from `httptest` out of `testdata/`, captured from the
+real site. A test that genuinely needs the live host is skipped under
+`testing.Short()` and says so in the change description.
 
-跑 `scripts/build.ps1 -Test`，它会做 `go test -count=1 -timeout 5m ./...` 和 `go vet ./...`。
-新写的测试要证明它抓得住 bug，用 [cmd/redcheck](cmd/redcheck) 判定，
-不要凭「测试变红了」就认定它算数。
+## Before committing
+
+Run `scripts/build.ps1 -Test`, which does `go test -count=1 -timeout 5m ./...`
+and `go vet ./...`.
+
+A new test must prove it catches the bug. Judge that with
+[cmd/redcheck](cmd/redcheck) rather than by eye: it tells a real failure from a
+compile error, a skip, a timeout or a panic. It does not decide which code to
+put back — that judgment is yours.
+
+## Language
+
+Documentation and code comments are English. User-visible strings stay Chinese:
+they are product copy, not documentation. Chinese literals read from the source
+site (season and weekday names, page labels) are data and are never translated.
+See [docs/code-standards.md](docs/code-standards.md#language).

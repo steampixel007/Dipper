@@ -1,45 +1,45 @@
 # Dipper 0.1.0 MVP
 
-基于 MyGo Native UI + Go 的原生追番桌面程序。延续已确认的 [交互设计](DESIGN-v1.md)，接入真实蜜柑目录、历史资源、RSS 与内置 BT 下载器。
+A native anime-following desktop app built on MyGo Native UI + Go. It carries forward the confirmed [interaction design](DESIGN-v1.md) and connects to the real Mikan catalog, historical releases, RSS, and the built-in BT downloader.
 
-## 启动
+## Launch
 
-Windows 双击根目录的 **`start.cmd`**。便携程序为 `bin/dipper.exe`，不需要浏览器、Node 或外部下载器。
+On Windows, double-click **`start.cmd`** in the repository root. The portable program is `bin/dipper.exe`; it needs no browser, Node, or external downloader.
 
-未签名的本地构建可能先显示 Windows SmartScreen 的“未知发布者”提示。选择继续运行后，单实例检查才会执行；正式分发应使用代码签名消除该提示。
+An unsigned local build may first show the Windows SmartScreen "未知发布者" (Unknown publisher) prompt. The single-instance check runs only after you choose to continue; official distribution should use code signing to remove this prompt.
 
-首次启动读取当前季度。选择番剧 → 字幕组 → 点击标题词设置包含／排除条件 → 确认勾选 → 下载并追番。已有匹配资源默认全部勾选；取消勾选的记录跨重启保留。保存后每 15 分钟检查 RSS，失败后退避重试，也可立即检查。
+On first launch the app reads the current season. Choose an anime → fansub group → click title words to set include/exclude conditions → confirm the selection → download and follow. Existing matching releases are all checked by default; unchecked entries persist across restarts. After saving, RSS is checked every 15 minutes, with backoff retries on failure; you can also check immediately.
 
-“我的追番”可暂停、恢复、修改规则；从修改页可主动补下已有资源。修改规则仅影响未来未读条目，补下勾选不改变保存规则。暂停追番与暂停下载是两个独立操作。
+"我的追番" (My follows) can pause, resume, and edit rules; the edit page can also backfill existing releases on demand. Editing rules affects only future unread entries, and backfill selections do not change the saved rules. Pausing a follow and pausing a download are two separate operations.
 
-下载页显示真实进度及总／单任务上传、下载速度，支持暂停、继续、重试、打开文件夹及停止做种。所有任务共享上传上限，默认 1 MiB/s（界面标为 MB/s）。完成后达到累计上传／下载 1:1 或有效做种累计 1 小时即停止。
+The Downloads page shows real progress plus total and per-task upload and download speeds, and supports pause, resume, retry, open folder, and stop seeding. All tasks share the upload limit, 1 MiB/s by default (labeled MB/s in the UI). After completion, seeding stops once cumulative upload/download reaches 1:1 or effective seeding reaches 1 hour.
 
-关闭窗口收进托盘；在设置或托盘选择“完全退出”停止全部后台活动。托盘创建失败时关闭窗口直接退出，避免进程无法找回。
+Closing the window sends it to the tray; choosing "完全退出" (Quit completely) in Settings or the tray stops all background activity. If tray creation fails, closing the window exits directly so the process cannot become unreachable.
 
-同一数据目录只运行一个主进程；再次双击程序会唤回已有窗口，最小化时恢复窗口。单实例检查先于数据库及下载引擎初始化，唤醒失败会显示错误，不会继续争用状态文件。
+Only one main process runs per data directory; launching the program again brings back the existing window and restores it when minimized. The single-instance check runs before database and download engine initialization, and a failed wake-up shows an error instead of continuing to contend for the state files.
 
-## 文件与状态
+## Files and state
 
-- `data/dipper.db`：SQLite，追番规则、已读／跳过条目、固定番剧目录、下载提交记录。
-- `data/engine/`：BT 元数据、分片验证记录、暂停／停止意图与传输检查点。
-- `data/preferences.json`：界面偏好。
-- `data/covers/`：海报缓存；`data/app.log`：本机日志。
-- `data/instance.lock` / `data/instance.json`：单实例所有权和本机窗口唤醒通道；异常退出后系统释放锁，下一次启动可恢复。
-- 默认视频目录：系统用户“视频”目录下的 `Dipper` 文件夹（Windows 使用系统实际配置的视频路径，macOS 为 `~/Movies/Dipper`，Linux 遵循 `XDG_VIDEOS_DIR`），可在设置中更改。旧版默认的 `Downloads/Dipper` 会在重启后更新为新默认目录；已自定义路径与已订阅番剧的固定目录保留。
+- `data/dipper.db`: SQLite — follow rules, read/skipped entries, fixed anime directories, download submission records.
+- `data/engine/`: BT metadata, piece verification records, pause/stop intents, and transfer checkpoints.
+- `data/preferences.json`: UI preferences.
+- `data/covers/`: poster cache; `data/app.log`: local logs.
+- `data/instance.lock` / `data/instance.json`: single-instance ownership and the local window wake-up channel; after an abnormal exit the system releases the lock, so the next launch can recover.
+- Default video directory: the `Dipper` folder under the system user's "视频" (Videos) directory (Windows uses the video path actually configured in the system, macOS uses `~/Movies/Dipper`, Linux follows `XDG_VIDEOS_DIR`), changeable in Settings. The old default `Downloads/Dipper` is updated to the new default after a restart; custom paths and the fixed directories of subscribed anime are kept.
 
-同一番剧跨字幕组沿用首次建立的目录；更改全局根目录只影响新番剧。同名不同番剧使用不同目录。每个 BT 资源有独立 hash 子目录，保留种子内原始文件名和目录结构。
+The same anime keeps the directory created on its first fansub group across groups; changing the global root affects only new anime. Different anime with the same name use different directories. Each BT release gets its own hash subdirectory that preserves the original file names and directory structure inside the torrent.
 
-## 开发
+## Development
 
-Go 版本及第三方依赖锁定在 `go.mod` / `go.sum`。Windows：
+The Go version and third-party dependencies are pinned in `go.mod` / `go.sum`. On Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Test -Render
 ```
 
-加 `-CrossCompile` 构建 Linux amd64、macOS arm64／amd64 裸可执行文件。其他系统可在根目录运行 `CGO_ENABLED=0 go build ./cmd/dipper`；MyGo 的系统图形与托盘运行依赖仍需满足。
+Add `-CrossCompile` to build bare executables for Linux amd64 and macOS arm64/amd64. On other systems you can run `CGO_ENABLED=0 go build ./cmd/dipper` in the repository root; MyGo's system graphics and tray runtime dependencies must still be satisfied.
 
-开发诊断参数：
+Development diagnostic flags:
 
 ```powershell
 ./bin/dipper.exe --data ./data
@@ -47,10 +47,10 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Test -Render
 ./bin/dipper.exe --render ./evidence/ui
 ```
 
-`--probe-source` 只读取公开目录、详情、历史及 RSS，不创建下载。`--render` 使用开发测试夹具绘制同一套原生视图，不代表公网下载证据。可用 `--source URL` 对接本地来源测试服务，`--download-root PATH` 指定新数据的初始下载目录；`--quit-after 8s` 用于启动与退出验证。
+`--probe-source` reads only the public catalog, details, history, and RSS, and creates no downloads. `--render` draws the same native views from development test fixtures and is not evidence of public-network downloads. Use `--source URL` to point at a local source test service and `--download-root PATH` to set the initial download directory for new data; `--quit-after 8s` verifies startup and exit.
 
-## 验证与边界
+## Verification and boundaries
 
-具体结果见 [MVP 验收记录](MVP-v1.md)。已提供三系统 CI 配置，本机执行结果与未执行的目标系统验证分别记录。
+See the [MVP acceptance record](MVP-v1.md) for concrete results. CI configuration for three systems is provided; local results and target-system verification that was not executed are recorded separately.
 
-本版为便携 MVP；未配置安装器、代码签名、自动更新、第三方插件安装市场及云同步。四类业务能力以内置 Go 模块与接口组合，尚未提供可安装插件的注册／版本协议。macOS/Linux 原生窗口、托盘、输入法及安装链路需要对应真机验收。Windows 未签名构建可能被 SmartScreen 拦截，签署发布证书后才能避免“未知发布者”提示。非 Windows 的网络可用性按活动网络接口判断，不等于已验证公网连通。
+This version is a portable MVP; it ships no installer, code signing, auto-update, third-party plugin marketplace, or cloud sync. The four business capabilities are composed from built-in Go modules and interfaces, and there is no registration/version protocol for installable plugins yet. Native windows, tray, input methods, and install paths on macOS/Linux require acceptance on real hardware. Unsigned Windows builds may be blocked by SmartScreen; the "未知发布者" (Unknown publisher) prompt can only be avoided by signing with a release certificate. On non-Windows platforms, network availability is inferred from active network interfaces and does not prove verified public connectivity.
