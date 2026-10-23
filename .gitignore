@@ -1,9 +1,7 @@
 .cache/
-.research/
 data/
 bin/
 *.tmp
 *.test
 
-# red-check 的输出留档
 .redcheck/
