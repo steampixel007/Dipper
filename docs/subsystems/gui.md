@@ -1,7 +1,9 @@
 # gui
 
 `cmd/dipper` is the window. It renders state, forwards user actions to `core`,
-`downloader` and `source`, and owns no domain logic of its own.
+`downloader` and `source`, and owns no domain logic of its own. Visual tokens,
+components, and interaction conventions are specified in
+[DESIGN.md](../../DESIGN.md).
 
 ## What it owns
 

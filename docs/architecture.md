@@ -92,7 +92,7 @@ second launch to the existing window. Two processes must not independently
 write the same database and BT state. The [instance page](subsystems/instance.md)
 describes the lock and its recovery behavior.
 
-The product requirements remain in [PRD-v1.md](../PRD-v1.md), and the visual
-baseline in [DESIGN-v1.md](../DESIGN-v1.md). Installer packaging, signing
+The current user workflow is in the [README](../README.md), and the visual
+baseline and interaction conventions in [DESIGN.md](../DESIGN.md). Installer packaging, signing
 and updates have not been implemented; their current limits are in the
-[README](../README.md#verification-and-boundaries).
+[README verification boundaries](../README.md#verification-and-boundaries).

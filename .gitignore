@@ -5,8 +5,5 @@ bin/
 *.tmp
 *.test
 
-# 参考用的 magpie 仓库，不属于本项目
-.magpie-inspect/
-
 # red-check 的输出留档
 .redcheck/

@@ -1,2 +1,0 @@
-error acquiring upload token: creating token file: open C:\Users\nathan\AppData\Roaming\go\telemetry\local\upload.token: Access is denied.
-ok  	dipper.local/dipper/internal/downloader	19.312s

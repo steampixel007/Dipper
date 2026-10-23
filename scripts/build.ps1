@@ -20,7 +20,7 @@ try {
     go build -trimpath -ldflags '-H windowsgui' -o bin/dipper.exe ./cmd/dipper
     if ($LASTEXITCODE) { throw 'Windows build failed' }
     if ($Render) {
-        & ./bin/dipper.exe --render ./evidence/ui
+        & ./bin/dipper.exe --render ./docs/assets/ui
         if ($LASTEXITCODE) { throw 'Render failed' }
     }
     if ($CrossCompile) {

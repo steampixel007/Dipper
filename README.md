@@ -5,7 +5,7 @@ the real Mikan catalog, historical releases, RSS, and the built-in BT downloader
 
 ## Launch
 
-On Windows, double-click **`start.cmd`** in the repository root. The portable program is `bin/dipper.exe`; it needs no browser, Node, or external downloader.
+On Windows, double-click **`bin/dipper.exe`** after building. With the repository layout (`bin/` beside `data/`), the program uses `data/` by default; it needs no browser, Node, or external downloader.
 
 An unsigned local build may first show the Windows SmartScreen "未知发布者" (Unknown publisher) prompt. The single-instance check runs only after you choose to continue; official distribution should use code signing to remove this prompt.
 
@@ -32,20 +32,27 @@ The same anime keeps the directory created on its first fansub group across grou
 
 ## Development
 
-The Go version and third-party dependencies are pinned in `go.mod` / `go.sum`. On Windows:
+The interface design system is [DESIGN.md](DESIGN.md). The Go version and
+third-party dependencies are pinned in `go.mod` / `go.sum`. On Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Test -Render
 ```
 
-Add `-CrossCompile` to build bare executables for Linux amd64 and macOS arm64/amd64. On other systems you can run `CGO_ENABLED=0 go build ./cmd/dipper` in the repository root; MyGo's system graphics and tray runtime dependencies must still be satisfied.
+Add `-CrossCompile` to build bare executables for Linux amd64 and macOS arm64/amd64. On macOS and Linux, run the same POSIX shell script with `/bin/sh`:
+
+```sh
+sh scripts/build.sh --test --render
+```
+
+The native output is `bin/dipper`; run it as `./bin/dipper`. Add `--cross-compile` to also build Linux amd64, macOS arm64/amd64, and Windows amd64 binaries. Cross-compilation verifies that the code builds, while launching or rendering requires MyGo's system graphics and tray runtime dependencies on the host.
 
 Development diagnostic flags:
 
 ```powershell
 ./bin/dipper.exe --data ./data
 ./bin/dipper.exe --probe-source
-./bin/dipper.exe --render ./evidence/ui
+./bin/dipper.exe --render ./docs/assets/ui
 ```
 
 `--probe-source` reads only the public catalog, details, history, and RSS, and creates no downloads. `--render` draws the same native views from development test fixtures and is not evidence of public-network downloads. Use `--source URL` to point at a local source test service and `--download-root PATH` to set the initial download directory for new data; `--quit-after 8s` verifies startup and exit.
