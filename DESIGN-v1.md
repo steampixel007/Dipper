@@ -4,7 +4,7 @@
 - Status: the user has approved the current prototype; this document fixes the visual and interaction baseline confirmed in this round.
 - User: desktop users new to automatic anime following who are unfamiliar with RSS, BT, and regular expressions.
 - Design direction: Adobe Spectrum visual system + interaction principles from the Apple Human Interface Guidelines.
-- Implementation direction: MyGo Native UI + Go; see [TECH-STACK-v1.md](TECH-STACK-v1.md) for concrete technical decisions.
+- Implementation direction: MyGo Native UI + Go; see [docs/architecture.md](docs/architecture.md) for the decisions behind the stack and what would reopen them.
 - Requirements basis: [PRD-v1.md](PRD-v1.md). This document specifies how the UI expresses existing product behavior; the PRD is authoritative for business semantics. See Section 10 for the prototype demo scope.
 
 ## 1. Experience goals
