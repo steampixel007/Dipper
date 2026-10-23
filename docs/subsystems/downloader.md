@@ -172,6 +172,13 @@ over a real BT connection from an in-memory seed, which is how multi-file,
 subtitle and empty-file SHA-256 checks are exercised. The one-hour policy is
 checked against a virtual clock rather than by waiting.
 
+A test client's config starts from `NewDefaultClientConfig`, never from
+`torrent.TestingConfig`. `TestingConfig` sets `MaxAllocPeerRequestDataPerConn`
+to 5 bytes, below the peer chunk size the buffer must hold, so transfers never
+start; the failure surfaces as a timeout that reads like an engine defect.
+`localConfig` is the only place the test client's settings are turned off, and
+it does not touch that field.
+
 `pipeline_test.go` additionally wires the real chain together: a real
 `core.SQLite` database, the adapter and the engine, covering selecting a release
 from history, a real download, RSS deduplication, a core/engine restart, and a

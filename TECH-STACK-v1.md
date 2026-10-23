@@ -2,7 +2,7 @@
 
 - Requirements basis: [PRD-v1.md](<PRD-v1.md>).
 - Decision basis: the user has confirmed **MyGo Native UI + Go**, using a pure Go native interface.
-- Status: the desktop framework and language are confirmed; the remaining items in the table below are recommended defaults. **The BT engine, Mikan history traversal, the Windows native interface and the desktop lifecycle have been verified on this machine**; see the [validation overview](<VALIDATION-v1.md>).
+- Status: the desktop framework and language are confirmed; the remaining items in the table below are recommended defaults. **The BT engine, Mikan history traversal, the Windows native interface and the desktop lifecycle have been verified on this machine**; the measurements are in the tests that replaced them, chiefly `internal/downloader/` and `internal/source/`.
 - Scope: this document is the current implementation direction. The earlier research that weighed Tauri, Electron, Qt, Wails and a Rust core was written before the stack was settled; those candidates are no longer the plan, and the data-source evidence that still matters is recorded in the [source subsystem page](docs/subsystems/source.md).
 
 ## 1. Recommended Stack
@@ -38,7 +38,7 @@ The exact MyGo and third-party tags, the minimum Go version, transitive dependen
 
 anacrolix/torrent provides interfaces for magnet/torrent, DHT/PEX, storage backends, statistics, and allowing/disallowing uploads and downloads, which makes it suitable for direct embedding in a Go core. Its package metadata lists MPL-2.0; check the pinned version and dependency licenses before distribution. [S01]
 
-**Verified on this machine** (see the [validation overview](<VALIDATION-v1.md>)): 3 tasks share a 200 KiB/s global rate limit (about 73 KiB/s each), payload growth is 0 after `DisallowDataDownload/Upload` and after `Close`, a new client resumes after a partial download with matching sha256, and seeding policy persistence and the stop decision under a virtual clock are correct.
+**Verified on this machine**: 3 tasks share a 200 KiB/s global rate limit (about 73 KiB/s each), payload growth is 0 after `DisallowDataDownload/Upload` and after `Close`, a new client resumes after a partial download with matching sha256, and seeding policy persistence and the stop decision under a virtual clock are correct. These now run as `internal/downloader` tests rather than as a one-off measurement.
 
 It is a protocol library; Dipper must still handle:
 
