@@ -21,7 +21,10 @@ jobs:
         run: test -z "$(gofmt -l cmd internal)"
       - run: go vet ./...
       - run: go test -count=1 -timeout 5m ./...
-      - run: go build -trimpath -o dist/ ./cmd/dipper
+      # redcheck 的判定逻辑是整套验收的地基，它自己错了会让假绿通过。
+      # 它的测试在 go test ./... 里已经跑过；这里额外确认它在这三个平台
+      # 都能编译，因为验收要在每个平台上都能用。
+      - run: go build -trimpath -o dist/ ./cmd/dipper ./cmd/redcheck
       - uses: actions/upload-artifact@v4
         with:
           name: dipper-${{ matrix.os }}
