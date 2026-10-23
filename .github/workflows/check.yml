@@ -1,0 +1,28 @@
+name: Check MVP
+on: [push, pull_request]
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: '0'
+      GOTOOLCHAIN: auto
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Formatting
+        shell: bash
+        run: test -z "$(gofmt -l cmd internal)"
+      - run: go vet ./...
+      - run: go test -count=1 -timeout 5m ./...
+      - run: go build -trimpath -o dist/ ./cmd/dipper
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dipper-${{ matrix.os }}
+          path: dist/
