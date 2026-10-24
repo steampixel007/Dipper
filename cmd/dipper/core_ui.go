@@ -38,6 +38,7 @@ func uiRule(r core.Rule) Rule { return cloneRule(Rule{All: r.All, None: r.None, 
 type preferences struct {
 	IntroHidden   bool
 	ReduceEffects bool
+	CloseBehavior string
 	// SourceOrigin persists the ASCII origin, not the Chinese label, so
 	// rewording the route label does not reset the user's choice.
 	SourceOrigin string
@@ -89,17 +90,21 @@ func (s *State) loadSaved() error {
 	if err = s.Engine.SetUploadLimit(state.Settings.UploadLimitBytes); err != nil {
 		return err
 	}
-	var pref preferences
-	b, err := os.ReadFile(filepath.Join(s.Dir, "preferences.json"))
-	if err == nil {
-		if err = json.Unmarshal(b, &pref); err != nil {
-			return fmt.Errorf("读取界面设置：%w", err)
-		}
-	} else if !os.IsNotExist(err) {
+	if err := s.loadPreferences(); err != nil {
+		return err
+	}
+	s.project(state, s.Engine.Snapshot())
+	return nil
+}
+
+func (s *State) loadPreferences() error {
+	pref, err := readPreferences(s.Dir)
+	if err != nil {
 		return err
 	}
 	s.IntroHidden = pref.IntroHidden
 	s.ReduceEffects = pref.ReduceEffects
+	s.CloseBehavior = normalizeCloseBehavior(pref.CloseBehavior)
 	origin := pref.SourceOrigin
 	if origin == "" {
 		origin = source.DefaultOrigin
@@ -108,7 +113,6 @@ func (s *State) loadSaved() error {
 		return fmt.Errorf("应用线路设置：%w", err)
 	}
 	s.SourceRoute = s.sourceLabel(origin)
-	s.project(state, s.Engine.Snapshot())
 	return nil
 }
 
@@ -141,13 +145,28 @@ func (s *State) save() {
 }
 
 func (s *State) savePreferences() error {
-	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, SourceOrigin: s.sourceOrigin(s.SourceRoute)})
+	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, CloseBehavior: s.CloseBehavior, SourceOrigin: s.sourceOrigin(s.SourceRoute)})
 	path := filepath.Join(s.Dir, "preferences.json")
 	err := os.WriteFile(path+".tmp", b, 0644)
 	if err == nil {
 		err = os.Rename(path+".tmp", path)
 	}
 	return err
+}
+
+func readPreferences(dir string) (preferences, error) {
+	var pref preferences
+	b, err := os.ReadFile(filepath.Join(dir, "preferences.json"))
+	if os.IsNotExist(err) {
+		return pref, nil
+	}
+	if err != nil {
+		return pref, fmt.Errorf("读取界面设置：%w", err)
+	}
+	if err := json.Unmarshal(b, &pref); err != nil {
+		return pref, fmt.Errorf("读取界面设置：%w", err)
+	}
+	return pref, nil
 }
 
 func (s *State) testProxy() {

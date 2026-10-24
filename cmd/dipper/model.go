@@ -70,6 +70,7 @@ type Saved struct {
 	Downloads     []Download
 	IntroHidden   bool
 	ReduceEffects bool
+	CloseBehavior string
 }
 type State struct {
 	Core                                               *core.Core
@@ -123,6 +124,12 @@ type State struct {
 	PickFolder                 func()
 	OpenFolder                 func(string)
 	Quit                       func()
+	Platform                   string
+	ClosePrompt, RememberClose bool
+	TrayAvailable              bool
+	CheckTray                  func() bool
+	HideWindow                 func()
+	ShowWindow                 func()
 }
 
 var seasons = []string{"冬", "春", "夏", "秋"}
