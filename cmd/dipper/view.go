@@ -204,7 +204,8 @@ func (s *State) view(c *ui.Context) {
 	})
 	s.confirmDialog(c)
 	s.helpDialog(c)
-	if s.Page == "detail" && !s.Confirm && !s.Help {
+	s.closeDialog(c)
+	if s.Page == "detail" && !s.Confirm && !s.Help && !s.ClosePrompt {
 		c.OnShortcut(ui.Ctrl, ui.KeyZ, s.undoFilter)
 		c.OnShortcut(ui.Ctrl, ui.KeyY, s.redoFilter)
 		c.OnShortcut(ui.Ctrl|ui.Shift, ui.KeyZ, s.redoFilter)
@@ -885,7 +886,7 @@ func (s *State) confirmDialog(c *ui.Context) {
 			}
 			caption(c, "保存到："+s.targetFolder())
 		})
-		caption(c, "关闭窗口后仍在托盘工作，完全退出才停止。")
+		caption(c, "保持 Dipper 运行即可自动追番和下载；退出后停止后台活动。")
 		if !s.detailReady() {
 			ui.Text(c, "字幕组或发布记录尚未就绪，请返回调整后重试。").FontSize(12).TextColor(amber)
 		} else if s.Backfill && len(resources) == 0 {
@@ -1192,16 +1193,7 @@ func (s *State) settings(c *ui.Context) {
 					caption(c, s.ProxyFeedback)
 				}
 			})
-			ui.Column(c).Gap(12).Padding(22).Background(paper).Border(1, line).Radius(10).Children(func() {
-				heading(c, "窗口与后台运行")
-				caption(c, "关闭窗口会收起到系统托盘；重新打开后继续操作。完全退出会停止后台活动。")
-				secondary(c, "quit", "保存并完全退出", func() {
-					s.save()
-					if s.SaveError == "" && s.Quit != nil {
-						s.Quit()
-					}
-				}).AlignSelf(ui.Start).FontSize(12).Disabled(s.Busy)
-			})
+			s.windowSettings(c)
 		})
 	})
 }

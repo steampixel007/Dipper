@@ -341,6 +341,31 @@ pausing a download are separate actions and must have distinct labels.
 | Download failure | Show the reason and retry action without suggesting progress was lost. |
 | State write failure | Show the save error; do not show a success notice. |
 
+### Window close and background work
+
+On Windows and Linux, the first close asks `关闭 Dipper？`, explaining that
+`收起到托盘` keeps following and downloading, while `退出 Dipper` stops
+background work. Include `取消` and an initially unchecked `记住我的选择`.
+Cancel, Escape, and clicking outside dismiss without taking an action or
+saving a preference. Remembering is optional; settings always allows
+`每次询问`, `收起到托盘`, or `退出应用` to replace the choice. A separate
+`退出 Dipper` button is an action, not a preference.
+The [close-window preview](docs/assets/ui/08-close-window.png) shows the dialog
+with deterministic local sample state.
+
+If the tray is unavailable, keep the window open, explain why, and disable
+the hide action while retaining cancel and explicit quit. Check availability
+again immediately before hiding. On Windows explain the hidden-icons overflow
+and allow a single click on the tray icon to restore the window. Never change
+the user's Windows taskbar visibility preference.
+
+On macOS, closing the window keeps the application running, Dock activation
+reopens it, and the application menu's Quit or Command-Q stops it. Explain this
+native behavior in settings rather than presenting the Windows close choices.
+The menu bar icon is supplementary to the Dock.
+
+Preserve the window and report a failed save before hiding or quitting.
+
 ## Accessibility
 
 Every action needs a text label or accessibility name; icon-only actions also

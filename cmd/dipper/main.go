@@ -129,7 +129,12 @@ func main() {
 	}
 	quitting := false
 	s.Quit = func() { mygo.App.Quit() }
-	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) {
+	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
+		if !s.saveBeforeClose() {
+			e.PreventDefault()
+			s.restoreAfterQuitVeto()
+			return
+		}
 		quitting = true
 		cancel()
 		if err := kernel.Close(); err != nil {
@@ -160,6 +165,12 @@ func main() {
 				win.Restore()
 			}
 			win.Focus()
+		}
+		mygo.App.OnActivate(func(bool) { showMain() })
+		s.ShowWindow = showMain
+		s.HideWindow = func() {
+			win.Hide()
+			slog.Info("window hidden; background active")
 		}
 		go func() {
 			for {
@@ -193,25 +204,31 @@ func main() {
 				})
 			}()
 		}
-		tray, err := mygo.NewTray(mygo.TrayOptions{ID: "dipper.main", Icon: brandTrayPNG, ToolTip: "Dipper · 自动追番", Menu: mygo.NewMenu([]*mygo.MenuItem{
-			{Label: "打开 Dipper", Click: func(*mygo.MenuItem, *mygo.Window) { showMain() }},
-			{Label: "完全退出", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
-		})})
-		if err == nil && tray != nil {
-			setTrayIcon := trayIconSetter(tray.Dark, func(png []byte) error { return tray.SetIcon(png, false) })
-			setTrayIcon()
-			tray.OnAppearanceChange(setTrayIcon)
-			win.OnClose(func(e *mygo.CloseEvent) {
-				if !quitting {
-					e.PreventDefault()
-					win.Hide()
-					slog.Info("window hidden; background active")
-				}
-			})
-		} else {
-			s.Notice = "系统托盘不可用，关闭窗口将完全退出。"
-			win.OnClose(func(*mygo.CloseEvent) { mygo.App.Quit() })
-		}
+		trays := &trayController{platform: s.Platform, create: func() (desktopTray, error) {
+			tray, err := mygo.NewTray(mygo.TrayOptions{ID: "dipper.main", Icon: brandTrayPNG, IconIsTemplate: s.Platform == "darwin", ToolTip: "Dipper · 自动追番", Menu: mygo.NewMenu([]*mygo.MenuItem{
+				{Label: "打开 Dipper", Click: func(*mygo.MenuItem, *mygo.Window) { showMain() }},
+				{Label: windowText.quit, Click: func(*mygo.MenuItem, *mygo.Window) { s.exitApp() }},
+			})})
+			if err != nil {
+				return nil, err
+			}
+			if s.Platform != "darwin" {
+				setTrayIcon := trayIconSetter(tray.Dark, func(png []byte) error { return tray.SetIcon(png, false) })
+				setTrayIcon()
+				tray.OnAppearanceChange(setTrayIcon)
+			}
+			tray.OnClick(showMain)
+			return tray, nil
+		}}
+		s.CheckTray = trays.ensure
+		s.TrayAvailable = trays.ensure()
+		mygo.App.OnWillQuit(func(*mygo.QuitEvent) { trays.destroy() })
+		win.OnClose(func(e *mygo.CloseEvent) {
+			if !quitting {
+				e.PreventDefault()
+				win.Update(s.requestClose)
+			}
+		})
 		s.refreshCatalog()
 		_ = os.WriteFile(filepath.Join(abs, "ready"), []byte(version), 0644)
 		slog.Info("ready", "version", version)

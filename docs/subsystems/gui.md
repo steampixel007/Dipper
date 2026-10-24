@@ -24,6 +24,8 @@ components, and interaction conventions are specified in
 | `covers.go` | Cover image loading and its cache |
 | `appearance.go` | Fonts, sizing, theme values |
 | `proxy_ui.go` | The settings-page proxy card and the auto-mode description |
+| `window_ui.go` | Close/quit choices, remembered preferences, and the window/background settings card |
+| `tray.go` | Tray registration checks, recreation after a lost registration, and cleanup |
 | `ui_render.go` | Deterministic sample state for layout rendering |
 | `startup_error_windows.go`, `startup_error_other.go` | Reporting a failure before the window exists |
 
@@ -86,6 +88,49 @@ settings are loaded. Loading settings applies the upload limit and projects
 download snapshots, so the downloader must already be present.
 `TestStartupStateHasDownloader` guards this startup wiring without starting
 network activity.
+
+## Closing, background work, and quitting
+
+On Windows and Linux, closing the window asks whether to keep working in the
+notification area or quit. The remember checkbox starts unchecked. Only an
+explicit remembered choice changes `preferences.json`'s ASCII `CloseBehavior`
+(`ask`, `background`, or `quit`); missing and unknown values ask. Settings can
+change the choice or reset it to ask without taking a close action.
+
+On macOS, closing hides the window and keeps the app running. Dock activation
+reopens the existing window; the application quit menu and Command-Q stop the
+app. The settings card explains this convention rather than offering the
+Windows close choices. The menu bar icon uses a template image.
+
+Before hiding on Windows, `trayController.ensure` queries the shell through
+the tray's bounds, rather than treating a successful `NewTray` as proof of
+registration. It recreates an icon whose registration has disappeared. If
+registration still cannot be confirmed, the window stays open and the dialog
+offers cancellation or explicit exit. Availability is checked again when the
+user chooses to hide. Linux's AppIndicator exposes no bounds, so its creation
+result is the available check; this is not proof that a particular desktop's
+panel displays it. macOS can reopen from the Dock without a menu bar icon.
+
+Single-clicking the Windows tray icon opens, restores, and focuses the window.
+Its context menu offers open and quit. The quit sequence removes the icon.
+An icon in Windows' overflow remains a registered icon; the app does not
+override the user's taskbar visibility preference.
+
+Closing or quitting while an operation is busy leaves the window open. A
+failed settings save also leaves it open, reports the error, and restores the
+previous close preference. If saving vetoes a quit requested from the tray or
+the application menu, restore and focus the existing window through `Update`
+so the save error is repainted even when the window was hidden. Cancel, Escape,
+and backdrop dismissal never hide, quit, or remember a choice.
+
+`window_ui_test.go` exercises the rendered controls, cancellation, one-time
+and remembered choices, startup preference loading, changing/resetting the
+choice in settings, failed writes, busy operations, and both platform policies.
+`tray_test.go` checks failed registration, recreation, reuse, and cleanup with
+a fake shell boundary. These tests do not establish native tray visibility or
+Dock behavior; those require running the app on the respective platform.
+The [window lifecycle verification](../window-lifecycle-verification.md)
+records the checks that were run and the remaining platform boundaries.
 
 ## Rendering
 
