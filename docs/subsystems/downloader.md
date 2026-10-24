@@ -175,6 +175,12 @@ over a real BT connection from an in-memory seed, which is how multi-file,
 subtitle and empty-file SHA-256 checks are exercised. The one-hour policy is
 checked against a virtual clock rather than by waiting.
 
+A second library client that downloads (the upload-ratio test) also stores in
+RAM (`memorySink`): the library's default file storage caches an mmap per
+written `.part` file and never unmaps it when the client closes, and Windows
+then refuses to delete a `t.TempDir` holding the partial download. Linux and
+macOS unlink a mapped file, so only the Windows runner caught it.
+
 A test client's config starts from `NewDefaultClientConfig`, never from
 `torrent.TestingConfig`. `TestingConfig` sets `MaxAllocPeerRequestDataPerConn`
 to 5 bytes, below the peer chunk size the buffer must hold, so transfers never

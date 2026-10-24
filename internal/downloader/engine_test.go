@@ -270,9 +270,11 @@ func TestRealUploadRatioStopsAndCloseStopsPayload(t *testing.T) {
 	})
 	waitFor(t, "engine downloaded seed", 30*time.Second, func() bool { return one(t, e).Complete })
 	// An independent library client consumes this engine's data; the original seed is not added.
+	// It stores in RAM: the library's default file storage caches mmap handles that outlive
+	// client Close, and Windows then refuses to delete a TempDir holding a partial download.
 	cfg := torrent.NewDefaultClientConfig()
 	localConfig(cfg)
-	cfg.DataDir = t.TempDir()
+	cfg.DefaultStorage = &memorySink{}
 	consumer, err := torrent.NewClient(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -485,3 +487,75 @@ func (seedPiece) WriteAt([]byte, int64) (int, error) { return 0, errors.New("rea
 func (seedPiece) MarkComplete() error                { return nil }
 func (seedPiece) MarkNotComplete() error             { return nil }
 func (seedPiece) Completion() storage.Completion     { return storage.Completion{Ok: true, Complete: true} }
+
+type memorySink struct {
+	mu     sync.Mutex
+	pieces map[int]*memorySinkPiece
+}
+
+func (s *memorySink) OpenTorrent(_ context.Context, _ *metainfo.Info, _ metainfo.Hash) (storage.TorrentImpl, error) {
+	return storage.TorrentImpl{
+		Piece: func(p metainfo.Piece) storage.PieceImpl {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			mp, ok := s.pieces[p.Index()]
+			if !ok {
+				mp = &memorySinkPiece{buf: make([]byte, p.Length())}
+				if s.pieces == nil {
+					s.pieces = map[int]*memorySinkPiece{}
+				}
+				s.pieces[p.Index()] = mp
+			}
+			return mp
+		},
+		Close: func() error { return nil },
+	}, nil
+}
+
+type memorySinkPiece struct {
+	mu       sync.Mutex
+	buf      []byte
+	complete bool
+}
+
+func (p *memorySinkPiece) WriteAt(b []byte, off int64) (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if off < 0 || off > int64(len(p.buf)) {
+		return 0, fmt.Errorf("write at %d past piece length %d", off, len(p.buf))
+	}
+	return copy(p.buf[off:], b), nil
+}
+
+func (p *memorySinkPiece) ReadAt(b []byte, off int64) (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if off < 0 || off >= int64(len(p.buf)) {
+		return 0, io.EOF
+	}
+	n := copy(b, p.buf[off:])
+	if n < len(b) {
+		return n, io.EOF
+	}
+	return n, nil
+}
+
+func (p *memorySinkPiece) MarkComplete() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.complete = true
+	return nil
+}
+
+func (p *memorySinkPiece) MarkNotComplete() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.complete = false
+	return nil
+}
+
+func (p *memorySinkPiece) Completion() storage.Completion {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return storage.Completion{Ok: true, Complete: p.complete}
+}

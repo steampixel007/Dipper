@@ -62,6 +62,11 @@ once it moves.
 - Fixed in abe4b87: `waitFor` takes its budget — 60 s for metadata, 30 s for payload — so a recurrence names the phase it died in.
 - Seen 1× (2026-10-25).
 
+**A library client in a test owns what it holds open, past its own Close.**
+- `TestRealUploadRatioStopsAndCloseStopsPayload` failed on windows-latest only (PR #6, 2e68af2): the consuming client's default file storage caches an mmap per written `.part` file and never unmaps it when the torrent drops, so `t.TempDir` cleanup hit a sharing violation on the still-open handle. Linux and macOS unlink mapped files, and the same commit passed a second Windows run — the red was mid-download timing.
+- Fixed on the same PR: the consumer stores in RAM (`memorySink`). A throwaway test reproduced the leak deterministically on Windows first (close mid-download, then `RemoveAll` fails), per the inject-the-delay rule.
+- Seen 1× (2026-10-25).
+
 ## Moved to the code standards
 
 (None yet. Add a line here when a lesson is promoted.)
