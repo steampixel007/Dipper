@@ -2,6 +2,8 @@
 
 A native anime-following desktop app built on MyGo Native UI + Go. It connects to
 the real Mikan catalog, historical releases, RSS, and the built-in BT downloader.
+The name is the white-throated dipper (河乌), the songbird that dives into rushing
+mountain torrents — a nod to the BitTorrent kind of torrent.
 
 ## Launch
 
@@ -46,6 +48,11 @@ sh scripts/build.sh --test --render
 ```
 
 The native output is `bin/dipper`; run it as `./bin/dipper`. Add `--cross-compile` to also build Linux amd64, macOS arm64/amd64, and Windows amd64 binaries. Cross-compilation verifies that the code builds, while launching or rendering requires MyGo's system graphics and tray runtime dependencies on the host.
+
+Brand icons: `go run build/icon/gen.go all build/icon/dist` regenerates the
+tray cuts (light and dark), the tile app icon, and `dipper.ico` from the SVG
+masters in `build/icon/`. The generator is dependency-free and embeds the same
+geometry as the masters.
 
 Development diagnostic flags:
 

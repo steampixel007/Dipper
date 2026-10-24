@@ -9,6 +9,33 @@ and the [GUI subsystem](docs/subsystems/gui.md) records implementation rules.
 The [core subsystem](docs/subsystems/core.md) defines matching, persistence,
 and download decisions; this page specifies how people see and control them.
 
+## Name and brand
+
+Dipper is the white-throated dipper (河乌), the songbird that dives into rushing
+mountain torrents to feed. The name is the product: the app dives into torrents
+of the BitTorrent kind and comes back with anime.
+
+The logo is the bird itself: a chubby dipper crouched over rushing water —
+white throat-and-breast bib flush against the front edge, tail cocked, eye
+with a pupil, bill tucked deep into the head. The species rules hold in every
+drawing: the bib stays clearly visible (it is how the bird is recognized), and
+the water reads as a rushing torrent with uneven strokes, never a calm line.
+The palette is tokens only: ink bird, paper bib, `blue` water, `blueWash` tile
+behind the app icon.
+
+Masters live in `build/icon/`: `dipper.svg` (symbol), `dipper-small.svg`
+(tray sizes), `dipper-tile.svg` (app icon), `lockup-horizontal.svg` (wordmark
+lockup; the wordmark stays Segoe UI Semibold, the shipped brand type). The
+generator `build/icon/gen.go` embeds the same geometry with zero dependencies
+and regenerates every platform asset — tray cuts light and dark, the tile
+icon, and `dipper.ico`:
+
+```sh
+go run build/icon/gen.go all build/icon/dist
+```
+
+The interim `cover` fallback "D" stays until the app consumes these files.
+
 ## Design principles
 
 - **Browse before configuring.** Open on the anime catalog. Finding an anime,

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>Dipper small-size cut for tray and favicons</title>
+  <!-- Small-size cut: no pupil, no water, thicker bill. Dark-taskbar (reversed,
+       transparent bib) PNGs come from gen.go tray -dark. -->
+  <g transform="translate(128,128) scale(1.02) translate(-131.5,-134)">
+    <circle cx="106" cy="98" r="40" fill="#000000"/>
+    <path fill="#000000" d="M130 110 C158 110 182 132 182 160 C182 188 158 210 130 210 C102 210 78 188 78 160 C78 132 102 110 130 110 Z"/>
+    <path fill="#000000" d="M76 100 L40 112 L80 124 C78.5 116 77 108 76 100 Z"/>
+    <path fill="#000000" d="M167 149 L211 111 A9 9 0 0 1 223 123 L186 166 C180 163 172 157 167 149 Z"/>
+    <path fill="#ffffff" d="M84 118 Q110 130 138 114 C150 120 156 136 154 152 C152 168 144 180 134 186 C123 191 108 190 97 187 C88 184 84 181 82 174 C79 166 80 150 82 138 C84 128 84 122 84 118 Z"/>
+    <circle cx="104" cy="94" r="8" fill="#ffffff"/>
+  </g>
+</svg>
