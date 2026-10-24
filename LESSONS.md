@@ -63,8 +63,8 @@ once it moves.
 - Seen 1× (2026-10-25).
 
 **A library client in a test owns what it holds open, past its own Close.**
-- `TestRealUploadRatioStopsAndCloseStopsPayload` failed on windows-latest only (PR #6, 2e68af2): the consuming client's default file storage caches an mmap per written `.part` file and never unmaps it when the torrent drops, so `t.TempDir` cleanup hit a sharing violation on the still-open handle. Linux and macOS unlink mapped files, and the same commit passed a second Windows run — the red was mid-download timing.
-- Fixed on the same PR: the consumer stores in RAM (`memorySink`). A throwaway test reproduced the leak deterministically on Windows first (close mid-download, then `RemoveAll` fails), per the inject-the-delay rule.
+- `TestRealUploadRatioStopsAndCloseStopsPayload` failed on windows-latest only (PR #6, 2e68af2, and again inside PR #4): the consuming client's default file storage caches an mmap per written `.part` file and never unmaps it when the torrent drops, so `t.TempDir` cleanup hit a sharing violation on the still-open handle. Linux and macOS unlink mapped files, and the same commit passed a second Windows run — the red was mid-download timing.
+- Fixed independently twice: PR #4 (e585b96) moved the consumer to per-torrent `NewMMap` storage whose mappings close with the client, plus a deterministic regression; PR #6 reproduced the leak deterministically on Windows first (close mid-download, then `RemoveAll` fails) per the inject-the-delay rule. The merge keeps PR #4's storage — the rule is the same either way.
 - Seen 1× (2026-10-25).
 
 ## Moved to the code standards

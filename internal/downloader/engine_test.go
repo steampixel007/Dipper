@@ -46,6 +46,12 @@ func testEngine(t *testing.T, config Config) *Engine {
 	return e
 }
 
+func consumerStorage(dir string) storage.ClientImplCloser {
+	// NewFile's default mmap cache retains incomplete .part mappings after
+	// Close. NewMMap owns its mappings per torrent and unmaps them on Drop.
+	return storage.NewMMap(dir)
+}
+
 type fixture struct {
 	mi      metainfo.MetaInfo
 	files   map[string][]byte
@@ -270,16 +276,25 @@ func TestRealUploadRatioStopsAndCloseStopsPayload(t *testing.T) {
 	})
 	waitFor(t, "engine downloaded seed", 30*time.Second, func() bool { return one(t, e).Complete })
 	// An independent library client consumes this engine's data; the original seed is not added.
-	// It stores in RAM: the library's default file storage caches mmap handles that outlive
-	// client Close, and Windows then refuses to delete a TempDir holding a partial download.
 	cfg := torrent.NewDefaultClientConfig()
 	localConfig(cfg)
-	cfg.DefaultStorage = &memorySink{}
+	cfg.DataDir = t.TempDir()
+	data := consumerStorage(cfg.DataDir)
+	cfg.DefaultStorage = data
+	t.Cleanup(func() {
+		if err := data.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	consumer, err := torrent.NewClient(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { consumer.Close() })
+	t.Cleanup(func() {
+		if errs := consumer.Close(); len(errs) != 0 {
+			t.Error(errors.Join(errs...))
+		}
+	})
 	spec := torrent.TorrentSpecFromMetaInfo(&f.mi)
 	spec.PeerAddrs = []string{e.client.ListenAddrs()[0].String()}
 	leecher, _, err := consumer.AddTorrentSpec(spec)
@@ -303,6 +318,60 @@ func TestRealUploadRatioStopsAndCloseStopsPayload(t *testing.T) {
 	e = testEngine(t, config)
 	if got := one(t, e); !got.AutoStopped || got.UploadedBytes != s.UploadedBytes {
 		t.Fatalf("automatic stop did not survive: %+v", got)
+	}
+}
+
+func TestConsumerStorageCloseReleasesIncompleteFiles(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	info, err := f.mi.UnmarshalInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	data := consumerStorage(dir)
+	closeData := sync.OnceValue(data.Close)
+	t.Cleanup(func() {
+		if err := closeData(); err != nil {
+			t.Error(err)
+		}
+	})
+	tor, err := data.OpenTorrent(context.Background(), &info, f.mi.HashInfoBytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeTorrent := sync.OnceValue(tor.Close)
+	t.Cleanup(func() {
+		if err := closeTorrent(); err != nil {
+			t.Error(err)
+		}
+	})
+	// Touch the final subtitle byte without completing its piece. The ratio
+	// stop can leave the real consumer in this state, before .part is renamed.
+	var offset int64 = -1
+	for _, file := range info.UpvertedFiles() {
+		if filepath.ToSlash(filepath.Join(file.BestPath()...)) == "subs/字幕.ass" {
+			offset = file.TorrentOffset + file.Length - 1
+		}
+	}
+	if offset < 0 {
+		t.Fatal("fixture has no subtitle file")
+	}
+	pieceInfo := info.Piece(int(offset / info.PieceLength))
+	piece := tor.Piece(pieceInfo)
+	if _, err := piece.WriteAt([]byte{1}, offset-pieceInfo.Offset()); err != nil {
+		t.Fatal(err)
+	}
+	if piece.Completion().Complete {
+		t.Fatal("partial write unexpectedly completed the piece")
+	}
+	if err := closeTorrent(); err != nil {
+		t.Fatal(err)
+	}
+	if err := closeData(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatalf("consumer storage still holds incomplete files after Close: %v", err)
 	}
 }
 
@@ -487,75 +556,3 @@ func (seedPiece) WriteAt([]byte, int64) (int, error) { return 0, errors.New("rea
 func (seedPiece) MarkComplete() error                { return nil }
 func (seedPiece) MarkNotComplete() error             { return nil }
 func (seedPiece) Completion() storage.Completion     { return storage.Completion{Ok: true, Complete: true} }
-
-type memorySink struct {
-	mu     sync.Mutex
-	pieces map[int]*memorySinkPiece
-}
-
-func (s *memorySink) OpenTorrent(_ context.Context, _ *metainfo.Info, _ metainfo.Hash) (storage.TorrentImpl, error) {
-	return storage.TorrentImpl{
-		Piece: func(p metainfo.Piece) storage.PieceImpl {
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			mp, ok := s.pieces[p.Index()]
-			if !ok {
-				mp = &memorySinkPiece{buf: make([]byte, p.Length())}
-				if s.pieces == nil {
-					s.pieces = map[int]*memorySinkPiece{}
-				}
-				s.pieces[p.Index()] = mp
-			}
-			return mp
-		},
-		Close: func() error { return nil },
-	}, nil
-}
-
-type memorySinkPiece struct {
-	mu       sync.Mutex
-	buf      []byte
-	complete bool
-}
-
-func (p *memorySinkPiece) WriteAt(b []byte, off int64) (int, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if off < 0 || off > int64(len(p.buf)) {
-		return 0, fmt.Errorf("write at %d past piece length %d", off, len(p.buf))
-	}
-	return copy(p.buf[off:], b), nil
-}
-
-func (p *memorySinkPiece) ReadAt(b []byte, off int64) (int, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if off < 0 || off >= int64(len(p.buf)) {
-		return 0, io.EOF
-	}
-	n := copy(b, p.buf[off:])
-	if n < len(b) {
-		return n, io.EOF
-	}
-	return n, nil
-}
-
-func (p *memorySinkPiece) MarkComplete() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.complete = true
-	return nil
-}
-
-func (p *memorySinkPiece) MarkNotComplete() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.complete = false
-	return nil
-}
-
-func (p *memorySinkPiece) Completion() storage.Completion {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return storage.Completion{Ok: true, Complete: p.complete}
-}
