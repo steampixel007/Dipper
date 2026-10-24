@@ -34,7 +34,15 @@ icon, and `dipper.ico`:
 go run build/icon/gen.go all build/icon/dist
 ```
 
-The interim `cover` fallback "D" stays until the app consumes these files.
+The app consumes the mark: the window icon and the tray come from the PNG
+copies in `cmd/dipper/assets/` (`dipper-icon.png`, `dipper-tray.png`), and the
+sidebar chip and the cover fallback render `assets/dipper.svg` (a copy of
+`dipper-small.svg`). Refresh the copies with the same generator:
+
+```sh
+go run build/icon/gen.go app 256 cmd/dipper/assets/dipper-icon.png
+go run build/icon/gen.go tray 32 cmd/dipper/assets/dipper-tray.png
+```
 
 ## Design principles
 
@@ -244,7 +252,7 @@ restyling a page separately.
 | `heading` | 18 DIP, weight 600 | Section titles. |
 | `caption` | 12 DIP `muted`, line-height 1.5 | Supporting text. |
 | `badge` | 11 DIP weight 600, padding 3/7, radius 4 | Ink + wash pair: `blue/blueWash`, `green/greenWash`, `amber/amberWash`, `muted/canvas`. |
-| `cover` | Radius 8 | Fallback keeps the box: `blueWash` with a `blue` "D". |
+| `cover` | Radius 8 | Fallback keeps the box: `blueWash` with the bird mark at 0.62 of the short side. |
 
 Word chips are a `quiet` variant: radius 5, padding 5/8, 1px `line` border,
 12 DIP. Direction gives the pair — include is `blue` on `blueWash` with `＋`,

@@ -52,7 +52,11 @@ The native output is `bin/dipper`; run it as `./bin/dipper`. Add `--cross-compil
 Brand icons: `go run build/icon/gen.go all build/icon/dist` regenerates the
 tray cuts (light and dark), the tile app icon, and `dipper.ico` from the SVG
 masters in `build/icon/`. The generator is dependency-free and embeds the same
-geometry as the masters.
+geometry as the masters. The app embeds its own copies — refresh them with
+`go run build/icon/gen.go app 256 cmd/dipper/assets/dipper-icon.png` and
+`go run build/icon/gen.go tray 32 cmd/dipper/assets/dipper-tray.png`; the
+in-app vector mark is a copy of `dipper-small.svg` at
+`cmd/dipper/assets/dipper.svg`.
 
 Development diagnostic flags:
 

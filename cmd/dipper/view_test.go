@@ -404,3 +404,50 @@ func TestUIRenderScreensOffline(t *testing.T) {
 		previous = data
 	}
 }
+
+// countDark counts pixels below a luminance of 120 in a region of the last
+// frame; inkOnly keeps only near-neutral dark pixels, which the blue of the
+// letter fallback and of the ripple never matches.
+func countDark(tt *ui.Tester, x0, y0, x1, y1 int, inkOnly bool) int {
+	img := tt.Image()
+	b := img.Bounds()
+	n := 0
+	for y := max(y0, b.Min.Y); y < min(y1, b.Max.Y); y++ {
+		for x := max(x0, b.Min.X); x < min(x1, b.Max.X); x++ {
+			cr, cg, cb, _ := img.At(x, y).RGBA()
+			r, g, bl := int(cr>>8), int(cg>>8), int(cb>>8)
+			lum := 0.299*float64(r) + 0.587*float64(g) + 0.114*float64(bl)
+			spread := max(r, g, bl) - min(r, g, bl)
+			if lum < 120 && (!inkOnly || spread < 40) {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// The bird mark replaced the letter-D placeholders: no bare "D" text node
+// remains, the sidebar chip is the bird on a wash rather than a solid ink
+// square, and a cover-less card shows the bird, not a blue letter.
+func TestUIBrandMarkReplacesLetterPlaceholders(t *testing.T) {
+	s := uiFixture(t, "browse")
+	s.Catalog[0].Cover = ""
+	tt := ui.NewTester(s.view, 1320, 860)
+	if slices.Contains(tt.Texts(), "D") {
+		t.Errorf("bare D placeholder still rendered; texts=%q", tt.Texts())
+	}
+	word, ok := tt.Find("Dipper")
+	if !ok {
+		t.Fatal("wordmark missing")
+	}
+	if chip := countDark(tt, int(word.X)-42, int(word.Y)-6, int(word.X)-10, int(word.Y+word.H)+6, false); chip < 30 || chip > 400 {
+		t.Errorf("sidebar chip dark pixels = %d; want the bird on a wash, not a solid square (30-400)", chip)
+	}
+	title, ok := tt.Find("星海旅记")
+	if !ok {
+		t.Fatal("cover-less card title missing")
+	}
+	if n := countDark(tt, int(title.X)-20, int(title.Y)-210, int(title.X)+140, int(title.Y)-8, true); n < 30 {
+		t.Errorf("cover fallback ink pixels = %d; want the bird mark, not a blue letter (>=30)", n)
+	}
+}

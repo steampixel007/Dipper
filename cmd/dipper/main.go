@@ -1,14 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"image"
-	"image/color"
-	"image/png"
 	"log"
 	"log/slog"
 	"os"
@@ -141,6 +137,9 @@ func main() {
 	})
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{Title: "Dipper · 自动追番", Width: 1320, Height: 900, MinWidth: 1040, MinHeight: 720, TitleBarStyle: mygo.TitleBarHidden, TitleBarHeight: 64, BackgroundColor: "#f3f3f3", Content: ui.View(s.view)})
+		if err := win.SetIcon(brandIconPNG); err != nil {
+			slog.Warn("window icon", "error", err)
+		}
 		s.Update = func(fn func()) {
 			if ctx.Err() == nil {
 				win.Update(func() {
@@ -189,7 +188,7 @@ func main() {
 				})
 			}()
 		}
-		tray, err := mygo.NewTray(mygo.TrayOptions{Icon: trayPNG(), ToolTip: "Dipper · 自动追番", Menu: mygo.NewMenu([]*mygo.MenuItem{
+		tray, err := mygo.NewTray(mygo.TrayOptions{Icon: brandTrayPNG, ToolTip: "Dipper · 自动追番", Menu: mygo.NewMenu([]*mygo.MenuItem{
 			{Label: "打开 Dipper", Click: func(*mygo.MenuItem, *mygo.Window) { showMain() }},
 			{Label: "完全退出", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 		})})
@@ -274,18 +273,4 @@ func probeSource(src *source.Client) error {
 	b, _ := json.MarshalIndent(map[string]any{"catalog": len(catalog), "anime": detail.Anime, "groups": len(detail.Groups), "history": len(history), "rss": len(feed)}, "", "  ")
 	fmt.Println(string(b))
 	return nil
-}
-
-func trayPNG() []byte {
-	img := image.NewRGBA(image.Rect(0, 0, 32, 32))
-	for y := range 32 {
-		for x := range 32 {
-			if (x-16)*(x-16)+(y-16)*(y-16) < 210 {
-				img.Set(x, y, color.RGBA{59, 99, 251, 255})
-			}
-		}
-	}
-	var b bytes.Buffer
-	_ = png.Encode(&b, img)
-	return b.Bytes()
 }

@@ -80,14 +80,23 @@ network access.
 ## Covers
 
 `covers.go` loads a cover on a background goroutine and decodes it on the UI
-thread, because the bitmap cache belongs to that thread. The file is named by the
-SHA-256 of its URL and cached under `data/covers/`.
+thread, because the bitmap cache belongs to that thread. The file is named by
+the SHA-256 of its URL and cached under `data/covers/`.
 
 **Known limit:** the cache has no size cap and no eviction. A cover is fetched
 once and then kept forever, so the folder grows with every anime ever browsed.
 Adding eviction is a real change, not a tidy-up: it must decide what a browsing
 session can afford to re-fetch, and it must not delete a cover the current page
 is still showing.
+
+## Brand marks
+
+The bird logo shows in four places: the window icon and the tray icon (PNG
+copies embedded from `cmd/dipper/assets/`, set in `main.go`), and the sidebar
+chip and the cover fallback (`assets/dipper.svg` parsed in `loadImages`,
+rendered through `ui.Image` in its own colors). The assets are copies of the
+masters in `build/icon/`; regenerate them with `build/icon/gen.go` and keep
+the copies in step, as [DESIGN.md](../../DESIGN.md) records.
 
 ## UI text
 

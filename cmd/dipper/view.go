@@ -14,7 +14,21 @@ import (
 //go:embed assets/*.jpg
 var assets embed.FS
 
+// The bird mark is a copy of build/icon/dipper-small.svg; regenerate the PNG
+// copies with build/icon/gen.go (see README) and keep them in step.
+//
+//go:embed assets/dipper.svg
+var brandSVG []byte
+
+//go:embed assets/dipper-icon.png
+var brandIconPNG []byte
+
+//go:embed assets/dipper-tray.png
+var brandTrayPNG []byte
+
 var covers = map[string]*ui.Bitmap{}
+
+var brandLogo *ui.SVG
 
 // Every color the UI uses is declared here; DESIGN.md's token block mirrors
 // these names. A grep for ui.Hex( or ui.RGBA( outside this block means a
@@ -88,6 +102,7 @@ var iconPaths = map[string]string{
 var icons = map[string]*ui.SVG{}
 
 func loadImages() {
+	brandLogo = ui.MustParseSVG(brandSVG)
 	for name, path := range iconPaths {
 		icons[name] = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">` + path + `</svg>`))
 	}
@@ -140,7 +155,8 @@ func cover(c *ui.Context, a Anime, w, h float32) {
 	if b := covers[a.Cover]; b != nil {
 		ui.Image(c, b).Size(w, h).Fit(ui.Cover).Radius(8)
 	} else {
-		ui.Box(c).Size(w, h).Radius(8).Clip().Background(blueWash).Center().Children(func() { ui.Text(c, "D").FontSize(min(w/2, 42)).FontWeight(600).TextColor(blue) })
+		size := min(w, h) * 0.62
+		ui.Box(c).Size(w, h).Radius(8).Clip().Background(blueWash).Center().Children(func() { ui.Image(c, brandLogo).Size(size, size) })
 	}
 }
 
@@ -190,7 +206,7 @@ func (s *State) view(c *ui.Context) {
 func (s *State) sidebar(c *ui.Context) {
 	ui.Column(c).Width(204).FillHeight().Background(chrome).Padding(24, 14, 16).Gap(8).Children(func() {
 		ui.Row(c).Gap(10).Padding(0, 12, 28).Children(func() {
-			ui.Box(c).Size(32, 32).Radius(9).Background(ink).Center().Children(func() { ui.Text(c, "D").FontSize(22).FontWeight(600).TextColor(paper) })
+			ui.Box(c).Size(32, 32).Radius(9).Background(blueWash).Center().Children(func() { ui.Image(c, brandLogo).Size(22, 22) })
 			ui.Text(c, "Dipper").FontSize(22).FontWeight(600).TextColor(ink)
 		})
 		for _, nav := range []struct{ id, label string }{{"browse", "浏览番剧"}, {"following", "我的追番"}, {"downloads", "下载"}} {
@@ -301,7 +317,7 @@ func (s *State) browse(c *ui.Context) {
 			caption(c, "来源：蜜柑计划")
 		})
 		if s.SourceLoading {
-			loading(c, "正在加载番剧目录…")
+			pageLoading(c, "正在加载番剧目录…")
 		} else if s.SourceError != "" {
 			s.empty(c, "来源暂时无法连接", s.SourceError, "重试加载", s.refreshCatalog)
 		} else {
@@ -393,7 +409,7 @@ func catalogYears(selected string) []string {
 	return years
 }
 
-func loading(c *ui.Context, text string) {
+func pageLoading(c *ui.Context, text string) {
 	ui.Column(c).Grow(1).Center().Gap(14).Children(func() { caption(c, text) })
 }
 func (s *State) empty(c *ui.Context, title, body, button string, action func()) {
@@ -486,15 +502,15 @@ func (s *State) detail(c *ui.Context) {
 					}
 				})
 				if s.DetailLoading {
-					loading(c, "正在加载字幕组…")
+					pageLoading(c, "正在加载字幕组…")
 				} else if s.DetailError != "" {
 					s.empty(c, "字幕组加载失败", s.DetailError, "重试加载", s.refreshDetail)
 				} else if len(s.Groups) == 0 {
 					s.empty(c, "暂无字幕组", "来源尚未提供这部番剧的字幕组信息。", "重新加载", s.refreshDetail)
 				} else if !s.hasGroup() {
-					loading(c, "先在左侧选择一个字幕组，即可预览发布资源。")
+					pageLoading(c, "先在左侧选择一个字幕组，即可预览发布资源。")
 				} else if s.HistoryLoading {
-					loading(c, "正在加载发布记录…")
+					pageLoading(c, "正在加载发布记录…")
 				} else if s.HistoryError != "" {
 					s.empty(c, "发布记录加载失败", s.HistoryError, "重试加载资源", s.refreshHistory)
 				} else {
