@@ -443,7 +443,7 @@ func TestUIRenderScreensOffline(t *testing.T) {
 
 // countDark counts pixels below a luminance of 120 in a region of the last
 // frame; inkOnly keeps only near-neutral dark pixels, which the blue of the
-// letter fallback and of the ripple never matches.
+// letter fallback and of the loading indicator never matches.
 func countDark(tt *ui.Tester, x0, y0, x1, y1 int, inkOnly bool) int {
 	img := tt.Image()
 	b := img.Bounds()
@@ -488,7 +488,7 @@ func TestUIBrandMarkReplacesLetterPlaceholders(t *testing.T) {
 	}
 }
 
-// A cover whose load is in flight shows the ripple indicator: the card says it
+// A cover whose load is in flight shows the loading indicator: the card says it
 // is loading and the bird fallback waits for a cover that truly has none.
 func TestUICoverInFlightShowsLoadingIndicator(t *testing.T) {
 	s := uiFixture(t, "browse")

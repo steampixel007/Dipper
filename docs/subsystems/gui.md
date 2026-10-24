@@ -101,9 +101,11 @@ thread, because the bitmap cache belongs to that thread. The file is named by
 the SHA-256 of its URL and cached under `data/covers/`. A cover whose load is
 in flight is marked in `loadingCovers`, set when the load is scheduled and
 cleared on decode, on failure, and for the rest when the load's context is
-cancelled; the card shows a ripple indicator while the flag is set, and the
+cancelled; the card shows a Blocks indicator while the flag is set, and the
 bird mark only once the cover truly has none. The flag also keeps a second
-`loadCovers` call from fetching the same URL again.
+`loadCovers` call from fetching the same URL again. Loaded covers preserve the
+entire image and its aspect ratio inside the fixed frame, with `blueWash`
+behind any unused space, in browsing, detail and following views.
 
 **Known limit:** the cache has no size cap and no eviction. A cover is fetched
 once and then kept forever, so the folder grows with every anime ever browsed.

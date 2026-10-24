@@ -223,7 +223,9 @@ are defined in `appearance.go` and `view.go`.
 
 Line icons are supplementary to labels and tooltips. Posters lead the browsing
 layout; each card pairs its image with a title, weekday, and version entry.
-The fallback cover keeps the same dimensions and shape as a loaded image.
+Loaded covers fit inside their frame without cropping or stretching, centered
+on `blueWash` when their aspect ratio differs from the frame. The fallback
+cover keeps the same dimensions and shape as a loaded image.
 Followed anime have a visible text marker. The poster grid and title hierarchy
 are illustrated in the [browse screen](docs/assets/ui/01-browse.png).
 
@@ -260,7 +262,7 @@ restyling a page separately.
 | `heading` | 18 DIP, weight 600 | Section titles. |
 | `caption` | 12 DIP `muted`, line-height 1.5 | Supporting text. |
 | `badge` | 11 DIP weight 600, padding 3/7, radius 4 | Ink + wash pair: `blue/blueWash`, `green/greenWash`, `amber/amberWash`, `muted/canvas`. |
-| `cover` | Radius 8 | Same box for every non-image state: while its cover loads, a blue `Ripple` indicator (`mygo/plugins/loading`); with no cover, the bird mark at 0.62 of the short side. |
+| `cover` | Radius 8 | The full image fits inside the frame on `blueWash`. Same box for every non-image state: while its cover loads, a blue `Blocks` indicator (`mygo/plugins/loading`); with no cover, the bird mark at 0.62 of the short side. |
 
 Word chips are a `quiet` variant: radius 5, padding 5/8, 1px `line` border,
 12 DIP. Direction gives the pair — include is `blue` on `blueWash` with `＋`,
