@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/anacrolix/torrent v1.61.0
-	github.com/egoist/mygo v0.5.5
+	github.com/egoist/mygo v0.6.3
 	golang.org/x/sys v0.48.0
 	golang.org/x/time v0.14.0
 	modernc.org/sqlite v1.48.0

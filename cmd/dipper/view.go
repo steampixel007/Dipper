@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egoist/mygo/plugins/loading"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -27,6 +28,9 @@ var brandIconPNG []byte
 var brandTrayPNG []byte
 
 var covers = map[string]*ui.Bitmap{}
+
+// Cover URLs whose load is in flight; loadCovers sets and clears them.
+var loadingCovers = map[string]bool{}
 
 var brandLogo *ui.SVG
 
@@ -154,6 +158,10 @@ func heading(c *ui.Context, text string) {
 func cover(c *ui.Context, a Anime, w, h float32) {
 	if b := covers[a.Cover]; b != nil {
 		ui.Image(c, b).Size(w, h).Fit(ui.Cover).Radius(8)
+	} else if loadingCovers[a.Cover] {
+		ui.Box(c).Size(w, h).Radius(8).Clip().Background(blueWash).Center().Children(func() {
+			loading.Ripple(c, loading.Options{Size: 26, Color: blue}).Label("正在加载封面")
+		})
 	} else {
 		size := min(w, h) * 0.62
 		ui.Box(c).Size(w, h).Radius(8).Clip().Background(blueWash).Center().Children(func() { ui.Image(c, brandLogo).Size(size, size) })

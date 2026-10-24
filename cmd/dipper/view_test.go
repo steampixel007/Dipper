@@ -451,3 +451,30 @@ func TestUIBrandMarkReplacesLetterPlaceholders(t *testing.T) {
 		t.Errorf("cover fallback ink pixels = %d; want the bird mark, not a blue letter (>=30)", n)
 	}
 }
+
+// A cover whose load is in flight shows the ripple indicator: the card says it
+// is loading and the bird fallback waits for a cover that truly has none.
+func TestUICoverInFlightShowsLoadingIndicator(t *testing.T) {
+	s := uiFixture(t, "browse")
+	url := s.Catalog[0].Cover
+	saved := covers[url]
+	delete(covers, url)
+	loadingCovers[url] = true
+	t.Cleanup(func() {
+		delete(loadingCovers, url)
+		if saved != nil {
+			covers[url] = saved
+		}
+	})
+	tt := ui.NewTester(s.view, 1320, 860)
+	if _, ok := tt.Find("正在加载封面"); !ok {
+		t.Fatal("in-flight cover shows no loading indicator")
+	}
+	title, ok := tt.Find("星海旅记")
+	if !ok {
+		t.Fatal("card title missing")
+	}
+	if n := countDark(tt, int(title.X)-20, int(title.Y)-210, int(title.X)+140, int(title.Y)-8, true); n != 0 {
+		t.Errorf("bird fallback painted over a loading cover (%d ink pixels)", n)
+	}
+}

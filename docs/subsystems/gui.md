@@ -81,7 +81,12 @@ network access.
 
 `covers.go` loads a cover on a background goroutine and decodes it on the UI
 thread, because the bitmap cache belongs to that thread. The file is named by
-the SHA-256 of its URL and cached under `data/covers/`.
+the SHA-256 of its URL and cached under `data/covers/`. A cover whose load is
+in flight is marked in `loadingCovers`, set when the load is scheduled and
+cleared on decode, on failure, and for the rest when the load's context is
+cancelled; the card shows a ripple indicator while the flag is set, and the
+bird mark only once the cover truly has none. The flag also keeps a second
+`loadCovers` call from fetching the same URL again.
 
 **Known limit:** the cache has no size cap and no eviction. A cover is fetched
 once and then kept forever, so the folder grows with every anime ever browsed.
