@@ -375,9 +375,11 @@ func TestUISettingsBusyDisablesChangesAndQuit(t *testing.T) {
 	s.Quit = func() { quit = true }
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiClick(t, tt, "选择文件夹")
-	if rect, ok := tt.Find("保存并完全退出"); ok {
-		tt.Wheel(660, 430, 0, rect.Y-400)
-		tt.Advance(300 * time.Millisecond)
+	if rect, ok := tt.Find("保存并完全退出"); !ok || rect.Y > 830 {
+		for range 4 {
+			tt.Wheel(660, 430, 0, 120)
+			tt.Advance(100 * time.Millisecond)
+		}
 	}
 	uiClick(t, tt, "保存并完全退出")
 	before := s.ReduceEffects

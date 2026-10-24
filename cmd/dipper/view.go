@@ -1139,6 +1139,21 @@ func (s *State) settings(c *ui.Context) {
 				caption(c, "更改后只影响新追番。已有番剧继续使用原来的文件夹，不搬动文件。")
 			})
 			ui.Column(c).Gap(14).Padding(22).Background(paper).Border(1, line).Radius(10).Children(func() {
+				heading(c, "番剧来源")
+				ui.Row(c).Gap(16).Children(func() {
+					ui.Column(c).Grow(1).Gap(5).Children(func() {
+						ui.Text(c, "蜜柑计划线路").FontSize(14)
+						caption(c, "两条线路内容相同，切换前会先测试。不影响已有追番；封面会按新线路重新加载。")
+					})
+					ui.Select(c.Key("source-route"), &s.SourceRoute, s.routeLabels()).Label("蜜柑计划线路").Width(260).OnChange(func() { s.switchSourceRoute(s.SourceRoute) }).Disabled(s.Busy || s.SourceTesting)
+				})
+				if s.SourceTesting {
+					caption(c, "正在测试新线路…")
+				} else if s.SourceRouteError != "" {
+					ui.Text(c, s.SourceRouteError).FontSize(12).TextColor(errorInk)
+				}
+			})
+			ui.Column(c).Gap(14).Padding(22).Background(paper).Border(1, line).Radius(10).Children(func() {
 				heading(c, "上传与分享")
 				ui.Row(c).Gap(16).Children(func() {
 					ui.Column(c).Grow(1).Gap(5).Children(func() {

@@ -232,7 +232,7 @@ preserves catalog filters and scroll position.
 | Anime detail | Fansub group and editable conditions on the left; quick words, match count, reasons and release rows on the right; current-run summary and primary action below. |
 | My follows | Saved rules, latest check result, folder, pause/resume, edit and check-now actions. |
 | Downloads | Separate aggregate upload/download speeds; per-task progress and speed, with pause/resume/retry or seeding actions appropriate to state. |
-| Settings | Appearance, download location, shared upload limit, and window/background behavior. |
+| Settings | Appearance, source line, download location, shared upload limit, and window/background behavior. |
 
 A page must provide distinct loading, empty, failure, and content states. Source
 failure offers retry without clearing saved follows or downloads. Empty search

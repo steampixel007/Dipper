@@ -42,6 +42,9 @@ source's tolerance; constructing one per call would multiply the request rate.
 The client's transport resolves its proxy through `internal/proxy`, so the
 setting chosen in the window applies to catalog, history, RSS and cover
 requests alike; loopback addresses stay direct.
+`Retarget` swaps the origin under the client's lock while keeping the same
+rate limit, transport and in-flight requests, so switching lines does not
+multiply the request rate either.
 
 `get` takes a single-slot `gate` channel for its whole request, then waits until
 `nextRequest` before sending, and sets `nextRequest` to now plus 1500 ms. Every

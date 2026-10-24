@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"dipper.local/dipper/internal/proxy"
@@ -62,6 +63,7 @@ func (e *HTTPError) Error() string {
 // Client is safe for concurrent use. Requests share a cancellable rate limit.
 // Reuse one Client for catalog, subscriptions and covers to preserve that limit.
 type Client struct {
+	mu          sync.RWMutex
 	base        *url.URL
 	initErr     error
 	http        *http.Client
@@ -73,11 +75,14 @@ type Client struct {
 	maxTake     int
 }
 
-// New uses the public Mikan origin when baseURL is empty. Invalid origins surface
-// as method errors, preserving a constructor that does not require error handling.
+// DefaultOrigin is the public Mikan origin used unless the user picks a route.
+const DefaultOrigin = "https://mikanime.tv"
+
+// New uses DefaultOrigin when baseURL is empty. Invalid origins surface as
+// method errors, preserving a constructor that does not require error handling.
 func New(baseURL string) *Client {
 	if baseURL == "" {
-		baseURL = "https://mikanime.tv"
+		baseURL = DefaultOrigin
 	}
 	u, err := httpURL(baseURL)
 	c := &Client{
@@ -101,6 +106,35 @@ func New(baseURL string) *Client {
 	return c
 }
 
+func (c *Client) target() (*url.URL, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.base, c.initErr
+}
+
+// Retarget points the client at another origin. The rate limit, transport and
+// in-flight requests stay shared, so switching must not multiply the request
+// rate or abandon a request already inside the limit.
+func (c *Client) Retarget(baseURL string) error {
+	u, err := httpURL(baseURL)
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	c.base, c.initErr = u, nil
+	c.mu.Unlock()
+	return nil
+}
+
+// Origin reports the origin in use; empty when construction failed.
+func (c *Client) Origin() string {
+	u, err := c.target()
+	if err != nil || u == nil {
+		return ""
+	}
+	return u.String()
+}
+
 func httpURL(raw string) (*url.URL, error) {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || u == nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil {
@@ -110,16 +144,17 @@ func httpURL(raw string) (*url.URL, error) {
 }
 
 func (c *Client) endpoint(path string, query url.Values) (string, error) {
-	if c.initErr != nil {
-		return "", c.initErr
+	base, err := c.target()
+	if err != nil {
+		return "", err
 	}
-	u := c.base.ResolveReference(&url.URL{Path: path, RawQuery: query.Encode()})
+	u := base.ResolveReference(&url.URL{Path: path, RawQuery: query.Encode()})
 	return u.String(), nil
 }
 
 func (c *Client) get(ctx context.Context, rawURL string, limit int64) ([]byte, *url.URL, error) {
-	if c.initErr != nil {
-		return nil, nil, c.initErr
+	if _, err := c.target(); err != nil {
+		return nil, nil, err
 	}
 	if _, err := httpURL(rawURL); err != nil {
 		return nil, nil, err
