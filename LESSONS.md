@@ -1,9 +1,11 @@
-<!-- reviewed-through: bb68d3c (2026-10-24) -->
+<!-- reviewed-through: bb68d3c (2026-10-24 00:43 +0800) -->
 # Lessons from merged work
 
-Each time a change merges, look back at it: what had to be fixed again, what
-should not have merged, and what was verified too thinly. What we learn is kept
-here. Read this before changing code.
+Each day the commits since the `reviewed-through` mark above are reviewed:
+what had to be fixed again, what should not have merged, and what was
+verified too thinly. What we learn is kept here. Read this before changing
+code. A review ends by moving the mark to the last commit it read, lessons
+or not.
 
 A lesson is a rule, then why, then the evidence (a commit or an issue). The
 `Seen` count records the days a review found it.
