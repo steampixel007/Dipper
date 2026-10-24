@@ -46,6 +46,12 @@ func testEngine(t *testing.T, config Config) *Engine {
 	return e
 }
 
+func consumerStorage(dir string) storage.ClientImplCloser {
+	// NewFile's default mmap cache retains incomplete .part mappings after
+	// Close. NewMMap owns its mappings per torrent and unmaps them on Drop.
+	return storage.NewMMap(dir)
+}
+
 type fixture struct {
 	mi      metainfo.MetaInfo
 	files   map[string][]byte
@@ -273,11 +279,22 @@ func TestRealUploadRatioStopsAndCloseStopsPayload(t *testing.T) {
 	cfg := torrent.NewDefaultClientConfig()
 	localConfig(cfg)
 	cfg.DataDir = t.TempDir()
+	data := consumerStorage(cfg.DataDir)
+	cfg.DefaultStorage = data
+	t.Cleanup(func() {
+		if err := data.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	consumer, err := torrent.NewClient(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { consumer.Close() })
+	t.Cleanup(func() {
+		if errs := consumer.Close(); len(errs) != 0 {
+			t.Error(errors.Join(errs...))
+		}
+	})
 	spec := torrent.TorrentSpecFromMetaInfo(&f.mi)
 	spec.PeerAddrs = []string{e.client.ListenAddrs()[0].String()}
 	leecher, _, err := consumer.AddTorrentSpec(spec)
@@ -301,6 +318,60 @@ func TestRealUploadRatioStopsAndCloseStopsPayload(t *testing.T) {
 	e = testEngine(t, config)
 	if got := one(t, e); !got.AutoStopped || got.UploadedBytes != s.UploadedBytes {
 		t.Fatalf("automatic stop did not survive: %+v", got)
+	}
+}
+
+func TestConsumerStorageCloseReleasesIncompleteFiles(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	info, err := f.mi.UnmarshalInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	data := consumerStorage(dir)
+	closeData := sync.OnceValue(data.Close)
+	t.Cleanup(func() {
+		if err := closeData(); err != nil {
+			t.Error(err)
+		}
+	})
+	tor, err := data.OpenTorrent(context.Background(), &info, f.mi.HashInfoBytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeTorrent := sync.OnceValue(tor.Close)
+	t.Cleanup(func() {
+		if err := closeTorrent(); err != nil {
+			t.Error(err)
+		}
+	})
+	// Touch the final subtitle byte without completing its piece. The ratio
+	// stop can leave the real consumer in this state, before .part is renamed.
+	var offset int64 = -1
+	for _, file := range info.UpvertedFiles() {
+		if filepath.ToSlash(filepath.Join(file.BestPath()...)) == "subs/字幕.ass" {
+			offset = file.TorrentOffset + file.Length - 1
+		}
+	}
+	if offset < 0 {
+		t.Fatal("fixture has no subtitle file")
+	}
+	pieceInfo := info.Piece(int(offset / info.PieceLength))
+	piece := tor.Piece(pieceInfo)
+	if _, err := piece.WriteAt([]byte{1}, offset-pieceInfo.Offset()); err != nil {
+		t.Fatal(err)
+	}
+	if piece.Completion().Complete {
+		t.Fatal("partial write unexpectedly completed the piece")
+	}
+	if err := closeTorrent(); err != nil {
+		t.Fatal(err)
+	}
+	if err := closeData(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatalf("consumer storage still holds incomplete files after Close: %v", err)
 	}
 }
 

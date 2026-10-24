@@ -182,6 +182,15 @@ start; the failure surfaces as a timeout that reads like an engine defect.
 `localConfig` is the only place the test client's settings are turned off, and
 it does not touch that field.
 
+The independent consumer in the upload-ratio test explicitly uses `NewMMap`
+storage. Its torrent mappings close with the client, then its piece completion
+database closes before the temporary directory is removed. The library's
+default `NewFile` storage retains mappings of incomplete `.part` files after
+closing, which prevents cleanup on Windows if the ratio stop interrupts the
+consumer before it completes a piece. `TestConsumerStorageCloseReleasesIncompleteFiles`
+reproduces that partial write directly and requires immediate directory removal
+after closing, without depending on network timing or retries.
+
 `pipeline_test.go` additionally wires the real chain together: a real
 `core.SQLite` database, the adapter and the engine, covering selecting a release
 from history, a real download, RSS deduplication, a core/engine restart, and a
