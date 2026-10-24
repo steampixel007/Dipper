@@ -461,24 +461,28 @@ func saveSyso(path, arch string) error {
 	var relocs []uint32
 	var data bytes.Buffer
 	le.PutUint16(raw[14:], uint16(len(types))) // id entries of the root
+	// The root's entries name the types; each type directory's entries
+	// name resource ids; each id's one language directory points at its
+	// data entry. Every directory is written at its own offset.
 	next := dirSize(len(types))
 	entry := entriesAt
-	for _, t := range types {
-		le.PutUint32(raw[next+16:], uint32(t))
-		le.PutUint32(raw[next+20:], uint32(next+dirSize(len(res[t])))|0x80000000)
+	for ti, t := range types {
+		le.PutUint32(raw[16+8*ti:], uint32(t))
+		le.PutUint32(raw[20+8*ti:], uint32(next)|0x80000000)
 		le.PutUint16(raw[next+14:], uint16(len(res[t])))
-		next += dirSize(len(res[t]))
+		langDirs := next + dirSize(len(res[t]))
 		for id := uint16(1); ; id++ {
 			blob, ok := res[t][id]
 			if !ok {
 				break
 			}
-			le.PutUint32(raw[next+16:], uint32(id))
-			le.PutUint32(raw[next+20:], uint32(next+dirSize(1))|0x80000000)
-			langDir := next + dirSize(1)
+			i := int(id - 1)
+			langDir := langDirs + dirSize(1)*i
+			le.PutUint32(raw[next+16+8*i:], uint32(id))
+			le.PutUint32(raw[next+20+8*i:], uint32(langDir)|0x80000000)
+			le.PutUint16(raw[langDir+14:], 1)
 			le.PutUint32(raw[langDir+16:], 0x0409) // en-US
 			le.PutUint32(raw[langDir+20:], uint32(entry))
-			next += dirSize(1)
 
 			for data.Len()%8 != 0 {
 				data.WriteByte(0)
@@ -489,6 +493,7 @@ func saveSyso(path, arch string) error {
 			entry += 16
 			data.Write(blob)
 		}
+		next = langDirs + dirSize(1)*len(res[t])
 	}
 	raw = append(raw, data.Bytes()...)
 	for len(raw)%4 != 0 {
