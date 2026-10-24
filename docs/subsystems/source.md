@@ -39,6 +39,9 @@ is different from `0`.
 One `Client` is shared by the catalog, subscriptions and covers, because the
 rate limit lives on it. Reusing one client is what keeps the app inside the
 source's tolerance; constructing one per call would multiply the request rate.
+The client's transport resolves its proxy through `internal/proxy`, so the
+setting chosen in the window applies to catalog, history, RSS and cover
+requests alike; loopback addresses stay direct.
 
 `get` takes a single-slot `gate` channel for its whole request, then waits until
 `nextRequest` before sending, and sets `nextRequest` to now plus 1500 ms. Every

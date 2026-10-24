@@ -1149,6 +1149,31 @@ func (s *State) settings(c *ui.Context) {
 				})
 				caption(c, "下载完成后，分享比例达到 1:1，或有效做种累计 1 小时，满足任一即停止。")
 			})
+			ui.Column(c).Gap(14).Padding(22).Background(paper).Border(1, line).Radius(10).Children(func() {
+				heading(c, "网络与代理")
+				ui.Row(c).Gap(16).Children(func() {
+					ui.Column(c).Grow(1).Gap(5).Children(func() {
+						ui.Text(c, "代理").FontSize(14)
+						caption(c, s.proxyDescription())
+					})
+					ui.Segmented(c.Key("proxy-mode"), &s.ProxyMode, "自动", "关闭", "自定义").OnChange(func() {
+						s.ProxyFeedback = ""
+						s.save()
+					}).Disabled(s.Busy)
+					secondary(c, "test-proxy", "测试", func() { s.testProxy() }).FontSize(12).Disabled(s.Busy || s.ProxyTesting || s.Source == nil)
+				})
+				if s.ProxyMode == 2 {
+					ui.TextInput(c.Key("proxy-url"), &s.ProxyURL).Label("代理地址").Placeholder("http://127.0.0.1:7897 或 socks5://…").FillWidth().Height(32).OnChange(func() {
+						s.ProxyFeedback = ""
+					}).OnSubmit(func() {
+						s.save()
+					})
+					caption(c, "支持 http、https、socks5；也可只填 host:port。输入地址后按回车保存。")
+				}
+				if s.ProxyFeedback != "" {
+					caption(c, s.ProxyFeedback)
+				}
+			})
 			ui.Column(c).Gap(12).Padding(22).Background(paper).Border(1, line).Radius(10).Children(func() {
 				heading(c, "窗口与后台运行")
 				caption(c, "关闭窗口会收起到系统托盘；重新打开后继续操作。完全退出会停止后台活动。")

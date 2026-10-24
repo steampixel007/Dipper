@@ -15,6 +15,7 @@ func uiRenderFixture() *State {
 	s := newState("")
 	s.Year, s.Season = "2025", "春"
 	s.Root = `C:\Downloads\Dipper`
+	s.ProxyAuto = "跟随系统代理：http://127.0.0.1:7897"
 	s.Catalog = []Anime{
 		{ID: "render-1", Title: "星海旅记", Day: 1, Cover: "3887.jpg"},
 		{ID: "render-2", Title: "雨后的星期天", Day: 0, Cover: "3984.jpg"},

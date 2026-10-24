@@ -375,11 +375,39 @@ func TestUISettingsBusyDisablesChangesAndQuit(t *testing.T) {
 	s.Quit = func() { quit = true }
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiClick(t, tt, "选择文件夹")
+	if rect, ok := tt.Find("保存并完全退出"); ok {
+		tt.Wheel(660, 430, 0, rect.Y-400)
+		tt.Advance(300 * time.Millisecond)
+	}
 	uiClick(t, tt, "保存并完全退出")
 	before := s.ReduceEffects
 	uiClick(t, tt, "减少动态效果")
 	if picked || quit || before != s.ReduceEffects || s.SaveError != "" {
 		t.Fatal("busy settings invoked an operation")
+	}
+}
+
+func TestUISettingsProxyModesAndCustomAddress(t *testing.T) {
+	s := uiFixture(t, "settings")
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "网络与代理", "代理", "跟随系统代理：http://127.0.0.1:7897", "自动", "关闭", "自定义")
+
+	uiClick(t, tt, "关闭")
+	if s.ProxyMode != 1 || s.ProxyURL != "" {
+		t.Fatalf("direct mode = %d, address = %q", s.ProxyMode, s.ProxyURL)
+	}
+
+	uiClick(t, tt, "自定义")
+	if s.ProxyMode != 2 {
+		t.Fatalf("custom mode = %d", s.ProxyMode)
+	}
+	uiRequireText(t, tt, "代理地址")
+	if rect, ok := tt.Find("代理地址"); ok {
+		tt.ClickAt(rect.X+rect.W/2, rect.Y+rect.H/2)
+	}
+	tt.Type("127.0.0.1:7897")
+	if s.ProxyURL != "127.0.0.1:7897" {
+		t.Fatalf("typed address = %q", s.ProxyURL)
 	}
 }
 

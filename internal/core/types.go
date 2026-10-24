@@ -52,6 +52,10 @@ type DownloadTask struct {
 type Settings struct {
 	DownloadRoot     string
 	UploadLimitBytes int64
+	// ProxyMode is one of the proxy package's mode constants; ProxyURL is
+	// the address ProxyMode "custom" uses.
+	ProxyMode string `json:",omitempty"`
+	ProxyURL  string `json:",omitempty"`
 }
 
 type Options struct {

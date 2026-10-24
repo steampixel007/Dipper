@@ -23,6 +23,7 @@ components, and interaction conventions are specified in
 | `source_ui.go` | The bridge to `source`: catalog, detail, history, covers |
 | `covers.go` | Cover image loading and its cache |
 | `appearance.go` | Fonts, sizing, theme values |
+| `proxy_ui.go` | The settings-page proxy card and the auto-mode description |
 | `ui_render.go` | Deterministic sample state for layout rendering |
 | `startup_error_windows.go`, `startup_error_other.go` | Reporting a failure before the window exists |
 
@@ -53,7 +54,6 @@ page is a function over `State` in `view.go`; a page never calls `core` directly
 it calls the bridge in `core_ui.go` or `source_ui.go`.
 
 The detail page runs in one of two modes, distinguished by `Backfill`:
-
 - **Subscribe** — choose a group and a rule, preview which existing releases
   match, and confirm. Existing matches are selected by default.
 - **Backfill** — pick releases from an existing subscription's history to
@@ -62,6 +62,11 @@ The detail page runs in one of two modes, distinguished by `Backfill`:
 The two modes share the resource list but not the confirm action. Keeping them
 distinct is what makes "I cancelled this one release" not change what future
 releases are matched against.
+
+The settings page has a proxy card: a three-way choice (自动 / 关闭 / 自定义),
+the address auto mode currently follows, and a 测试 button that saves the
+current values and then probes the source origin. Test feedback and the
+in-flight flag are per-run state, not settings.
 
 ## Startup
 
