@@ -15,19 +15,32 @@ import (
 var assets embed.FS
 
 var covers = map[string]*ui.Bitmap{}
+
+// Every color the UI uses is declared here; DESIGN.md's token block mirrors
+// these names. A grep for ui.Hex( or ui.RGBA( outside this block means a
+// color bypassed the token layer.
 var blue = ui.Hex("#3b63fb")
+var blueHover = ui.Hex("#274dea")
+var bluePressed = ui.Hex("#1d3ecf")
 var blueWash = ui.Hex("#f5f9ff")
 var muted = ui.Hex("#505050")
 var ink = ui.Hex("#292929")
 var line = ui.Hex("#e9e9e9")
 var outline = ui.Hex("#c6c6c6")
+var hoverLine = ui.Hex("#b1b1b1")
 var chrome = ui.Hex("#f3f3f3")
 var paper = ui.Hex("#ffffff")
 var canvas = ui.Hex("#f8f8f8")
 var green = ui.Hex("#12805c")
+var greenWash = ui.Hex("#e9f7ef")
 var amber = ui.Hex("#9c5700")
+var amberWash = ui.Hex("#fff4db")
 var avoidInk = ui.Hex("#b1262b")
 var avoidWash = ui.Hex("#fff5f5")
+var errorInk = ui.Hex("#c9252d")
+var errorWash = ui.Hex("#fff0f0")
+var scrim = ui.RGBA(0, 0, 0, .24)
+var popoverShadow = ui.RGBA(0, 0, 0, .10)
 
 func spectrumTheme() *ui.Theme {
 	t := ui.LightTheme()
@@ -39,8 +52,8 @@ func spectrumTheme() *ui.Theme {
 	t.TextMuted = muted
 	t.Border = outline
 	t.Accent = blue
-	t.AccentHover = ui.Hex("#274dea")
-	t.AccentPressed = ui.Hex("#1d3ecf")
+	t.AccentHover = blueHover
+	t.AccentPressed = bluePressed
 	t.Focus = blue
 	t.AccentText = paper
 	t.Success = green
@@ -142,7 +155,7 @@ func (s *State) view(c *ui.Context) {
 		ui.Column(c).Grow(1).FillHeight().MinWidth(0).Background(paper).Children(func() {
 			s.topbar(c)
 			if s.SaveError != "" {
-				ui.Text(c, s.SaveError).FontSize(12).TextColor(ui.Hex("#c9252d")).Background(ui.Hex("#fff0f0")).Padding(8, 24)
+				ui.Text(c, s.SaveError).FontSize(12).TextColor(errorInk).Background(errorWash).Padding(8, 24)
 			}
 			ui.Box(c.Key("page-host")).Grow(1).MinHeight(0).FillWidth().Clip().Children(func() {
 				ui.Column(c.Key("page-" + s.Page)).Fill().Transition(pageTransition).Children(func() {
@@ -433,7 +446,7 @@ func (s *State) detail(c *ui.Context) {
 								if s.Group == i {
 									b.BorderColor(blue).Background(blueWash)
 								} else if b.Hovered() {
-									b.BorderColor(ui.Hex("#b1b1b1"))
+									b.BorderColor(hoverLine)
 								}
 								b.Children(func() {
 									ui.Row(c).Gap(8).Children(func() {
@@ -575,7 +588,7 @@ func (s *State) wordChip(c *ui.Context, key, word string) {
 	b := quiet(c, key, label, func() { s.WordAnchor = key; s.WordOpen = true }).Label("筛选 "+word).FontSize(12).Padding(5, 8).Radius(5).Border(1, line).Background(bg).TextColor(col).Tooltip("选择只要、不要，或移除条件")
 	if s.WordAnchor == key {
 		ui.PopoverBase(c.Key("word-popup-"+key), b, &s.WordOpen, func(panel ui.Element) {
-			panel.Width(320).Margin(6, 0, 0).Padding(10).Gap(6).Radius(10).Background(paper).Border(1, line).Shadow(0, 6, 20, 0, ui.RGBA(0, 0, 0, .10)).Transition(popupTransition)
+			panel.Width(320).Margin(6, 0, 0).Padding(10).Gap(6).Radius(10).Background(paper).Border(1, line).Shadow(0, 6, 20, 0, popoverShadow).Transition(popupTransition)
 			ui.Text(c, "怎么筛选「"+word+"」？").FontSize(14).FontWeight(600).Padding(4, 6)
 			for _, option := range []struct {
 				label, description string
@@ -663,7 +676,7 @@ func (s *State) preview(c *ui.Context) {
 		if len(s.resources()) == 0 {
 			message = "这组暂无已发布资源，开启追番后将按条件检查后续更新。"
 		}
-		ui.Text(c, message).FontSize(12).TextColor(amber).Padding(10).Background(ui.Hex("#fff4db")).Radius(6)
+		ui.Text(c, message).FontSize(12).TextColor(amber).Padding(10).Background(amberWash).Radius(6)
 	}
 	if !s.Editing {
 		selected, _ := s.selected()
@@ -719,7 +732,7 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 				badge(c, "正在参考", blue, blueWash)
 			}
 			if count := s.duplicates(r.Episode); count > 1 && ok {
-				badge(c, fmt.Sprintf("本集匹配 %d 条", count), amber, ui.Hex("#fff4db"))
+				badge(c, fmt.Sprintf("本集匹配 %d 条", count), amber, amberWash)
 			}
 			ui.Spacer(c)
 			caption(c, resourceSize(r.MB))
@@ -809,7 +822,7 @@ func (s *State) detailFooter(c *ui.Context) {
 
 func (s *State) confirmDialog(c *ui.Context) {
 	ui.DialogBase(c, &s.Confirm, func(backdrop, panel ui.Element) {
-		backdrop.Background(ui.RGBA(0, 0, 0, .24)).Transition(fadeTransition)
+		backdrop.Background(scrim).Transition(fadeTransition)
 		panel.Width(510).Padding(28).Gap(18).Radius(12).Background(paper)
 		var resources []Resource
 		if s.detailReady() {
@@ -906,7 +919,7 @@ func (s *State) following(c *ui.Context) {
 			secondary(c, "find-more", "添加追番", func() { s.Page = "browse" })
 		})
 		if s.Notice != "" {
-			ui.Row(c).Gap(12).Padding(12, 16).Radius(6).TextColor(green).Background(ui.Hex("#e9f7ef")).Children(func() {
+			ui.Row(c).Gap(12).Padding(12, 16).Radius(6).TextColor(green).Background(greenWash).Children(func() {
 				ui.Text(c, s.Notice).FontSize(13).Grow(1)
 				if s.UndoSaved != nil {
 					quiet(c, "undo-save", "撤销保存", s.undoSave).FontSize(13).Disabled(s.Busy)
@@ -931,7 +944,7 @@ func (s *State) following(c *ui.Context) {
 								if item.Paused {
 									badge(c, "已暂停", muted, canvas)
 								} else {
-									badge(c, "自动追番中", green, ui.Hex("#e9f7ef"))
+									badge(c, "自动追番中", green, greenWash)
 								}
 							})
 							group := item.GroupName
@@ -1128,7 +1141,7 @@ func (s *State) settings(c *ui.Context) {
 
 func (s *State) helpDialog(c *ui.Context) {
 	ui.DialogBase(c, &s.Help, func(backdrop, panel ui.Element) {
-		backdrop.Background(ui.RGBA(0, 0, 0, .24)).Transition(fadeTransition)
+		backdrop.Background(scrim).Transition(fadeTransition)
 		panel.Width(500).Padding(28).Gap(18).Radius(12).Background(paper)
 		ui.Row(c).Children(func() {
 			ui.Text(c, "你的第一部自动追番").FontSize(23).FontWeight(700).Grow(1)
