@@ -41,6 +41,30 @@ Run the final green group with:
 go run ./cmd/redcheck -pkg ./cmd/dipper -test '^(TestWindow|TestTray)' -expect pass
 ```
 
+## Quit-save failure recovery
+
+`TestWindowTrayQuitSaveFailureRestoresWindowAndRepaints` first hides the window,
+then blocks the temporary preferences path with a directory. A tray-style quit
+must keep the process running, restore the window through the queued `Update`,
+and repaint the save error. After the storage obstruction is removed, retrying
+must quit without scheduling failure recovery. Both tray-triggered quit and
+the application quit event use the same recovery helper.
+
+The test passed with the fix. `cmd/redcheck` classified each separate mutation
+as a real assertion failure:
+
+| Mutation | Observed assertion |
+| --- | --- |
+| Restore the previous `exitApp` | A vetoed tray quit must schedule a repaint |
+| Remove window restoration | A vetoed tray quit must restore the hidden window |
+| Restore without scheduling `Update` | A vetoed tray quit must schedule a repaint |
+
+The entire window/tray test group passed after restoring the fix. The full
+`scripts/build.ps1 -Test -CrossCompile` checks were rerun for the repair. Native
+tray interaction under an actual full-disk condition was not rerun; the
+regression uses a deterministic local filesystem write failure and the queued
+window-update boundary.
+
 ## Native Windows observations
 
 The built executable used a separate data and download directory under

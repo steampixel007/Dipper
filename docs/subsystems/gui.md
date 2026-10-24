@@ -118,8 +118,10 @@ override the user's taskbar visibility preference.
 
 Closing or quitting while an operation is busy leaves the window open. A
 failed settings save also leaves it open, reports the error, and restores the
-previous close preference. Cancel, Escape, and backdrop dismissal never hide,
-quit, or remember a choice.
+previous close preference. If saving vetoes a quit requested from the tray or
+the application menu, restore and focus the existing window through `Update`
+so the save error is repainted even when the window was hidden. Cancel, Escape,
+and backdrop dismissal never hide, quit, or remember a choice.
 
 `window_ui_test.go` exercises the rendered controls, cancellation, one-time
 and remembered choices, startup preference loading, changing/resetting the

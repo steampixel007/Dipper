@@ -87,10 +87,22 @@ func (s *State) saveBeforeClose() bool {
 }
 
 func (s *State) exitApp() {
-	if s.saveBeforeClose() && s.Quit != nil {
+	if !s.saveBeforeClose() {
+		s.restoreAfterQuitVeto()
+		return
+	}
+	if s.Quit != nil {
 		s.ClosePrompt = false
 		s.Quit()
 	}
+}
+
+func (s *State) restoreAfterQuitVeto() {
+	s.Update(func() {
+		if s.ShowWindow != nil {
+			s.ShowWindow()
+		}
+	})
 }
 
 func (s *State) finishClose(behavior string, remember bool) bool {

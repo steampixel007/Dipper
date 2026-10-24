@@ -132,9 +132,7 @@ func main() {
 	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
 		if !s.saveBeforeClose() {
 			e.PreventDefault()
-			if s.ShowWindow != nil {
-				s.ShowWindow()
-			}
+			s.restoreAfterQuitVeto()
 			return
 		}
 		quitting = true

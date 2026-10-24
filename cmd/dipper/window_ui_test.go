@@ -161,6 +161,45 @@ func TestWindowCloseSaveFailureKeepsWindowAndPreference(t *testing.T) {
 	}
 }
 
+func TestWindowTrayQuitSaveFailureRestoresWindowAndRepaints(t *testing.T) {
+	s, _, quit := windowFixture(t)
+	visible := true
+	s.HideWindow = func() { visible = false }
+	s.ShowWindow = func() { visible = true }
+	if !s.finishClose(closeBackground, true) || visible {
+		t.Fatal("background choice must hide the window before the tray quit")
+	}
+	tt := ui.NewTester(s.view, 1040, 720)
+	blocked := filepath.Join(s.Dir, "preferences.json.tmp")
+	if err := os.Mkdir(blocked, 0755); err != nil {
+		t.Fatal(err)
+	}
+	var repaint func()
+	s.Update = func(fn func()) {
+		repaint = func() { fn(); tt.Frame() }
+	}
+	s.exitApp()
+	if *quit != 0 || s.SaveError == "" || s.CloseBehavior != closeBackground {
+		t.Fatal("failed tray quit must retain the app and its choice with a save error")
+	}
+	if repaint == nil {
+		t.Fatal("a vetoed tray quit must schedule a repaint")
+	}
+	repaint()
+	if !visible {
+		t.Fatal("a vetoed tray quit must restore the hidden window")
+	}
+	uiRequireText(t, tt, s.SaveError)
+	if err := os.Remove(blocked); err != nil {
+		t.Fatal(err)
+	}
+	repaint = nil
+	s.exitApp()
+	if *quit != 1 || s.SaveError != "" || repaint != nil {
+		t.Fatal("retrying after storage recovers must quit without scheduling failure recovery")
+	}
+}
+
 func TestWindowSettingsCanChangeAndResetRememberedBehavior(t *testing.T) {
 	s, _, quit := windowFixture(t)
 	s.Page = "settings"
