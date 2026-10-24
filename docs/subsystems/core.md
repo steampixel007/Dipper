@@ -21,6 +21,7 @@ in. It has no UI dependency: the window calls it, it never calls the window.
 | `rules.go` | `Normalize`, `NormalizeRule`, `Match`, `ParseEpisode`, `SuggestWords` |
 | `hash.go` | `ResourceHash`, `resolveHash`, the bencode reader that derives a torrent's v1 info hash |
 | `download_root.go`, `video_*.go` | The default download root per platform |
+| `internal/proxy` | The proxy modes settings and HTTP requests share |
 
 ## State
 
@@ -177,6 +178,15 @@ durable.
 The default upload limit is 1 MiB/s. A saved limit of zero means unlimited, and
 the UI adapter must translate that to the downloader's unlimited value: core
 persists the setting, the UI applies it to the running downloader.
+
+Proxy settings live in `Settings` beside the upload limit: `ProxyMode` is one
+of `auto`, `direct` or `custom`, and `ProxyURL` is the address `custom` uses.
+`auto` reads `*_PROXY` and then the system proxy (Internet Options on
+Windows); `direct` goes without a proxy; `custom` requires an http, https or
+socks5 address, which `proxy.Validate` checks before it is saved. Loopback is
+never proxied. The setting is durable; the running source client, torrent
+fetches and the BT engine's HTTP traffic pick it up through `proxy.Func`
+without a restart.
 
 Subscriptions are unique by anime and group. Creation takes the full fetched
 history and an explicit selected-ID slice; `nil` selects nothing. Skipped,

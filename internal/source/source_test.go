@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+
+	"dipper.local/dipper/internal/proxy"
 )
 
 func fixture(t *testing.T, name string) []byte {
@@ -37,6 +39,33 @@ func testClient(t *testing.T, handler http.HandlerFunc) *Client {
 	c := New(server.URL)
 	c.interval = 0
 	return c
+}
+
+func TestClientSendsRequestsThroughConfiguredProxy(t *testing.T) {
+	// The loopback guard keeps local test servers direct, so the wiring is
+	// asserted through the transport's proxy function rather than by
+	// sending a request to an address beyond this machine.
+	c := New("")
+	transport, ok := c.http.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("client transport = %T, want *http.Transport", c.http.Transport)
+	}
+	if transport.Proxy == nil {
+		t.Fatal("source client transport has no proxy function")
+	}
+	proxy.Configure(proxy.ModeCustom, "192.0.2.10:7897")
+	t.Cleanup(func() { proxy.Configure(proxy.ModeAuto, "") })
+	req, err := http.NewRequest(http.MethodGet, "https://mikanime.tv/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := transport.Proxy(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || got.String() != "http://192.0.2.10:7897" {
+		t.Fatalf("proxy = %v, want the configured address", got)
+	}
 }
 
 func TestCatalogRealSample(t *testing.T) {

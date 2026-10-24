@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
+	"time"
 
 	"dipper.local/dipper/internal/core"
 	"dipper.local/dipper/internal/downloader"
+	"dipper.local/dipper/internal/proxy"
 	"dipper.local/dipper/internal/source"
 )
 
@@ -38,6 +41,15 @@ type preferences struct {
 	// SourceOrigin persists the ASCII origin, not the Chinese label, so
 	// rewording the route label does not reset the user's choice.
 	SourceOrigin string
+}
+
+var proxyModes = []string{proxy.ModeAuto, proxy.ModeDirect, proxy.ModeCustom}
+
+func proxyModeIndex(mode string) int {
+	if mode == proxy.ModeDirect || mode == proxy.ModeCustom {
+		return slices.Index(proxyModes, mode)
+	}
+	return 0
 }
 
 func uploadLimit(label string) int64 {
@@ -70,6 +82,10 @@ func (s *State) loadSaved() error {
 	}
 	s.Root = state.Settings.DownloadRoot
 	s.Upload = uploadLabel(state.Settings.UploadLimitBytes)
+	s.ProxyMode = proxyModeIndex(state.Settings.ProxyMode)
+	s.ProxyURL = state.Settings.ProxyURL
+	proxy.Configure(state.Settings.ProxyMode, state.Settings.ProxyURL)
+	s.ProxyAuto = s.describeAutoProxy()
 	if err = s.Engine.SetUploadLimit(state.Settings.UploadLimitBytes); err != nil {
 		return err
 	}
@@ -100,10 +116,18 @@ func (s *State) save() {
 	if s.Core == nil {
 		return
 	}
-	settings := core.Settings{DownloadRoot: s.Root, UploadLimitBytes: uploadLimit(s.Upload)}
+	mode := proxyModes[s.ProxyMode]
+	if mode != proxy.ModeCustom {
+		s.ProxyURL = ""
+	}
+	settings := core.Settings{DownloadRoot: s.Root, UploadLimitBytes: uploadLimit(s.Upload), ProxyMode: mode, ProxyURL: s.ProxyURL}
 	if err := s.Core.SetSettings(settings); err != nil {
 		s.SaveError = "设置保存失败：" + err.Error()
 		return
+	}
+	proxy.Configure(mode, settings.ProxyURL)
+	if mode != proxy.ModeCustom {
+		s.ProxyAuto = s.describeAutoProxy()
 	}
 	if err := s.Engine.SetUploadLimit(settings.UploadLimitBytes); err != nil {
 		s.SaveError = "限速设置失败：" + err.Error()
@@ -124,6 +148,31 @@ func (s *State) savePreferences() error {
 		err = os.Rename(path+".tmp", path)
 	}
 	return err
+}
+
+func (s *State) testProxy() {
+	if s.ProxyTesting || s.Source == nil {
+		return
+	}
+	s.save()
+	if s.SaveError != "" {
+		return
+	}
+	s.ProxyTesting = true
+	s.ProxyFeedback = "正在测试连接…"
+	go func() {
+		ctx, cancel := context.WithTimeout(s.Ctx, 45*time.Second)
+		defer cancel()
+		err := s.Source.Probe(ctx)
+		s.Update(func() {
+			s.ProxyTesting = false
+			if err != nil {
+				s.ProxyFeedback = "连接失败：" + err.Error()
+				return
+			}
+			s.ProxyFeedback = "连接成功。"
+		})
+	}()
 }
 
 func (s *State) project(state core.State, snapshots []downloader.Snapshot) {

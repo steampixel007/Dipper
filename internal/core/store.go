@@ -16,6 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"dipper.local/dipper/internal/proxy"
 	_ "modernc.org/sqlite"
 )
 
@@ -297,6 +298,9 @@ func (c *Core) SetSettings(s Settings) error     { return c.UpdateSettings(conte
 func (c *Core) UpdateSettings(ctx context.Context, settings Settings) error {
 	if strings.TrimSpace(settings.DownloadRoot) == "" || settings.UploadLimitBytes < 0 {
 		return errors.New("invalid download root or upload limit")
+	}
+	if err := proxy.Validate(settings.ProxyMode, settings.ProxyURL); err != nil {
+		return err
 	}
 	root, err := filepath.Abs(settings.DownloadRoot)
 	if err != nil {

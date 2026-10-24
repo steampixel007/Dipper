@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"dipper.local/dipper/internal/proxy"
 )
 
 type Anime struct {
@@ -87,6 +89,9 @@ func New(baseURL string) *Client {
 		base: u, initErr: err,
 		http: &http.Client{
 			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				Proxy: proxy.Func,
+			},
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				if len(via) >= 5 {
 					return errors.New("mikan: too many redirects")
@@ -241,4 +246,15 @@ func (c *Client) Cover(ctx context.Context, imageURL string) ([]byte, error) {
 		return nil, fmt.Errorf("%w: expected an image", ErrStructure)
 	}
 	return body, nil
+}
+
+// Probe checks the source origin the way a real request reaches it, rate
+// limit and proxy included, without parsing the page it gets back.
+func (c *Client) Probe(ctx context.Context) error {
+	root, err := c.endpoint("/", nil)
+	if err != nil {
+		return err
+	}
+	_, _, err = c.get(ctx, root, 1<<20)
+	return err
 }

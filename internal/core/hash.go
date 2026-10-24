@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"dipper.local/dipper/internal/proxy"
 )
 
 func canonicalHash(s string) (string, error) {
@@ -74,7 +76,10 @@ func resolveHash(ctx context.Context, r Resource) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	client := http.Client{Timeout: 30 * time.Second}
+	client := http.Client{
+		Timeout:   30 * time.Second,
+		Transport: &http.Transport{Proxy: proxy.Func},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err

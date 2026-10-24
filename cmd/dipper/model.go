@@ -60,6 +60,11 @@ type Download struct {
 type Saved struct {
 	Root          string
 	Upload        string
+	ProxyMode     int
+	ProxyURL      string
+	ProxyAuto     string
+	ProxyFeedback string
+	ProxyTesting  bool
 	SourceRoute   string
 	Subscriptions []Subscription
 	Downloads     []Download

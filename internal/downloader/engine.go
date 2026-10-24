@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"dipper.local/dipper/internal/proxy"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
@@ -174,6 +175,7 @@ func newEngine(config Config, configure func(*torrent.ClientConfig)) (_ *Engine,
 	cfg.ListenPort = 0
 	cfg.Seed = true
 	cfg.UploadRateLimiter = e.limiter
+	cfg.HTTPProxy = proxy.Func
 	if configure != nil {
 		configure(cfg)
 	}
@@ -347,7 +349,11 @@ func fetchTorrentSpec(ctx context.Context, source string) (*torrent.TorrentSpec,
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "Dipper/1")
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	client := &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: &http.Transport{Proxy: proxy.Func},
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetch torrent: %w", err)
 	}

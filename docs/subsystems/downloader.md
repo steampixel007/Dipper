@@ -137,6 +137,9 @@ All tasks share one upload limit, set from `Settings.UploadLimitBytes` and
 defaulted to 1 MiB/s. The UI labels it MB/s. The limit is shared rather than
 per-task, so starting a second task does not double the total upload.
 
+HTTP trackers, webseeds and torrent metadata fetches go through the proxy
+chosen in settings (`internal/proxy`); peer connections stay direct.
+
 Uploading starts during the download, not after it. `Config.UploadLimit` of zero
 means the 1 MiB/s default, and a negative value means no limit. At runtime
 `SetUploadLimit(0)` sets the upload budget to zero and a negative value removes

@@ -389,6 +389,36 @@ func TestUISettingsBusyDisablesChangesAndQuit(t *testing.T) {
 	}
 }
 
+func TestUISettingsProxyModesAndCustomAddress(t *testing.T) {
+	s := uiFixture(t, "settings")
+	tt := ui.NewTester(s.view, 1320, 860)
+	if rect, ok := tt.Find("网络与代理"); !ok || rect.Y > 780 {
+		for range 4 {
+			tt.Wheel(660, 430, 0, 120)
+			tt.Advance(100 * time.Millisecond)
+		}
+	}
+	uiRequireText(t, tt, "网络与代理", "代理", "跟随系统代理：http://127.0.0.1:7897", "自动", "关闭", "自定义")
+
+	uiClick(t, tt, "关闭")
+	if s.ProxyMode != 1 || s.ProxyURL != "" {
+		t.Fatalf("direct mode = %d, address = %q", s.ProxyMode, s.ProxyURL)
+	}
+
+	uiClick(t, tt, "自定义")
+	if s.ProxyMode != 2 {
+		t.Fatalf("custom mode = %d", s.ProxyMode)
+	}
+	uiRequireText(t, tt, "代理地址")
+	if rect, ok := tt.Find("代理地址"); ok {
+		tt.ClickAt(rect.X+rect.W/2, rect.Y+rect.H/2)
+	}
+	tt.Type("127.0.0.1:7897")
+	if s.ProxyURL != "127.0.0.1:7897" {
+		t.Fatalf("typed address = %q", s.ProxyURL)
+	}
+}
+
 func TestUIRenderScreensOffline(t *testing.T) {
 	dir := t.TempDir()
 	if err := renderScreens(dir); err != nil {

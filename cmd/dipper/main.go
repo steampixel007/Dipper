@@ -14,6 +14,7 @@ import (
 	"dipper.local/dipper/internal/core"
 	"dipper.local/dipper/internal/downloader"
 	"dipper.local/dipper/internal/instance"
+	"dipper.local/dipper/internal/proxy"
 	"dipper.local/dipper/internal/source"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -100,6 +101,7 @@ func main() {
 		failStartup(err)
 		return
 	}
+	proxy.Configure(settings.ProxyMode, settings.ProxyURL)
 	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(abs, "engine"), UploadLimit: settings.UploadLimitBytes})
 	if err != nil {
 		failStartup(fmt.Errorf("无法打开下载状态：%w", err))
