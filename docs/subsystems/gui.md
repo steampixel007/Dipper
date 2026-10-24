@@ -81,6 +81,12 @@ starting the engine. If activation of an already-running window fails, the
 process exits with an error instead of continuing — two processes on one data
 directory would corrupt the SQLite file and the task folder.
 
+`newAppState` attaches the core, source and running downloader before saved
+settings are loaded. Loading settings applies the upload limit and projects
+download snapshots, so the downloader must already be present.
+`TestStartupStateHasDownloader` guards this startup wiring without starting
+network activity.
+
 ## Rendering
 
 `ui_render.go` holds a fixed sample state used to render each page's layout

@@ -109,10 +109,7 @@ func main() {
 	}
 	defer engine.Close()
 	adapter.engine = engine
-	s := newState(abs)
-	s.Ctx = ctx
-	s.Source = src
-	s.Core = kernel
+	s := newAppState(ctx, abs, src, kernel, engine)
 	mygo.Power.OnSuspend(func() { engine.SetSuspended(true) })
 	mygo.Power.OnResume(func() { engine.SetSuspended(false) })
 	if err = s.loadSaved(); err != nil {
@@ -254,6 +251,15 @@ func main() {
 	if err = mygo.App.Run(); err != nil {
 		failStartup(err)
 	}
+}
+
+func newAppState(ctx context.Context, dir string, src *source.Client, kernel *core.Core, engine *downloader.Engine) *State {
+	s := newState(dir)
+	s.Ctx = ctx
+	s.Source = src
+	s.Core = kernel
+	s.Engine = engine
+	return s
 }
 
 func trayIconPNG(dark bool) []byte {
