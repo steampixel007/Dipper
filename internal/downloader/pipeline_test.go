@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"dipper.local/dipper/internal/core"
 )
@@ -44,7 +45,11 @@ func TestCoreRealEnginePipelineAndRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "core-selected resource downloaded by real engine", func() bool { return one(t, e).Complete })
+	waitFor(t, "metadata arrival", 60*time.Second, func() bool {
+		s := e.Snapshot()
+		return len(s) == 1 && s[0].TotalBytes > 0
+	})
+	waitFor(t, "core-selected resource downloaded by real engine", 30*time.Second, func() bool { return one(t, e).Complete })
 	snapshot := one(t, e)
 	if snapshot.InfoHash != seed.mi.HashInfoBytes().HexString() || snapshot.ID != snapshot.InfoHash {
 		t.Fatalf("core identity differs from real torrent: %+v", snapshot)
@@ -86,6 +91,6 @@ func TestCoreRealEnginePipelineAndRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertState(c, e)
-	waitFor(t, "real engine restored after core restart", func() bool { return one(t, e).Complete })
+	waitFor(t, "real engine restored after core restart", 30*time.Second, func() bool { return one(t, e).Complete })
 	checkFiles(t, seed, one(t, e).Folder)
 }

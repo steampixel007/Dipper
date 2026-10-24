@@ -51,7 +51,7 @@ func TestRealSharedUploadBudgetAndCloseStopsPayload(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	waitFor(t, "imported files verified", func() bool {
+	waitFor(t, "imported files verified", 30*time.Second, func() bool {
 		s := source.Snapshot()
 		return len(s) == 2 && s[0].Complete && s[1].Complete
 	})
@@ -62,7 +62,7 @@ func TestRealSharedUploadBudgetAndCloseStopsPayload(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	waitFor(t, "both resources upload through one client", func() bool {
+	waitFor(t, "both resources upload through one client", 30*time.Second, func() bool {
 		s := source.Snapshot()
 		return s[0].UploadedBytes > 0 && s[1].UploadedBytes > 0
 	})

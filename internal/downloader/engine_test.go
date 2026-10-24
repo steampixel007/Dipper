@@ -101,14 +101,14 @@ func newFixture(t *testing.T, size int) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "seed verification", func() bool { return f.torrent.Complete().Bool() })
+	waitFor(t, "seed verification", 30*time.Second, func() bool { return f.torrent.Complete().Bool() })
 	f.magnet = "magnet:?xt=urn:btih:" + f.mi.HashInfoBytes().HexString() + "&x.pe=" + url.QueryEscape(f.seed.ListenAddrs()[0].String())
 	return f
 }
 
-func waitFor(t *testing.T, what string, condition func() bool) {
+func waitFor(t *testing.T, what string, budget time.Duration, condition func() bool) {
 	t.Helper()
-	deadline := time.NewTimer(30 * time.Second)
+	deadline := time.NewTimer(budget)
 	defer deadline.Stop()
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()
@@ -158,7 +158,14 @@ func TestRealMagnetPauseRestoreAndManualStop(t *testing.T) {
 	if err := e.Ensure(task); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "real payload and measured download speed", func() bool {
+	// The loopback handshake and magnet metadata exchange once consumed a
+	// whole 30 s budget on a windows-latest run (the metadata landed 4 ms
+	// past the deadline), so that phase gets its own headroom while the
+	// payload observation stays tight.
+	waitFor(t, "metadata arrival", 60*time.Second, func() bool {
+		return one(t, e).TotalBytes > 0
+	})
+	waitFor(t, "real payload and measured download speed", 30*time.Second, func() bool {
 		s := one(t, e)
 		return s.DownloadedBytes >= 128<<10 && s.DownloadSpeed > 0 && s.CompletedBytes > 0 && !s.Complete
 	})
@@ -193,7 +200,7 @@ func TestRealMagnetPauseRestoreAndManualStop(t *testing.T) {
 	if err := e.Resume(task.ID); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "local metadata and verified partial data", func() bool {
+	waitFor(t, "local metadata and verified partial data", 30*time.Second, func() bool {
 		s := one(t, e)
 		return s.TotalBytes > 0 && s.CompletedBytes >= 64<<10
 	})
@@ -204,7 +211,7 @@ func TestRealMagnetPauseRestoreAndManualStop(t *testing.T) {
 	e.mu.Lock()
 	e.tasks[task.ID].torrent.AddPeers([]torrent.PeerInfo{{Addr: torrent.StringAddr(fresh.seed.ListenAddrs()[0].String()), Source: torrent.PeerSourceDirect, Trusted: true}})
 	e.mu.Unlock()
-	waitFor(t, "complete download", func() bool { return one(t, e).Complete })
+	waitFor(t, "complete download", 30*time.Second, func() bool { return one(t, e).Complete })
 	complete := one(t, e)
 	if complete.Progress != 1 || complete.Status != StatusSeeding || complete.DownloadedBytes < complete.TotalBytes {
 		t.Fatalf("completion snapshot: %+v", complete)
@@ -236,13 +243,13 @@ func TestRealMagnetPauseRestoreAndManualStop(t *testing.T) {
 	if err := e.Resume(task.ID); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "explicit resume after manual stop", func() bool { return one(t, e).Status == StatusSeeding })
+	waitFor(t, "explicit resume after manual stop", 30*time.Second, func() bool { return one(t, e).Status == StatusSeeding })
 	beforeClose := one(t, e)
 	if err := e.Close(); err != nil {
 		t.Fatal(err)
 	}
 	e = testEngine(t, config)
-	waitFor(t, "exit preserves running intent", func() bool { return one(t, e).Status == StatusSeeding })
+	waitFor(t, "exit preserves running intent", 30*time.Second, func() bool { return one(t, e).Status == StatusSeeding })
 	if got := one(t, e); got.Paused || got.ManuallyStopped || got.DownloadedBytes != beforeClose.DownloadedBytes {
 		t.Fatalf("close changed intent or counter epoch: %+v", got)
 	}
@@ -258,7 +265,10 @@ func TestRealUploadRatioStopsAndCloseStopsPayload(t *testing.T) {
 	if err := e.Ensure(task); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "engine downloaded seed", func() bool { return one(t, e).Complete })
+	waitFor(t, "metadata arrival", 60*time.Second, func() bool {
+		return one(t, e).TotalBytes > 0
+	})
+	waitFor(t, "engine downloaded seed", 30*time.Second, func() bool { return one(t, e).Complete })
 	// An independent library client consumes this engine's data; the original seed is not added.
 	cfg := torrent.NewDefaultClientConfig()
 	localConfig(cfg)
@@ -275,11 +285,11 @@ func TestRealUploadRatioStopsAndCloseStopsPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	leecher.DownloadAll()
-	waitFor(t, "measured upload payload", func() bool {
+	waitFor(t, "measured upload payload", 30*time.Second, func() bool {
 		s := one(t, e)
 		return s.UploadedBytes > 0 && s.UploadSpeed > 0
 	})
-	waitFor(t, "ratio policy stop", func() bool { return one(t, e).AutoStopped })
+	waitFor(t, "ratio policy stop", 30*time.Second, func() bool { return one(t, e).AutoStopped })
 	s := one(t, e)
 	if s.UploadedBytes < s.DownloadedBytes || s.UploadSpeed != 0 || s.Status != StatusCompleted {
 		t.Fatalf("ratio stop: %+v", s)
@@ -361,7 +371,7 @@ func TestTorrentURLPersistsMetadataAndRejectsCollisions(t *testing.T) {
 	}
 	server.Close()
 	e = testEngine(t, config)
-	waitFor(t, "URL metadata restored with server offline", func() bool { return one(t, e).TotalBytes > 0 })
+	waitFor(t, "URL metadata restored with server offline", 30*time.Second, func() bool { return one(t, e).TotalBytes > 0 })
 	if err := e.SetUploadLimit(64 << 10); err != nil || e.limiter.Limit() != rate.Limit(64<<10) {
 		t.Fatalf("global limiter not updated: %v", err)
 	}
