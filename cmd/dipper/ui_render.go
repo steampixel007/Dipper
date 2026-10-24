@@ -71,6 +71,11 @@ func renderScreens(dir string) error {
 			s.beginBackfill()
 			s.Checked[s.ResourceList[0].ID] = true
 		}},
+		{name: "08-close-window", page: "browse", configure: func(s *State) {
+			s.Platform = "windows"
+			s.TrayAvailable = true
+			s.ClosePrompt = true
+		}},
 	} {
 		s := uiRenderFixture()
 		s.Page = screen.page

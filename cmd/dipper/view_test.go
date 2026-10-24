@@ -23,6 +23,7 @@ func uiFixture(t *testing.T, page string) *State {
 	t.Helper()
 	uiTestImages.Do(loadImages)
 	s := uiRenderFixture()
+	s.Dir = t.TempDir()
 	s.Page = page
 	s.ReduceEffects = true
 	if s.Core != nil || s.Engine != nil || s.Source != nil {
@@ -375,13 +376,13 @@ func TestUISettingsBusyDisablesChangesAndQuit(t *testing.T) {
 	s.Quit = func() { quit = true }
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiClick(t, tt, "选择文件夹")
-	if rect, ok := tt.Find("保存并完全退出"); !ok || rect.Y > 830 {
+	if rect, ok := tt.Find(windowText.quit); !ok || rect.Y > 830 {
 		for range 4 {
 			tt.Wheel(660, 430, 0, 120)
 			tt.Advance(100 * time.Millisecond)
 		}
 	}
-	uiClick(t, tt, "保存并完全退出")
+	uiClick(t, tt, windowText.quit)
 	before := s.ReduceEffects
 	uiClick(t, tt, "减少动态效果")
 	if picked || quit || before != s.ReduceEffects || s.SaveError != "" {
@@ -425,7 +426,7 @@ func TestUIRenderScreensOffline(t *testing.T) {
 		t.Fatal(err)
 	}
 	var previous []byte
-	for _, name := range []string{"01-browse", "02-filter", "03-following", "04-downloads", "05-settings", "06-source-error", "07-backfill"} {
+	for _, name := range []string{"01-browse", "02-filter", "03-following", "04-downloads", "05-settings", "06-source-error", "07-backfill", "08-close-window"} {
 		data, err := os.ReadFile(filepath.Join(dir, name+".png"))
 		if err != nil {
 			t.Fatal(err)

@@ -17,7 +17,7 @@ On first launch the app reads the current season. Choose an anime → fansub gro
 
 The Downloads page shows real progress plus total and per-task upload and download speeds, and supports pause, resume, retry, open folder, and stop seeding. All tasks share the upload limit, 1 MiB/s by default (labeled MB/s in the UI). After completion, seeding stops once cumulative upload/download reaches 1:1 or effective seeding reaches 1 hour.
 
-Closing the window sends it to the tray; choosing "完全退出" (Quit completely) in Settings or the tray stops all background activity. If tray creation fails, closing the window exits directly so the process cannot become unreachable.
+On Windows and Linux, closing the window asks whether to keep following and downloading in the tray or quit. The optional "记住我的选择" (Remember my choice) checkbox saves the action; Settings can change it or reset it to ask each time. If the tray is unavailable, the window stays open and offers an explicit exit. On macOS, closing keeps the app running and clicking its Dock icon reopens the window; Quit or Command-Q stops background activity. Settings and the tray menu also provide "退出 Dipper" (Quit Dipper).
 
 Only one main process runs per data directory; launching the program again brings back the existing window and restores it when minimized. The single-instance check runs before database and download engine initialization, and a failed wake-up shows an error instead of continuing to contend for the state files.
 
