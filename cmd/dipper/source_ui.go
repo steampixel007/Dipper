@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -11,12 +12,46 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
+type sourceRoute struct {
+	Label  string
+	Origin string
+}
+
+var defaultSourceRoutes = []sourceRoute{{Label: "线路一 · mikanime.tv（默认）", Origin: "https://mikanime.tv"}, {Label: "线路二 · mikanani.me", Origin: "https://mikanani.me"}}
+
+func (s *State) routeLabels() []string {
+	labels := make([]string, len(s.SourceRoutes))
+	for i, r := range s.SourceRoutes {
+		labels[i] = r.Label
+	}
+	return labels
+}
+
+func (s *State) sourceOrigin(label string) string {
+	for _, r := range s.SourceRoutes {
+		if label == r.Label {
+			return r.Origin
+		}
+	}
+	return source.DefaultOrigin
+}
+
+func (s *State) sourceLabel(origin string) string {
+	for _, r := range s.SourceRoutes {
+		if origin == r.Origin {
+			return r.Label
+		}
+	}
+	return s.SourceRoutes[0].Label
+}
+
 func newState(dir string) *State {
-	s := &State{Dir: dir, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, Ctx: context.Background()}
+	s := &State{Dir: dir, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes}
 	s.Update = func(fn func()) { fn() }
 	s.setCurrentSeason()
 	s.Root, s.SaveError = initialDownloadRoot()
 	s.Upload = "1 MB/s"
+	s.SourceRoute = defaultSourceRoutes[0].Label
 	return s
 }
 
@@ -83,6 +118,61 @@ func (s *State) refreshCatalog() {
 				s.KnownAnime[a.ID] = v
 			}
 			s.loadCovers(ctx, rows)
+		})
+	}()
+}
+
+func routeError(err error) string {
+	var httpErr *source.HTTPError
+	switch {
+	case errors.Is(err, source.ErrChallenge):
+		return "这条线路需要人机验证，稍后再试或换一条线路。"
+	case errors.Is(err, source.ErrStructure):
+		return "这条线路返回的页面无法识别，换一条线路试试。"
+	case errors.As(err, &httpErr):
+		return fmt.Sprintf("这条线路返回 HTTP %d，换一条线路试试。", httpErr.StatusCode)
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return "这条线路连接超时，换一条线路试试。"
+	case err != nil:
+		return "这条线路暂时连不上，换一条线路试试。"
+	}
+	return ""
+}
+
+func (s *State) switchSourceRoute(label string) {
+	if s.Source == nil || s.SourceTesting || label == s.SourceRoute {
+		return
+	}
+	previousLabel := s.SourceRoute
+	previousOrigin := s.Source.Origin()
+	targetOrigin := s.sourceOrigin(label)
+	s.SourceRoute = label
+	s.SourceTesting = true
+	s.SourceRouteError = ""
+	s.Notice = ""
+	go func() {
+		if err := s.Source.Retarget(targetOrigin); err != nil {
+			s.Update(func() {
+				s.SourceRoute = previousLabel
+				s.SourceTesting = false
+				s.SourceRouteError = "无法使用这条线路：" + err.Error()
+			})
+			return
+		}
+		year, _ := strconv.Atoi(s.Year)
+		_, err := s.Source.Catalog(s.Ctx, year, s.Season)
+		s.Update(func() {
+			s.SourceTesting = false
+			if err != nil {
+				s.Source.Retarget(previousOrigin)
+				s.SourceRoute = previousLabel
+				s.SourceRouteError = routeError(err)
+				return
+			}
+			s.SourceRouteError = ""
+			s.Notice = "已切换线路，现有追番不受影响。"
+			s.save()
+			s.refreshCatalog()
 		})
 	}()
 }

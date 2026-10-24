@@ -28,10 +28,16 @@ components, and interaction conventions are specified in
 
 ## State and the update loop
 
-`State` embeds `Saved`, which is the part persisted to `data/preferences.json`;
-the rest is per-run. UI code reads `State` and calls `Update` to schedule a
-repaint, and never mutates it from another goroutine without going through
-`Update`.
+`State` embeds `Saved`, whose window preferences are persisted to
+`data/preferences.json`; the rest is per-run. UI code reads `State` and calls
+`Update` to schedule a repaint, and never mutates it from another goroutine
+without going through `Update`.
+
+The Mikan origin is a saved preference, not core state: the window tests a new
+origin with one catalog probe before committing it, rolls the client back on
+failure, and applies the saved origin at startup. The preference stores the
+ASCII origin URL, never the Chinese label, so rewording the label does not
+reset a user's choice.
 
 Each async load has a revision and a cancel pair:
 

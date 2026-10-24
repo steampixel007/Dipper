@@ -39,6 +39,9 @@ is different from `0`.
 One `Client` is shared by the catalog, subscriptions and covers, because the
 rate limit lives on it. Reusing one client is what keeps the app inside the
 source's tolerance; constructing one per call would multiply the request rate.
+`Retarget` swaps the origin under the client's lock while keeping the same
+rate limit, transport and in-flight requests, so switching lines does not
+multiply the request rate either.
 
 `get` takes a single-slot `gate` channel for its whole request, then waits until
 `nextRequest` before sending, and sets `nextRequest` to now plus 1500 ms. Every

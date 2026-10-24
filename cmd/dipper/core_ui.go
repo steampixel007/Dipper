@@ -32,7 +32,13 @@ func coreRule(r Rule) core.Rule {
 }
 func uiRule(r core.Rule) Rule { return cloneRule(Rule{All: r.All, None: r.None, Any: r.Any}) }
 
-type preferences struct{ IntroHidden, ReduceEffects bool }
+type preferences struct {
+	IntroHidden   bool
+	ReduceEffects bool
+	// SourceOrigin persists the ASCII origin, not the Chinese label, so
+	// rewording the route label does not reset the user's choice.
+	SourceOrigin string
+}
 
 func uploadLimit(label string) int64 {
 	switch label {
@@ -78,6 +84,14 @@ func (s *State) loadSaved() error {
 	}
 	s.IntroHidden = pref.IntroHidden
 	s.ReduceEffects = pref.ReduceEffects
+	origin := pref.SourceOrigin
+	if origin == "" {
+		origin = source.DefaultOrigin
+	}
+	if err := s.Source.Retarget(origin); err != nil {
+		return fmt.Errorf("应用线路设置：%w", err)
+	}
+	s.SourceRoute = s.sourceLabel(origin)
 	s.project(state, s.Engine.Snapshot())
 	return nil
 }
@@ -95,17 +109,21 @@ func (s *State) save() {
 		s.SaveError = "限速设置失败：" + err.Error()
 		return
 	}
-	b, _ := json.Marshal(preferences{s.IntroHidden, s.ReduceEffects})
+	if err := s.savePreferences(); err != nil {
+		s.SaveError = "界面设置保存失败：" + err.Error()
+	} else {
+		s.SaveError = ""
+	}
+}
+
+func (s *State) savePreferences() error {
+	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, SourceOrigin: s.sourceOrigin(s.SourceRoute)})
 	path := filepath.Join(s.Dir, "preferences.json")
 	err := os.WriteFile(path+".tmp", b, 0644)
 	if err == nil {
 		err = os.Rename(path+".tmp", path)
 	}
-	if err != nil {
-		s.SaveError = "界面设置保存失败：" + err.Error()
-	} else {
-		s.SaveError = ""
-	}
+	return err
 }
 
 func (s *State) project(state core.State, snapshots []downloader.Snapshot) {

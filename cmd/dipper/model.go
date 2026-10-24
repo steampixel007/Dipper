@@ -60,6 +60,7 @@ type Download struct {
 type Saved struct {
 	Root          string
 	Upload        string
+	SourceRoute   string
 	Subscriptions []Subscription
 	Downloads     []Download
 	IntroHidden   bool
@@ -107,6 +108,9 @@ type State struct {
 	SuggestedResource          Resource
 	OnlyMatches                bool
 	Notice, SaveError          string
+	SourceTesting              bool
+	SourceRouteError           string
+	SourceRoutes               []sourceRoute
 	SourceFailed               bool
 	CatalogScroll              ui.ScrollState
 	ResourceScroll             ui.ScrollState

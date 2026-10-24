@@ -85,9 +85,6 @@ func main() {
 	mygo.Theme.SetSource(mygo.ThemeLight)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s := newState(abs)
-	s.Ctx = ctx
-	s.Source = src
 	adapter := &engineAdapter{}
 	kernel, err := core.Open(filepath.Join(abs, "dipper.db"), core.Options{DownloadRoot: *root, Downloader: adapter, Feed: func(ctx context.Context, animeID, groupID string) ([]core.Resource, error) {
 		resources, err := src.Feed(ctx, animeID, groupID)
@@ -98,7 +95,6 @@ func main() {
 		return
 	}
 	defer kernel.Close()
-	s.Core = kernel
 	settings, err := kernel.GetSettings()
 	if err != nil {
 		failStartup(err)
@@ -111,12 +107,22 @@ func main() {
 	}
 	defer engine.Close()
 	adapter.engine = engine
-	s.Engine = engine
+	s := newState(abs)
+	s.Ctx = ctx
+	s.Source = src
+	s.Core = kernel
 	mygo.Power.OnSuspend(func() { engine.SetSuspended(true) })
 	mygo.Power.OnResume(func() { engine.SetSuspended(false) })
 	if err = s.loadSaved(); err != nil {
 		failStartup(err)
 		return
+	}
+	if *origin != "" {
+		if err = src.Retarget(*origin); err != nil {
+			failStartup(err)
+			return
+		}
+		s.SourceRoute = s.sourceLabel(*origin)
 	}
 	if err = kernel.Start(); err != nil {
 		failStartup(err)
