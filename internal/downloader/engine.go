@@ -230,10 +230,12 @@ func (e *Engine) Ensure(task Task) error {
 		e.mu.Unlock()
 		return ErrClosed
 	}
-	if existing := e.tasks[task.ID]; existing != nil {
-		err = sameTask(existing.Task, task)
+	// Fast path: a confirmed replay keeps its intent without resolving the
+	// source again. A mismatch may just be an unresolved alias of the stored
+	// folder, so it falls through to the canonical comparison under the lock.
+	if existing := e.tasks[task.ID]; existing != nil && sameTask(existing.Task, task) == nil {
 		e.mu.Unlock()
-		return err
+		return nil
 	}
 	e.mu.Unlock()
 
@@ -255,14 +257,17 @@ func (e *Engine) Ensure(task Task) error {
 	if err := requestCtx.Err(); err != nil {
 		return err
 	}
-	if existing := e.tasks[task.ID]; existing != nil {
-		return sameTask(existing.Task, task)
-	}
+	// Canonicalize before the replay check: a first admission stores the
+	// folder resolved, while a racing or restarted replay may still carry the
+	// unresolved alias, and sameTask compares path strings.
 	if err = os.MkdirAll(task.Folder, 0o755); err != nil {
 		return err
 	}
 	if task.Folder, err = filepath.EvalSymlinks(task.Folder); err != nil {
 		return err
+	}
+	if existing := e.tasks[task.ID]; existing != nil {
+		return sameTask(existing.Task, task)
 	}
 	for _, other := range e.tasks {
 		if overlappingFolders(other.Folder, task.Folder) {

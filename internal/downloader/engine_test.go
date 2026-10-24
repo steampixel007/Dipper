@@ -370,6 +370,48 @@ func TestTorrentURLPersistsMetadataAndRejectsCollisions(t *testing.T) {
 	}
 }
 
+// TestEnsureReplayThroughFolderAlias pins the Ensure replay contract when the
+// caller's folder differs from the stored one only by an unresolved alias (a
+// Windows short name, a symlinked parent) and the folder does not exist while
+// the replay is in flight. The concurrent form of this window is what made
+// TestConcurrentEnsureAndClose fail on hosts whose temp path is itself an
+// alias (macOS /var, the Windows CI runner's 8.3 profile path).
+func TestEnsureReplayThroughFolderAlias(t *testing.T) {
+	root := t.TempDir()
+	vault := filepath.Join(root, "filesvault")
+	if err := os.Mkdir(vault, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	alias, ok := folderAlias(t, vault)
+	if !ok {
+		t.Skip("no folder alias available on this platform")
+	}
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state")})
+	task := Task{
+		ID:     "alias",
+		Magnet: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567",
+		Folder: filepath.Join(alias, "files"),
+	}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := filepath.EvalSymlinks(filepath.Join(vault, "files"))
+	if err != nil || samePath(canonical, task.Folder) {
+		t.Fatal("admission did not canonicalize the alias; the test proves nothing")
+	}
+	// A replay racing the first admission still carries the unresolved alias,
+	// because entry resolution only canonicalizes an existing folder.
+	if err := os.RemoveAll(filepath.Join(vault, "files")); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal("replay through an unresolved alias was rejected: ", err)
+	}
+	if len(e.Snapshot()) != 1 {
+		t.Fatal("replay duplicated the task")
+	}
+}
+
 func TestConcurrentEnsureAndClose(t *testing.T) {
 	root := t.TempDir()
 	e := testEngine(t, Config{DataDir: filepath.Join(root, "state")})
