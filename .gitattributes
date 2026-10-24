@@ -1,1 +1,6 @@
-*.sh text eol=lf
+# gofmt (CI Formatting step) requires LF, and Windows checkouts default to
+# autocrlf, so every text file must come out with LF on every platform.
+* text=auto eol=lf
+
+*.jpg binary
+*.png binary
