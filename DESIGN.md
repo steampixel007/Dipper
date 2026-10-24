@@ -35,14 +35,22 @@ go run build/icon/gen.go all build/icon/dist
 ```
 
 The app consumes the mark: the window icon and the tray come from the PNG
-copies in `cmd/dipper/assets/` (`dipper-icon.png`, `dipper-tray.png`), and the
-sidebar chip and the cover fallback render `assets/dipper.svg` (a copy of
-`dipper-small.svg`). Refresh the copies with the same generator:
+copies in `cmd/dipper/assets/` (`dipper-icon.png`, `dipper-tray.png`,
+`dipper-tray-dark.png`), and the sidebar chip and the cover fallback render
+`assets/dipper.svg` (a copy of `dipper-small.svg`). The tray follows the
+taskbar's appearance: the ink cut on a light bar, the dark cut on a dark one.
+Refresh the copies with the same generator:
 
 ```sh
 go run build/icon/gen.go app 256 cmd/dipper/assets/dipper-icon.png
 go run build/icon/gen.go tray 32 cmd/dipper/assets/dipper-tray.png
+go run build/icon/gen.go tray -dark 32 cmd/dipper/assets/dipper-tray-dark.png
+go run build/icon/gen.go syso amd64 cmd/dipper/dipper_windows_amd64.syso
+go run build/icon/gen.go syso arm64 cmd/dipper/dipper_windows_arm64.syso
 ```
+
+The `.syso` files embed the tile icon in the Windows executable's resources,
+which the taskbar and Explorer read before any window exists.
 
 ## Design principles
 

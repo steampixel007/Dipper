@@ -7,6 +7,7 @@
 //	go run build/icon/gen.go tray 20 build/icon/dist/tray-20.png
 //	go run build/icon/gen.go tray -dark 20 build/icon/dist/tray-dark-20.png
 //	go run build/icon/gen.go ico build/icon/dist/dipper.ico
+//	go run build/icon/gen.go syso amd64 cmd/dipper/dipper_windows_amd64.syso
 //	go run build/icon/gen.go all build/icon/dist
 package main
 
@@ -405,6 +406,130 @@ func fatal(err error) {
 	os.Exit(1)
 }
 
+// saveSyso writes a COFF object whose .rsrc section holds the app icon as
+// Windows resources (PNG images, Vista-style). Placed in the main package,
+// the Go linker embeds it in the executable, which otherwise has no icon at
+// all: the window class, the taskbar's fallback and Explorer all read it.
+func saveSyso(path, arch string) error {
+	var machine, relocType uint16
+	switch arch {
+	case "amd64":
+		machine, relocType = 0x8664, 3 // IMAGE_REL_AMD64_ADDR32NB
+	case "arm64":
+		machine, relocType = 0xAA64, 2 // IMAGE_REL_ARM64_ADDR32NB
+	default:
+		return fmt.Errorf("unsupported architecture %q", arch)
+	}
+	const rtIcon, rtGroupIcon = uint16(3), uint16(14)
+	sizes := []int{16, 24, 32, 48, 64, 128, 256}
+	res := map[uint16]map[uint16][]byte{rtIcon: {}, rtGroupIcon: {}}
+	var group bytes.Buffer
+	_ = binary.Write(&group, binary.LittleEndian, [3]uint16{0, 1, uint16(len(sizes))})
+	for i, size := range sizes {
+		var b bytes.Buffer
+		if err := png.Encode(&b, render(size, appOps())); err != nil {
+			return err
+		}
+		id := uint16(i + 1)
+		res[rtIcon][id] = b.Bytes()
+		dim := byte(size)
+		if size >= 256 {
+			dim = 0
+		}
+		group.Write([]byte{dim, dim, 0, 0})
+		_ = binary.Write(&group, binary.LittleEndian, [2]uint16{1, 32})
+		_ = binary.Write(&group, binary.LittleEndian, uint32(len(res[rtIcon][id])))
+		_ = binary.Write(&group, binary.LittleEndian, id)
+	}
+	res[rtGroupIcon][1] = group.Bytes()
+
+	// The resource section: three directory levels (type, id, language),
+	// then the data entries, then the data. Data entries hold
+	// section-relative offsets; relocations let the linker fix them when it
+	// places the section in the executable.
+	le := binary.LittleEndian
+	dirSize := func(n int) int { return 16 + 8*n }
+	types := []uint16{rtIcon, rtGroupIcon}
+	entries := 0
+	size := dirSize(len(types))
+	for _, t := range types {
+		size += dirSize(len(res[t])) + len(res[t])*dirSize(1)
+		entries += len(res[t])
+	}
+	entriesAt, dataAt := size, size+16*entries
+	raw := make([]byte, dataAt)
+	var relocs []uint32
+	var data bytes.Buffer
+	le.PutUint16(raw[14:], uint16(len(types))) // id entries of the root
+	next := dirSize(len(types))
+	entry := entriesAt
+	for _, t := range types {
+		le.PutUint32(raw[next+16:], uint32(t))
+		le.PutUint32(raw[next+20:], uint32(next+dirSize(len(res[t])))|0x80000000)
+		le.PutUint16(raw[next+14:], uint16(len(res[t])))
+		next += dirSize(len(res[t]))
+		for id := uint16(1); ; id++ {
+			blob, ok := res[t][id]
+			if !ok {
+				break
+			}
+			le.PutUint32(raw[next+16:], uint32(id))
+			le.PutUint32(raw[next+20:], uint32(next+dirSize(1))|0x80000000)
+			langDir := next + dirSize(1)
+			le.PutUint32(raw[langDir+16:], 0x0409) // en-US
+			le.PutUint32(raw[langDir+20:], uint32(entry))
+			next += dirSize(1)
+
+			for data.Len()%8 != 0 {
+				data.WriteByte(0)
+			}
+			le.PutUint32(raw[entry:], uint32(dataAt+data.Len()))
+			le.PutUint32(raw[entry+4:], uint32(len(blob)))
+			relocs = append(relocs, uint32(entry))
+			entry += 16
+			data.Write(blob)
+		}
+	}
+	raw = append(raw, data.Bytes()...)
+	for len(raw)%4 != 0 {
+		raw = append(raw, 0)
+	}
+
+	var out bytes.Buffer
+	const headerSize, sectionHeaderSize = 20, 40
+	rawAt := headerSize + sectionHeaderSize
+	relocAt := rawAt + len(raw)
+	symbolsAt := relocAt + 10*len(relocs)
+	_ = binary.Write(&out, le, struct {
+		Machine, Sections                   uint16
+		Time, Symbols, SymbolCount          uint32
+		OptionalHeaderSize, Characteristics uint16
+	}{machine, 1, 0, uint32(symbolsAt), 1, 0, 0})
+	_ = binary.Write(&out, le, struct {
+		Name                                        [8]byte
+		VirtualSize, VirtualAddress, RawSize, RawAt uint32
+		RelocAt, LineNumbersAt                      uint32
+		Relocs, LineNumbers                         uint16
+		Characteristics                             uint32
+	}{[8]byte{'.', 'r', 's', 'r', 'c'}, 0, 0, uint32(len(raw)), uint32(rawAt), uint32(relocAt), 0, uint16(len(relocs)), 0, 0x40000040})
+	out.Write(raw)
+	for _, r := range relocs {
+		_ = binary.Write(&out, le, r)         // VirtualAddress
+		_ = binary.Write(&out, le, uint32(0)) // symbol 0: the section
+		_ = binary.Write(&out, le, relocType)
+	}
+	out.Write([]byte{'.', 'r', 's', 'r', 'c', 0, 0, 0})
+	_ = binary.Write(&out, le, uint32(0)) // Value
+	_ = binary.Write(&out, le, uint16(1)) // SectionNumber
+	_ = binary.Write(&out, le, uint16(0)) // Type
+	out.Write([]byte{3, 0})               // IMAGE_SYM_CLASS_STATIC, no aux symbols
+	_ = binary.Write(&out, le, uint32(4)) // the string table: its own size
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, out.Bytes(), 0o644)
+}
+
 func atoi(s string) int {
 	var n int
 	if _, err := fmt.Sscan(s, &n); err != nil || n <= 0 {
@@ -415,7 +540,8 @@ func atoi(s string) int {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: gen.go app <size> <out.png> | gen.go symbol <size> <out.png> |"+
-		" gen.go tray [-dark] <size> <out.png> | gen.go ico <out.ico> | gen.go all <dir>")
+		" gen.go tray [-dark] <size> <out.png> | gen.go ico <out.ico> |"+
+		" gen.go syso <amd64|arm64> <out.syso> | gen.go all <dir>")
 	os.Exit(2)
 }
 
@@ -456,6 +582,13 @@ func main() {
 			usage()
 		}
 		if err := saveICO(os.Args[2], []int{16, 24, 32, 48, 64, 128, 256}, appOps); err != nil {
+			fatal(err)
+		}
+	case "syso":
+		if len(os.Args) != 4 {
+			usage()
+		}
+		if err := saveSyso(os.Args[3], os.Args[2]); err != nil {
 			fatal(err)
 		}
 	case "all":

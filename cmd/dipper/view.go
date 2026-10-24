@@ -27,6 +27,9 @@ var brandIconPNG []byte
 //go:embed assets/dipper-tray.png
 var brandTrayPNG []byte
 
+//go:embed assets/dipper-tray-dark.png
+var brandTrayDarkPNG []byte
+
 var covers = map[string]*ui.Bitmap{}
 
 // Cover URLs whose load is in flight; loadCovers sets and clears them.

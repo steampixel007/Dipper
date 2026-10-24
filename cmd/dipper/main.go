@@ -188,11 +188,14 @@ func main() {
 				})
 			}()
 		}
-		tray, err := mygo.NewTray(mygo.TrayOptions{Icon: brandTrayPNG, ToolTip: "Dipper · 自动追番", Menu: mygo.NewMenu([]*mygo.MenuItem{
+		tray, err := mygo.NewTray(mygo.TrayOptions{ID: "dipper.main", Icon: brandTrayPNG, ToolTip: "Dipper · 自动追番", Menu: mygo.NewMenu([]*mygo.MenuItem{
 			{Label: "打开 Dipper", Click: func(*mygo.MenuItem, *mygo.Window) { showMain() }},
 			{Label: "完全退出", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 		})})
 		if err == nil && tray != nil {
+			setTrayIcon := trayIconSetter(tray.Dark, func(png []byte) error { return tray.SetIcon(png, false) })
+			setTrayIcon()
+			tray.OnAppearanceChange(setTrayIcon)
 			win.OnClose(func(e *mygo.CloseEvent) {
 				if !quitting {
 					e.PreventDefault()
@@ -242,6 +245,21 @@ func main() {
 	})
 	if err = mygo.App.Run(); err != nil {
 		failStartup(err)
+	}
+}
+
+func trayIconPNG(dark bool) []byte {
+	if dark {
+		return brandTrayDarkPNG
+	}
+	return brandTrayPNG
+}
+
+func trayIconSetter(dark func() bool, set func(png []byte) error) func() {
+	return func() {
+		if err := set(trayIconPNG(dark())); err != nil {
+			slog.Warn("tray icon", "error", err)
+		}
 	}
 }
 

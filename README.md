@@ -54,9 +54,13 @@ tray cuts (light and dark), the tile app icon, and `dipper.ico` from the SVG
 masters in `build/icon/`. The generator is dependency-free and embeds the same
 geometry as the masters. The app embeds its own copies — refresh them with
 `go run build/icon/gen.go app 256 cmd/dipper/assets/dipper-icon.png` and
-`go run build/icon/gen.go tray 32 cmd/dipper/assets/dipper-tray.png`; the
-in-app vector mark is a copy of `dipper-small.svg` at
-`cmd/dipper/assets/dipper.svg`.
+`go run build/icon/gen.go tray 32 cmd/dipper/assets/dipper-tray.png` and
+`go run build/icon/gen.go tray -dark 32 cmd/dipper/assets/dipper-tray-dark.png`;
+the in-app vector mark is a copy of `dipper-small.svg` at
+`cmd/dipper/assets/dipper.svg`. The Windows executables carry the icon as a
+resource: `go run build/icon/gen.go syso amd64 cmd/dipper/dipper_windows_amd64.syso`
+(and `arm64`) embeds it, so the taskbar and Explorer show the bird even before
+a window sets its own icon.
 
 Development diagnostic flags:
 
