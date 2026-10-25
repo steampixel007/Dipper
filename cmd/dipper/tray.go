@@ -11,6 +11,14 @@ type desktopTray interface {
 	Destroy()
 }
 
+func trayMenuLabel(platform, label string) string {
+	// MyGo measures Windows 11 menu items tightly enough to crowd the last glyph.
+	if platform == "windows" {
+		return label + "  "
+	}
+	return label
+}
+
 type trayController struct {
 	current  desktopTray
 	create   func() (desktopTray, error)
