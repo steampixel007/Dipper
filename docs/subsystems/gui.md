@@ -148,9 +148,10 @@ in flight is marked in `loadingCovers`, set when the load is scheduled and
 cleared on decode, on failure, and for the rest when the load's context is
 cancelled; the card shows a Blocks indicator while the flag is set, and the
 bird mark only once the cover truly has none. The flag also keeps a second
-`loadCovers` call from fetching the same URL again. Loaded covers preserve the
-entire image and its aspect ratio inside the fixed frame, with `blueWash`
-behind any unused space, in browsing, detail and following views.
+`loadCovers` call from fetching the same URL again. Loaded covers fill the
+fixed frame in browsing, detail and following views: scaled uniformly,
+centered, and cropped to the frame, so a poster never shows filler beside it.
+`blueWash` is the box for the loading and no-cover states.
 
 **Known limit:** the cache has no size cap and no eviction. A cover is fetched
 once and then kept forever, so the folder grows with every anime ever browsed.
