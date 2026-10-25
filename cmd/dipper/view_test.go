@@ -465,7 +465,8 @@ func countDark(tt *ui.Tester, x0, y0, x1, y1 int, inkOnly bool) int {
 
 // The bird mark replaced the letter-D placeholders: no bare "D" text node
 // remains, the sidebar chip is the bird on a wash rather than a solid ink
-// square, and a cover-less card shows the bird, not a blue letter.
+// square, drawn large enough to read next to the wordmark, and a cover-less
+// card shows the bird, not a blue letter.
 func TestUIBrandMarkReplacesLetterPlaceholders(t *testing.T) {
 	s := uiFixture(t, "browse")
 	s.Catalog[0].Cover = ""
@@ -477,8 +478,8 @@ func TestUIBrandMarkReplacesLetterPlaceholders(t *testing.T) {
 	if !ok {
 		t.Fatal("wordmark missing")
 	}
-	if chip := countDark(tt, int(word.X)-42, int(word.Y)-6, int(word.X)-10, int(word.Y+word.H)+6, false); chip < 30 || chip > 400 {
-		t.Errorf("sidebar chip dark pixels = %d; want the bird on a wash, not a solid square (30-400)", chip)
+	if chip := countDark(tt, int(word.X)-50, int(word.Y)-10, int(word.X)-10, int(word.Y+word.H)+10, false); chip < 100 || chip > 500 {
+		t.Errorf("sidebar chip dark pixels = %d; want the bird at reading scale on a wash, not a solid square (100-500)", chip)
 	}
 	title, ok := tt.Find("星海旅记")
 	if !ok {

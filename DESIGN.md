@@ -37,8 +37,11 @@ go run build/icon/gen.go all build/icon/dist
 The app consumes the mark: the window icon and the tray come from the PNG
 copies in `cmd/dipper/assets/` (`dipper-icon.png`, `dipper-tray.png`,
 `dipper-tray-dark.png`), and the sidebar chip and the cover fallback render
-`assets/dipper.svg` (a copy of `dipper-small.svg`). The tray follows the
-taskbar's appearance: the ink cut on a light bar, the dark cut on a dark one.
+`assets/dipper.svg` (a copy of `dipper-small.svg`). The sidebar chip is a
+40 DIP `blueWash` tile carrying the bird at 32 DIP, so the mark reads at
+least as large as the 18 DIP nav icons beside the 22 DIP wordmark. The tray
+follows the taskbar's appearance: the ink cut on a light bar, the dark cut
+on a dark one.
 Refresh the copies with the same generator:
 
 ```sh
