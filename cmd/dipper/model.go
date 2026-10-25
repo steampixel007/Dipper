@@ -121,6 +121,8 @@ type State struct {
 	CatalogScroll              ui.ScrollState
 	ResourceScroll             ui.ScrollState
 	Dir                        string
+	ConfigDir                  string
+	CoverDir                   string
 	PickFolder                 func()
 	OpenFolder                 func(string)
 	Quit                       func()

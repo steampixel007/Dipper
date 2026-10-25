@@ -24,6 +24,8 @@ func uiFixture(t *testing.T, page string) *State {
 	uiTestImages.Do(loadImages)
 	s := uiRenderFixture()
 	s.Dir = t.TempDir()
+	s.ConfigDir = s.Dir
+	s.CoverDir = filepath.Join(s.Dir, "covers")
 	s.Page = page
 	s.ReduceEffects = true
 	if s.Core != nil || s.Engine != nil || s.Source != nil {

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"dipper.local/dipper/internal/appdata"
 	"dipper.local/dipper/internal/core"
 	"dipper.local/dipper/internal/downloader"
 	"dipper.local/dipper/internal/instance"
@@ -44,21 +45,17 @@ func main() {
 		}
 		return
 	}
-	if *data == "" {
-		exe, _ := os.Executable()
-		*data = filepath.Join(filepath.Dir(exe), "..", "data")
-	}
-	abs, err := filepath.Abs(*data)
+	paths, err := appdata.Resolve(*data)
 	if err != nil {
 		failStartup(err)
 		return
 	}
-	if err = os.MkdirAll(abs, 0755); err != nil {
+	if err = os.MkdirAll(paths.DataDir, 0700); err != nil {
 		failStartup(err)
 		return
 	}
 	launchCtx, launchCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	owner, err := instance.Acquire(launchCtx, abs)
+	owner, err := instance.Acquire(launchCtx, paths.DataDir)
 	launchCancel()
 	if err != nil {
 		failStartup(err)
@@ -68,7 +65,15 @@ func main() {
 		return
 	}
 	defer owner.Close()
-	logPath := filepath.Join(abs, "app.log")
+	if err = os.MkdirAll(paths.LogDir, 0700); err != nil {
+		failStartup(err)
+		return
+	}
+	if err = os.MkdirAll(paths.ConfigDir, 0700); err != nil {
+		failStartup(err)
+		return
+	}
+	logPath := paths.Log()
 	if info, e := os.Stat(logPath); e == nil && info.Size() > 2<<20 {
 		_ = os.Remove(logPath + ".1")
 		_ = os.Rename(logPath, logPath+".1")
@@ -82,12 +87,12 @@ func main() {
 	log.SetOutput(logFile)
 	slog.SetDefault(slog.New(slog.NewJSONHandler(logFile, nil)))
 	mygo.App.SetName("Dipper")
-	mygo.App.SetPath(mygo.PathUserData, abs)
+	mygo.App.SetPath(mygo.PathUserData, paths.DataDir)
 	mygo.Theme.SetSource(mygo.ThemeLight)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	adapter := &engineAdapter{}
-	kernel, err := core.Open(filepath.Join(abs, "dipper.db"), core.Options{DownloadRoot: *root, Downloader: adapter, Feed: func(ctx context.Context, animeID, groupID string) ([]core.Resource, error) {
+	kernel, err := core.Open(filepath.Join(paths.DataDir, "dipper.db"), core.Options{DownloadRoot: *root, Downloader: adapter, Feed: func(ctx context.Context, animeID, groupID string) ([]core.Resource, error) {
 		resources, err := src.Feed(ctx, animeID, groupID)
 		return coreResources(resources), err
 	}})
@@ -102,14 +107,16 @@ func main() {
 		return
 	}
 	proxy.Configure(settings.ProxyMode, settings.ProxyURL)
-	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(abs, "engine"), UploadLimit: settings.UploadLimitBytes})
+	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(paths.DataDir, "engine"), UploadLimit: settings.UploadLimitBytes})
 	if err != nil {
 		failStartup(fmt.Errorf("无法打开下载状态：%w", err))
 		return
 	}
 	defer engine.Close()
 	adapter.engine = engine
-	s := newAppState(ctx, abs, src, kernel, engine)
+	s := newAppState(ctx, paths.DataDir, src, kernel, engine)
+	s.ConfigDir = paths.ConfigDir
+	s.CoverDir = paths.CoverDir
 	mygo.Power.OnSuspend(func() { engine.SetSuspended(true) })
 	mygo.Power.OnResume(func() { engine.SetSuspended(false) })
 	if err = s.loadSaved(); err != nil {
@@ -230,7 +237,7 @@ func main() {
 			}
 		})
 		s.refreshCatalog()
-		_ = os.WriteFile(filepath.Join(abs, "ready"), []byte(version), 0644)
+		_ = os.WriteFile(filepath.Join(paths.DataDir, "ready"), []byte(version), 0644)
 		slog.Info("ready", "version", version)
 		go func() {
 			ticker := time.NewTicker(time.Second)

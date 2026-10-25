@@ -39,8 +39,12 @@ func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 				return
 			}
 			key := fmt.Sprintf("%x", sha256.Sum256([]byte(a.Cover)))
-			path := filepath.Join(s.Dir, "covers", key)
-			data, _ := os.ReadFile(path)
+			var data []byte
+			path := ""
+			if s.CoverDir != "" {
+				path = filepath.Join(s.CoverDir, key)
+				data, _ = os.ReadFile(path)
+			}
 			if len(data) == 0 {
 				var err error
 				data, err = s.Source.Cover(ctx, a.Cover)
@@ -56,7 +60,7 @@ func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 					covers[a.Cover] = bitmap
 				}
 			})
-			if s.Dir != "" {
+			if s.CoverDir != "" {
 				if os.MkdirAll(filepath.Dir(path), 0755) == nil {
 					_ = os.WriteFile(path, data, 0644)
 				}

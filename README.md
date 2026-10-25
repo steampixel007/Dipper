@@ -7,7 +7,7 @@ mountain torrents — a nod to the BitTorrent kind of torrent.
 
 ## Launch
 
-On Windows, double-click **`bin/dipper.exe`** after building. With the repository layout (`bin/` beside `data/`), the program uses `data/` by default; it needs no browser, Node, or external downloader.
+On Windows, double-click **`bin/dipper.exe`** after building. By default the program stores application state under the current user's LocalAppData directory; it needs no browser, Node, or external downloader. Pass `--data PATH` to use a single application-state directory during development.
 
 An unsigned local build may first show the Windows SmartScreen "未知发布者" (Unknown publisher) prompt. The single-instance check runs only after you choose to continue; official distribution should use code signing to remove this prompt.
 
@@ -23,11 +23,16 @@ Only one main process runs per data directory; launching the program again bring
 
 ## Files and state
 
-- `data/dipper.db`: SQLite — follow rules, read/skipped entries, fixed anime directories, download submission records.
-- `data/engine/`: BT metadata, piece verification records, pause/stop intents, and transfer checkpoints.
-- `data/preferences.json`: UI preferences.
-- `data/covers/`: poster cache; `data/app.log`: local logs.
-- `data/instance.lock` / `data/instance.json`: single-instance ownership and the local window wake-up channel; after an abnormal exit the system releases the lock, so the next launch can recover.
+Default application directories (where `$XDG_*_HOME` is set to an absolute path on Linux, it replaces the corresponding fallback):
+
+| Platform | Persistent data (`dipper.db`, `engine/`, `instance.lock`, `instance.json`) | UI settings (`preferences.json`) | Cover cache (`covers/`) | Logs (`app.log`) |
+| --- | --- | --- | --- | --- |
+| Windows | `%LOCALAPPDATA%/Dipper/` | Same data directory | `%LOCALAPPDATA%/Dipper/Cache/covers/` | `%LOCALAPPDATA%/Dipper/Logs/` |
+| macOS | `~/Library/Application Support/Dipper/` | Same data directory | `~/Library/Caches/Dipper/covers/` | `~/Library/Logs/Dipper/` |
+| Linux | `$XDG_DATA_HOME/dipper/` (default `~/.local/share/dipper/`) | `$XDG_CONFIG_HOME/dipper/` (default `~/.config/dipper/`) | `$XDG_CACHE_HOME/dipper/covers/` (default `~/.cache/dipper/covers/`) | `$XDG_STATE_HOME/dipper/` (default `~/.local/state/dipper/`) |
+
+`dipper.db` holds follow rules, read/skipped entries, fixed anime directories and download submissions. `engine/` holds BT metadata, piece verification records, pause/stop intents and transfer checkpoints. The instance files prevent concurrent access and forward a later launch to the existing window. An abnormal exit releases the system lock. Explicit `--data PATH` keeps all these files in one directory: `dipper.db`, `engine/`, `preferences.json`, `covers/` and `app.log`. The previous executable-adjacent `data/` directory is not read automatically; use `--data ./data` to run with that directory.
+
 - Default video directory: the `Dipper` folder under the system user's "视频" (Videos) directory (Windows uses the video path actually configured in the system, macOS uses `~/Movies/Dipper`, Linux follows `XDG_VIDEOS_DIR`), changeable in Settings. The old default `Downloads/Dipper` is updated to the new default after a restart; custom paths and the fixed directories of subscribed anime are kept.
 
 The same anime keeps the directory created on its first fansub group across groups; changing the global root affects only new anime. Different anime with the same name use different directories. Each BT release gets its own hash subdirectory that preserves the original file names and directory structure inside the torrent.
