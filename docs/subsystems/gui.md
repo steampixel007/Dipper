@@ -32,8 +32,9 @@ components, and interaction conventions are specified in
 ## State and the update loop
 
 `State` embeds `Saved`, whose window preferences are persisted to
-`data/preferences.json`; the rest is per-run. UI code reads `State` and calls
-`Update` to schedule a repaint, and never mutates it from another goroutine
+`State.ConfigDir/preferences.json` (the data directory on Windows/macOS and
+with explicit `--data`, the XDG config directory on Linux); the rest is per-run.
+UI code reads `State` and calls `Update` to schedule a repaint, and never mutates it from another goroutine
 without going through `Update`.
 
 The Mikan origin is a saved preference, not core state: the window tests a new
@@ -78,9 +79,11 @@ in-flight flag are per-run state, not settings.
 
 ## Startup
 
-`main` acquires the single instance first, before opening the database or
-starting the engine. If activation of an already-running window fails, the
-process exits with an error instead of continuing — two processes on one data
+`main` resolves application directories through `internal/appdata` and acquires
+the single instance lock in the data directory before opening the database or
+starting the engine. Explicit `--data` keeps settings, covers and logs in that
+same directory. If activation of an already-running window fails, the process
+exits with an error instead of continuing — two processes on one data
 directory would corrupt the SQLite file and the task folder.
 
 `newAppState` attaches the core, source and running downloader before saved
@@ -143,7 +146,8 @@ network access.
 
 `covers.go` loads a cover on a background goroutine and decodes it on the UI
 thread, because the bitmap cache belongs to that thread. The file is named by
-the SHA-256 of its URL and cached under `data/covers/`. A cover whose load is
+the SHA-256 of its URL and cached under `State.CoverDir` (the system cache
+directory by default, or `--data/covers` when explicitly configured). A cover whose load is
 in flight is marked in `loadingCovers`, set when the load is scheduled and
 cleared on decode, on failure, and for the rest when the load's context is
 cancelled; the card shows a Blocks indicator while the flag is set, and the

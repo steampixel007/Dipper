@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"time"
@@ -47,7 +48,10 @@ func (s *State) sourceLabel(origin string) string {
 }
 
 func newState(dir string) *State {
-	s := &State{Dir: dir, Platform: runtime.GOOS, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes}
+	s := &State{Dir: dir, ConfigDir: dir, Platform: runtime.GOOS, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes}
+	if dir != "" {
+		s.CoverDir = filepath.Join(dir, "covers")
+	}
 	s.Update = func(fn func()) { fn() }
 	s.setCurrentSeason()
 	s.Root, s.SaveError = initialDownloadRoot()

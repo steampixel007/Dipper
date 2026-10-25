@@ -87,8 +87,9 @@ interleaved read-modify-write cycles. Its two tables hold the current model and
 durable download tasks. The [core page](subsystems/core.md) describes the
 schema and the write ordering.
 
-`internal/instance` also keeps one process per data directory and forwards a
-second launch to the existing window. Two processes must not independently
+`internal/appdata` chooses the platform data, settings, cache and log directories;
+`--data` selects a single directory for all of them. `internal/instance` keeps
+one process per data directory and forwards a second launch to the existing window. Two processes must not independently
 write the same database and BT state. The [instance page](subsystems/instance.md)
 describes the lock and its recovery behavior.
 

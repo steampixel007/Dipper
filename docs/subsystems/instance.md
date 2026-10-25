@@ -22,9 +22,10 @@ Two processes on one data directory corrupt it. The SQLite file is written by
 `core`, and each task folder under the download root is written by the
 downloader; neither is designed for a second writer.
 
-The lock is therefore taken **before** the database is opened. `Acquire` is the
-first thing `main` does, and a failure to acquire is a startup error, not a
-degraded mode.
+The lock is therefore taken **before** the database is opened. `main` resolves
+the platform data directory (or the explicit `--data` directory), then calls
+`Acquire` before opening persistent state. A failure to acquire is a startup
+error, not a degraded mode.
 
 ## How ownership works
 

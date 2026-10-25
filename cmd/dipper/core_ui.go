@@ -98,7 +98,7 @@ func (s *State) loadSaved() error {
 }
 
 func (s *State) loadPreferences() error {
-	pref, err := readPreferences(s.Dir)
+	pref, err := readPreferences(s.ConfigDir)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (s *State) save() {
 
 func (s *State) savePreferences() error {
 	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, CloseBehavior: s.CloseBehavior, SourceOrigin: s.sourceOrigin(s.SourceRoute)})
-	path := filepath.Join(s.Dir, "preferences.json")
+	path := filepath.Join(s.ConfigDir, "preferences.json")
 	err := os.WriteFile(path+".tmp", b, 0644)
 	if err == nil {
 		err = os.Rename(path+".tmp", path)
