@@ -34,6 +34,8 @@ func TestUICoverFillsFrameWithoutStretching(t *testing.T) {
 		} {
 			draw.Draw(poster, r, image.NewUniform(marker), image.Point{}, draw.Src)
 		}
+		// The equal-arms check has a 2-px floor, so it discriminates only at
+		// the largest card; keep a 180x245 entry in the table.
 		for _, size := range [][2]int{{180, 245}, {52, 72}, {68, 94}} {
 			t.Run(fmt.Sprintf("%s/%dx%d", orientation, size[0], size[1]), func(t *testing.T) {
 				url := t.Name()
