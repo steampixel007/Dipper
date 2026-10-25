@@ -15,7 +15,7 @@ done its job. It implements `core.Downloader`, whose contract is in
 
 | File | Holds |
 | --- | --- |
-| `engine.go` | The engine, task registration, the client's configuration, progress sampling, pause and resume |
+| `engine.go` | The engine, task registration, the client's configuration, progress sampling, pause and resume, manual stop, removal |
 | `storage.go` | `diskStorage`, `diskTorrent`, `diskPiece`: path safety and piece-to-file mapping |
 | `policy.go` | `policyState`: byte counters, seeding time, and the stop decision |
 | `platform_windows.go`, `platform_other.go` | The platform-specific pieces of the engine |
@@ -37,6 +37,21 @@ Replaying `Ensure` for the same ID and folder keeps the task's pause and manual
 stop intent. The tracker list and URL parameters may differ between calls; a new
 magnet is still checked for identity. A repeat submission does not fetch a
 changed URL again just to check it.
+
+`Pause`, `Stop` and `Resume` change a task's durable intent. A manual stop is
+allowed on a task that has not finished: it detaches the torrent, halts the
+payload, and keeps the verified pieces, so a later `Resume` continues instead of
+starting over. `Resume` clears both the pause and the manual stop.
+
+`Remove` forgets a task: it drops the torrent, rewrites the checkpoint without
+the task, then deletes the content folder and the saved metadata. The checkpoint
+goes first, so a crash mid-removal cannot resurrect a task whose folder is
+already gone. Files that could not be deleted stay as orphans and the error is
+reported; submitting the same hash again re-verifies what survived. The piece
+completion database keeps the removed task's rows — the completion API exposes
+no way to delete a torrent's rows, and admission sets
+`IgnoreUnverifiedPieceCompletion`, so a re-added task re-verifies those pieces
+instead of trusting them.
 
 When both a magnet and a torrent URL are given, metadata is fetched over HTTP
 first, the two hashes are compared, and the trackers and explicit peers are
@@ -208,6 +223,10 @@ Points a change is expected to prove:
 - A sample gap over 3 seconds does not advance seeding time.
 - A task with zero downloaded bytes still reaches its target when the import size
   is known.
+- A mid-download manual stop halts the payload and keeps the verified pieces;
+  a resume finishes the download.
+- Removing a task leaves it out of the checkpoint and deletes its content folder
+  and metadata; the same hash can be submitted again and re-verifies.
 - The upload limit is shared across two concurrent tasks.
 - A v2-only torrent is refused.
 - Two tasks whose folders overlap are refused, as is a content folder inside the

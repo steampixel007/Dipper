@@ -223,7 +223,7 @@ func TestRealMagnetPauseRestoreAndManualStop(t *testing.T) {
 		t.Fatalf("completion snapshot: %+v", complete)
 	}
 	checkFiles(t, f, task.Folder)
-	if err := e.StopSeeding(task.ID); err != nil {
+	if err := e.Stop(task.ID); err != nil {
 		t.Fatal(err)
 	}
 	stopped := one(t, e)
@@ -260,6 +260,80 @@ func TestRealMagnetPauseRestoreAndManualStop(t *testing.T) {
 		t.Fatalf("close changed intent or counter epoch: %+v", got)
 	}
 	t.Logf("verified %d bytes across pause/restart; payload down=%d up=%d", complete.TotalBytes, complete.DownloadedBytes, complete.UploadedBytes)
+}
+
+func TestStopHaltsPayloadBeforeCompletion(t *testing.T) {
+	f := newFixture(t, 2<<20)
+	root := t.TempDir()
+	task := Task{ID: "episode/hash", Magnet: f.magnet, Folder: filepath.Join(root, "content")}
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state"), UploadLimit: 128 << 10})
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "metadata arrival", 60*time.Second, func() bool { return one(t, e).TotalBytes > 0 })
+	waitFor(t, "payload underway", 30*time.Second, func() bool {
+		s := one(t, e)
+		return s.CompletedBytes > 0 && !s.Complete
+	})
+	if err := e.Stop(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	stopped := one(t, e)
+	if stopped.Status != StatusStopped || stopped.Complete {
+		t.Fatalf("mid-download stop: %+v", stopped)
+	}
+	time.Sleep(150 * time.Millisecond)
+	stats := f.torrent.Stats()
+	up := stats.BytesWrittenData.Int64()
+	stats = f.torrent.Stats()
+	if delta := stats.BytesWrittenData.Int64() - up; delta != 0 {
+		t.Fatalf("payload continued after stop: %d", delta)
+	}
+	if err := e.Resume(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "resume finishes the download", 30*time.Second, func() bool { return one(t, e).Complete })
+	checkFiles(t, f, task.Folder)
+}
+
+func TestRemoveForgetsTaskAndDeletesFiles(t *testing.T) {
+	f := newFixture(t, 2<<20)
+	root := t.TempDir()
+	state := filepath.Join(root, "state")
+	task := Task{ID: "episode/hash", Magnet: f.magnet, Folder: filepath.Join(root, "content")}
+	e := testEngine(t, Config{DataDir: state, UploadLimit: 128 << 10})
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "download completes", 30*time.Second, func() bool { return one(t, e).Complete })
+	checkFiles(t, f, task.Folder)
+	if err := e.Remove(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := e.Snapshot(); len(got) != 0 {
+		t.Fatalf("removed task still listed: %+v", got)
+	}
+	if _, err := os.Stat(task.Folder); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("content folder survived removal: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(state, "tasks.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(b, []byte(task.ID)) {
+		t.Fatal("checkpoint still records the removed task")
+	}
+	// The same hash can be submitted again: the piece checkpoints it left
+	// behind were never verified by this new task, so admission ignores them
+	// and the files are re-verified instead of trusted.
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "re-download completes", 30*time.Second, func() bool { return one(t, e).Complete })
+	checkFiles(t, f, task.Folder)
+	if err := e.Remove("episode/other"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("removing an unknown task: %v", err)
+	}
 }
 
 func TestRealUploadRatioStopsAndCloseStopsPayload(t *testing.T) {

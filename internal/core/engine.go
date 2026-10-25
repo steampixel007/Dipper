@@ -271,6 +271,68 @@ func (c *Core) RemoveSubscription(ctx context.Context, id string) error {
 	return err
 }
 
+// DeleteTask forgets a delivery the user no longer wants. The outbox record is
+// dropped — otherwise Start's replay would submit it again — and every pending
+// or downloaded item carrying the hash is marked skipped, so neither the
+// scheduler nor a later check brings it back. Excluded items keep their
+// exclusion: they never asked for this download. Removing the transfer itself,
+// including its files, belongs to the downloader's Remove; core never touches
+// the disk.
+func (c *Core) DeleteTask(ctx context.Context, hash string) error {
+	return c.forgetTask(ctx, hash, ItemSkipped, "已删除下载任务", true)
+}
+
+// ResetTask forgets a delivery the user wants again. The outbox record is
+// dropped and downloaded items carrying the hash return to pending, so the
+// next flush submits a fresh download. Items already waiting to submit stay
+// as they are, and excluded items keep their exclusion.
+func (c *Core) ResetTask(ctx context.Context, hash string) error {
+	return c.forgetTask(ctx, hash, ItemPending, "等待重新下载", false)
+}
+
+func (c *Core) forgetTask(ctx context.Context, hash string, status ItemStatus, reason string, read bool) error {
+	err := c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
+		found := false
+		if _, err := taskByHash(ctx, tx, hash); err == nil {
+			found = true
+			if _, err := tx.ExecContext(ctx, `DELETE FROM core_tasks WHERE hash=?`, hash); err != nil {
+				return err
+			}
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		for id, sub := range s.Subscriptions {
+			changed := false
+			for key, item := range sub.Items {
+				wanted := item.Status == ItemDownloaded ||
+					(status == ItemSkipped && item.Status == ItemPending)
+				if item.Hash != hash || !wanted {
+					continue
+				}
+				item.Status = status
+				item.Read = read
+				item.Reason = reason
+				item.LastError = ""
+				item.NextRetry = time.Time{}
+				sub.Items[key] = item
+				changed = true
+				found = true
+			}
+			if changed {
+				s.Subscriptions[id] = sub
+			}
+		}
+		if !found {
+			return ErrTaskNotFound
+		}
+		return nil
+	})
+	if err == nil {
+		c.signal()
+	}
+	return err
+}
+
 func (c *Core) getSubscription(ctx context.Context, id string) (Subscription, error) {
 	var sub Subscription
 	err := c.transaction(ctx, func(_ *sql.Tx, s *diskState) error {

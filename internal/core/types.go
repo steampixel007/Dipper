@@ -7,10 +7,11 @@ import (
 )
 
 var (
-	ErrClosed   = errors.New("core is closed")
-	ErrNotFound = errors.New("subscription not found")
-	ErrExists   = errors.New("subscription already exists")
-	ErrStale    = errors.New("subscription changed during check")
+	ErrClosed       = errors.New("core is closed")
+	ErrNotFound     = errors.New("subscription not found")
+	ErrTaskNotFound = errors.New("download task not found")
+	ErrExists       = errors.New("subscription already exists")
+	ErrStale        = errors.New("subscription changed during check")
 )
 
 type Anime struct{ ID, Title, Cover, Summary, Day string }

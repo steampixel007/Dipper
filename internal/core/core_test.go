@@ -545,6 +545,91 @@ func TestRemoveSubscriptionCancelsInFlightSubmissionAndDropsItsTask(t *testing.T
 	}
 }
 
+func TestDeleteTaskDropsRecordAndSkipsItems(t *testing.T) {
+	a := resource("a", 1, "1080p")
+	hash, _ := ResourceHash(a)
+	d := &fakeDownloader{}
+	c := openTest(t, filepath.Join(t.TempDir(), "state.db"), Options{Downloader: d})
+	sub := create(t, c, anime, group, Rule{}, []Resource{a}, []string{a.ID})
+	waitFor(t, func() bool { return d.count() == 1 })
+	if err := c.DeleteTask(context.Background(), hash); err != nil {
+		t.Fatal(err)
+	}
+	item := current(t, c, sub.ID).Items[a.ID]
+	if item.Status != ItemSkipped || !item.Read {
+		t.Fatalf("deleted item: %+v", item)
+	}
+	if tasks, _ := c.ListTasks(); len(tasks) != 0 {
+		t.Fatalf("outbox kept the deleted task: %+v", tasks)
+	}
+	before := d.count()
+	if err := c.RetryPending(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if d.count() != before {
+		t.Fatal("deleted task was resubmitted")
+	}
+	if err := c.DeleteTask(context.Background(), hash); !errors.Is(err, ErrTaskNotFound) {
+		t.Fatalf("deleting a gone task: %v", err)
+	}
+}
+
+func TestDeleteTaskDropsFailingPendingSubmission(t *testing.T) {
+	a := resource("a", 1, "1080p")
+	hash, _ := ResourceHash(a)
+	d := &fakeDownloader{}
+	d.setFail(true)
+	c := openTest(t, filepath.Join(t.TempDir(), "state.db"), Options{Downloader: d})
+	sub, err := c.CreateSubscription(context.Background(), anime, group, Rule{}, []Resource{a}, []string{a.ID})
+	if err != nil && sub.ID == "" {
+		t.Fatalf("creation failed before commit: %v", err)
+	}
+	if err := c.DeleteTask(context.Background(), hash); err != nil {
+		t.Fatal(err)
+	}
+	if item := current(t, c, sub.ID).Items[a.ID]; item.Status != ItemSkipped {
+		t.Fatalf("deleted pending item: %+v", item)
+	}
+	if tasks, _ := c.ListTasks(); len(tasks) != 0 {
+		t.Fatalf("outbox kept the deleted task: %+v", tasks)
+	}
+	before := d.count()
+	if err := c.RetryPending(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if d.count() != before {
+		t.Fatal("deleted pending task was resubmitted")
+	}
+}
+
+func TestResetTaskDownloadsAgain(t *testing.T) {
+	a := resource("a", 1, "1080p")
+	hash, _ := ResourceHash(a)
+	d := &fakeDownloader{}
+	c := openTest(t, filepath.Join(t.TempDir(), "state.db"), Options{Downloader: d})
+	sub := create(t, c, anime, group, Rule{}, []Resource{a}, []string{a.ID})
+	waitFor(t, func() bool { return d.count() == 1 })
+	if err := c.ResetTask(context.Background(), hash); err != nil {
+		t.Fatal(err)
+	}
+	if item := current(t, c, sub.ID).Items[a.ID]; item.Status != ItemPending {
+		t.Fatalf("reset item: %+v", item)
+	}
+	if tasks, _ := c.ListTasks(); len(tasks) != 0 {
+		t.Fatalf("reset kept the outbox record: %+v", tasks)
+	}
+	if err := c.RetryPending(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { return d.count() == 2 })
+	if item := current(t, c, sub.ID).Items[a.ID]; item.Status != ItemDownloaded {
+		t.Fatalf("re-submitted item: %+v", item)
+	}
+	if got := d.calls[1]; got.Hash != hash {
+		t.Fatalf("resubmission carried %q", got.Hash)
+	}
+}
+
 func TestDirectoriesAreFixedAndPreviewMatchesCommit(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state.db")
 	d := &fakeDownloader{}

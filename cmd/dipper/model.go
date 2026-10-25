@@ -53,7 +53,7 @@ type Download struct {
 	ID, AnimeID, Title, Episode, Folder string
 	MB                                  int
 	Progress                            float64
-	Paused, Failed, SeedStopped         bool
+	Paused, Failed, Stopped             bool
 	SeedSeconds                         int
 	UploadedMB                          float64
 }
@@ -113,6 +113,8 @@ type State struct {
 	Confirm, Help, Suggestions bool
 	CancelPrompt               bool
 	CancelID                   string
+	RemovePrompt               bool
+	RemoveID                   string
 	SuggestedResource          Resource
 	OnlyMatches                bool
 	Notice, SaveError          string

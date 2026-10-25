@@ -372,6 +372,104 @@ func TestUIRemoveSubscriptionForwardsToCore(t *testing.T) {
 	}
 }
 
+func TestUIDownloadsOfferStopDeleteAndKeepTaskDismissal(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "停止下载", "删除")
+	uiClick(t, tt, "停止下载")
+	if s.Downloads[0].Stopped || s.Downloads[0].Progress != .43 {
+		t.Fatal("UI changed download state without an engine")
+	}
+	uiClick(t, tt, "删除")
+	uiRequireText(t, tt, "确认删除下载", "保留任务", "删除并重新下载", "删除任务")
+	uiClick(t, tt, "保留任务")
+	if s.RemovePrompt {
+		t.Fatal("keep must dismiss the dialog")
+	}
+	if len(s.Downloads) != 3 {
+		t.Fatal("dismissal changed the download list")
+	}
+}
+
+func TestUIRemoveDialogStopButtonAndLayout(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[:1]
+	s.Downloads[0].Stopped = true
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "已停止")
+	if tt.HasText("已完成") {
+		t.Fatal("a stopped mid-download task must not read as completed")
+	}
+	if _, ok := tt.Find("停止下载"); ok {
+		t.Fatal("a stopped task must not offer stopping again")
+	}
+	if _, ok := tt.Find("继续"); !ok {
+		t.Fatal("a stopped task must keep its resume action")
+	}
+}
+
+func TestUIRemoveDownloadForwardsDeleteAndRedownloadToCore(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		button string
+		notice string
+		want   core.ItemStatus
+	}{
+		{name: "delete", button: "确认删除下载任务", notice: "已删除该下载任务", want: core.ItemSkipped},
+		{name: "redownload", button: "确认删除并重新下载", notice: "已删除任务，将重新下载", want: core.ItemPending},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			kernel, err := core.Open(filepath.Join(t.TempDir(), "dipper.db"), core.Options{
+				DisableScheduler: true,
+				Feed:             func(context.Context, string, string) ([]core.Resource, error) { return nil, nil },
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { kernel.Close() })
+			res := core.Resource{ID: "bridge-1", Title: "1080p", Magnet: "magnet:?xt=urn:btih:" + strings.Repeat("ab", 20), Size: 100}
+			sub, err := kernel.CreateSubscription(context.Background(), core.Anime{ID: "bridge-anime", Title: "桥接番剧"}, core.Group{ID: "bridge-group", Name: "桥接字幕组"}, core.Rule{}, []core.Resource{res}, []string{"bridge-1"})
+			if err != nil && sub.ID == "" {
+				t.Fatalf("subscription not committed: %v", err)
+			}
+			hash, _ := core.ResourceHash(res)
+			s := uiFixture(t, "downloads")
+			s.Core = kernel
+			s.Engine = &downloader.Engine{}
+			s.Ctx = context.Background()
+			snapshot, err := kernel.Snapshot()
+			if err != nil {
+				t.Fatal(err)
+			}
+			s.project(snapshot, nil)
+			if len(s.Downloads) != 1 || s.Downloads[0].ID != hash {
+				t.Fatalf("projected downloads: %+v", s.Downloads)
+			}
+			tt := ui.NewTester(s.view, 1320, 860)
+			uiClick(t, tt, "删除")
+			uiClick(t, tt, tc.button)
+			deadline := time.Now().Add(2 * time.Second)
+			for s.Notice != tc.notice && time.Now().Before(deadline) {
+				time.Sleep(time.Millisecond)
+			}
+			if s.Notice != tc.notice {
+				t.Fatalf("notice = %q (error %q)", s.Notice, s.SaveError)
+			}
+			subs, err := kernel.Subscriptions()
+			if err != nil {
+				t.Fatal(err)
+			}
+			item := subs[0].Items["bridge-1"]
+			if item.Status != tc.want {
+				t.Fatalf("item status = %q, want %q", item.Status, tc.want)
+			}
+			if tasks, _ := kernel.ListTasks(); len(tasks) != 0 {
+				t.Fatalf("outbox kept the task: %+v", tasks)
+			}
+		})
+	}
+}
+
 func TestUIActionsDelegateInsteadOfChangingFixtureState(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	tt := ui.NewTester(s.view, 1320, 860)
@@ -379,7 +477,7 @@ func TestUIActionsDelegateInsteadOfChangingFixtureState(t *testing.T) {
 	uiClick(t, tt, "暂停")
 	uiClick(t, tt, "重试")
 	uiClick(t, tt, "停止做种")
-	if s.Downloads[0].Paused || !s.Downloads[1].Failed || s.Downloads[2].SeedStopped {
+	if s.Downloads[0].Paused || !s.Downloads[1].Failed || s.Downloads[2].Stopped {
 		t.Fatal("UI changed download state without an engine")
 	}
 	s.Page = "following"

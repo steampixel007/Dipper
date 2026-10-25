@@ -17,7 +17,7 @@ in. It has no UI dependency: the window calls it, it never calls the window.
 | --- | --- |
 | `types.go` | `Anime`, `Group`, `Resource`, `Rule`, `Item`, `Subscription`, `TaskRecord`, `Options`, and the sentinel errors |
 | `store.go` | `Core`, SQLite open and schema, the in-memory `diskState`, transactions, directory naming |
-| `engine.go` | `CreateSubscription`, `Check`, `DownloadExisting`, `UpdateRule`, `SetPaused`, `RemoveSubscription`, `RetryPending`, the scheduler and `flush` |
+| `engine.go` | `CreateSubscription`, `Check`, `DownloadExisting`, `UpdateRule`, `SetPaused`, `RemoveSubscription`, `DeleteTask`, `ResetTask`, `RetryPending`, the scheduler and `flush` |
 | `rules.go` | `Normalize`, `NormalizeRule`, `Match`, `ParseEpisode`, `SuggestWords` |
 | `hash.go` | `ResourceHash`, `resolveHash`, the bencode reader that derives a torrent's v1 info hash |
 | `download_root.go`, `video_*.go` | The default download root per platform |
@@ -159,6 +159,8 @@ DownloadExisting(ctx, subscriptionID, history, selectedIDs) error
 UpdateRule(ctx, subscriptionID, rule) error
 SetPaused(ctx, subscriptionID, paused) error
 RemoveSubscription(ctx, subscriptionID) error
+DeleteTask(ctx, hash) error
+ResetTask(ctx, hash) error
 Check(ctx, subscriptionID) error
 RetryPending(ctx) error
 PreviewDirectory(anime) (string, error)
@@ -217,6 +219,13 @@ and drops the task records the downloader has not accepted yet, so nothing new
 starts. Accepted transfers keep running and their records stay: `Start` replays
 them to restore the running engine. The anime directory record survives, so a
 later re-subscription gets the same folder. Files on disk are never touched.
+
+`DeleteTask` and `ResetTask` forget a single delivery. Both drop the outbox
+record — `Start`'s replay would otherwise submit it again — and return the
+hash's downloaded items to the state the user chose: `DeleteTask` marks them
+skipped so neither the scheduler nor a later check brings the download back,
+`ResetTask` marks them pending so the next flush submits it fresh. Neither
+touches the disk; the downloader's `Remove` deletes the transfer and its files.
 
 The default check interval is 15 minutes. A source or admission failure backs off
 exponentially from 1 minute to 1 hour. A manual check and `RetryPending` retry
