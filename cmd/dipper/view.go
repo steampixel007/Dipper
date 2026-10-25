@@ -203,6 +203,7 @@ func (s *State) view(c *ui.Context) {
 		})
 	})
 	s.confirmDialog(c)
+	s.cancelDialog(c)
 	s.helpDialog(c)
 	s.closeDialog(c)
 	if s.Page == "detail" && !s.Confirm && !s.Help && !s.ClosePrompt {
@@ -906,6 +907,43 @@ func (s *State) confirmDialog(c *ui.Context) {
 	})
 }
 
+func (s *State) cancelDialog(c *ui.Context) {
+	sub, ok := s.subscription(s.CancelID)
+	if !ok {
+		return
+	}
+	ui.DialogBase(c, &s.CancelPrompt, func(backdrop, panel ui.Element) {
+		backdrop.Background(scrim).Transition(fadeTransition)
+		panel.Width(460).Padding(28).Gap(18).Radius(12).Background(paper)
+		group := sub.GroupName
+		if group == "" {
+			group = "字幕组名称未知"
+		}
+		ui.Text(c, "确认取消追番").FontSize(23).FontWeight(700)
+		heading(c, s.anime(sub.AnimeID).Title)
+		ui.Column(c).Padding(16).Radius(8).Background(canvas).Gap(8).Children(func() {
+			ui.Text(c, "字幕组："+group).FontSize(13)
+			caption(c, "取消后不再自动检查新资源；已下载的文件保留在 "+sub.Folder)
+			flight := 0
+			for _, d := range s.Downloads {
+				if d.AnimeID == sub.AnimeID && !d.Paused && !d.Failed && d.Progress < 1 {
+					flight++
+				}
+			}
+			if flight > 0 {
+				caption(c, fmt.Sprintf("它正在下载的 %d 个资源会继续完成，不受取消影响。", flight))
+			}
+		})
+		ui.Row(c).Justify(ui.End).Gap(8).Children(func() {
+			secondary(c, "keep-subscription", "保留追番", func() { s.CancelPrompt = false })
+			primary(c, "confirm-cancel-subscription", "确认取消追番", func() {
+				s.CancelPrompt, s.CancelID = false, ""
+				s.removeSubscription(sub.ID)
+			}).Label("确认取消追番 " + sub.GroupName).Disabled(s.Busy)
+		})
+	})
+}
+
 func resourceSize(mb int) string {
 	if mb <= 0 {
 		return "大小未知"
@@ -1001,6 +1039,7 @@ func (s *State) following(c *ui.Context) {
 							secondary(c, "pause-sub-"+item.ID, label, func() { s.pauseSubscription(idx) }).Label(label + " " + item.GroupName).FontSize(12).Disabled(s.Busy)
 							quiet(c, "edit-sub-"+item.ID, "修改条件", func() { s.editSubscription(idx) }).Label("修改条件 " + item.GroupName).FontSize(12).TextColor(blue).Disabled(s.Busy)
 							quiet(c, "check-sub-"+item.ID, "立即检查", func() { s.check(idx) }).Label("立即检查 " + item.GroupName).FontSize(12).Disabled(item.Paused || s.Busy)
+							quiet(c, "cancel-sub-"+item.ID, "取消追番", func() { s.CancelID, s.CancelPrompt = item.ID, true }).Label("取消追番 " + item.GroupName).FontSize(12).TextColor(errorInk).Disabled(s.Busy)
 						})
 					})
 				}

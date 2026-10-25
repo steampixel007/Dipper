@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"image/png"
 	"os"
@@ -14,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"dipper.local/dipper/internal/core"
+	"dipper.local/dipper/internal/downloader"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -298,6 +301,74 @@ func TestUIFollowingUsesSubscriptionIdentityAndRSSResult(t *testing.T) {
 	uiClick(t, tt, "修改条件 "+s.Subscriptions[1].GroupName)
 	if s.EditID != wantID || !s.Editing || s.Page != "detail" {
 		t.Fatalf("edited wrong subscription: id=%q, want %q", s.EditID, wantID)
+	}
+}
+
+func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
+	s := uiFixture(t, "following")
+	sub := s.Subscriptions[0]
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "取消追番 "+sub.GroupName)
+	if !s.CancelPrompt || s.CancelID != sub.ID {
+		t.Fatalf("cancel prompt not armed: prompt=%v id=%q", s.CancelPrompt, s.CancelID)
+	}
+	uiRequireText(t, tt, "确认取消追番",
+		"取消后不再自动检查新资源；已下载的文件保留在 "+sub.Folder,
+		"它正在下载的 1 个资源会继续完成，不受取消影响。")
+	uiClick(t, tt, "保留追番")
+	if s.CancelPrompt {
+		t.Fatal("保留追番 did not close the dialog")
+	}
+	uiClick(t, tt, "取消追番 "+sub.GroupName)
+	uiClick(t, tt, "确认取消追番 "+sub.GroupName)
+	if s.CancelPrompt || s.CancelID != "" {
+		t.Fatalf("confirm left the dialog open: prompt=%v id=%q", s.CancelPrompt, s.CancelID)
+	}
+}
+
+func TestUIRemoveSubscriptionForwardsToCore(t *testing.T) {
+	kernel, err := core.Open(filepath.Join(t.TempDir(), "dipper.db"), core.Options{
+		DisableScheduler: true,
+		Feed:             func(context.Context, string, string) ([]core.Resource, error) { return nil, nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { kernel.Close() })
+	res := core.Resource{ID: "bridge-1", Title: "1080p", Magnet: "magnet:?xt=urn:btih:" + strings.Repeat("ab", 20), Size: 100}
+	sub, err := kernel.CreateSubscription(context.Background(), core.Anime{ID: "bridge-anime", Title: "桥接番剧"}, core.Group{ID: "bridge-group", Name: "桥接字幕组"}, core.Rule{}, []core.Resource{res}, []string{"bridge-1"})
+	if err != nil && sub.ID == "" {
+		t.Fatalf("subscription not committed: %v", err)
+	}
+	s := uiFixture(t, "following")
+	s.Core = kernel
+	s.Engine = &downloader.Engine{}
+	s.Ctx = context.Background()
+	s.Update = func(fn func()) { fn() }
+	snapshot, err := kernel.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.project(snapshot, nil)
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "取消追番 桥接字幕组")
+	uiClick(t, tt, "确认取消追番 桥接字幕组")
+	deadline := time.Now().Add(2 * time.Second)
+	for s.Notice != "已取消追番《桥接番剧》" && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if s.Notice != "已取消追番《桥接番剧》" {
+		t.Fatalf("notice = %q", s.Notice)
+	}
+	snapshot, err = kernel.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.Subscriptions) != 0 {
+		t.Fatalf("core still tracks %d subscriptions", len(snapshot.Subscriptions))
+	}
+	if len(s.Subscriptions) != 0 {
+		t.Fatalf("ui subscriptions after removal: %d", len(s.Subscriptions))
 	}
 }
 

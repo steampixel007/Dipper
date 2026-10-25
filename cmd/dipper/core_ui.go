@@ -386,6 +386,17 @@ func (s *State) pauseSubscription(index int) {
 	sub := s.Subscriptions[index]
 	s.runAction(func() error { return s.Core.SetPaused(s.Ctx, sub.ID, !sub.Paused) }, "追番状态已更新")
 }
+
+func (s *State) removeSubscription(id string) {
+	if s.Core == nil {
+		return
+	}
+	title := ""
+	if sub, ok := s.subscription(id); ok {
+		title = s.anime(sub.AnimeID).Title
+	}
+	s.runAction(func() error { return s.Core.RemoveSubscription(s.Ctx, id) }, "已取消追番《"+title+"》")
+}
 func (s *State) check(index int) {
 	if s.Core == nil || index < 0 || index >= len(s.Subscriptions) || s.Subscriptions[index].Paused {
 		return

@@ -454,6 +454,97 @@ func TestRestartReplaysAcceptedTransfersOfPausedSubscriptions(t *testing.T) {
 	}
 }
 
+func TestRemoveSubscriptionKeepsAcceptedTasksAndDropsPendingOnes(t *testing.T) {
+	accepted := resource("a", 1, "1080p")
+	pending := resource("b", 2, "720p")
+	other := resource("c", 3, "国语")
+	pendingHash, _ := ResourceHash(pending)
+	d := &fakeDownloader{}
+	d.setHook(func(task DownloadTask) error {
+		if task.Hash == pendingHash {
+			return errors.New("submission refused")
+		}
+		return nil
+	})
+	c := openTest(t, filepath.Join(t.TempDir(), "state.db"), Options{Downloader: d})
+	sub, err := c.CreateSubscription(context.Background(), anime, group, Rule{}, []Resource{accepted, pending}, []string{accepted.ID, pending.ID})
+	if err != nil && sub.ID == "" {
+		t.Fatalf("creation failed before commit: %v", err)
+	}
+	d.setHook(nil)
+	otherSub := create(t, c, anime, Group{ID: "other"}, Rule{}, []Resource{other}, []string{other.ID})
+	if err := c.RemoveSubscription(context.Background(), sub.ID); err != nil {
+		t.Fatal(err)
+	}
+	subs, _ := c.Subscriptions()
+	if len(subs) != 1 || subs[0].ID != otherSub.ID {
+		t.Fatal(subs)
+	}
+	found := false
+	animes, err := c.Anime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range animes {
+		if a.Anime.ID == anime.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("removal dropped the anime directory record")
+	}
+	tasks, _ := c.ListTasks()
+	if len(tasks) != 2 {
+		t.Fatal(tasks)
+	}
+	for _, r := range tasks {
+		if r.Task.Hash == pendingHash {
+			t.Fatal("pending task survived removal")
+		}
+	}
+	if err := c.RemoveSubscription(context.Background(), sub.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("removing a gone subscription: %v", err)
+	}
+}
+
+func TestRemoveSubscriptionCancelsInFlightSubmissionAndDropsItsTask(t *testing.T) {
+	a := resource("a", 1, "1080p")
+	d := &fakeDownloader{}
+	entered := make(chan struct{})
+	d.setHook(func(task DownloadTask) error { close(entered); <-task.Context.Done(); return task.Context.Err() })
+	c := openTest(t, filepath.Join(t.TempDir(), "state.db"), Options{Downloader: d, Feed: func(context.Context, string, string) ([]Resource, error) { return []Resource{a}, nil }})
+	sub := create(t, c, anime, group, Rule{}, nil, nil)
+	result := make(chan error, 1)
+	go func() { result <- c.Check(context.Background(), sub.ID) }()
+	<-entered
+	if err := c.RemoveSubscription(context.Background(), sub.ID); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-result:
+		if err == nil {
+			t.Fatal("cancelled ensure succeeded")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("removal failed to cancel Ensure")
+	}
+	subs, _ := c.Subscriptions()
+	if len(subs) != 0 {
+		t.Fatal(subs)
+	}
+	tasks, _ := c.ListTasks()
+	if len(tasks) != 0 {
+		t.Fatal(tasks)
+	}
+	d.setHook(nil)
+	if err := c.RetryPending(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if d.count() != 1 {
+		t.Fatal("removed subscription's pending task was resubmitted")
+	}
+}
+
 func TestDirectoriesAreFixedAndPreviewMatchesCommit(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state.db")
 	d := &fakeDownloader{}

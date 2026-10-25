@@ -240,6 +240,37 @@ func (c *Core) SetPaused(ctx context.Context, id string, paused bool) error {
 	return err
 }
 
+// RemoveSubscription stops tracking an anime and group. Submissions the
+// downloader has not accepted yet are dropped so they never start; accepted
+// transfers keep running and their records stay, because Start replays them
+// to restore the running engine. Files on disk are never touched.
+func (c *Core) RemoveSubscription(ctx context.Context, id string) error {
+	err := c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
+		if _, ok := s.Subscriptions[id]; !ok {
+			return ErrNotFound
+		}
+		c.cancelSubscriptionLocked(id)
+		delete(s.Subscriptions, id)
+		tasks, err := readTasks(ctx, tx)
+		if err != nil {
+			return err
+		}
+		for _, r := range tasks {
+			if r.Accepted || r.Task.SubscriptionID != id {
+				continue
+			}
+			if _, err := tx.ExecContext(ctx, `DELETE FROM core_tasks WHERE hash=?`, r.Task.Hash); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err == nil {
+		c.signal()
+	}
+	return err
+}
+
 func (c *Core) getSubscription(ctx context.Context, id string) (Subscription, error) {
 	var sub Subscription
 	err := c.transaction(ctx, func(_ *sql.Tx, s *diskState) error {

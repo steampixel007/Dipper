@@ -17,7 +17,7 @@ in. It has no UI dependency: the window calls it, it never calls the window.
 | --- | --- |
 | `types.go` | `Anime`, `Group`, `Resource`, `Rule`, `Item`, `Subscription`, `TaskRecord`, `Options`, and the sentinel errors |
 | `store.go` | `Core`, SQLite open and schema, the in-memory `diskState`, transactions, directory naming |
-| `engine.go` | `CreateSubscription`, `Check`, `DownloadExisting`, `UpdateRule`, `SetPaused`, `RetryPending`, the scheduler and `flush` |
+| `engine.go` | `CreateSubscription`, `Check`, `DownloadExisting`, `UpdateRule`, `SetPaused`, `RemoveSubscription`, `RetryPending`, the scheduler and `flush` |
 | `rules.go` | `Normalize`, `NormalizeRule`, `Match`, `ParseEpisode`, `SuggestWords` |
 | `hash.go` | `ResourceHash`, `resolveHash`, the bencode reader that derives a torrent's v1 info hash |
 | `download_root.go`, `video_*.go` | The default download root per platform |
@@ -158,6 +158,7 @@ CreateSubscription(ctx, anime, group, rule, completeHistory, selectedIDs) (Subsc
 DownloadExisting(ctx, subscriptionID, history, selectedIDs) error
 UpdateRule(ctx, subscriptionID, rule) error
 SetPaused(ctx, subscriptionID, paused) error
+RemoveSubscription(ctx, subscriptionID) error
 Check(ctx, subscriptionID) error
 RetryPending(ctx) error
 PreviewDirectory(anime) (string, error)
@@ -210,6 +211,12 @@ must cooperate with cancellation. Transfers already accepted keep running. A
 manual backfill on a paused subscription is saved pending until resume. A rule
 edit preserves every existing item decision; an explicit `DownloadExisting`
 overrides only the selected items and changes neither the rule nor the others.
+
+Removing a subscription also cancels its active checks and pending admissions,
+and drops the task records the downloader has not accepted yet, so nothing new
+starts. Accepted transfers keep running and their records stay: `Start` replays
+them to restore the running engine. The anime directory record survives, so a
+later re-subscription gets the same folder. Files on disk are never touched.
 
 The default check interval is 15 minutes. A source or admission failure backs off
 exponentially from 1 minute to 1 hour. A manual check and `RetryPending` retry

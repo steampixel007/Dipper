@@ -111,6 +111,8 @@ type State struct {
 	UndoSaved                  *Subscription
 	FilterFeedback             string
 	Confirm, Help, Suggestions bool
+	CancelPrompt               bool
+	CancelID                   string
 	SuggestedResource          Resource
 	OnlyMatches                bool
 	Notice, SaveError          string
@@ -146,6 +148,15 @@ func (s *State) anime(id string) Anime {
 		}
 	}
 	return Anime{ID: id, Title: "未知番剧"}
+}
+
+func (s *State) subscription(id string) (Subscription, bool) {
+	for _, sub := range s.Subscriptions {
+		if sub.ID == id {
+			return sub, true
+		}
+	}
+	return Subscription{}, false
 }
 
 func cloneRule(r Rule) Rule {
