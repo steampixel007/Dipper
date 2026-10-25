@@ -1,14 +1,9 @@
 param([switch]$Test, [switch]$Render, [switch]$CrossCompile)
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$env:GOPATH = Join-Path $repoRoot '.cache/gopath'
-$env:GOMODCACHE = Join-Path $repoRoot '.cache/gomod'
-$env:GOCACHE = Join-Path $repoRoot '.cache/gobuild'
-$env:GOTMPDIR = Join-Path $repoRoot '.cache/gotmp'
 $env:CGO_ENABLED = '0'
 $env:GOTOOLCHAIN = 'auto'
 $env:GOTELEMETRY = 'off'
-New-Item -ItemType Directory -Force $env:GOTMPDIR | Out-Null
 Push-Location $repoRoot
 try {
     if ($Test) {
@@ -19,6 +14,12 @@ try {
     }
     go build -trimpath -ldflags '-H windowsgui' -o bin/dipper.exe ./cmd/dipper
     if ($LASTEXITCODE) { throw 'Windows build failed' }
+    # Executables started inside the repo tree are blocked from writing to user
+    # directories by local security software, so keep a runnable copy outside it.
+    $outDir = Join-Path $env:LOCALAPPDATA 'Programs\Dipper'
+    New-Item -ItemType Directory -Force $outDir | Out-Null
+    Copy-Item bin/dipper.exe (Join-Path $outDir 'dipper.exe') -Force
+    if (!$?) { throw "Copy to $outDir failed" }
     if ($Render) {
         & ./bin/dipper.exe --render ./docs/assets/ui
         if ($LASTEXITCODE) { throw 'Render failed' }

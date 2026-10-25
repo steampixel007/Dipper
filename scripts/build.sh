@@ -25,16 +25,12 @@ case "$(uname -s)" in
 esac
 
 repo_root=$(CDPATH= cd "$(dirname "$0")/.." && pwd -P)
-GOPATH=${GOPATH:-"$repo_root/.cache/gopath"}
-GOMODCACHE=${GOMODCACHE:-"$repo_root/.cache/gomod"}
-GOCACHE=${GOCACHE:-"$repo_root/.cache/gobuild"}
-GOTMPDIR=${GOTMPDIR:-"$repo_root/.cache/gotmp"}
 CGO_ENABLED=0
 GOTOOLCHAIN=${GOTOOLCHAIN:-auto}
 GOTELEMETRY=off
-export GOPATH GOMODCACHE GOCACHE GOTMPDIR CGO_ENABLED GOTOOLCHAIN GOTELEMETRY
+export CGO_ENABLED GOTOOLCHAIN GOTELEMETRY
 unset GOOS GOARCH
-mkdir -p "$GOTMPDIR" "$repo_root/bin"
+mkdir -p "$repo_root/bin"
 cd "$repo_root"
 
 if [ "$run_tests" -eq 1 ]; then
