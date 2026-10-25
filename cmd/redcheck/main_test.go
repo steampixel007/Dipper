@@ -155,6 +155,74 @@ ok  	dipper.local/dipper/internal/core	0.010s
 	}
 }
 
+func TestJudgeRealRedWithUnmatchedPackages(t *testing.T) {
+	// A narrow -run pattern with ./... prints "[no tests to run]" for every
+	// package the pattern misses. That noise must not bury a real red.
+	out := `ok  	dipper.local/dipper/cmd/dipper	0.098s [no tests to run]
+ok  	dipper.local/dipper/internal/appdata	0.028s [no tests to run]
+--- FAIL: TestStopHalts (0.54s)
+    engine_test.go:279: download is not complete
+FAIL
+FAIL	dipper.local/dipper/internal/downloader	0.571s
+`
+	v, reason, _ := judge(out)
+	if v != verdictRealRed {
+		t.Fatalf("judged %v, want a real red: %s", v, reason)
+	}
+}
+
+func TestJudgePatternMatchedNothingIsFalseRed(t *testing.T) {
+	out := `ok  	dipper.local/dipper/cmd/dipper	0.098s [no tests to run]
+ok  	dipper.local/dipper/internal/appdata	0.028s [no tests to run]
+ok  	dipper.local/dipper/internal/core	0.052s [no tests to run]
+`
+	v, reason, _ := judge(out)
+	if v != verdictFalseRed {
+		t.Fatalf("judged %v, want a false red: %s", v, reason)
+	}
+	if !contains(reason, "no test was run") {
+		t.Fatalf("reason = %q, want the no-test-was-run shape", reason)
+	}
+}
+
+func TestJudgePassingRunIsNotRed(t *testing.T) {
+	out := `ok  	dipper.local/dipper/internal/downloader	0.571s
+`
+	v, reason, _ := judge(out)
+	if v != verdictNotRed {
+		t.Fatalf("judged %v, want not red: %s", v, reason)
+	}
+}
+
+func TestReportPassRejectsRunWithNoTests(t *testing.T) {
+	// go test exits 0 even when the pattern matched nothing, so -expect pass
+	// must not call that a pass.
+	out := `ok  	dipper.local/dipper/cmd/dipper	0.098s [no tests to run]
+`
+	if code := reportPass(out, nil, "^TestMissing$", false); code != exitFalseRed {
+		t.Fatalf("reportPass exit = %d, want %d", code, exitFalseRed)
+	}
+}
+
+func TestRanTestsShapes(t *testing.T) {
+	cases := []struct {
+		name string
+		out  string
+		want bool
+	}{
+		{"package ran", "ok  dipper.local/dipper/internal/core	0.05s\n", true},
+		{"package failed", "FAIL	dipper.local/dipper/internal/core	0.05s\n", true},
+		{"nothing matched", "ok  dipper.local/dipper/internal/core	0.05s [no tests to run]\n", false},
+		{"legacy warning", "testing: warning: no tests to run\nPASS\nok  	dipper.local/dipper/internal/core	0.01s\n", false},
+		{"no package lines", "?   dipper.local/dipper/build/icon	[no test files]\n", false},
+	}
+	for _, tc := range cases {
+		if got := ranTests(tc.out); got != tc.want {
+			t.Errorf("%s: ranTests = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestJudgeFailWithoutAssertionIsNotRed(t *testing.T) {
 	// A --- FAIL with no _test.go:NN line under it cannot be confirmed to have
 	// failed on an assertion.
