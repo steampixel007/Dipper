@@ -218,7 +218,7 @@ func (s *State) view(c *ui.Context) {
 func (s *State) sidebar(c *ui.Context) {
 	ui.Column(c).Width(204).FillHeight().Background(chrome).Padding(24, 14, 16).Gap(8).Children(func() {
 		ui.Row(c).Gap(10).Padding(0, 12, 28).Children(func() {
-			ui.Box(c).Size(32, 32).Radius(9).Background(blueWash).Center().Children(func() { ui.Image(c, brandLogo).Size(22, 22) })
+			ui.Box(c).Size(40, 40).Radius(11).Background(blueWash).Center().Children(func() { ui.Image(c, brandLogo).Size(32, 32) })
 			ui.Text(c, "Dipper").FontSize(22).FontWeight(600).TextColor(ink)
 		})
 		for _, nav := range []struct{ id, label string }{{"browse", "浏览番剧"}, {"following", "我的追番"}, {"downloads", "下载"}} {
