@@ -60,7 +60,6 @@ var falseRedMarkers = []struct {
 	{regexp.MustCompile(`(?m)^panic: `), "panic: not an assertion failure"},
 	{regexp.MustCompile(`(?m)WARNING: DATA RACE`), "data race: not an assertion failure"},
 	{regexp.MustCompile(`(?m)^testing: timed out after`), "timeout: not an assertion failure"},
-	{regexp.MustCompile(`(?m)no test files|no tests to run|^testing: warning: no tests to run`), "no test was run"},
 	{regexp.MustCompile(`(?m)undefined: |cannot use |declared and not used|imported and not used`), "compile error: a symbol or type does not line up"},
 }
 
@@ -71,6 +70,8 @@ var (
 	reFailLine    = regexp.MustCompile(`(?m)^\s*--- FAIL: ([\w/]+)`)
 	reAssertion   = regexp.MustCompile(`^\s+\S+_test\.go:\d+: .+`)
 	reSummaryFail = regexp.MustCompile(`(?m)^FAIL\s`)
+	// A package result line: "ok pkg 0.01s", "FAIL pkg 0.01s", "FAIL pkg [build failed]".
+	rePackageResult = regexp.MustCompile(`^(?:ok|FAIL)\s+\S+`)
 )
 
 func main() {
@@ -183,6 +184,16 @@ func reportFail(out string, runErr error, pattern string, quiet bool) int {
 
 // reportPass judges the run with the fix in place, which should pass.
 func reportPass(out string, runErr error, pattern string, quiet bool) int {
+	if runErr == nil && !ranTests(out) {
+		if !quiet {
+			fmt.Println("-- how this was judged --")
+			fmt.Println("no test was run: the -run pattern matched no test in any package")
+			fmt.Println()
+		}
+		fmt.Printf("DID NOT RUN: %s\n", describeTest(pattern))
+		fmt.Println("  go test exits 0 even when the pattern matched nothing; this pass proves nothing.")
+		return exitFalseRed
+	}
 	if runErr == nil {
 		if !quiet {
 			fmt.Printf("PASSED: %s passes with the fix in place.\n", describeTest(pattern))
@@ -206,6 +217,29 @@ func reportPass(out string, runErr error, pattern string, quiet bool) int {
 	}
 }
 
+// ranTests reports whether go test executed at least one selected test. A
+// narrow -run pattern with ./... prints "[no tests to run]" for every package
+// the pattern misses, which is noise, not a false red — the signal is whether
+// any package line reports work. The legacy single-package shape prints
+// "testing: warning: no tests to run" beside a bare ok line instead.
+func ranTests(out string) bool {
+	warned := false
+	for _, ln := range strings.Split(out, "\n") {
+		if strings.Contains(ln, "testing: warning: no tests to run") {
+			warned = true
+			continue
+		}
+		if rePackageResult.MatchString(ln) &&
+			!strings.Contains(ln, "[no tests to run]") &&
+			!strings.Contains(ln, "[build failed]") &&
+			!strings.Contains(ln, "[setup failed]") &&
+			!warned {
+			return true
+		}
+	}
+	return false
+}
+
 // judge decides the outcome from go test's output. A false red is judged before
 // a real red: when one package does not compile, go test still prints FAIL lines
 // for the others, and judging FAIL first would call the compile error a red.
@@ -218,6 +252,9 @@ func judge(out string) (verdict, string, string) {
 
 	fails := reFailLine.FindAllStringSubmatch(out, -1)
 	if len(fails) == 0 {
+		if !ranTests(out) {
+			return verdictFalseRed, "no test was run: the -run pattern matched no test in any package", firstLines(out, 6)
+		}
 		if reSummaryFail.MatchString(out) {
 			// A FAIL line with no --- FAIL line is a package-level failure.
 			return verdictFalseRed, "a FAIL line with no test failure: a package failed, not an assertion", firstLines(out, 6)

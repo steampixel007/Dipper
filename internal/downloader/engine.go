@@ -73,9 +73,8 @@ const (
 )
 
 var (
-	ErrClosed      = errors.New("download engine is closed")
-	ErrNotFound    = errors.New("download task not found")
-	ErrNotComplete = errors.New("download is not complete")
+	ErrClosed   = errors.New("download engine is closed")
+	ErrNotFound = errors.New("download task not found")
 )
 
 type savedTask struct {
@@ -512,9 +511,13 @@ func (e *Engine) enableLocked(j *entry) {
 	}
 }
 
-func (e *Engine) Pause(id string) error       { return e.changeIntent(id, "pause") }
-func (e *Engine) Resume(id string) error      { return e.changeIntent(id, "resume") }
-func (e *Engine) StopSeeding(id string) error { return e.changeIntent(id, "stop") }
+func (e *Engine) Pause(id string) error  { return e.changeIntent(id, "pause") }
+func (e *Engine) Resume(id string) error { return e.changeIntent(id, "resume") }
+
+// Stop halts a task's payload and seeding for good. Resume is the only way it
+// moves again, and a mid-download stop keeps the pieces it verified, so a
+// later resume continues instead of starting over.
+func (e *Engine) Stop(id string) error { return e.changeIntent(id, "stop") }
 
 func (e *Engine) changeIntent(id, action string) error {
 	e.mu.Lock()
@@ -527,9 +530,6 @@ func (e *Engine) changeIntent(id, action string) error {
 		return ErrNotFound
 	}
 	e.sampleLocked(j, e.now(), e.awake(), e.isOnlineLocked())
-	if action == "stop" && !j.Complete {
-		return ErrNotComplete
-	}
 	old := j.Policy
 	switch action {
 	case "pause":
@@ -570,6 +570,35 @@ func (e *Engine) detachLocked(j *entry) error {
 	j.previous = observation{}
 	j.upSpeed, j.downSpeed = 0, 0
 	return metaErr
+}
+
+// Remove forgets a task: the torrent is dropped, the task leaves the durable
+// checkpoint, and its content folder and saved metadata are deleted. The
+// checkpoint is rewritten before the files go, so a crash mid-removal cannot
+// resurrect a task whose folder is already gone. A failure deleting the files
+// leaves them on disk as orphans and is reported; submitting the same hash
+// again re-verifies and reuses what survived.
+func (e *Engine) Remove(id string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.closed {
+		return ErrClosed
+	}
+	j := e.tasks[id]
+	if j == nil {
+		return ErrNotFound
+	}
+	detachErr := e.detachLocked(j)
+	delete(e.tasks, id)
+	if err := e.saveLocked(); err != nil {
+		e.tasks[id] = j
+		return errors.Join(detachErr, err)
+	}
+	var metaErr error
+	if err := os.Remove(e.metadataPath(id)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		metaErr = err
+	}
+	return errors.Join(detachErr, os.RemoveAll(j.Folder), metaErr)
 }
 
 func uploadRate(bytes int64) rate.Limit {

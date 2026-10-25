@@ -204,6 +204,7 @@ func (s *State) view(c *ui.Context) {
 	})
 	s.confirmDialog(c)
 	s.cancelDialog(c)
+	s.removeDialog(c)
 	s.helpDialog(c)
 	s.closeDialog(c)
 	if s.Page == "detail" && !s.Confirm && !s.Help && !s.ClosePrompt {
@@ -944,6 +945,42 @@ func (s *State) cancelDialog(c *ui.Context) {
 	})
 }
 
+func (s *State) removeDialog(c *ui.Context) {
+	var d Download
+	found := false
+	for _, v := range s.Downloads {
+		if v.ID == s.RemoveID {
+			d, found = v, true
+			break
+		}
+	}
+	if !found {
+		return
+	}
+	ui.DialogBase(c, &s.RemovePrompt, func(backdrop, panel ui.Element) {
+		backdrop.Background(scrim).Transition(fadeTransition)
+		panel.Width(460).Padding(28).Gap(18).Radius(12).Background(paper)
+		ui.Text(c, "确认删除下载").FontSize(23).FontWeight(700)
+		heading(c, s.anime(d.AnimeID).Title)
+		ui.Column(c).Padding(16).Radius(8).Background(canvas).Gap(8).Children(func() {
+			ui.Text(c, d.Title).FontSize(13)
+			caption(c, "删除会移除这个任务，并删除已下载的文件："+d.Folder)
+			caption(c, "删除并重新下载会先删掉文件，再把这条资源重新下载到原位置。")
+		})
+		ui.Row(c).Justify(ui.End).Gap(8).Children(func() {
+			secondary(c, "keep-download", "保留任务", func() { s.RemovePrompt = false })
+			secondary(c, "confirm-redownload", "删除并重新下载", func() {
+				s.RemovePrompt, s.RemoveID = false, ""
+				s.removeDownload(d.ID, true)
+			}).Label("确认删除并重新下载").Disabled(s.Busy)
+			primary(c, "confirm-remove-download", "删除任务", func() {
+				s.RemovePrompt, s.RemoveID = false, ""
+				s.removeDownload(d.ID, false)
+			}).Label("确认删除下载任务").Disabled(s.Busy)
+		})
+	})
+}
+
 func resourceSize(mb int) string {
 	if mb <= 0 {
 		return "大小未知"
@@ -1093,20 +1130,17 @@ func (s *State) downloads(c *ui.Context) {
 							ui.Text(c, s.anime(d.AnimeID).Title).FontSize(15).FontWeight(600).Grow(1)
 							status := "下载中"
 							col := blue
-							if d.Progress >= 1 {
-								status = "已完成 · 做种中"
-								col = green
-							}
-							if d.SeedStopped {
-								status = "已完成 · 已停止做种"
-							}
-							if d.Paused {
-								status = "已暂停"
-								col = muted
-							}
-							if d.Failed {
-								status = "下载失败"
-								col = amber
+							switch {
+							case d.Paused:
+								status, col = "已暂停", muted
+							case d.Failed:
+								status, col = "下载失败", amber
+							case d.Stopped && d.Progress < 1:
+								status, col = "已停止", muted
+							case d.Progress >= 1 && d.Stopped:
+								status, col = "已完成 · 已停止做种", green
+							case d.Progress >= 1:
+								status, col = "已完成 · 做种中", green
 							}
 							badge(c, status, col, canvas)
 						})
@@ -1123,15 +1157,17 @@ func (s *State) downloads(c *ui.Context) {
 							}
 							caption(c, fmt.Sprintf("↓ %.1f MB/s   ↑ %.2f MB/s", d.DownSpeed, d.UpSpeed))
 							ui.Spacer(c)
-							if d.Paused {
+							if d.Paused || d.Stopped && d.Progress < 1 {
 								quiet(c, "pause-"+d.ID, "继续", func() { s.pauseDownload(idx) }).FontSize(12).Disabled(s.Busy)
 							} else if d.Failed {
 								quiet(c, "retry-"+d.ID, "重试", func() { s.retryDownload(idx) }).TextColor(blue).FontSize(12).Disabled(s.Busy)
 							} else if d.Progress < 1 {
 								quiet(c, "pause-"+d.ID, "暂停", func() { s.pauseDownload(idx) }).FontSize(12).Disabled(s.Busy)
-							} else if !d.SeedStopped {
-								quiet(c, "stop-seed-"+d.ID, "停止做种", func() { s.stopSeed(idx) }).FontSize(12).Disabled(s.Busy)
+								quiet(c, "stop-"+d.ID, "停止下载", func() { s.stopDownload(idx) }).FontSize(12).Disabled(s.Busy)
+							} else if !d.Stopped {
+								quiet(c, "stop-seed-"+d.ID, "停止做种", func() { s.stopDownload(idx) }).FontSize(12).Disabled(s.Busy)
 							}
+							quiet(c, "remove-"+d.ID, "删除", func() { s.RemovePrompt, s.RemoveID = true, d.ID }).FontSize(12).Disabled(s.Busy)
 							quiet(c, "open-folder-"+d.ID, "打开文件夹", func() {
 								if s.OpenFolder != nil {
 									s.OpenFolder(d.Folder)
@@ -1139,7 +1175,7 @@ func (s *State) downloads(c *ui.Context) {
 							}).FontSize(12).Disabled(s.OpenFolder == nil || d.Folder == "")
 						})
 						caption(c, "保存位置："+d.Folder)
-						if d.Progress >= 1 && !d.SeedStopped {
+						if d.Progress >= 1 && !d.Stopped {
 							if d.MB > 0 {
 								caption(c, fmt.Sprintf("已分享 %.2f 倍 · 做种 %d 分钟；达到 1:1 或累计 1 小时后停止。", d.UploadedMB/float64(d.MB), d.SeedSeconds/60))
 							} else {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -235,7 +236,7 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 		if snap, ok := byID[task.Hash]; ok {
 			d.Progress = snap.Progress
 			d.Paused = snap.Paused
-			d.SeedStopped = snap.ManuallyStopped || snap.AutoStopped
+			d.Stopped = snap.ManuallyStopped || snap.AutoStopped
 			d.SeedSeconds = int(snap.SeedingSeconds)
 			d.UploadedMB = float64(snap.UploadedBytes) / 1e6
 			d.DownSpeed = float64(snap.DownloadSpeed) / 1e6
@@ -444,12 +445,39 @@ func (s *State) retryDownload(index int) {
 		return err
 	}, "已重试下载")
 }
-func (s *State) stopSeed(index int) {
+func (s *State) stopDownload(index int) {
 	if s.Engine == nil || index < 0 || index >= len(s.Downloads) {
 		return
 	}
 	id := s.Downloads[index].ID
-	s.runAction(func() error { return s.Engine.StopSeeding(id) }, "已停止该资源做种")
+	s.runAction(func() error { return s.Engine.Stop(id) }, "已停止该资源的下载和做种")
+}
+
+// removeDownload drops a task for good: the engine deletes the transfer and
+// its files, and core forgets the delivery so neither the scheduler nor a
+// restart brings it back. A task the engine never admitted (a submission that
+// kept failing) has nothing on disk to remove, so its ErrNotFound is fine.
+func (s *State) removeDownload(id string, redownload bool) {
+	if s.Core == nil || s.Engine == nil {
+		return
+	}
+	index := slices.IndexFunc(s.Downloads, func(d Download) bool { return d.ID == id })
+	if index < 0 {
+		return
+	}
+	message := "已删除该下载任务"
+	if redownload {
+		message = "已删除任务，将重新下载"
+	}
+	s.runAction(func() error {
+		if err := s.Engine.Remove(id); err != nil && !errors.Is(err, downloader.ErrNotFound) {
+			return err
+		}
+		if redownload {
+			return s.Core.ResetTask(s.Ctx, id)
+		}
+		return s.Core.DeleteTask(s.Ctx, id)
+	}, message)
 }
 func (s *State) pauseAllDownloads(paused bool) {
 	if s.Engine == nil {
