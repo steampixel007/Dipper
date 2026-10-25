@@ -7,6 +7,21 @@ import (
 	"github.com/egoist/mygo"
 )
 
+func TestTrayMenuLabelLeavesRoomForWindowsText(t *testing.T) {
+	for _, platform := range []string{"windows", "linux", "darwin"} {
+		for _, label := range []string{"打开 Dipper", "退出 Dipper"} {
+			got := trayMenuLabel(platform, label)
+			if platform == "windows" {
+				if got != label+"  " {
+					t.Fatalf("Windows tray menu label %q must leave room after its last glyph: %q", label, got)
+				}
+			} else if got != label {
+				t.Fatalf("%s tray menu label changed: %q", platform, got)
+			}
+		}
+	}
+}
+
 type testTray struct {
 	bounds    mygo.Rectangle
 	destroyed bool

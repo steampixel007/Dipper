@@ -206,8 +206,8 @@ func main() {
 		}
 		trays := &trayController{platform: s.Platform, create: func() (desktopTray, error) {
 			tray, err := mygo.NewTray(mygo.TrayOptions{ID: "dipper.main", Icon: brandTrayPNG, IconIsTemplate: s.Platform == "darwin", ToolTip: "Dipper · 自动追番", Menu: mygo.NewMenu([]*mygo.MenuItem{
-				{Label: "打开 Dipper", Click: func(*mygo.MenuItem, *mygo.Window) { showMain() }},
-				{Label: windowText.quit, Click: func(*mygo.MenuItem, *mygo.Window) { s.exitApp() }},
+				{Label: trayMenuLabel(s.Platform, "打开 Dipper"), Click: func(*mygo.MenuItem, *mygo.Window) { showMain() }},
+				{Label: trayMenuLabel(s.Platform, windowText.quit), Click: func(*mygo.MenuItem, *mygo.Window) { s.exitApp() }},
 			})})
 			if err != nil {
 				return nil, err
