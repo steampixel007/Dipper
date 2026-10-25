@@ -27,7 +27,7 @@ $original = New-Object TrayMouse+POINT
 [TrayMouse]::GetCursorPos([ref]$original) | Out-Null
 $process = $null
 try {
-    $process = Start-Process -FilePath $Exe -ArgumentList @('--data', $data, '--download-root', $downloads, '--quit-after', '30s') -PassThru
+    $process = Start-Process -FilePath $Exe -ArgumentList "--data `"$data`" --download-root `"$downloads`" --quit-after 30s" -PassThru
     $desktop = [System.Windows.Automation.AutomationElement]::RootElement
     $window = $null
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
