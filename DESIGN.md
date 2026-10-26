@@ -247,6 +247,12 @@ preserves catalog filters and scroll position.
 | Downloads | Separate aggregate upload/download speeds; per-task progress and speed, with pause/resume/retry or seeding actions appropriate to state. |
 | Settings | Appearance, source line, download location, shared upload limit, and window/background behavior. |
 
+Each download offers one transfer action for its current state: 暂停 while
+downloading, 继续 while paused or stopped before completion, 重试 on failure,
+and 停止做种 after completion while seeding. A completed, stopped task has no
+transfer action. 暂停 preserves progress for a later 继续; there is no separate
+停止下载 action. 删除 and 打开文件夹 remain separate task and file actions.
+
 A page must provide distinct loading, empty, failure, and content states. Source
 failure offers retry without clearing saved follows or downloads. Empty search
 offers a way to clear filters. Failure to save must never look like success.

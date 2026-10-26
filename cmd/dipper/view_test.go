@@ -372,12 +372,12 @@ func TestUIRemoveSubscriptionForwardsToCore(t *testing.T) {
 	}
 }
 
-func TestUIDownloadsOfferStopDeleteAndKeepTaskDismissal(t *testing.T) {
+func TestUIDownloadsOfferPauseDeleteAndKeepTaskDismissal(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "停止下载", "删除")
-	uiClick(t, tt, "停止下载")
-	if s.Downloads[0].Stopped || s.Downloads[0].Progress != .43 {
+	uiRequireText(t, tt, "暂停", "删除")
+	uiClick(t, tt, "暂停")
+	if s.Downloads[0].Paused || s.Downloads[0].Progress != .43 {
 		t.Fatal("UI changed download state without an engine")
 	}
 	uiClick(t, tt, "删除")
@@ -388,6 +388,40 @@ func TestUIDownloadsOfferStopDeleteAndKeepTaskDismissal(t *testing.T) {
 	}
 	if len(s.Downloads) != 3 {
 		t.Fatal("dismissal changed the download list")
+	}
+}
+
+func TestUIDownloadsOfferOneTransferActionPerState(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		progress float64
+		paused   bool
+		stopped  bool
+		failed   bool
+		action   string
+	}{
+		{name: "downloading", progress: .43, action: "暂停"},
+		{name: "paused", progress: .43, paused: true, action: "继续"},
+		{name: "stopped", progress: .43, stopped: true, action: "继续"},
+		{name: "failed", progress: .43, failed: true, action: "重试"},
+		{name: "seeding", progress: 1, action: "停止做种"},
+		{name: "seeding-paused", progress: 1, paused: true, action: "继续"},
+		{name: "completed", progress: 1, stopped: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := uiFixture(t, "downloads")
+			s.Downloads = s.Downloads[:1]
+			d := &s.Downloads[0]
+			d.Progress, d.Paused, d.Stopped, d.Failed = tc.progress, tc.paused, tc.stopped, tc.failed
+			tt := ui.NewTester(s.view, 1320, 860)
+			for _, action := range []string{"暂停", "继续", "重试", "停止下载", "停止做种"} {
+				_, visible := tt.Find(action)
+				if visible != (action == tc.action) {
+					t.Errorf("transfer action %q visible=%v; want only %q", action, visible, tc.action)
+				}
+			}
+			uiRequireText(t, tt, "删除", "打开文件夹")
+		})
 	}
 }
 
