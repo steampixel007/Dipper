@@ -167,6 +167,15 @@ what actually stops a task's payload.
 
 ## Network and sleep
 
+The torrent dependency is pinned to upstream commit `70072f1a7460` rather than
+v1.61.0. It includes the message-writer wakeup fix
+([#1078](https://github.com/anacrolix/torrent/pull/1078)) and keepalive timer
+rearming fix ([#1071](https://github.com/anacrolix/torrent/pull/1071)). Without
+them, a request-update or upload-limiter wakeup can be lost while the writer
+fills its buffer, leaving an otherwise connected peer idle. The upstream tests
+`TestMsgWriterBroadcastDuringFillWakesWriter` and
+`TestMsgWriterKeepAliveTimerRearmed` exercise these windows directly.
+
 Seeding time must not count time the machine was asleep or offline, so
 eligibility is decided per platform:
 
