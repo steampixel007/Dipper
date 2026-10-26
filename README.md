@@ -1,92 +1,129 @@
+<div align="center">
+
+<img src="cmd/dipper/assets/dipper-icon.png" width="104" height="104" alt="Dipper's white-throated dipper over blue rushing water">
+
 # Dipper
 
-A native anime-following desktop app built on MyGo Native UI + Go. It connects to
-the real Mikan catalog, historical releases, RSS, and the built-in BT downloader.
-The name is the white-throated dipper (河乌), the songbird that dives into rushing
-mountain torrents — a nod to the BitTorrent kind of torrent.
+### Pick your anime. Leave the updates to Dipper.
 
-## Launch
+Browse the season, choose the version you like, and bring new episodes home.<br>
+A native desktop app with automatic following and a built-in downloader.
 
-On Windows, double-click **`bin/dipper.exe`** after building. By default the program stores application state under the current user's LocalAppData directory; it needs no browser, Node, or external downloader. Pass `--data PATH` to use a single application-state directory during development.
+[![Checks](https://github.com/steampixel007/Dipper/actions/workflows/check.yml/badge.svg)](https://github.com/steampixel007/Dipper/actions/workflows/check.yml)
+[![Go](https://img.shields.io/badge/Go-1.27.1-3b63fb?logo=go&logoColor=white)](go.mod)
+[![Native UI](https://img.shields.io/badge/UI-MyGo_Native-3b63fb)](https://github.com/egoist/mygo)
 
-An unsigned local build may first show the Windows SmartScreen "未知发布者" (Unknown publisher) prompt. The single-instance check runs only after you choose to continue; official distribution should use code signing to remove this prompt.
+**[Get started](#get-started)** &nbsp;·&nbsp; **[User guide](docs/usage.md)** &nbsp;·&nbsp; **[Development](docs/development.md)** &nbsp;·&nbsp; **[Feedback](https://github.com/steampixel007/Dipper/issues)**
 
-On first launch the app reads the current season. Choose an anime → fansub group → click title words to set include/exclude conditions → confirm the selection → download and follow. Existing matching releases are all checked by default; unchecked entries persist across restarts. After saving, RSS is checked every 15 minutes, with backoff retries on failure; you can also check immediately.
+<br>
 
-"我的追番" (My follows) can pause, resume, and edit rules; the edit page can also backfill existing releases on demand. Editing rules affects only future unread entries, and backfill selections do not change the saved rules. Pausing a follow and pausing a download are two separate operations.
+<a href="docs/assets/ui/01-browse.png">
+  <img src="docs/assets/ui/01-browse.png" width="960" alt="Dipper's seasonal anime catalog, with cover artwork, season selection, search, and weekday filters">
+</a>
 
-The Downloads page shows real progress plus total and per-task upload and download speeds, and supports pause, resume, retry, open folder, and stop seeding. All tasks share the upload limit, 1 MiB/s by default (labeled MB/s in the UI). After completion, seeding stops once cumulative upload/download reaches 1:1 or effective seeding reaches 1 hour.
+<sub>Native interface rendered with sample data. Titles, groups, and transfer figures are illustrative.</sub>
 
-On Windows and Linux, closing the window asks whether to keep following and downloading in the tray or quit. The optional "记住我的选择" (Remember my choice) checkbox saves the action; Settings can change it or reset it to ask each time. If the tray is unavailable, the window stays open and offers an explicit exit. On macOS, closing keeps the app running and clicking its Dock icon reopens the window; Quit or Command-Q stops background activity. Settings and the tray menu also provide "退出 Dipper" (Quit Dipper).
+</div>
 
-Only one main process runs per data directory; launching the program again brings back the existing window and restores it when minimized. The single-instance check runs before database and download engine initialization, and a failed wake-up shows an error instead of continuing to contend for the state files.
+## From finding a show to following it
 
-## Files and state
+Dipper keeps the whole journey in one window: the Mikan catalog, fansub
+releases, version selection, and downloads to your computer. Start with a show;
+there is no feed URL to paste or regular expression to write.
 
-Default application directories (where `$XDG_*_HOME` is set to an absolute path on Linux, it replaces the corresponding fallback):
+- **Find something to follow.** Browse by season and weekday, or search the
+  current season by title.
+- **Choose your version in plain words.** Pick a fansub group, then click words
+  such as `1080p` or `HEVC` to include or exclude them. See matching releases
+  before confirming.
+- **Let new episodes arrive.** While Dipper is running, it checks your follows
+  every 15 minutes and downloads new matching releases. Check immediately
+  whenever you like.
+- **Keep control of your files.** Pause or resume downloads, retry a failure,
+  open the destination folder, and stop seeding from the same app.
 
-| Platform | Persistent data (`dipper.db`, `engine/`, `instance.lock`, `instance.json`) | UI settings (`preferences.json`) | Cover cache (`covers/`) | Logs (`app.log`) |
-| --- | --- | --- | --- | --- |
-| Windows | `%LOCALAPPDATA%/Dipper/` | Same data directory | `%LOCALAPPDATA%/Dipper/Cache/covers/` | `%LOCALAPPDATA%/Dipper/Logs/` |
-| macOS | `~/Library/Application Support/Dipper/` | Same data directory | `~/Library/Caches/Dipper/covers/` | `~/Library/Logs/Dipper/` |
-| Linux | `$XDG_DATA_HOME/dipper/` (default `~/.local/share/dipper/`) | `$XDG_CONFIG_HOME/dipper/` (default `~/.config/dipper/`) | `$XDG_CACHE_HOME/dipper/covers/` (default `~/.cache/dipper/covers/`) | `$XDG_STATE_HOME/dipper/` (default `~/.local/state/dipper/`) |
+Built with Go and [MyGo Native UI](https://github.com/egoist/mygo). No browser,
+Node.js, or separate download client is needed to run it. The interface is
+currently in Chinese.
 
-`dipper.db` holds follow rules, read/skipped entries, fixed anime directories and download submissions. `engine/` holds BT metadata, piece verification records, pause/stop intents and transfer checkpoints. The instance files prevent concurrent access and forward a later launch to the existing window. An abnormal exit releases the system lock. Explicit `--data PATH` keeps all these files in one directory: `dipper.db`, `engine/`, `preferences.json`, `covers/` and `app.log`. The previous executable-adjacent `data/` directory is not read automatically; use `--data ./data` to run with that directory.
+## Pick the release you actually want
 
-- Default video directory: the `Dipper` folder under the system user's "视频" (Videos) directory (Windows uses the video path actually configured in the system, macOS uses `~/Movies/Dipper`, Linux follows `XDG_VIDEOS_DIR`), changeable in Settings. The old default `Downloads/Dipper` is updated to the new default after a restart; custom paths and the fixed directories of subscribed anime are kept.
+Click a title word and choose **只要** (include), **不要** (exclude), or
+**不限** (any). Matching counts and release selections update beside your
+choices, and undo lets you try another combination.
 
-The same anime keeps the directory created on its first fansub group across groups; changing the global root affects only new anime. Different anime with the same name use different directories. Each BT release gets its own hash subdirectory that preserves the original file names and directory structure inside the torrent.
+<a href="docs/assets/ui/02-filter.png">
+  <img src="docs/assets/ui/02-filter.png" width="960" alt="Version selection with a 1080p include rule, matching release previews, and selected downloads before confirmation">
+</a>
 
-## Development
+Existing matches are selected by default. Uncheck anything you do not want
+this time; your future matching rule stays separate from that selection.
+Later, you can fetch older releases without changing the rule.
 
-The interface design system is [DESIGN.md](DESIGN.md). The Go version and
-third-party dependencies are pinned in `go.mod` / `go.sum`. On Windows:
+## Follow along, without losing track
+
+Your follows show what was checked and what needs attention. Downloads show
+progress and transfer speeds, with the next action beside each task.
+
+<table>
+  <tr>
+    <th width="50%">Your follows</th>
+    <th width="50%">Your downloads</th>
+  </tr>
+  <tr>
+    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="Followed shows with fansub groups, saved rules, and last-check results"></a></td>
+    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="Download progress, upload and download speeds, retry, and seeding controls"></a></td>
+  </tr>
+</table>
+
+On Windows and Linux, you can keep following and downloading in the tray when
+you close the window. On macOS, closing the window keeps Dipper running in the
+Dock. Quitting the app stops background activity.
+
+## Get started
+
+Build from source with the Go version pinned in [go.mod](go.mod).
+
+**Windows · PowerShell**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Test -Render
+git clone https://github.com/steampixel007/Dipper.git
+cd Dipper
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Test
+.\bin\dipper.exe
 ```
 
-Add `-CrossCompile` to build bare executables for Linux amd64 and macOS arm64/amd64. On macOS and Linux, run the same POSIX shell script with `/bin/sh`:
+**macOS / Linux · Shell**
 
 ```sh
-sh scripts/build.sh --test --render
+git clone https://github.com/steampixel007/Dipper.git
+cd Dipper
+sh scripts/build.sh --test
+./bin/dipper
 ```
 
-The native output is `bin/dipper`; run it as `./bin/dipper`. Add `--cross-compile` to also build Linux amd64, macOS arm64/amd64, and Windows amd64 binaries. Cross-compilation verifies that the code builds, while launching or rendering requires MyGo's system graphics and tray runtime dependencies on the host.
+Windows builds are unsigned and may show a SmartScreen prompt. Native graphics
+and tray runtime dependencies are required on macOS and Linux; their native
+desktop acceptance is still pending. See the [development guide](docs/development.md)
+for build options and verification boundaries.
 
-Brand icons: `go run build/icon/gen.go all build/icon/dist` regenerates the
-tray cuts (light and dark), the tile app icon, and `dipper.ico` from the SVG
-masters in `build/icon/`. The generator is dependency-free and embeds the same
-geometry as the masters. The app embeds its own copies — refresh them with
-`go run build/icon/gen.go app 256 cmd/dipper/assets/dipper-icon.png` and
-`go run build/icon/gen.go tray 32 cmd/dipper/assets/dipper-tray.png` and
-`go run build/icon/gen.go tray -dark 32 cmd/dipper/assets/dipper-tray-dark.png`;
-the in-app vector mark is a copy of `dipper-small.svg` at
-`cmd/dipper/assets/dipper.svg`. The Windows executables carry the icon as a
-resource: `go run build/icon/gen.go syso amd64 cmd/dipper/dipper_windows_amd64.syso`
-(and `arm64`) embeds it, so the taskbar and Explorer show the bird even before
-a window sets its own icon.
+Once open: **choose a show → pick a fansub group → select your version →
+confirm downloads and follow.** Files go to `Dipper` under your system's Videos
+folder by default; change the destination in Settings.
 
-Development diagnostic flags:
+## A little bird, a rushing torrent
 
-```powershell
-./bin/dipper.exe --data ./data
-./bin/dipper.exe --probe-source
-./bin/dipper.exe --render ./docs/assets/ui
-```
+Dipper is named after the white-throated dipper (河乌), a small songbird that
+dives into rushing mountain streams and returns with what it came for.
+Here, the torrents bring back anime.
 
-`--probe-source` reads only the public catalog, details, history, and RSS, and creates no downloads. `--render` draws the same native views from development test fixtures and is not evidence of public-network downloads. Use `--source URL` to point at a local source test service and `--download-root PATH` to set the initial download directory for new data; `--quit-after 8s` verifies startup and exit.
+## More about Dipper
 
-## Verification and boundaries
-
-`go test ./...`, `go vet ./...` and `gofmt -l cmd internal` are the checks; CI runs
-them on Windows, macOS and Linux. Acceptance criteria and how to prove a test
-catches a bug are in [docs/code-standards.md](docs/code-standards.md).
-
-What is not verified: native windows, the tray, input methods and install paths
-on macOS and Linux need acceptance on real hardware — a cross-compile only shows
-the code builds. On non-Windows platforms network availability is inferred from
-an active interface and does not prove the internet is reachable. The cover cache
-has no eviction policy. Unsigned Windows builds may be blocked by SmartScreen; the
-"未知发布者" (Unknown publisher) prompt can only be avoided by signing with a
-release certificate.
+| | |
+| :-- | :-- |
+| [User guide](docs/usage.md) | Following, downloads, background behavior, and where your files live |
+| [Development](docs/development.md) | Build scripts, diagnostic flags, icons, and verification boundaries |
+| [Design system](DESIGN.md) | The bird, colors, controls, and interaction principles |
+| [Architecture](docs/architecture.md) | How the native app, source, core, and downloader fit together |
+| [Subsystems](docs/subsystems/README.md) | Implementation contracts and what their tests prove |
+| [Report an issue](https://github.com/steampixel007/Dipper/issues) | Bugs, questions, and feature ideas |
