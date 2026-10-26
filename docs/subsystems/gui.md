@@ -158,9 +158,13 @@ the SHA-256 of its URL and cached under `State.CoverDir` (the system cache
 directory by default, or `--data/covers` when explicitly configured). A cover whose load is
 in flight is marked in `loadingCovers`, set when the load is scheduled and
 cleared on decode, on failure, and for the rest when the load's context is
-cancelled; the card shows a Blocks indicator while the flag is set, and the
-bird mark only once the cover truly has none. The flag also keeps a second
-`loadCovers` call from fetching the same URL again. Loaded covers fill the
+cancelled. The flag keeps a second `loadCovers` call from fetching the same URL
+again. A card with a cover URL shows a Blocks indicator until its bitmap is
+available, including after a failed load; only a card without a cover URL shows
+the bird mark. Starting or refreshing the catalog also loads saved subscription
+covers from disk or the source, using the application context so a season change
+or unavailable catalog cannot cancel their restoration. A later catalog refresh
+retries missing covers. Loaded covers fill the
 fixed frame in browsing, detail and following views: scaled uniformly,
 centered, and cropped to the frame, so a poster never shows filler beside it.
 `blueWash` is the box for the loading and no-cover states.

@@ -271,7 +271,7 @@ restyling a page separately.
 | `heading` | 18 DIP, weight 600 | Section titles. |
 | `caption` | 12 DIP `muted`, line-height 1.5 | Supporting text. |
 | `badge` | 11 DIP weight 600, padding 3/7, radius 4 | Ink + wash pair: `blue/blueWash`, `green/greenWash`, `amber/amberWash`, `muted/canvas`. |
-| `cover` | Radius 8 | The image fills the frame, centered and cropped without stretching. Same `blueWash` box for every non-image state: while its cover loads, a blue `Blocks` indicator (`mygo/plugins/loading`); with no cover, the bird mark at 0.62 of the short side. |
+| `cover` | Radius 8 | The image fills the frame, centered and cropped without stretching. Same `blueWash` box for every non-image state: when a cover URL exists but its bitmap is unavailable, a blue `Blocks` indicator (`mygo/plugins/loading`), including after a failed load; without a cover URL, the bird mark at 0.62 of the short side. |
 
 Word chips are a `quiet` variant: radius 5, padding 5/8, 1px `line` border,
 12 DIP. Direction gives the pair — include is `blue` on `blueWash` with `＋`,
