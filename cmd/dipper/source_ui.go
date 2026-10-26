@@ -94,6 +94,13 @@ func (s *State) refreshCatalog() {
 	if s.Source == nil {
 		return
 	}
+	var following []source.Anime
+	for _, sub := range s.Subscriptions {
+		a := s.anime(sub.AnimeID)
+		following = append(following, source.Anime{ID: a.ID, Cover: a.Cover})
+	}
+	// Saved covers must survive a season change or a failed catalog request.
+	s.loadCovers(s.Ctx, following)
 	if s.catalogCancel != nil {
 		s.catalogCancel()
 	}

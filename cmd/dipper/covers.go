@@ -14,8 +14,6 @@ import (
 func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 	pending := make([]source.Anime, 0, len(rows))
 	for _, a := range rows {
-		// loadingCovers marks what is in flight, so the cards show a loading
-		// state and a second call does not fetch the same cover again.
 		if a.Cover != "" && covers[a.Cover] == nil && !loadingCovers[a.Cover] {
 			loadingCovers[a.Cover] = true
 			pending = append(pending, a)

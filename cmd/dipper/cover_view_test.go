@@ -133,7 +133,35 @@ func TestUICoverLoadingShowsNineBlocks(t *testing.T) {
 	}
 	delete(loadingCovers, url)
 	tt.Frame()
-	if _, ok := tt.Find("正在加载封面"); ok {
-		t.Error("loading indicator remains after cover loading ends")
+	if _, ok := tt.Find("正在加载封面"); !ok {
+		t.Error("missing cover stopped showing the loading indicator")
+	}
+}
+
+func TestUICoverMissingBitmapKeepsLoading(t *testing.T) {
+	uiFixture(t, "following")
+	for _, size := range [][2]int{{180, 245}, {52, 72}, {68, 94}} {
+		t.Run(fmt.Sprintf("%dx%d", size[0], size[1]), func(t *testing.T) {
+			a := Anime{Cover: t.Name()}
+			tt := ui.NewTester(func(c *ui.Context) {
+				cover(c, a, float32(size[0]), float32(size[1]))
+			}, size[0], size[1])
+			if _, ok := tt.Find("正在加载封面"); !ok {
+				t.Fatal("cover URL without a bitmap shows the bird instead of loading")
+			}
+			covers[a.Cover] = ui.NewBitmap(image.NewRGBA(image.Rect(0, 0, 4, 4)))
+			url := a.Cover
+			t.Cleanup(func() { delete(covers, url) })
+			tt.Frame()
+			if _, ok := tt.Find("正在加载封面"); ok {
+				t.Error("loaded cover still shows the loading indicator")
+			}
+			delete(covers, a.Cover)
+			a.Cover = ""
+			tt.Frame()
+			if _, ok := tt.Find("正在加载封面"); ok {
+				t.Error("anime with no cover URL shows a loading indicator")
+			}
+		})
 	}
 }
