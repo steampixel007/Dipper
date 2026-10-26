@@ -1163,7 +1163,6 @@ func (s *State) downloads(c *ui.Context) {
 								quiet(c, "retry-"+d.ID, "重试", func() { s.retryDownload(idx) }).TextColor(blue).FontSize(12).Disabled(s.Busy)
 							} else if d.Progress < 1 {
 								quiet(c, "pause-"+d.ID, "暂停", func() { s.pauseDownload(idx) }).FontSize(12).Disabled(s.Busy)
-								quiet(c, "stop-"+d.ID, "停止下载", func() { s.stopDownload(idx) }).FontSize(12).Disabled(s.Busy)
 							} else if !d.Stopped {
 								quiet(c, "stop-seed-"+d.ID, "停止做种", func() { s.stopDownload(idx) }).FontSize(12).Disabled(s.Busy)
 							}

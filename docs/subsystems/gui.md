@@ -62,6 +62,14 @@ overwrite the newer page.
 page is a function over `State` in `view.go`; a page never calls `core` directly,
 it calls the bridge in `core_ui.go` or `source_ui.go`.
 
+The downloads page offers one transfer action per task state: pause during a
+download, resume while paused or stopped before completion, retry on failure,
+or stop seeding after completion. It does not also offer a stop-download action
+beside pause: both preserve progress and require an explicit resume. Deletion
+and opening the folder remain available separately.
+`TestUIDownloadsOfferOneTransferActionPerState` checks these controls, including
+older stopped tasks and completed tasks.
+
 The detail page runs in one of two modes, distinguished by `Backfill`:
 - **Subscribe** — choose a group and a rule, preview which existing releases
   match, and confirm. Existing matches are selected by default.
