@@ -176,6 +176,23 @@ fills its buffer, leaving an otherwise connected peer idle. The upstream tests
 `TestMsgWriterBroadcastDuringFillWakesWriter` and
 `TestMsgWriterKeepAliveTimerRearmed` exercise these windows directly.
 
+`scripts/check-torrent.ps1` also runs Dipper's own writer regressions from
+`internal/downloader/testdata/msg_writer_regression_test.go` inside an isolated
+copy of the pinned dependency. This is a separate CI step on all three platforms:
+`go test ./...` does not run a dependency's private tests. The checks inject a
+broadcast during buffer fill and expire an idle keepalive using `synctest`, so
+they need no real-time deadline. Dependencies are prepared before the test phase,
+which runs offline, and the module cache is never edited. To reproduce acceptance:
+
+```powershell
+./scripts/check-torrent.ps1
+./scripts/check-torrent.ps1 -ModuleVersion v1.61.0 -Expect fail
+```
+
+Both regressions must fail on behavioral assertions against v1.61.0 and pass
+against the pin; the script uses `redcheck` to reject compile errors, skips,
+panics, timeouts, or a missing regression.
+
 Seeding time must not count time the machine was asleep or offline, so
 eligibility is decided per platform:
 

@@ -24,6 +24,9 @@ jobs:
         run: test -z "$(gofmt -l cmd internal)"
       - run: go vet ./...
       - run: go test -count=1 -timeout 5m ./...
+      - name: Torrent regression checks
+        shell: pwsh
+        run: ./scripts/check-torrent.ps1
       # redcheck's judgment is what every acceptance rests on: if it is wrong, a
       # test that catches nothing passes. Its tests run in `go test ./...` above;
       # this step only confirms it compiles on all three platforms, because
