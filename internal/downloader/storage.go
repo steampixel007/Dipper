@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/anacrolix/generics"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
 )
@@ -206,11 +207,11 @@ func (p *diskPiece) MarkComplete() (result error) {
 			return err
 		}
 	}
-	return p.completion.Set(p.key(), true)
+	return p.completion.Set(p.key(), generics.Some(true))
 }
 
 func (p *diskPiece) MarkNotComplete() error {
-	err := p.completion.Set(p.key(), false)
+	err := p.completion.Set(p.key(), generics.Some(false))
 	if err != nil {
 		p.failure.Store(&taskFailure{err})
 	}

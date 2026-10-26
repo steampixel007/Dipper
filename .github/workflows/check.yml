@@ -1,18 +1,21 @@
-name: Check MVP
-on: [push, pull_request]
+name: Test and Build
+on:
+  push:
+    branches: [main]
+  pull_request:
 jobs:
   test:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, macos-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     env:
       CGO_ENABLED: '0'
       GOTOOLCHAIN: auto
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -21,12 +24,15 @@ jobs:
         run: test -z "$(gofmt -l cmd internal)"
       - run: go vet ./...
       - run: go test -count=1 -timeout 5m ./...
+      - name: Torrent regression checks
+        shell: pwsh
+        run: ./scripts/check-torrent.ps1
       # redcheck's judgment is what every acceptance rests on: if it is wrong, a
       # test that catches nothing passes. Its tests run in `go test ./...` above;
       # this step only confirms it compiles on all three platforms, because
       # acceptance has to work wherever the code does.
       - run: go build -trimpath -o dist/ ./cmd/dipper ./cmd/redcheck
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: dipper-${{ matrix.os }}
           path: dist/
