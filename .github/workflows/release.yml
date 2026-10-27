@@ -48,24 +48,28 @@ jobs:
 
   build:
     needs: [version, checks]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - goos: windows
             goarch: amd64
+            runner: windows-latest
           - goos: linux
             goarch: amd64
+            runner: ubuntu-24.04
           - goos: darwin
             goarch: amd64
+            runner: macos-15-intel
           - goos: darwin
             goarch: arm64
+            runner: macos-latest
     env:
       CGO_ENABLED: '0'
       GOTOOLCHAIN: auto
-      GOOS: ${{ matrix.goos }}
-      GOARCH: ${{ matrix.goarch }}
+      TARGET_OS: ${{ matrix.goos }}
+      TARGET_ARCH: ${{ matrix.goarch }}
       VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -76,21 +80,50 @@ jobs:
           go-version-file: go.mod
           cache: true
       - name: Build and package
+        shell: pwsh
         run: |
-          mkdir -p stage dist
-          binary=dipper
-          ldflags="-X main.version=$VERSION"
-          if [[ "$GOOS" == windows ]]; then
-            binary=dipper.exe
-            ldflags="$ldflags -H windowsgui"
-          fi
-          go build -trimpath -ldflags "$ldflags" -o "stage/$binary" ./cmd/dipper
-          archive="dipper_${VERSION}_${GOOS}_${GOARCH}"
-          if [[ "$GOOS" == windows ]]; then
-            zip -j "dist/$archive.zip" "stage/$binary"
-          else
-            tar -czf "dist/$archive.tar.gz" -C stage "$binary"
-          fi
+          ./scripts/package.ps1 -Version $env:VERSION -Platform "$env:TARGET_OS/$env:TARGET_ARCH"
+      - name: Verify Windows installer
+        if: matrix.goos == 'windows'
+        shell: pwsh
+        run: ./scripts/verify-windows-package.ps1 -Version $env:VERSION
+      - name: Verify Linux packages
+        if: matrix.goos == 'linux'
+        run: |
+          stem="dist/dipper_${VERSION}_linux_amd64"
+          test "$(dpkg-deb -f "$stem.deb" Package)" = dipper
+          test "$(dpkg-deb -f "$stem.deb" Architecture)" = amd64
+          depends=$(dpkg-deb -f "$stem.deb" Depends)
+          [[ "$depends" == *libgtk-3-0* && "$depends" == *libayatana-appindicator3-1* ]]
+          [[ "$depends" != *webkit* ]]
+          mkdir -p "$RUNNER_TEMP/deb" "$RUNNER_TEMP/archive"
+          dpkg-deb -x "$stem.deb" "$RUNNER_TEMP/deb"
+          tar -xzf "$stem.tar.gz" -C "$RUNNER_TEMP/archive"
+          test -x "$RUNNER_TEMP/deb/opt/dipper/dipper"
+          test -x "$RUNNER_TEMP/archive/dipper"
+          test "$(readlink "$RUNNER_TEMP/deb/usr/bin/dipper")" = ../../opt/dipper/dipper
+          grep -Fx 'Exec=/opt/dipper/dipper' "$RUNNER_TEMP/deb/usr/share/applications/dipper.desktop"
+          cmp "$RUNNER_TEMP/archive/dipper" "$RUNNER_TEMP/deb/opt/dipper/dipper"
+      - name: Verify macOS packages
+        if: matrix.goos == 'darwin'
+        run: |
+          stem="dist/dipper_${VERSION}_darwin_${TARGET_ARCH}"
+          mkdir -p "$RUNNER_TEMP/archive" "$RUNNER_TEMP/dmg"
+          tar -xzf "$stem.tar.gz" -C "$RUNNER_TEMP/archive"
+          app="$RUNNER_TEMP/archive/Dipper.app"
+          test -x "$app/Contents/MacOS/Dipper"
+          codesign --verify --deep --strict "$app"
+          plutil -lint "$app/Contents/Info.plist"
+          core="${VERSION%%[-+]*}"
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$core"
+          arch="$TARGET_ARCH"
+          if [[ "$arch" == amd64 ]]; then arch=x86_64; fi
+          test "$(lipo -archs "$app/Contents/MacOS/Dipper")" = "$arch"
+          hdiutil attach "$stem.dmg" -readonly -nobrowse -mountpoint "$RUNNER_TEMP/dmg"
+          trap 'hdiutil detach "$RUNNER_TEMP/dmg"' EXIT
+          test "$(readlink "$RUNNER_TEMP/dmg/Applications")" = /Applications
+          codesign --verify --deep --strict "$RUNNER_TEMP/dmg/Dipper.app"
+          cmp "$app/Contents/MacOS/Dipper" "$RUNNER_TEMP/dmg/Dipper.app/Contents/MacOS/Dipper"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: release-${{ matrix.goos }}-${{ matrix.goarch }}
@@ -112,12 +145,23 @@ jobs:
           path: dist
           merge-multiple: true
       - name: Generate checksums
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
-          shopt -s nullglob
-          assets=(dist/*.zip dist/*.tar.gz)
-          test "${#assets[@]}" -eq 4
           cd dist
-          sha256sum -- *.zip *.tar.gz > SHA256SUMS
+          assets=(
+            "dipper_${VERSION}_windows_amd64.zip"
+            "dipper_${VERSION}_windows_amd64_setup.exe"
+            "dipper_${VERSION}_linux_amd64.tar.gz"
+            "dipper_${VERSION}_linux_amd64.deb"
+            "dipper_${VERSION}_darwin_amd64.tar.gz"
+            "dipper_${VERSION}_darwin_amd64.dmg"
+            "dipper_${VERSION}_darwin_arm64.tar.gz"
+            "dipper_${VERSION}_darwin_arm64.dmg"
+          )
+          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 8
+          for asset in "${assets[@]}"; do test -s "$asset"; done
+          sha256sum -- "${assets[@]}" > SHA256SUMS
           sha256sum --check SHA256SUMS
       - name: Publish release
         env:

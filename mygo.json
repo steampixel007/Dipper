@@ -1,0 +1,21 @@
+{
+  "name": "Dipper",
+  "identifier": "io.github.steampixel007.dipper",
+  "version": "0.1.0",
+  "main": "./cmd/dipper",
+  "icon": "cmd/dipper/assets/dipper-icon.png",
+  "out": ".cache/packages",
+  "macos": {
+    "signingIdentity": "-",
+    "minimumSystemVersion": "12.0",
+    "infoPlist": {}
+  },
+  "linux": {
+    "maintainer": "steampixel007",
+    "comment": "番剧订阅与下载",
+    "categories": ["Network"],
+    "depends": ["libayatana-appindicator3-1"],
+    "webview": false,
+    "command": "dipper"
+  }
+}
