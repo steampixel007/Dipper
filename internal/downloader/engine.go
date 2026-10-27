@@ -156,10 +156,15 @@ func newEngine(config Config, configure func(*torrent.ClientConfig)) (_ *Engine,
 			}
 		}
 	}()
-	e.completion, err = storage.NewDefaultPieceCompletionForDir(filepath.Join(dir, "pieces"))
+	pieces := filepath.Join(dir, "pieces")
+	if err = os.MkdirAll(pieces, 0o700); err != nil {
+		return nil, fmt.Errorf("create piece checkpoint directory: %w", err)
+	}
+	completion, err := storage.NewDefaultPieceCompletionForDir(pieces)
 	if err != nil {
 		return nil, fmt.Errorf("open piece checkpoint: %w", err)
 	}
+	e.completion = completion
 	if err = e.load(); err != nil {
 		return nil, err
 	}

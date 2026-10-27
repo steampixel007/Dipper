@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,19 +16,41 @@ import (
 
 const routeCatalogMarkup = `<div class="sk-bangumi" data-dayofweek="1"><ul class="an-ul"><li><span data-bangumiid="1" data-src="/cover.png"></span><a class="an-text" href="/Home/Bangumi/1">节目</a></li></ul></div>`
 
-func routeFixture(t *testing.T, page string) *State {
+// The route switch reports through Update from its goroutine. Serializing
+// Update and reading State under the same lock lets the test poll and assert
+// without racing the callback.
+func routeFixture(t *testing.T, page string) (*State, *sync.Mutex) {
 	t.Helper()
 	s := uiFixture(t, page)
+	var mu sync.Mutex
+	s.Update = func(fn func()) { mu.Lock(); defer mu.Unlock(); fn() }
 	s.SourceRoutes = []sourceRoute{
 		{Label: "线路一 · 测试（默认）", Origin: "https://route-a.test"},
 		{Label: "线路二 · 测试", Origin: "https://route-b.test"},
 	}
 	s.SourceRoute = s.SourceRoutes[0].Label
-	return s
+	return s, &mu
+}
+
+func waitRouteSwitch(t *testing.T, mu *sync.Mutex, busy func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		mu.Lock()
+		done := !busy()
+		mu.Unlock()
+		if done {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("route switch did not finish")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 func TestSourceRouteSwitchTestsThenSaves(t *testing.T) {
-	s := routeFixture(t, "settings")
+	s, mu := routeFixture(t, "settings")
 	initial := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(routeCatalogMarkup)) }))
 	defer initial.Close()
 	good := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(routeCatalogMarkup)) }))
@@ -38,13 +61,9 @@ func TestSourceRouteSwitchTestsThenSaves(t *testing.T) {
 	s.Ctx = t.Context()
 	second := s.SourceRoutes[1]
 	s.switchSourceRoute(second.Label)
-	deadline := time.Now().Add(2 * time.Second)
-	for s.SourceTesting && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
-	if s.SourceTesting {
-		t.Fatal("route switch did not finish")
-	}
+	waitRouteSwitch(t, mu, func() bool { return s.SourceTesting })
+	mu.Lock()
+	defer mu.Unlock()
 	if s.SourceRoute != second.Label || s.Source.Origin() != second.Origin {
 		t.Fatalf("route = %q origin = %q", s.SourceRoute, s.Source.Origin())
 	}
@@ -54,7 +73,7 @@ func TestSourceRouteSwitchTestsThenSaves(t *testing.T) {
 }
 
 func TestSourceRouteFailureRollsBackAndKeepsChoice(t *testing.T) {
-	s := routeFixture(t, "settings")
+	s, mu := routeFixture(t, "settings")
 	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusServiceUnavailable) }))
 	defer bad.Close()
 	s.Source = source.New(bad.URL)
@@ -63,13 +82,9 @@ func TestSourceRouteFailureRollsBackAndKeepsChoice(t *testing.T) {
 	previousLabel, previousOrigin := s.SourceRoute, s.Source.Origin()
 	second := s.SourceRoutes[1]
 	s.switchSourceRoute(second.Label)
-	deadline := time.Now().Add(2 * time.Second)
-	for s.SourceTesting && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
-	if s.SourceTesting {
-		t.Fatal("route switch did not finish")
-	}
+	waitRouteSwitch(t, mu, func() bool { return s.SourceTesting })
+	mu.Lock()
+	defer mu.Unlock()
 	if s.SourceRoute != previousLabel || s.Source.Origin() != previousOrigin {
 		t.Fatalf("failed switch changed state: route = %q origin = %q", s.SourceRoute, s.Source.Origin())
 	}
@@ -118,7 +133,7 @@ func TestSourceRoutePreferenceRoundTrip(t *testing.T) {
 }
 
 func TestUISettingsSourceRouteDisabledWhileBusy(t *testing.T) {
-	s := routeFixture(t, "settings")
+	s, _ := routeFixture(t, "settings")
 	s.Busy = true
 	tt := ui.NewTester(s.view, 1320, 860)
 	// The dropdown is disabled while busy; a click on its label cannot select.

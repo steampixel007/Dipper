@@ -1,0 +1,20 @@
+name: Race Detector
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  race:
+    runs-on: ubuntu-24.04
+    env:
+      CGO_ENABLED: '1'
+      GOTOOLCHAIN: auto
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      # The race detector needs cgo, which also exercises the sqlite piece
+      # completion that the CGO_ENABLED=0 checks and builds never reach.
+      - run: go test -race -count=1 -timeout 10m ./...

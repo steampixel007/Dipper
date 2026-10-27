@@ -344,7 +344,9 @@ func TestUIRemoveSubscriptionForwardsToCore(t *testing.T) {
 	s.Core = kernel
 	s.Engine = &downloader.Engine{}
 	s.Ctx = context.Background()
-	s.Update = func(fn func()) { fn() }
+	// Keep action results off the action goroutine, as the window does.
+	updates := make(chan func(), 2)
+	s.Update = func(fn func()) { updates <- fn }
 	snapshot, err := kernel.Snapshot()
 	if err != nil {
 		t.Fatal(err)
@@ -353,12 +355,15 @@ func TestUIRemoveSubscriptionForwardsToCore(t *testing.T) {
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiClick(t, tt, "取消追番 桥接字幕组")
 	uiClick(t, tt, "确认取消追番 桥接字幕组")
-	deadline := time.Now().Add(2 * time.Second)
-	for s.Notice != "已取消追番《桥接番剧》" && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
-	if s.Notice != "已取消追番《桥接番剧》" {
-		t.Fatalf("notice = %q", s.Notice)
+	deadline := time.NewTimer(2 * time.Second)
+	defer deadline.Stop()
+	for s.Notice != "已取消追番《桥接番剧》" {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatalf("notice = %q", s.Notice)
+		}
 	}
 	snapshot, err = kernel.Snapshot()
 	if err != nil {
@@ -471,6 +476,9 @@ func TestUIRemoveDownloadForwardsDeleteAndRedownloadToCore(t *testing.T) {
 			s.Core = kernel
 			s.Engine = &downloader.Engine{}
 			s.Ctx = context.Background()
+			// Keep action results off the action goroutine, as the window does.
+			updates := make(chan func(), 2)
+			s.Update = func(fn func()) { updates <- fn }
 			snapshot, err := kernel.Snapshot()
 			if err != nil {
 				t.Fatal(err)
@@ -482,12 +490,15 @@ func TestUIRemoveDownloadForwardsDeleteAndRedownloadToCore(t *testing.T) {
 			tt := ui.NewTester(s.view, 1320, 860)
 			uiClick(t, tt, "删除")
 			uiClick(t, tt, tc.button)
-			deadline := time.Now().Add(2 * time.Second)
-			for s.Notice != tc.notice && time.Now().Before(deadline) {
-				time.Sleep(time.Millisecond)
-			}
-			if s.Notice != tc.notice {
-				t.Fatalf("notice = %q (error %q)", s.Notice, s.SaveError)
+			deadline := time.NewTimer(2 * time.Second)
+			defer deadline.Stop()
+			for s.Notice != tc.notice {
+				select {
+				case fn := <-updates:
+					fn()
+				case <-deadline.C:
+					t.Fatalf("notice = %q (error %q)", s.Notice, s.SaveError)
+				}
 			}
 			subs, err := kernel.Subscriptions()
 			if err != nil {

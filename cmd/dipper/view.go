@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo/plugins/loading"
@@ -30,10 +31,15 @@ var brandTrayPNG []byte
 //go:embed assets/dipper-tray-dark.png
 var brandTrayDarkPNG []byte
 
-var covers = map[string]*ui.Bitmap{}
+// Cover loading and rendering touch these maps from different goroutines, so
+// access is guarded instead of relying on the UI thread alone.
+var (
+	coversMu sync.Mutex
+	covers   = map[string]*ui.Bitmap{}
 
-// Cover URLs whose load is in flight; loadCovers sets and clears them.
-var loadingCovers = map[string]bool{}
+	// Cover URLs whose load is in flight; loadCovers sets and clears them.
+	loadingCovers = map[string]bool{}
+)
 
 var brandLogo *ui.SVG
 
@@ -118,7 +124,9 @@ func loadImages() {
 		if strings.HasSuffix(entry.Name(), ".jpg") {
 			b, _ := assets.ReadFile("assets/" + entry.Name())
 			if bm, err := ui.DecodeBitmap(b); err == nil {
+				coversMu.Lock()
 				covers[entry.Name()] = bm
+				coversMu.Unlock()
 			}
 		}
 	}
@@ -159,7 +167,10 @@ func heading(c *ui.Context, text string) {
 	ui.Text(c, text).FontSize(18).FontWeight(600).TextColor(ink)
 }
 func cover(c *ui.Context, a Anime, w, h float32) {
-	if b := covers[a.Cover]; b != nil {
+	coversMu.Lock()
+	b := covers[a.Cover]
+	coversMu.Unlock()
+	if b != nil {
 		ui.Image(c, b).Size(w, h).Fit(ui.Cover).Radius(8)
 	} else if a.Cover != "" {
 		ui.Box(c).Size(w, h).Radius(8).Clip().Background(blueWash).Center().Children(func() {

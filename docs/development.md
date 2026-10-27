@@ -70,7 +70,9 @@ descriptive when changing a view.
 
 `go test ./...`, `go vet ./...` and `gofmt -l cmd internal` are the checks; CI runs
 them on Windows, macOS and Linux. Acceptance criteria and how to prove a test
-catches a bug are in [code standards](code-standards.md).
+catches a bug are in [code standards](code-standards.md). A Linux job also runs
+the suite under the race detector with cgo enabled, reaching the code paths the
+CGO-free platform checks never build.
 
 What is not verified: native windows, the tray, input methods and install paths
 on macOS and Linux need acceptance on real hardware — a cross-compile only shows
