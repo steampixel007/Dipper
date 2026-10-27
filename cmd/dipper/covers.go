@@ -14,8 +14,16 @@ import (
 func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 	pending := make([]source.Anime, 0, len(rows))
 	for _, a := range rows {
-		if a.Cover != "" && covers[a.Cover] == nil && !loadingCovers[a.Cover] {
+		if a.Cover == "" {
+			continue
+		}
+		coversMu.Lock()
+		loadedOrLoading := covers[a.Cover] != nil || loadingCovers[a.Cover]
+		if !loadedOrLoading {
 			loadingCovers[a.Cover] = true
+		}
+		coversMu.Unlock()
+		if !loadedOrLoading {
 			pending = append(pending, a)
 		}
 	}
@@ -31,7 +39,9 @@ func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 				}
 				s.Update(func() {
 					for _, u := range rest {
+						coversMu.Lock()
 						delete(loadingCovers, u)
+						coversMu.Unlock()
 					}
 				})
 				return
@@ -47,16 +57,22 @@ func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 				var err error
 				data, err = s.Source.Cover(ctx, a.Cover)
 				if err != nil {
-					s.Update(func() { delete(loadingCovers, a.Cover) })
+					s.Update(func() {
+						coversMu.Lock()
+						delete(loadingCovers, a.Cover)
+						coversMu.Unlock()
+					})
 					continue
 				}
 			}
 			// Decode on the UI thread; its bitmap cache is also owned by that thread.
 			s.Update(func() {
+				coversMu.Lock()
 				delete(loadingCovers, a.Cover)
 				if bitmap, err := ui.DecodeBitmap(data); err == nil {
 					covers[a.Cover] = bitmap
 				}
+				coversMu.Unlock()
 			})
 			if s.CoverDir != "" {
 				if os.MkdirAll(filepath.Dir(path), 0755) == nil {
