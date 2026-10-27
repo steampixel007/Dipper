@@ -2,6 +2,9 @@
 
 [README](../README.md) · [User guide](usage.md)
 
+Version tags publish GitHub Releases automatically; see [releasing](releasing.md)
+for tag naming, downloads and failure recovery.
+
 ## Build and run
 
 Run these commands from the repository root.

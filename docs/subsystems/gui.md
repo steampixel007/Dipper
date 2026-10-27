@@ -87,6 +87,9 @@ in-flight flag are per-run state, not settings.
 
 ## Startup
 
+Release builds inject the version from the Git tag into `main.version`; local
+builds keep its source default. Startup readiness and logs report that version.
+
 `main` resolves application directories through `internal/appdata` and acquires
 the single instance lock in the data directory before opening the database or
 starting the engine. Explicit `--data` keeps settings, covers and logs in that
