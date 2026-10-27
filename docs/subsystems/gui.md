@@ -87,6 +87,11 @@ in-flight flag are per-run state, not settings.
 
 ## Startup
 
+Release packaging generates a temporary Go source file that sets `main.version`
+from the Git tag, including prerelease and build metadata. The packaging script
+removes it after the build; direct Go builds keep the source default or a linker
+override. Startup readiness and logs report that version.
+
 `main` resolves application directories through `internal/appdata` and acquires
 the single instance lock in the data directory before opening the database or
 starting the engine. Explicit `--data` keeps settings, covers and logs in that

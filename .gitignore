@@ -1,6 +1,7 @@
 .cache/
 data/
 bin/
+/dist/
 build/icon/dist/
 *.tmp
 *.test
