@@ -4,6 +4,8 @@
 
 # Dipper
 
+**English** &nbsp;·&nbsp; [简体中文](README.zh-CN.md)
+
 ### Pick your anime. Leave the updates to Dipper.
 
 Browse the season, choose the version you like, and bring new episodes home.<br>
