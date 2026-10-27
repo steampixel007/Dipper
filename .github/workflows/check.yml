@@ -33,7 +33,7 @@ jobs:
       # this step only confirms it compiles on all three platforms, because
       # acceptance has to work wherever the code does.
       - run: go build -trimpath -o dist/ ./cmd/dipper ./cmd/redcheck
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: dipper-${{ matrix.os }}
           path: dist/
