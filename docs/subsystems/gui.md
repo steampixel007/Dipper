@@ -148,6 +148,29 @@ Dock behavior; those require running the app on the respective platform.
 The [window lifecycle verification](../window-lifecycle-verification.md)
 records the checks that were run and the remaining platform boundaries.
 
+## Appearance
+
+Settings offers 浅色, 夜间, and 跟随系统. `Saved.Appearance` and the UI
+preferences persist the ASCII values `light`, `dark`, and `system`; missing,
+empty, and unknown values keep the original light appearance. Selecting a mode
+saves it before applying the native theme; a failed write restores the previous
+selection and reports an inline error. It preserves the other UI preferences.
+
+`appearance.go` owns both palettes, the control theme, and the native window
+background expression. `view` reads the host's effective appearance before
+setting its custom theme. Every page and dialog resolves colors from its own
+context, including accent foregrounds and status washes. The fixed black-and-white
+bird stays on a pale brand tile. Startup applies the saved native theme before
+creating the window; system mode uses MyGo's normal appearance notifications.
+Tray icons continue to follow the taskbar appearance independently.
+
+`appearance_test.go` covers rendered switching, system changes, persistence,
+defaults, write failures, and context isolation. Offline `--render` produces both
+light reference screens and matching `-dark.png` screens. These tests do not
+establish native desktop theme notifications or native dialog appearance. The
+[night-mode verification](../night-mode-verification.md) records the executed
+checks, regression evidence, and remaining native boundaries.
+
 ## Rendering
 
 `ui_render.go` holds a fixed sample state used to render each page's layout

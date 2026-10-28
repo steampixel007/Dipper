@@ -77,16 +77,22 @@ func renderScreens(dir string) error {
 			s.ClosePrompt = true
 		}},
 	} {
-		s := uiRenderFixture()
-		s.Page = screen.page
-		if screen.configure != nil {
-			screen.configure(s)
-		}
-		tt := ui.NewTester(s.view, 1320, 860)
-		tt.Advance(500 * time.Millisecond)
-		path := filepath.Join(dir, screen.name+".png")
-		if err := writeUIScreen(path, tt); err != nil {
-			return fmt.Errorf("render %s: %w", screen.name, err)
+		for _, appearance := range []string{appearanceLight, appearanceDark} {
+			s := uiRenderFixture()
+			s.Page, s.Appearance = screen.page, appearance
+			if screen.configure != nil {
+				screen.configure(s)
+			}
+			tt := ui.NewTester(s.view, 1320, 860)
+			tt.Advance(500 * time.Millisecond)
+			name := screen.name
+			if appearance == appearanceDark {
+				name += "-dark"
+			}
+			path := filepath.Join(dir, name+".png")
+			if err := writeUIScreen(path, tt); err != nil {
+				return fmt.Errorf("render %s: %w", name, err)
+			}
 		}
 	}
 	return nil

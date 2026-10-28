@@ -88,7 +88,6 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(logFile, nil)))
 	mygo.App.SetName("Dipper")
 	mygo.App.SetPath(mygo.PathUserData, paths.DataDir)
-	mygo.Theme.SetSource(mygo.ThemeLight)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	adapter := &engineAdapter{}
@@ -123,6 +122,8 @@ func main() {
 		failStartup(err)
 		return
 	}
+	s.ApplyAppearance = func(value string) { mygo.Theme.SetSource(mygo.ThemeSource(normalizeAppearance(value))) }
+	s.ApplyAppearance(s.Appearance)
 	if *origin != "" {
 		if err = src.Retarget(*origin); err != nil {
 			failStartup(err)
@@ -153,7 +154,7 @@ func main() {
 		slog.Info("stopped", "version", version)
 	})
 	mygo.App.WhenReady(func() {
-		win := mygo.NewWindow(mygo.WindowOptions{Title: "Dipper · 自动追番", Width: 1320, Height: 900, MinWidth: 1040, MinHeight: 720, TitleBarStyle: mygo.TitleBarHidden, TitleBarHeight: 64, BackgroundColor: "#f3f3f3", Content: ui.View(s.view)})
+		win := mygo.NewWindow(mygo.WindowOptions{Title: "Dipper · 自动追番", Width: 1320, Height: 900, MinWidth: 1040, MinHeight: 720, TitleBarStyle: mygo.TitleBarHidden, TitleBarHeight: 64, BackgroundColor: windowBackground(), Content: ui.View(s.view)})
 		if err := win.SetIcon(brandIconPNG); err != nil {
 			slog.Warn("window icon", "error", err)
 		}

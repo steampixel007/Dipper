@@ -70,6 +70,7 @@ type Saved struct {
 	Downloads     []Download
 	IntroHidden   bool
 	ReduceEffects bool
+	Appearance    string
 	CloseBehavior string
 }
 type State struct {
@@ -127,6 +128,7 @@ type State struct {
 	Dir                        string
 	ConfigDir                  string
 	CoverDir                   string
+	ApplyAppearance            func(string)
 	PickFolder                 func()
 	OpenFolder                 func(string)
 	Quit                       func()

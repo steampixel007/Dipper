@@ -39,6 +39,7 @@ func uiRule(r core.Rule) Rule { return cloneRule(Rule{All: r.All, None: r.None, 
 type preferences struct {
 	IntroHidden   bool
 	ReduceEffects bool
+	Appearance    string
 	CloseBehavior string
 	// SourceOrigin persists the ASCII origin, not the Chinese label, so
 	// rewording the route label does not reset the user's choice.
@@ -105,6 +106,7 @@ func (s *State) loadPreferences() error {
 	}
 	s.IntroHidden = pref.IntroHidden
 	s.ReduceEffects = pref.ReduceEffects
+	s.Appearance = normalizeAppearance(pref.Appearance)
 	s.CloseBehavior = normalizeCloseBehavior(pref.CloseBehavior)
 	origin := pref.SourceOrigin
 	if origin == "" {
@@ -146,7 +148,7 @@ func (s *State) save() {
 }
 
 func (s *State) savePreferences() error {
-	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, CloseBehavior: s.CloseBehavior, SourceOrigin: s.sourceOrigin(s.SourceRoute)})
+	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, Appearance: normalizeAppearance(s.Appearance), CloseBehavior: s.CloseBehavior, SourceOrigin: s.sourceOrigin(s.SourceRoute)})
 	path := filepath.Join(s.ConfigDir, "preferences.json")
 	err := os.WriteFile(path+".tmp", b, 0644)
 	if err == nil {

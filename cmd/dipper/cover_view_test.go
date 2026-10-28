@@ -49,7 +49,7 @@ func TestUICoverFillsFrameWithoutStretching(t *testing.T) {
 					{X: size[0] / 2, Y: 1}, {X: size[0] / 2, Y: size[1] - 2},
 					{X: 1, Y: size[1] / 2}, {X: size[0] - 2, Y: size[1] / 2},
 				} {
-					if got := frame.RGBAAt(margin.X, margin.Y); near(got, color.RGBA{blueWash.R, blueWash.G, blueWash.B, blueWash.A}, 15) {
+					if got := frame.RGBAAt(margin.X, margin.Y); near(got, color.RGBA{lightPalette.blueWash.R, lightPalette.blueWash.G, lightPalette.blueWash.B, lightPalette.blueWash.A}, 15) {
 						t.Errorf("cover leaves filler at %v = %v; want the image to fill the frame", margin, got)
 					}
 				}
