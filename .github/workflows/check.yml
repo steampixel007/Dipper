@@ -20,6 +20,11 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Install Chinese fonts for UI rendering
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       - name: Formatting
         shell: bash
         run: test -z "$(gofmt -l cmd internal)"

@@ -42,6 +42,15 @@ compile errors, skips, timeouts, or panics. All mutations were restored.
 | Omit `Appearance` from saved preferences | `TestAppearanceSettingsClickPersistsAndAppliesAfterSave` | `restart after "夜间": appearance="light", want "dark"` |
 | Omit the native theme callback | `TestAppearanceSettingsClickPersistsAndAppliesAfterSave` | `click "夜间" did not apply native appearance exactly once: []` |
 
+## Linux CI font environment
+
+The initial Ubuntu regular and race runs failed the Chinese text pixel checks:
+text labels existed, but pure Chinese headings produced zero foreground pixels.
+The pinned MyGo Pango renderer returns an empty bitmap for unknown glyphs. Both
+Linux workflows now install `fonts-noto-cjk` before testing, so the pixel tests
+exercise actual Chinese glyphs. The assertions remain unchanged. The Windows
+checks already passed with system fonts; Linux verification is tracked on PR #30.
+
 ## Native Windows check
 
 The built executable was launched once for each saved mode using separate,
