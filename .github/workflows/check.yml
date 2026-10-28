@@ -15,8 +15,8 @@ jobs:
       CGO_ENABLED: '0'
       GOTOOLCHAIN: auto
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -33,7 +33,7 @@ jobs:
       # this step only confirms it compiles on all three platforms, because
       # acceptance has to work wherever the code does.
       - run: go build -trimpath -o dist/ ./cmd/dipper ./cmd/redcheck
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: dipper-${{ matrix.os }}
           path: dist/
