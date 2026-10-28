@@ -8,7 +8,7 @@ require (
 	github.com/anacrolix/torrent v1.61.1-0.20260823090931-70072f1a7460
 	github.com/egoist/mygo v0.6.3
 	golang.org/x/sys v0.48.0
-	golang.org/x/time v0.14.0
+	golang.org/x/time v0.16.0
 	modernc.org/sqlite v1.48.0
 )
 
