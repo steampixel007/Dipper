@@ -3,7 +3,7 @@ module dipper.local/dipper
 go 1.27.1
 
 require (
-	github.com/PuerkitoBio/goquery v1.10.3
+	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/anacrolix/generics v0.2.0
 	github.com/anacrolix/torrent v1.61.1-0.20260823090931-70072f1a7460
 	github.com/egoist/mygo v0.6.3
@@ -30,7 +30,7 @@ require (
 	github.com/anacrolix/sync v0.5.5-0.20251119100342-d78dd1f686f1 // indirect
 	github.com/anacrolix/upnp v0.1.4 // indirect
 	github.com/anacrolix/utp v0.1.0 // indirect
-	github.com/andybalholm/cascadia v1.3.3 // indirect
+	github.com/andybalholm/cascadia v1.3.4 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/benbjohnson/immutable v0.4.1-0.20221220213129-8932b999621d // indirect
 	github.com/bits-and-blooms/bitset v1.24.2 // indirect
