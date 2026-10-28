@@ -51,6 +51,13 @@ Linux workflows now install `fonts-noto-cjk` before testing, so the pixel tests
 exercise actual Chinese glyphs. The assertions remain unchanged. The Windows
 checks already passed with system fonts; Linux verification is tracked on PR #30.
 
+With Chinese glyphs present, the existing busy-settings test's four wheel events
+left the quit button below the viewport. The settings tests now scroll using
+measured target bounds, and test the busy page at both 720 and 860 pixels high.
+`redcheck` reproduced the old click failure at 720 pixels (`退出 Dipper` at
+Y=835.9933 outside the window); after the change both settings tests passed.
+The product's scrolling behavior and all disabled-action assertions are unchanged.
+
 ## Native Windows check
 
 The built executable was launched once for each saved mode using separate,
