@@ -6,6 +6,62 @@ and publishes a GitHub Release with generated release notes and `SHA256SUMS`.
 No manual publishing step or additional secret is required; only the publishing
 job receives `contents: write` through the built-in `GITHUB_TOKEN`.
 
+## Version policy
+
+Dipper follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
+Use `MAJOR.MINOR.PATCH` for the application version and prefix Git tags with
+`v`, for example `1.2.3` and `v1.2.3`. Choose a version when preparing a public
+release, not for every merged pull request. Review the changes since the last
+release and apply the highest required increment.
+
+| Change | Increment | Example |
+| --- | --- | --- |
+| Backward-compatible bug fixes | Patch | `1.2.3` → `1.2.4` |
+| Backward-compatible features or deprecations | Minor; reset patch | `1.2.3` → `1.3.0` |
+| Breaking a documented compatibility promise | Major; reset minor and patch | `1.2.3` → `2.0.0` |
+
+For this desktop application, compatibility promises cover documented
+configuration, import/export formats, command-line interfaces, and preserving
+user data through supported upgrades. An internal database schema change with
+a compatible automatic migration does not by itself require a major release.
+Neither a UI redesign nor the amount of changed code determines the increment.
+Document breaking changes and any required user migration in the release notes.
+
+### Initial development and stability
+
+Start initial development releases at `v0.1.0`. While on `0.x`, increment patch
+for compatible fixes and minor for new features or breaking changes, resetting
+patch to zero. Explain breaking changes even though `0.x` does not promise a
+stable interface. A version such as `v0.1.0` is a normal release, not a SemVer
+prerelease, but it does not imply the stability commitment of `v1.0.0`.
+
+Release `v1.0.0` when the core workflows are ready for regular use and the project
+is prepared to maintain its documented compatibility promises. Later features
+do not need to be complete before `1.0.0`.
+
+### Test releases
+
+Use these prerelease stages as needed; a release does not have to pass through
+every stage:
+
+| Stage | Tag example | Purpose |
+| --- | --- | --- |
+| Alpha | `v0.1.0-alpha.1` | Early validation while functionality is still changing |
+| Beta | `v0.1.0-beta.1` | Public testing of the intended release workflows |
+| Release candidate | `v0.1.0-rc.1` | Final validation of a candidate intended for normal release |
+| Normal release | `v0.1.0` | Release without a prerelease suffix |
+
+Increment the numeric suffix for each new candidate of the same stage and target
+version. A typical progression is `v0.1.0-beta.1` → `v0.1.0-beta.2` →
+`v0.1.0-rc.1` → `v0.1.0`; use `v0.1.0-beta.1` for an initial public test of
+that target version. Do not add `-stable`, `-final`, or `-release` to a normal
+release: SemVer treats any such suffix as a prerelease.
+
+Optional `+build.5` metadata identifies a build but does not affect SemVer
+ordering. Do not use metadata alone to represent an upgrade. A published version
+identifies one source snapshot and its release assets: never move its tag or
+replace its downloads. Publish corrections under a new version.
+
 ## Publish a version
 
 The tagged commit must contain the release workflow. Merge the intended changes
@@ -22,7 +78,7 @@ Replace `v0.1.0` with an unused version. Replace `origin/main` with a specific
 commit SHA to publish that commit instead. Creating a tag only on your machine
 does not start the workflow: push that tag to GitHub.
 
-Tags follow Semantic Versioning with a `v` prefix: `v1.2.3` is a stable release;
+Tags follow Semantic Versioning with a `v` prefix: `v1.2.3` is a normal release;
 `v1.2.3-rc.1` and `v1.2.3-beta.1` become GitHub prereleases and are not marked
 Latest. Optional build metadata such as `v1.2.3+build.5` is accepted. Other tags
 starting with `v` fail validation; tags without that prefix do not trigger a
