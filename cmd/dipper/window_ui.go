@@ -146,7 +146,7 @@ func (s *State) setCloseBehavior(value string) {
 }
 
 func (s *State) windowSettings(c *ui.Context) {
-	ui.Column(c).Gap(12).Padding(22).Background(paper).Border(1, line).Radius(10).Children(func() {
+	ui.Column(c).Gap(12).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
 		heading(c, windowText.title)
 		if s.Platform == "darwin" {
 			caption(c, windowText.macDetail)
@@ -169,18 +169,18 @@ func (s *State) windowSettings(c *ui.Context) {
 
 func (s *State) closeDialog(c *ui.Context) {
 	ui.DialogBase(c, &s.ClosePrompt, func(backdrop, panel ui.Element) {
-		backdrop.Background(scrim).Transition(fadeTransition)
-		panel.Width(510).Padding(28).Gap(18).Radius(12).Background(paper)
+		backdrop.Background(colors(c).scrim).Transition(fadeTransition)
+		panel.Width(510).Padding(28).Gap(18).Radius(12).Background(colors(c).paper)
 		ui.Text(c, windowText.question).FontSize(23).FontWeight(700)
 		caption(c, windowText.backgroundDetail)
 		caption(c, windowText.quitDetail)
 		if !s.TrayAvailable {
-			ui.Text(c, windowText.unavailable).FontSize(12).TextColor(amber).LineHeight(1.5)
+			ui.Text(c, windowText.unavailable).FontSize(12).TextColor(colors(c).amber).LineHeight(1.5)
 		} else if s.Platform == "windows" {
 			caption(c, windowText.overflow)
 		}
 		if s.SaveError != "" {
-			ui.Text(c, s.SaveError).FontSize(12).TextColor(errorInk).LineHeight(1.5)
+			ui.Text(c, s.SaveError).FontSize(12).TextColor(colors(c).errorInk).LineHeight(1.5)
 		}
 		ui.Checkbox(c.Key("remember-close"), &s.RememberClose, windowText.remember).Disabled(s.Busy)
 		ui.Row(c).Justify(ui.End).Gap(8).Children(func() {

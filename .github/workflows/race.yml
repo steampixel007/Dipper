@@ -15,6 +15,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Install Chinese fonts for UI rendering
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       # The race detector needs cgo, which also exercises the sqlite piece
       # completion that the CGO_ENABLED=0 checks and builds never reach.
       - run: go test -race -count=1 -timeout 10m ./...

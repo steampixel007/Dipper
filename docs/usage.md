@@ -18,6 +18,15 @@ On Windows and Linux, closing the window asks whether to keep following and down
 
 Only one main process runs per data directory; launching the program again brings back the existing window and restores it when minimized. The single-instance check runs before database and download engine initialization, and a failed wake-up shows an error instead of continuing to contend for the state files.
 
+## Appearance
+
+In Settings, under "外观与动效", choose "浅色" (Light), "夜间" (Night), or
+"跟随系统" (Follow system). The theme changes immediately and is remembered
+across restarts. Follow system switches with the desktop's application theme.
+Existing installations keep the light theme until you choose another mode.
+"减少动态效果" remains a separate option. The tray icon follows the taskbar's
+appearance so it stays legible even when the app uses a different theme.
+
 ## Files and state
 
 Default application directories (where `$XDG_*_HOME` is set to an absolute path on Linux, it replaces the corresponding fallback):

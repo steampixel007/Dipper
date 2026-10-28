@@ -45,6 +45,23 @@ func uiClick(t *testing.T, tt *ui.Tester, label string) {
 	tt.Advance(300 * time.Millisecond)
 }
 
+func uiScrollTo(t *testing.T, tt *ui.Tester, label string) {
+	t.Helper()
+	r, ok := tt.Find(label)
+	if !ok {
+		t.Fatalf("missing scroll target %q", label)
+	}
+	bounds := tt.Image().Bounds()
+	height := float32(bounds.Dy())
+	if r.Y < 64 || r.Y+r.H > height {
+		tt.Scroll(float32(bounds.Dx())*.6, height/2, 0, r.Y-80)
+		r, ok = tt.Find(label)
+		if !ok || r.Y < 64 || r.Y+r.H > height {
+			t.Fatalf("scroll target %q remains outside content viewport: %+v", label, r)
+		}
+	}
+}
+
 func uiRequireText(t *testing.T, tt *ui.Tester, texts ...string) {
 	t.Helper()
 	for _, text := range texts {
@@ -585,36 +602,30 @@ func TestUICompletedPausedDownloadCanResume(t *testing.T) {
 }
 
 func TestUISettingsBusyDisablesChangesAndQuit(t *testing.T) {
-	s := uiFixture(t, "settings")
-	s.Busy = true
-	picked, quit := false, false
-	s.PickFolder = func() { picked = true }
-	s.Quit = func() { quit = true }
-	tt := ui.NewTester(s.view, 1320, 860)
-	uiClick(t, tt, "选择文件夹")
-	if rect, ok := tt.Find(windowText.quit); !ok || rect.Y > 830 {
-		for range 4 {
-			tt.Wheel(660, 430, 0, 120)
-			tt.Advance(100 * time.Millisecond)
-		}
-	}
-	uiClick(t, tt, windowText.quit)
-	before := s.ReduceEffects
-	uiClick(t, tt, "减少动态效果")
-	if picked || quit || before != s.ReduceEffects || s.SaveError != "" {
-		t.Fatal("busy settings invoked an operation")
+	for _, height := range []int{720, 860} {
+		t.Run(strconv.Itoa(height), func(t *testing.T) {
+			s := uiFixture(t, "settings")
+			s.Busy = true
+			picked, quit := false, false
+			s.PickFolder = func() { picked = true }
+			s.Quit = func() { quit = true }
+			tt := ui.NewTester(s.view, 1320, height)
+			uiClick(t, tt, "选择文件夹")
+			before := s.ReduceEffects
+			uiClick(t, tt, "减少动态效果")
+			uiScrollTo(t, tt, windowText.quit)
+			uiClick(t, tt, windowText.quit)
+			if picked || quit || before != s.ReduceEffects || s.SaveError != "" {
+				t.Fatal("busy settings invoked an operation")
+			}
+		})
 	}
 }
 
 func TestUISettingsProxyModesAndCustomAddress(t *testing.T) {
 	s := uiFixture(t, "settings")
 	tt := ui.NewTester(s.view, 1320, 860)
-	if rect, ok := tt.Find("网络与代理"); !ok || rect.Y > 780 {
-		for range 4 {
-			tt.Wheel(660, 430, 0, 120)
-			tt.Advance(100 * time.Millisecond)
-		}
-	}
+	uiScrollTo(t, tt, "自定义")
 	uiRequireText(t, tt, "网络与代理", "代理", "跟随系统代理：http://127.0.0.1:7897", "自动", "关闭", "自定义")
 
 	uiClick(t, tt, "关闭")
@@ -627,6 +638,7 @@ func TestUISettingsProxyModesAndCustomAddress(t *testing.T) {
 		t.Fatalf("custom mode = %d", s.ProxyMode)
 	}
 	uiRequireText(t, tt, "代理地址")
+	uiScrollTo(t, tt, "代理地址")
 	if rect, ok := tt.Find("代理地址"); ok {
 		tt.ClickAt(rect.X+rect.W/2, rect.Y+rect.H/2)
 	}

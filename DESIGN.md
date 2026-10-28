@@ -75,11 +75,11 @@ which the taskbar and Explorer read before any window exists.
 
 ## Tokens
 
-Color token names below are the Go variables at the top of `view.go`; sizes are
-DIP. Every color the UI uses is one of those variables — a grep for `ui.Hex(`
-or `ui.RGBA(` outside that block means a color bypassed the token layer. When a
-value changes, change the variable and this block together. Never introduce a
-second palette.
+Color token names below are fields of `colorPalette` in `appearance.go`; sizes
+are DIP. `colors(c)` chooses the palette from the current UI context, so separate
+windows and offline renders do not share mutable appearance state. Every UI color
+comes from this token layer. Keep the values and this block in sync; do not add
+page-specific colors.
 
 ```yaml
 colors:
@@ -109,9 +109,37 @@ colors:
   line: "#e9e9e9"              # dividers, hairline card borders
   outline: "#c6c6c6"           # input and secondary-button borders
   hoverLine: "#b1b1b1"         # hovered card border
+  accentText: "#ffffff"        # text and checked marks on the accent
+  brandWash: "#f5f9ff"         # fixed black-and-white bird artwork
   # Alpha overlays
   scrim: "rgba(0,0,0,.24)"     # dialog backdrop
   popoverShadow: "rgba(0,0,0,.10)"  # the only shadow, word-choice popover
+
+night-colors:
+  blue: "#9bb3ff"
+  blueHover: "#b2c4ff"
+  bluePressed: "#87a3f5"
+  blueWash: "#283952"
+  accentText: "#14213a"
+  muted: "#b3c0d1"
+  ink: "#e7edf5"
+  line: "#334353"
+  outline: "#718298"
+  hoverLine: "#91a2b7"
+  chrome: "#18212b"
+  paper: "#202b37"
+  canvas: "#1b2530"
+  brandWash: "#f5f9ff"
+  green: "#83d9b5"
+  greenWash: "#233e37"
+  amber: "#f0c27b"
+  amberWash: "#403625"
+  avoidInk: "#f5a3a8"
+  avoidWash: "#422d38"
+  errorInk: "#ffafb4"
+  errorWash: "#452d38"
+  scrim: "rgba(0,0,0,.56)"
+  popoverShadow: "rgba(0,0,0,.32)"
 
 typography:
   family: "Segoe UI, Microsoft YaHei UI"
@@ -151,6 +179,21 @@ motion:
   content: 190ms   # pages, rows, poster lift
   progress: 400ms  # progress-fill value changes
 ```
+
+### Appearance
+
+The appearance card offers 浅色, 夜间, and 跟随系统. Light remains the default
+for existing preferences and missing or unknown values. A choice takes effect
+immediately after a successful preferences write and survives restart. A write
+failure keeps the previous selection and reports the error. Follow system tracks
+the desktop application appearance. The native frame and clear background follow
+the same choice; the tray follows its taskbar independently.
+
+Night mode keeps the same typography, spacing, content, and hierarchy, using blue
+slate surfaces and lighter semantic inks. `accentText` is distinct from `paper`:
+a button's text and the followed badge need contrast on the accent, not a surface
+color. The fixed black-and-white bird stays on `brandWash` in either appearance,
+including a small tile inside the no-cover frame in night mode.
 
 ### Color roles
 
@@ -403,7 +446,7 @@ a page's scroll position as a side effect of clicking a control.
 
 ### Don't
 
-- Don't introduce a second palette, raw hex values, or gradients.
+- Don't add page-specific palettes, raw hex values outside the token layer, or gradients.
 - Don't add shadows; the word popover's single shadow is the only exception.
 - Don't mark state with a colored left-border stripe; use a dot or a swatch.
 - Don't render a source failure as an empty catalog, or a failed save as
@@ -417,10 +460,10 @@ a page's scroll position as a side effect of clicking a control.
 
 ## Reference screens and maintenance
 
-The seven [UI reference renders](docs/assets/ui/) cover browse, filtering,
-following, downloads, settings, source failure, and backfill. They come from
-`cmd/dipper/ui_render.go` fixtures; `--render ./docs/assets/ui` regenerates
-them. These images show the native view layout with sample data, not a live
+The eight [UI reference states](docs/assets/ui/) cover browse, filtering,
+following, downloads, settings, source failure, backfill, and window closing.
+They come from `cmd/dipper/ui_render.go` fixtures; `--render ./docs/assets/ui`
+regenerates both light screens and matching `-dark.png` screens. These images show the native view layout with sample data, not a live
 source, running transfer, or operating-system window. When a design change
 alters a reference state, update the render and review the image along with
 the code. [README verification boundaries](README.md#verification-and-boundaries)

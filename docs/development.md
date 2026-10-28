@@ -74,6 +74,13 @@ catches a bug are in [code standards](code-standards.md). A Linux job also runs
 the suite under the race detector with cgo enabled, reaching the code paths the
 CGO-free platform checks never build.
 
+UI pixel tests render Chinese product copy using the host's text engine. Linux
+needs Chinese fonts as well as Pango/Cairo; on Debian/Ubuntu install
+`fonts-noto-cjk` before running tests or generating screenshots. Both Linux CI
+workflows install this package. Without a font covering a character, Pango's
+unknown glyph has no bitmap in MyGo, so text-presence checks can pass while
+pixel-contrast checks correctly fail.
+
 What is not verified: native windows, the tray, input methods and install paths
 on macOS and Linux need acceptance on real hardware — a cross-compile only shows
 the code builds. On non-Windows platforms network availability is inferred from
