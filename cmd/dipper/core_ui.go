@@ -23,6 +23,16 @@ func (a engineAdapter) Ensure(t core.DownloadTask) error {
 	return a.engine.Ensure(downloader.Task{ID: t.Hash, Magnet: t.Resource.Magnet, TorrentURL: t.Resource.TorrentURL, Folder: t.Directory, Context: t.Context})
 }
 
+// Remove reports a task the engine no longer holds as removed, so recovery of
+// an interrupted removal finalizes instead of retrying forever.
+func (a engineAdapter) Remove(hash string) error {
+	err := a.engine.Remove(hash)
+	if err == nil || errors.Is(err, downloader.ErrNotFound) || errors.Is(err, downloader.ErrRemoveCleanup) {
+		return nil
+	}
+	return err
+}
+
 func coreResources(rows []source.Resource) []core.Resource {
 	out := make([]core.Resource, 0, len(rows))
 	for _, r := range rows {

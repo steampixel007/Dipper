@@ -336,8 +336,12 @@ func (c *Core) RemoveTask(ctx context.Context, hash string, redownload bool, rem
 		return err
 	}
 	if err := c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
-		if _, err := taskByHash(ctx, tx, hash); err == nil {
-			return nil
+		record, err := taskByHash(ctx, tx, hash)
+		if err == nil {
+			// The tombstone is the durable intent: a crash after this commit
+			// leaves a state startup recovery completes.
+			record.Removing, record.RemoveRedownload = true, redownload
+			return saveTask(ctx, tx, record)
 		} else if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
@@ -415,6 +419,8 @@ func (c *Core) forgetTask(ctx context.Context, hash string, status ItemStatus, r
 		if status == ItemPending && !hasItem && recordErr == nil {
 			record.Accepted = false
 			record.Independent = true
+			record.Removing = false
+			record.RemoveRedownload = false
 			record.Attempts = 0
 			record.LastError = ""
 			record.NextRetry = time.Time{}
@@ -426,6 +432,55 @@ func (c *Core) forgetTask(ctx context.Context, hash string, status ItemStatus, r
 		c.signal()
 	}
 	return err
+}
+
+// recoverRemovals finishes removals whose two halves a crash or a downloader
+// failure separated: the tombstone (TaskRecord.Removing) was committed before
+// the downloader was told to forget the task, and core's records were not
+// finalized yet. Recovery removes what the downloader still holds and then
+// finalizes, so the stores converge no matter where the process died. A
+// downloader failure backs off through the record's NextRetry.
+func (c *Core) recoverRemovals(ctx context.Context, force bool) {
+	snap, err := c.Snapshot()
+	if err != nil {
+		return
+	}
+	for _, record := range snap.Tasks {
+		if !record.Removing {
+			continue
+		}
+		if err := ctx.Err(); err != nil {
+			return
+		}
+		if !force && !record.NextRetry.IsZero() && record.NextRetry.After(c.opts.Now()) {
+			continue
+		}
+		c.mu.Lock()
+		busy := c.removing[record.Task.Hash] > 0
+		c.mu.Unlock()
+		if busy {
+			continue
+		}
+		if c.opts.Downloader != nil {
+			if removeErr := c.opts.Downloader.Remove(record.Task.Hash); removeErr != nil {
+				_ = c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
+					latest, err := taskByHash(ctx, tx, record.Task.Hash)
+					if err != nil {
+						return err
+					}
+					latest.LastError = removeErr.Error()
+					latest.NextRetry = c.opts.Now().Add(c.backoff(latest.Attempts + 1))
+					return saveTask(ctx, tx, latest)
+				})
+				continue
+			}
+		}
+		status, reason, read := ItemSkipped, "已删除下载任务", true
+		if record.RemoveRedownload {
+			status, reason, read = ItemPending, "等待重新下载", false
+		}
+		_ = c.forgetTask(ctx, record.Task.Hash, status, reason, read)
+	}
 }
 
 func (c *Core) getSubscription(ctx context.Context, id string) (Subscription, error) {
@@ -670,6 +725,9 @@ func (c *Core) flush(ctx context.Context, onlyID string, replay, force bool) err
 		return err
 	}
 	for _, record := range snap.Tasks {
+		if record.Removing {
+			continue
+		}
 		if record.Accepted && !replay && record.LastError == "" {
 			continue
 		}
@@ -802,6 +860,7 @@ func (c *Core) Start() error {
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
+		c.recoverRemovals(c.ctx, true)
 		_ = c.flush(c.ctx, "", true, true)
 		if c.opts.DisableScheduler {
 			return
@@ -837,6 +896,7 @@ func (c *Core) schedule() {
 				return
 			}
 		}
+		c.recoverRemovals(c.ctx, false)
 		_ = c.flush(c.ctx, "", false, false)
 		snap, err = c.Snapshot()
 		if err != nil {
@@ -860,6 +920,9 @@ func (c *Core) schedule() {
 			}
 		}
 		for _, r := range snap.Tasks {
+			if r.Removing {
+				continue
+			}
 			if r.LastError != "" {
 				active := r.Accepted || r.Independent
 				for _, sub := range snap.Subscriptions {

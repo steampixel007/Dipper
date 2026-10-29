@@ -38,8 +38,14 @@ type MatchResult struct {
 type FeedFunc func(context.Context, string, string) ([]Resource, error)
 
 // Ensure must be idempotent by Hash, durably accept a task before returning nil,
-// and observe Context so Close can cancel an in-flight submission.
-type Downloader interface{ Ensure(DownloadTask) error }
+// and observe Context so Close can cancel an in-flight submission. Remove must
+// forget the task by Hash and tolerate being called for a task it does not
+// hold: startup recovery replays removals a crash interrupted, and the
+// downloader may have already finished its half.
+type Downloader interface {
+	Ensure(DownloadTask) error
+	Remove(hash string) error
+}
 
 type DownloadTask struct {
 	Hash           string
@@ -112,9 +118,13 @@ type TaskRecord struct {
 	Task        DownloadTask
 	Accepted    bool
 	Independent bool `json:",omitempty"`
-	Attempts    int
-	LastError   string
-	NextRetry   time.Time
+	// Removing marks a removal the user confirmed whose downloader half may
+	// not have finished; startup recovery completes it (recoverRemovals).
+	Removing         bool `json:",omitempty"`
+	RemoveRedownload bool `json:",omitempty"`
+	Attempts         int
+	LastError        string
+	NextRetry        time.Time
 }
 
 type State struct {

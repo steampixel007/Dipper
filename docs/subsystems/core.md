@@ -227,7 +227,18 @@ before anything is forgotten, and only then updates core's records. With a
 `remove` callback the caller deletes the transfer between those steps: a true
 result finalizes core's records even when deleting the files reported a cleanup
 error, and a false result keeps the saved intent so nothing is lost. `Start`'s
-replay would otherwise submit a dropped record again. Deleted and reset items
+replay would otherwise submit a dropped record again.
+
+The two stores cannot share one transaction, so the intent is made durable
+first and recovered: `RemoveTask` commits a tombstone (`TaskRecord.Removing`,
+with the redownload choice) before invoking the callback. A crash anywhere
+after that commit leaves a record that `recoverRemovals` completes at startup
+and on every scheduler cycle — it asks the downloader, through the
+`Downloader.Remove` the interface now carries, to finish its half (the method
+must tolerate a task it no longer holds), then finalizes the tombstone into
+the chosen end state. A failing downloader backs off through the record's
+`NextRetry`, and `flush` and the scheduler never submit tombstoned records.
+Deleted and reset items
 return to the state the user chose: `DeleteTask` marks them skipped so neither
 the scheduler nor a later check brings the download back, `ResetTask` marks them
 pending so the next flush submits it fresh. Neither touches the disk; the
@@ -277,6 +288,9 @@ Points a change is expected to prove:
   including after a restart, into the original folder.
 - Removing a subscription during creation's first delivery leaves no
   zero-valued subscription behind and re-creating the same ID works.
+- A crash after the removal tombstone commits is completed by startup
+  recovery: the engine half is re-asked, the record finalizes, and a
+  failing downloader backs off without resubmitting the task.
 - Two subscriptions pointing at the same hash submit one task, and both items
   end up downloaded.
 - An item selected explicitly is downloaded even when an earlier item with the
