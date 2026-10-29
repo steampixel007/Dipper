@@ -1,4 +1,4 @@
-<!-- reviewed-through: 97682a3 (2026-10-25 01:04 +0800) -->
+<!-- reviewed-through: ad40e8a (2026-10-29 00:13 +0800) -->
 # Lessons from merged work
 
 Each day the commits since the `reviewed-through` mark above are reviewed:
@@ -66,6 +66,26 @@ once it moves.
 - `TestRealUploadRatioStopsAndCloseStopsPayload` failed on windows-latest only (PR #6, 2e68af2, and again inside PR #4): the consuming client's default file storage caches an mmap per written `.part` file and never unmaps it when the torrent drops, so `t.TempDir` cleanup hit a sharing violation on the still-open handle. Linux and macOS unlink mapped files, and the same commit passed a second Windows run — the red was mid-download timing.
 - Fixed independently twice: PR #4 (e585b96) moved the consumer to per-torrent `NewMMap` storage whose mappings close with the client, plus a deterministic regression; PR #6 reproduced the leak deterministically on Windows first (close mid-download, then `RemoveAll` fails) per the inject-the-delay rule. The merge keeps PR #4's storage — the rule is the same either way.
 - Seen 1× (2026-10-25).
+
+**A destructive action coordinates with work in flight before forgetting state.**
+- b26ce9b's DeleteTask dropped the outbox record while an admission could still be inside `Ensure` outside every lock: the transfer then admitted into the engine after the delete reported success, invisible to the UI because core no longer listed it. Reproduced by holding the torrent HTTP response during a retry and deleting mid-fetch.
+- Fixed in the night-audit worktree: `RemoveTask` cancels per-hash admissions, waits on the delivery channel, and only then finalizes records; the GUI calls it instead of sequencing engine and core calls itself.
+- Seen 1× (2026-10-29).
+
+**A promised retry keeps its own durable intent, not a subscription's.**
+- Deleting and re-downloading a task whose subscription was cancelled (f49ed62 kept accepted records on purpose) deleted the files and the record, returned success, and nothing could resubmit: ResetTask only turned surviving subscription items pending. The user's explicit intent was lost with no error.
+- Fixed in the night-audit worktree: the saved task becomes an independent intent that preserves source and folder; flush submits it without a subscription, across restarts. `TestResetAfterUnsubscribeRedownloadsIndependently` and `TestUIRedownloadAfterUnsubscribeKeepsOriginalDestination` fail on the old code (REAL RED: "independent intent was not resubmitted: calls=1").
+- Seen 1× (2026-10-29).
+
+**A committed removal reports cleanup failure without undoing the commit.**
+- Engine.Remove deleted the durable checkpoint first, so a later file-deletion failure returned an error after the task was already forgotten. The GUI treated any error as "nothing happened" and kept core's record, so the next restart replayed a transfer whose folder was already gone.
+- Fixed in the night-audit worktree: post-commit cleanup failures return `ErrRemoveCleanup` (deterministic regressions in `internal/downloader/removal_error_test.go`), and the removal caller finalizes core's records while surfacing the warning.
+- Seen 1× (2026-10-29).
+
+**A control's rendered label is not its behavior; click it in a test.**
+- 36dde46 kept a 继续 label on stopped tasks, but pauseDownload only checked `Paused`, so the first click paused the stopped task and a second was needed. `TestUIDownloadsOfferOneTransferActionPerState` asserted visibility only and stayed green through the bug.
+- Fixed in the night-audit worktree: the condition resumes paused-or-stopped, and `TestUIDownloadTransferActionChangesIntentOnce` renders the card, clicks once against a scripted engine, and asserts the command and projected flags.
+- Seen 1× (2026-10-29).
 
 ## Moved to the code standards
 
