@@ -428,7 +428,7 @@ func (s *State) pauseDownload(index int) {
 	}
 	d := s.Downloads[index]
 	s.runAction(func() error {
-		if d.Paused {
+		if d.Paused || d.Stopped {
 			return s.Engine.Resume(d.ID)
 		}
 		return s.Engine.Pause(d.ID)
@@ -472,13 +472,13 @@ func (s *State) removeDownload(id string, redownload bool) {
 		message = "已删除任务，将重新下载"
 	}
 	s.runAction(func() error {
-		if err := s.Engine.Remove(id); err != nil && !errors.Is(err, downloader.ErrNotFound) {
-			return err
-		}
-		if redownload {
-			return s.Core.ResetTask(s.Ctx, id)
-		}
-		return s.Core.DeleteTask(s.Ctx, id)
+		return s.Core.RemoveTask(s.Ctx, id, redownload, func() (bool, error) {
+			err := s.Engine.Remove(id)
+			if errors.Is(err, downloader.ErrNotFound) {
+				return true, nil
+			}
+			return err == nil || errors.Is(err, downloader.ErrRemoveCleanup), err
+		})
 	}, message)
 }
 func (s *State) pauseAllDownloads(paused bool) {
