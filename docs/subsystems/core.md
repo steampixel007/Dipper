@@ -17,7 +17,7 @@ in. It has no UI dependency: the window calls it, it never calls the window.
 | --- | --- |
 | `types.go` | `Anime`, `Group`, `Resource`, `Rule`, `Item`, `Subscription`, `TaskRecord`, `Options`, and the sentinel errors |
 | `store.go` | `Core`, SQLite open and schema, the in-memory `diskState`, transactions, directory naming |
-| `engine.go` | `CreateSubscription`, `Check`, `DownloadExisting`, `UpdateRule`, `SetPaused`, `RemoveSubscription`, `DeleteTask`, `ResetTask`, `RetryPending`, the scheduler and `flush` |
+| `engine.go` | `CreateSubscription`, `Check`, `DownloadExisting`, `UpdateRule`, `SetPaused`, `RemoveSubscription`, `RemoveTask`, `DeleteTask`, `ResetTask`, `RetryPending`, the scheduler and `flush` |
 | `rules.go` | `Normalize`, `NormalizeRule`, `Match`, `ParseEpisode`, `SuggestWords` |
 | `hash.go` | `ResourceHash`, `resolveHash`, the bencode reader that derives a torrent's v1 info hash |
 | `download_root.go`, `video_*.go` | The default download root per platform |
@@ -220,12 +220,44 @@ starts. Accepted transfers keep running and their records stay: `Start` replays
 them to restore the running engine. The anime directory record survives, so a
 later re-subscription gets the same folder. Files on disk are never touched.
 
-`DeleteTask` and `ResetTask` forget a single delivery. Both drop the outbox
-record — `Start`'s replay would otherwise submit it again — and return the
-hash's downloaded items to the state the user chose: `DeleteTask` marks them
-skipped so neither the scheduler nor a later check brings the download back,
-`ResetTask` marks them pending so the next flush submits it fresh. Neither
-touches the disk; the downloader's `Remove` deletes the transfer and its files.
+`DeleteTask` and `ResetTask` forget a single delivery. Both route through
+`RemoveTask(ctx, hash, redownload, remove)`, which cancels the hash's pending
+admissions, waits on the delivery channel so an in-flight `Ensure` has finished
+before anything is forgotten, and only then updates core's records. With a
+`remove` callback the caller deletes the transfer between those steps: a true
+result finalizes core's records even when deleting the files reported a cleanup
+error, and a false result keeps the saved intent so nothing is lost. `Start`'s
+replay would otherwise submit a dropped record again.
+
+The two stores cannot share one transaction, so the intent is made durable
+first and recovered: `RemoveTask` commits a tombstone (`TaskRecord.Removing`,
+with the redownload choice) before invoking the callback. A crash anywhere
+after that commit leaves a record that `recoverRemovals` completes at startup
+and on every scheduler cycle — it asks the downloader, through the
+`Downloader.Remove` the interface now carries, to finish its half (the method
+must tolerate a task it no longer holds), then finalizes the tombstone into
+the chosen end state. A failing downloader backs off through the record's
+`NextRetry`, and `flush` and the scheduler never submit tombstoned records.
+Deleted and reset items
+return to the state the user chose: `DeleteTask` marks them skipped so neither
+the scheduler nor a later check brings the download back, `ResetTask` marks them
+pending so the next flush submits it fresh. Neither touches the disk; the
+downloader's `Remove` deletes the transfer and its files.
+
+A reset whose subscription is gone — RemoveSubscription deliberately keeps
+accepted records — cannot borrow a subscription item, so the saved task becomes
+an **independent intent** (`TaskRecord.Independent`): it keeps the original
+source, folder and metadata, and `flush` submits it without a subscription.
+`RemoveSubscription` preserves independent intents, and the scheduler includes
+them in retry timing. This is what makes 删除并重新下载 work after cancelling
+the subscription the task came from.
+
+`CreateSubscription` holds a per-creation watcher while its first flush runs.
+Removing, pausing or editing the rule during that first delivery cancels the
+watcher; the closing transaction then keeps the committed result instead of
+writing a zero-valued subscription back under the same ID, and a cancelled
+delivery is not recorded as a check failure. Recreating the same subscription
+with a fresh revision cannot un-cancel an earlier creation's watcher.
 
 The default check interval is 15 minutes. A source or admission failure backs off
 exponentially from 1 minute to 1 hour. A manual check and `RetryPending` retry
@@ -250,6 +282,15 @@ Points a change is expected to prove:
 
 - A rule change mid-check discards the check's result (`ErrStale`), and the
   items it would have added are not written.
+- Deleting a task while its admission is blocked cancels the admission: no
+  transfer starts after the delete reports success.
+- A reset with no surviving subscription resubmits the saved task on its own,
+  including after a restart, into the original folder.
+- Removing a subscription during creation's first delivery leaves no
+  zero-valued subscription behind and re-creating the same ID works.
+- A crash after the removal tombstone commits is completed by startup
+  recovery: the engine half is re-asked, the record finalizes, and a
+  failing downloader backs off without resubmitting the task.
 - Two subscriptions pointing at the same hash submit one task, and both items
   end up downloaded.
 - An item selected explicitly is downloaded even when an earlier item with the

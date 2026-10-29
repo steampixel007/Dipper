@@ -23,6 +23,16 @@ func (a engineAdapter) Ensure(t core.DownloadTask) error {
 	return a.engine.Ensure(downloader.Task{ID: t.Hash, Magnet: t.Resource.Magnet, TorrentURL: t.Resource.TorrentURL, Folder: t.Directory, Context: t.Context})
 }
 
+// Remove reports a task the engine no longer holds as removed, so recovery of
+// an interrupted removal finalizes instead of retrying forever.
+func (a engineAdapter) Remove(hash string) error {
+	err := a.engine.Remove(hash)
+	if err == nil || errors.Is(err, downloader.ErrNotFound) || errors.Is(err, downloader.ErrRemoveCleanup) {
+		return nil
+	}
+	return err
+}
+
 func coreResources(rows []source.Resource) []core.Resource {
 	out := make([]core.Resource, 0, len(rows))
 	for _, r := range rows {
@@ -428,7 +438,7 @@ func (s *State) pauseDownload(index int) {
 	}
 	d := s.Downloads[index]
 	s.runAction(func() error {
-		if d.Paused {
+		if d.Paused || d.Stopped {
 			return s.Engine.Resume(d.ID)
 		}
 		return s.Engine.Pause(d.ID)
@@ -472,13 +482,13 @@ func (s *State) removeDownload(id string, redownload bool) {
 		message = "已删除任务，将重新下载"
 	}
 	s.runAction(func() error {
-		if err := s.Engine.Remove(id); err != nil && !errors.Is(err, downloader.ErrNotFound) {
-			return err
-		}
-		if redownload {
-			return s.Core.ResetTask(s.Ctx, id)
-		}
-		return s.Core.DeleteTask(s.Ctx, id)
+		return s.Core.RemoveTask(s.Ctx, id, redownload, func() (bool, error) {
+			err := s.Engine.Remove(id)
+			if errors.Is(err, downloader.ErrNotFound) {
+				return true, nil
+			}
+			return err == nil || errors.Is(err, downloader.ErrRemoveCleanup), err
+		})
 	}, message)
 }
 func (s *State) pauseAllDownloads(paused bool) {

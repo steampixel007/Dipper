@@ -20,11 +20,13 @@ import (
 )
 
 type fakeDownloader struct {
-	mu       sync.Mutex
-	calls    []DownloadTask
-	accepted map[string]DownloadTask
-	fail     bool
-	hook     func(DownloadTask) error
+	mu         sync.Mutex
+	calls      []DownloadTask
+	accepted   map[string]DownloadTask
+	removes    []string
+	fail       bool
+	hook       func(DownloadTask) error
+	removeHook func(string) error
 }
 
 func (d *fakeDownloader) Ensure(task DownloadTask) error {
@@ -57,6 +59,29 @@ func (d *fakeDownloader) Ensure(task DownloadTask) error {
 func (d *fakeDownloader) count() int                         { d.mu.Lock(); defer d.mu.Unlock(); return len(d.calls) }
 func (d *fakeDownloader) setFail(v bool)                     { d.mu.Lock(); d.fail = v; d.mu.Unlock() }
 func (d *fakeDownloader) setHook(h func(DownloadTask) error) { d.mu.Lock(); d.hook = h; d.mu.Unlock() }
+
+func (d *fakeDownloader) Remove(hash string) error {
+	d.mu.Lock()
+	removeHook := d.removeHook
+	d.removes = append(d.removes, hash)
+	d.mu.Unlock()
+	if removeHook != nil {
+		if err := removeHook(hash); err != nil {
+			return err
+		}
+	}
+	d.mu.Lock()
+	delete(d.accepted, hash)
+	d.mu.Unlock()
+	return nil
+}
+
+func (d *fakeDownloader) removeCount() int { d.mu.Lock(); defer d.mu.Unlock(); return len(d.removes) }
+func (d *fakeDownloader) setRemoveHook(h func(string) error) {
+	d.mu.Lock()
+	d.removeHook = h
+	d.mu.Unlock()
+}
 
 func resource(id string, n int, title string) Resource {
 	return Resource{ID: id, Title: title, Magnet: fmt.Sprintf("magnet:?xt=urn:btih:%040x", n), Size: 100}

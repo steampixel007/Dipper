@@ -73,8 +73,9 @@ const (
 )
 
 var (
-	ErrClosed   = errors.New("download engine is closed")
-	ErrNotFound = errors.New("download task not found")
+	ErrClosed        = errors.New("download engine is closed")
+	ErrNotFound      = errors.New("download task not found")
+	ErrRemoveCleanup = errors.New("download task removed but cleanup failed")
 )
 
 type savedTask struct {
@@ -603,7 +604,10 @@ func (e *Engine) Remove(id string) error {
 	if err := os.Remove(e.metadataPath(id)); err != nil && !errors.Is(err, os.ErrNotExist) {
 		metaErr = err
 	}
-	return errors.Join(detachErr, os.RemoveAll(j.Folder), metaErr)
+	if err := errors.Join(detachErr, os.RemoveAll(j.Folder), metaErr); err != nil {
+		return errors.Join(ErrRemoveCleanup, err)
+	}
+	return nil
 }
 
 func uploadRate(bytes int64) rate.Limit {

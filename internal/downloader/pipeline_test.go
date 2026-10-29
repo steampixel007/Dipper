@@ -15,6 +15,8 @@ func (a coreAdapter) Ensure(task core.DownloadTask) error {
 	return a.engine.Ensure(Task{ID: task.Hash, Magnet: task.Resource.Magnet, TorrentURL: task.Resource.TorrentURL, Folder: task.Directory, Context: task.Context})
 }
 
+func (a coreAdapter) Remove(hash string) error { return a.engine.Remove(hash) }
+
 func TestCoreRealEnginePipelineAndRestart(t *testing.T) {
 	seed := newFixture(t, 256<<10)
 	root := t.TempDir()

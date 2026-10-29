@@ -73,9 +73,20 @@ type Saved struct {
 	Appearance    string
 	CloseBehavior string
 }
+type downloadEngine interface {
+	Snapshot() []downloader.Snapshot
+	Pause(string) error
+	Resume(string) error
+	Stop(string) error
+	Remove(string) error
+	SetUploadLimit(int64) error
+}
+
+var _ downloadEngine = (*downloader.Engine)(nil)
+
 type State struct {
 	Core                                               *core.Core
-	Engine                                             *downloader.Engine
+	Engine                                             downloadEngine
 	Source                                             *source.Client
 	Ctx                                                context.Context
 	Update                                             func(func())

@@ -47,7 +47,10 @@ starting over. `Resume` clears both the pause and the manual stop.
 the task, then deletes the content folder and the saved metadata. The checkpoint
 goes first, so a crash mid-removal cannot resurrect a task whose folder is
 already gone. Files that could not be deleted stay as orphans and the error is
-reported; submitting the same hash again re-verifies what survived. The piece
+reported as `ErrRemoveCleanup`; the task is already absent from the durable
+checkpoint, so callers must still forget their delivery record. Errors before
+that commit leave the task registered. Submitting the same hash again re-verifies
+what survived. The piece
 completion database keeps the removed task's rows — the completion API exposes
 no way to delete a torrent's rows, and admission sets
 `IgnoreUnverifiedPieceCompletion`, so a re-added task re-verifies those pieces
