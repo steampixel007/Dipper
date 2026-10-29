@@ -109,11 +109,12 @@ type Subscription struct {
 }
 
 type TaskRecord struct {
-	Task      DownloadTask
-	Accepted  bool
-	Attempts  int
-	LastError string
-	NextRetry time.Time
+	Task        DownloadTask
+	Accepted    bool
+	Independent bool `json:",omitempty"`
+	Attempts    int
+	LastError   string
+	NextRetry   time.Time
 }
 
 type State struct {

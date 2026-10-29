@@ -34,16 +34,22 @@ type Core struct {
 	closeErr  error
 	wake      chan struct{}
 	active    map[*subscriptionOperation]struct{}
+	removing  map[string]int
 }
 
 type subscriptionOperation struct {
 	id     string
+	hash   string
 	cancel context.CancelFunc
 }
 
 func (c *Core) registerLocked(ctx context.Context, id string) (context.Context, func()) {
+	return c.registerTaskLocked(ctx, id, "")
+}
+
+func (c *Core) registerTaskLocked(ctx context.Context, id, hash string) (context.Context, func()) {
 	child, cancel := context.WithCancel(ctx)
-	op := &subscriptionOperation{id: id, cancel: cancel}
+	op := &subscriptionOperation{id: id, hash: hash, cancel: cancel}
 	c.active[op] = struct{}{}
 	return child, func() { cancel(); c.mu.Lock(); delete(c.active, op); c.mu.Unlock() }
 }
@@ -119,7 +125,7 @@ func Open(path string, opts Options) (*Core, error) {
 	}
 	db.SetMaxOpenConns(1)
 	ctx, cancel := context.WithCancel(context.Background())
-	c := &Core{db: db, opts: opts, ctx: ctx, cancel: cancel, delivery: make(chan struct{}, 1), closeDone: make(chan struct{}), wake: make(chan struct{}, 1), active: make(map[*subscriptionOperation]struct{})}
+	c := &Core{db: db, opts: opts, ctx: ctx, cancel: cancel, delivery: make(chan struct{}, 1), closeDone: make(chan struct{}), wake: make(chan struct{}, 1), active: make(map[*subscriptionOperation]struct{}), removing: make(map[string]int)}
 	_, err = db.Exec(`PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
 		CREATE TABLE IF NOT EXISTS core_state (id INTEGER PRIMARY KEY CHECK(id=1), body BLOB NOT NULL);
 		CREATE TABLE IF NOT EXISTS core_tasks (hash TEXT PRIMARY KEY, body BLOB NOT NULL);
