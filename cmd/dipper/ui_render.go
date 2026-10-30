@@ -30,6 +30,7 @@ func uiRenderFixture() *State {
 	s.AnimeID, s.Group = s.Catalog[0].ID, 0
 	s.Groups = []string{"回归测试组甲", "回归测试组乙", "回归测试组丙", "回归测试组丁"}
 	s.GroupIDs = []string{"render-group-1", "render-group-2", "render-group-3", "render-group-4"}
+	s.GroupCounts = []int{3, -1, 0, 12}
 	s.ResourceList = []Resource{
 		{ID: "render-resource-1", Title: "[回归测试组甲] 星海旅记 - 01 [1080p][简日内嵌][HEVC].mkv", Episode: "01", Published: "2025-04-07 21:30", MB: 486, Tokens: []string{"1080p", "简日内嵌", "HEVC"}},
 		{ID: "render-resource-2", Title: "[回归测试组甲] 星海旅记 - 02 [1080p][简日内嵌][HEVC].mkv", Episode: "02", Published: "2025-04-14 21:30", Tokens: []string{"1080p", "简日内嵌", "HEVC"}},
@@ -77,6 +78,7 @@ func renderScreens(dir string) error {
 			s.ClosePrompt = true
 		}},
 		{name: "09-anime-summary", page: "detail", configure: func(s *State) { s.SummaryOpen = true }},
+		{name: "10-group-picker", page: "detail", configure: func(s *State) { s.ChoosingGroup = true }},
 	} {
 		for _, appearance := range []string{appearanceLight, appearanceDark} {
 			s := uiRenderFixture()

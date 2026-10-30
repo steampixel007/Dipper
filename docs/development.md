@@ -62,6 +62,7 @@ The sample titles, fansub groups, dates, and transfer figures come from
 | [03-following.png](assets/ui/03-following.png) | Saved follows and check results |
 | [04-downloads.png](assets/ui/04-downloads.png) | Transfer progress and controls |
 | [09-anime-summary.png](assets/ui/09-anime-summary.png) | Full synopsis in a reading dialog |
+| [10-group-picker.png](assets/ui/10-group-picker.png) | Subtitle-group search and release counts |
 
 Keep the README's sample-data caption when refreshing these images. Review
 them at the size readers see on GitHub and keep image alternative text
