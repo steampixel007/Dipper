@@ -178,7 +178,7 @@ func TestRulesAndSuggestions(t *testing.T) {
 		t.Fatal(got)
 	}
 	words := SuggestWords("[组] 剧名 - 03 [1080P][HEVC][简日内嵌][MKV]")
-	if !reflect.DeepEqual(words, []string{"1080p", "hevc", "简日内嵌", "mkv"}) {
+	if !reflect.DeepEqual(words, []string{"1080p", "hevc", "mkv", "简日内嵌"}) {
 		t.Fatal(words)
 	}
 }

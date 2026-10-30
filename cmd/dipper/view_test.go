@@ -218,6 +218,20 @@ func TestUIRawResourcesUnknownSizeAndFilterUndo(t *testing.T) {
 	}
 }
 
+func TestUISortedQuickWordsByFrequency(t *testing.T) {
+	s := uiFixture(t, "detail")
+	tt := ui.NewTester(s.view, 1320, 860)
+	words := s.quickWords()
+	want := []string{"1080p", "HEVC", "简日内嵌", "720p", "AVC", "CHS"}
+	if !slices.Equal(words, want) {
+		t.Fatalf("quick words not sorted by frequency: %v", words)
+	}
+	for _, w := range want {
+		if !tt.HasText(w) {
+			t.Errorf("missing quick word %q", w)
+		}
+	}
+}
 func TestUIUnknownResourceSizeNeverInventsTotals(t *testing.T) {
 	s := uiFixture(t, "detail")
 	s.ResourceList = s.ResourceList[1:2]
