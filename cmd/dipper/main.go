@@ -106,7 +106,7 @@ func main() {
 		return
 	}
 	proxy.Configure(settings.ProxyMode, settings.ProxyURL)
-	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(paths.DataDir, "engine"), UploadLimit: settings.UploadLimitBytes})
+	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(paths.DataDir, "engine"), UploadLimit: settings.UploadLimitBytes, SeedTarget: seedDuration(settings.SeedMinutes)})
 	if err != nil {
 		failStartup(fmt.Errorf("无法打开下载状态：%w", err))
 		return

@@ -49,6 +49,7 @@ func (s *State) sourceLabel(origin string) string {
 
 func newState(dir string) *State {
 	s := &State{Dir: dir, ConfigDir: dir, Platform: runtime.GOOS, Appearance: appearanceLight, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes}
+	s.Seed = "1 小时"
 	if dir != "" {
 		s.CoverDir = filepath.Join(dir, "covers")
 	}

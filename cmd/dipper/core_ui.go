@@ -88,6 +88,42 @@ func uploadLabel(limit int64) string {
 	return "1 MB/s"
 }
 
+var seedOptions = []string{"30 分钟", "1 小时", "2 小时", "不限时长"}
+
+func seedMinutes(label string) int64 {
+	switch label {
+	case "30 分钟":
+		return 30
+	case "2 小时":
+		return 120
+	case "不限时长":
+		return -1
+	}
+	return 60
+}
+
+func seedLabel(minutes int64) string {
+	switch minutes {
+	case 30:
+		return "30 分钟"
+	case 120:
+		return "2 小时"
+	case -1:
+		return "不限时长"
+	}
+	return "1 小时"
+}
+
+func seedDuration(minutes int64) time.Duration {
+	if minutes == -1 {
+		return -1
+	}
+	if minutes <= 0 {
+		return 0
+	}
+	return time.Duration(minutes) * time.Minute
+}
+
 func (s *State) loadSaved() error {
 	state, err := s.Core.Snapshot()
 	if err != nil {
@@ -95,6 +131,7 @@ func (s *State) loadSaved() error {
 	}
 	s.Root = state.Settings.DownloadRoot
 	s.Upload = uploadLabel(state.Settings.UploadLimitBytes)
+	s.Seed = seedLabel(state.Settings.SeedMinutes)
 	s.ProxyMode = proxyModeIndex(state.Settings.ProxyMode)
 	s.ProxyURL = state.Settings.ProxyURL
 	proxy.Configure(state.Settings.ProxyMode, state.Settings.ProxyURL)
@@ -137,7 +174,7 @@ func (s *State) save() {
 	if mode != proxy.ModeCustom {
 		s.ProxyURL = ""
 	}
-	settings := core.Settings{DownloadRoot: s.Root, UploadLimitBytes: uploadLimit(s.Upload), ProxyMode: mode, ProxyURL: s.ProxyURL}
+	settings := core.Settings{DownloadRoot: s.Root, UploadLimitBytes: uploadLimit(s.Upload), SeedMinutes: seedMinutes(s.Seed), ProxyMode: mode, ProxyURL: s.ProxyURL}
 	if err := s.Core.SetSettings(settings); err != nil {
 		s.SaveError = "设置保存失败：" + err.Error()
 		return
@@ -150,6 +187,7 @@ func (s *State) save() {
 		s.SaveError = "限速设置失败：" + err.Error()
 		return
 	}
+	s.Engine.SetSeedTarget(seedDuration(settings.SeedMinutes))
 	if err := s.savePreferences(); err != nil {
 		s.SaveError = "界面设置保存失败：" + err.Error()
 	} else {

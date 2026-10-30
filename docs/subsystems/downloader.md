@@ -10,6 +10,7 @@ done its job. It implements `core.Downloader`, whose contract is in
 - Where a task's files live and how pieces map onto them.
 - The transfer policy: when seeding stops.
 - The shared upload limit.
+- The built-in tracker list and the per-task seeding-time target.
 
 ## Files
 
@@ -18,6 +19,7 @@ done its job. It implements `core.Downloader`, whose contract is in
 | `engine.go` | The engine, task registration, the client's configuration, progress sampling, pause and resume, manual stop, removal |
 | `storage.go` | `diskStorage`, `diskTorrent`, `diskPiece`: path safety and piece-to-file mapping |
 | `policy.go` | `policyState`: byte counters, seeding time, and the stop decision |
+| `trackers.go` | The public tracker list appended to every admitted task |
 | `platform_windows.go`, `platform_other.go` | The platform-specific pieces of the engine |
 
 ## The `Ensure` contract
@@ -61,6 +63,13 @@ first, the two hashes are compared, and the trackers and explicit peers are
 merged. If the fetch fails it falls back to the magnet; an identity mismatch
 fails outright, and a cancelled context does not fall back. The metadata request
 has a 30-second timeout and a 16 MiB cap.
+
+Every admitted task also gets `trackers.go`'s built-in public trackers appended
+as its last announce tier, skipping any URL a previous tier already carries.
+The engine applies them on first admission, on restart from persisted metadata,
+and to a magnet fetched over HTTP, so a torrent whose announce list is empty,
+unreachable or blocked still has redundancy. They are deliberately few and
+well-known; peer exchange and DHT stay primary.
 
 The context only governs admission and the metadata request. Once a task is
 admitted its lifetime belongs to the engine, so a cancelled admission context
@@ -210,6 +219,13 @@ The host application passes MyGo Power's suspend and resume events to
 `SetNetworkAvailable(bool)` to override the automatic detection. Either call
 resets eligibility for the timing calculation. Neither changes the user's
 persisted intent.
+
+The seeding-time stop target is `policyState.SeedTarget`: a positive duration,
+`-1` to seed without a time limit (the ratio target still applies), and zero
+or any other negative value for the default one hour. The host passes the
+setting at construction (`Config.SeedTarget`) and may change it at runtime with
+`SetSeedTarget`; the change applies to running and future tasks and is
+persisted in the checkpoint.
 
 ## Tests
 

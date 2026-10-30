@@ -302,7 +302,7 @@ func (c *Core) Anime() ([]AnimeRecord, error)    { s, e := c.Snapshot(); return 
 func (c *Core) SetSettings(s Settings) error     { return c.UpdateSettings(context.Background(), s) }
 
 func (c *Core) UpdateSettings(ctx context.Context, settings Settings) error {
-	if strings.TrimSpace(settings.DownloadRoot) == "" || settings.UploadLimitBytes < 0 {
+	if strings.TrimSpace(settings.DownloadRoot) == "" || settings.UploadLimitBytes < 0 || settings.SeedMinutes < -1 {
 		return errors.New("invalid download root or upload limit")
 	}
 	if err := proxy.Validate(settings.ProxyMode, settings.ProxyURL); err != nil {
