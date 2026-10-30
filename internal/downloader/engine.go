@@ -66,6 +66,12 @@ type Snapshot struct {
 	AutoStopped     bool    `json:"auto_stopped"`
 }
 
+// DownloadedFile is one file of a finished task that exists on disk.
+type DownloadedFile struct {
+	Path string
+	Size int64
+}
+
 const (
 	StatusMetadata    = "metadata"
 	StatusDownloading = "downloading"
@@ -742,6 +748,26 @@ func (e *Engine) sampleLocked(j *entry, now time.Time, awake time.Duration, onli
 // partial file is not offered. The returned paths are absolute and sorted by
 // their path inside the torrent, so an episode pack opens in release order.
 func (e *Engine) PlayableFiles(id string) ([]string, error) {
+	files, err := e.downloadFiles(id)
+	if err != nil {
+		return nil, err
+	}
+	paths := make([]string, 0, len(files))
+	for _, f := range files {
+		paths = append(paths, f.Path)
+	}
+	return paths, nil
+}
+
+// DownloadFiles lists the files of a finished task with their on-disk sizes,
+// so the UI can show what an episode pack contains. Files on disk are never
+// the source of truth: an unfinished task has none, and a partial file is
+// not offered.
+func (e *Engine) DownloadFiles(id string) ([]DownloadedFile, error) {
+	return e.downloadFiles(id)
+}
+
+func (e *Engine) downloadFiles(id string) ([]DownloadedFile, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.closed {
@@ -755,26 +781,26 @@ func (e *Engine) PlayableFiles(id string) ([]string, error) {
 		return nil, nil
 	}
 	if j.torrent == nil || j.torrent.Info() == nil {
-		return e.playableFromMetadataLocked(j)
+		return e.downloadFilesFromMetadataLocked(j)
 	}
 	files := j.torrent.Files()
-	paths := make([]string, 0, len(files))
+	result := make([]DownloadedFile, 0, len(files))
 	for _, f := range files {
 		if f.BytesCompleted() < f.Length() {
 			continue
 		}
-		if path, ok := existingFile(j.Folder, f.Path()); ok {
-			paths = append(paths, path)
+		if path, size, ok := existingFileWithSize(j.Folder, f.Path()); ok {
+			result = append(result, DownloadedFile{Path: path, Size: size})
 		}
 	}
-	sort.Slice(paths, func(i, j int) bool { return strings.ToLower(paths[i]) < strings.ToLower(paths[j]) })
-	return paths, nil
+	sortDownloadedFiles(result)
+	return result, nil
 }
 
 // A stopped or restarted task has no attached torrent. Its saved metadata still
 // names the files, and a complete task has every piece, so the metadata is the
 // durable source for playback.
-func (e *Engine) playableFromMetadataLocked(j *entry) ([]string, error) {
+func (e *Engine) downloadFilesFromMetadataLocked(j *entry) ([]DownloadedFile, error) {
 	b, err := os.ReadFile(e.metadataPath(j.ID))
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
@@ -791,26 +817,33 @@ func (e *Engine) playableFromMetadataLocked(j *entry) ([]string, error) {
 		return nil, fmt.Errorf("parse saved torrent metadata: %w", err)
 	}
 	files := info.UpvertedFiles()
-	paths := make([]string, 0, len(files))
+	result := make([]DownloadedFile, 0, len(files))
 	for _, f := range files {
 		parts := append([]string{info.BestName()}, f.BestPath()...)
-		if path, ok := existingFile(j.Folder, strings.Join(parts, "/")); ok {
-			paths = append(paths, path)
+		if path, size, ok := existingFileWithSize(j.Folder, strings.Join(parts, "/")); ok {
+			result = append(result, DownloadedFile{Path: path, Size: size})
 		}
 	}
-	sort.Slice(paths, func(i, j int) bool { return strings.ToLower(paths[i]) < strings.ToLower(paths[j]) })
-	return paths, nil
+	sortDownloadedFiles(result)
+	return result, nil
 }
 
-func existingFile(folder, torrentPath string) (string, bool) {
+func existingFileWithSize(folder, torrentPath string) (string, int64, bool) {
 	for _, part := range strings.Split(filepath.ToSlash(torrentPath), "/") {
 		if safeComponent(part) != nil {
-			return "", false
+			return "", 0, false
 		}
 	}
 	path := filepath.Join(folder, filepath.FromSlash(torrentPath))
 	stat, err := os.Stat(path)
-	return path, err == nil && stat.Mode().IsRegular()
+	if err != nil || !stat.Mode().IsRegular() {
+		return "", 0, false
+	}
+	return path, stat.Size(), true
+}
+
+func sortDownloadedFiles(files []DownloadedFile) {
+	sort.Slice(files, func(i, j int) bool { return strings.ToLower(files[i].Path) < strings.ToLower(files[j].Path) })
 }
 
 func (e *Engine) Snapshot() []Snapshot {

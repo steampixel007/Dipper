@@ -49,6 +49,7 @@ func uiRenderFixture() *State {
 	}
 	s.OpenFolder = func(string) {}
 	s.PlayFile = func(string) {}
+	s.CopyText = func(string) {}
 	return s
 }
 

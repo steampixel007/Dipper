@@ -89,6 +89,9 @@ func (e *removalTestEngine) Remove(id string) error {
 	return cleanupErr
 }
 
+func (*removalTestEngine) DownloadFiles(string) ([]downloader.DownloadedFile, error) {
+	return nil, fmt.Errorf("unexpected files")
+}
 func (*removalTestEngine) PlayableFiles(string) ([]string, error) {
 	return nil, fmt.Errorf("unexpected play")
 }

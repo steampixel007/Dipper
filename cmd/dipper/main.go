@@ -203,6 +203,9 @@ func main() {
 				s.Notice = "无法播放：" + err.Error()
 			}
 		}
+		s.CopyText = func(text string) {
+			mygo.Clipboard.WriteText(text)
+		}
 		s.PickFolder = func() {
 			current := s.Root
 			go func() {

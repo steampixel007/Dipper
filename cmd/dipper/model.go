@@ -86,6 +86,7 @@ type downloadEngine interface {
 	Resume(string) error
 	Stop(string) error
 	PlayableFiles(string) ([]string, error)
+	DownloadFiles(string) ([]downloader.DownloadedFile, error)
 	Remove(string) error
 	SetUploadLimit(int64) error
 	SetSeedTarget(time.Duration)
@@ -157,6 +158,7 @@ type State struct {
 	PickFolder                 func()
 	OpenFolder                 func(string)
 	PlayFile                   func(string)
+	CopyText                   func(string)
 	Quit                       func()
 	Platform                   string
 	ClosePrompt, RememberClose bool
@@ -164,6 +166,10 @@ type State struct {
 	CheckTray                  func() bool
 	HideWindow                 func()
 	ShowWindow                 func()
+	FilesOpen                  bool
+	FilesID                    string
+	Files                      []downloader.DownloadedFile
+	FilesError                 string
 }
 
 var seasons = []string{"冬", "春", "夏", "秋"}

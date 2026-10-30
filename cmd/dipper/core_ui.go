@@ -512,6 +512,23 @@ func (s *State) playDownload(index int) {
 		return errors.New("未找到可播放的文件")
 	}, "已打开播放器")
 }
+func (s *State) openFiles(index int) {
+	if s.Engine == nil || index < 0 || index >= len(s.Downloads) {
+		return
+	}
+	d := s.Downloads[index]
+	s.FilesOpen, s.FilesID, s.FilesError = true, d.ID, ""
+	go func() {
+		files, err := s.Engine.DownloadFiles(d.ID)
+		s.Update(func() {
+			if err != nil {
+				s.FilesError = err.Error()
+			} else {
+				s.Files = files
+			}
+		})
+	}()
+}
 func (s *State) pauseDownload(index int) {
 	if s.Engine == nil || index < 0 || index >= len(s.Downloads) {
 		return
