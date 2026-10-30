@@ -87,6 +87,7 @@ func renderScreens(dir string) error {
 		}},
 		{name: "09-anime-summary", page: "detail", configure: func(s *State) { s.SummaryOpen = true }},
 		{name: "10-group-picker", page: "detail", configure: func(s *State) { s.ChoosingGroup = true }},
+		{name: "12-seed-settings", page: "settings", configure: func(s *State) { s.Seed = "30 分钟" }},
 	} {
 		for _, appearance := range []string{appearanceLight, appearanceDark} {
 			s := uiRenderFixture()

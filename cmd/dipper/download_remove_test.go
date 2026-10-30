@@ -89,10 +89,11 @@ func (e *removalTestEngine) Remove(id string) error {
 	return cleanupErr
 }
 
-func (*removalTestEngine) Pause(string) error         { return fmt.Errorf("unexpected pause") }
-func (*removalTestEngine) Resume(string) error        { return fmt.Errorf("unexpected resume") }
-func (*removalTestEngine) Stop(string) error          { return fmt.Errorf("unexpected stop") }
-func (*removalTestEngine) SetUploadLimit(int64) error { return fmt.Errorf("unexpected upload limit") }
+func (*removalTestEngine) Pause(string) error          { return fmt.Errorf("unexpected pause") }
+func (*removalTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
+func (*removalTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
+func (*removalTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
+func (*removalTestEngine) SetSeedTarget(time.Duration) {}
 
 func removalFixture(t *testing.T, engine *removalTestEngine) (*State, *ui.Tester, core.Subscription, string, chan func()) {
 	t.Helper()

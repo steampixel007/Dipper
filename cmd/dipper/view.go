@@ -1048,6 +1048,16 @@ func (s *State) following(c *ui.Context) {
 	})
 }
 
+func (s *State) seedStopCopy() string {
+	if s.Seed == "不限时长" {
+		return "做种达到分享比例 1:1"
+	}
+	if s.Seed != "1 小时" {
+		return "累计做种 " + s.Seed
+	}
+	return "累计做种 1 小时"
+}
+
 func (s *State) downloads(c *ui.Context) {
 	active := 0
 	for _, d := range s.Downloads {
@@ -1139,7 +1149,7 @@ func (s *State) downloads(c *ui.Context) {
 						caption(c, "保存位置："+d.Folder)
 						if d.Progress >= 1 && !d.Stopped {
 							if d.MB > 0 {
-								caption(c, fmt.Sprintf("已分享 %.2f 倍 · 做种 %d 分钟；达到 1:1 或累计 1 小时后停止。", d.UploadedMB/float64(d.MB), d.SeedSeconds/60))
+								caption(c, fmt.Sprintf("已分享 %.2f 倍 · 做种 %d 分钟；达到 1:1 或%s后停止。", d.UploadedMB/float64(d.MB), d.SeedSeconds/60, s.seedStopCopy()))
 							} else {
 								caption(c, fmt.Sprintf("大小未知，分享比例未知 · 做种 %d 分钟", d.SeedSeconds/60))
 							}
@@ -1153,7 +1163,7 @@ func (s *State) downloads(c *ui.Context) {
 				}
 			})
 		})
-		caption(c, "全局上传上限 "+s.Upload+"；完成后达到分享比例 1:1 或累计做种 1 小时即停止。")
+		caption(c, "全局上传上限 "+s.Upload+"；完成后达到分享比例 1:1，或"+s.seedStopCopy()+"即停止。")
 	})
 }
 
@@ -1204,7 +1214,14 @@ func (s *State) settings(c *ui.Context) {
 					})
 					ui.Select(c.Key("upload-limit"), &s.Upload, []string{"256 KB/s", "512 KB/s", "1 MB/s", "2 MB/s"}).Label("全局上传限速").Width(140).OnChange(s.save).Disabled(s.Busy)
 				})
-				caption(c, "下载完成后，分享比例达到 1:1，或有效做种累计 1 小时，满足任一即停止。")
+				ui.Row(c).Gap(16).Children(func() {
+					ui.Column(c).Grow(1).Gap(5).Children(func() {
+						ui.Text(c, "做种时长").FontSize(14)
+						caption(c, "下载完成后按这个时长做种；达到分享比例 1:1 也会提前停止。")
+					})
+					ui.Select(c.Key("seed-duration"), &s.Seed, seedOptions).Label("做种时长选择").Width(140).OnChange(s.save).Disabled(s.Busy)
+				})
+				caption(c, "下载完成后，分享比例达到 1:1，或有效做种达到设定时长，满足任一即停止。")
 			})
 			ui.Column(c).Gap(14).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
 				heading(c, "网络与代理")

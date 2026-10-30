@@ -650,13 +650,52 @@ func TestUISettingsProxyModesAndCustomAddress(t *testing.T) {
 	}
 }
 
+func TestUISettingsSeedDurationSavesAndUpdatesCopy(t *testing.T) {
+	s := uiFixture(t, "settings")
+	s.Seed = "1 小时"
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiScrollTo(t, tt, "做种时长选择")
+	uiRequireText(t, tt, "做种时长选择", "下载完成后按这个时长做种；达到分享比例 1:1 也会提前停止。")
+	tt.Click("做种时长选择")
+	tt.Advance(300 * time.Millisecond)
+	if !tt.HasText("30 分钟") {
+		t.Fatalf("seed popup did not open; texts=%q", tt.Texts())
+	}
+	tt.Click("30 分钟")
+	tt.Advance(300 * time.Millisecond)
+	if s.Seed != "30 分钟" {
+		t.Fatalf("seed choice = %q", s.Seed)
+	}
+	uiRequireText(t, tt, "下载完成后，分享比例达到 1:1，或有效做种达到设定时长，满足任一即停止。")
+	if s.SaveError != "" {
+		t.Fatalf("seed save failed: %q", s.SaveError)
+	}
+	s.Seed = "不限时长"
+	tt.Frame()
+	uiRequireText(t, tt, "下载完成后，分享比例达到 1:1，或有效做种达到设定时长，满足任一即停止。")
+	// The download page must reflect the same choice through seedStopCopy.
+	s.Page = "downloads"
+	tt.Frame()
+	uiRequireText(t, tt, "做种达到分享比例 1:1")
+}
+func TestUISeedStopCopyFollowsDownloadsPage(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[2:3]
+	s.Seed = "不限时长"
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "做种达到分享比例 1:1")
+	s.Seed = "30 分钟"
+	tt.Frame()
+	uiRequireText(t, tt, "累计做种 30 分钟")
+}
+
 func TestUIRenderScreensOffline(t *testing.T) {
 	dir := t.TempDir()
 	if err := renderScreens(dir); err != nil {
 		t.Fatal(err)
 	}
 	var previous []byte
-	for _, name := range []string{"01-browse", "02-filter", "03-following", "04-downloads", "05-settings", "06-source-error", "07-backfill", "08-close-window", "11-view-resources"} {
+	for _, name := range []string{"01-browse", "02-filter", "03-following", "04-downloads", "05-settings", "06-source-error", "07-backfill", "08-close-window", "11-view-resources", "12-seed-settings"} {
 		data, err := os.ReadFile(filepath.Join(dir, name+".png"))
 		if err != nil {
 			t.Fatal(err)

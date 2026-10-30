@@ -59,6 +59,9 @@ type DownloadTask struct {
 type Settings struct {
 	DownloadRoot     string
 	UploadLimitBytes int64
+	// SeedMinutes is the seeding-time target: zero means seed without a time
+	// limit (the ratio target still applies), negative means the default.
+	SeedMinutes int64 `json:",omitempty"`
 	// ProxyMode is one of the proxy package's mode constants; ProxyURL is
 	// the address ProxyMode "custom" uses.
 	ProxyMode string `json:",omitempty"`

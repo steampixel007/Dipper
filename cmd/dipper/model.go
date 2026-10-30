@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 )
@@ -61,6 +62,7 @@ type Download struct {
 type Saved struct {
 	Root          string
 	Upload        string
+	Seed          string
 	ProxyMode     int
 	ProxyURL      string
 	ProxyAuto     string
@@ -81,6 +83,7 @@ type downloadEngine interface {
 	Stop(string) error
 	Remove(string) error
 	SetUploadLimit(int64) error
+	SetSeedTarget(time.Duration)
 }
 
 var _ downloadEngine = (*downloader.Engine)(nil)

@@ -31,6 +31,10 @@ import (
 type Config struct {
 	DataDir     string
 	UploadLimit int64 // Bytes per second; zero selects the default 1 MiB/s, negative means unlimited.
+	// SeedTarget is the seeding-time stop target: positive minutes, or -1 to
+	// seed without a time limit (the ratio target still applies). Zero and
+	// any other negative value select the default one hour.
+	SeedTarget time.Duration
 }
 
 type Task struct {
@@ -123,6 +127,7 @@ type Engine struct {
 	now           func() time.Time
 	awake         func() time.Duration
 	online        func() bool
+	seedTarget    time.Duration
 	checkpointErr error
 }
 
@@ -144,7 +149,7 @@ func newEngine(config Config, configure func(*torrent.ClientConfig)) (_ *Engine,
 	if dir, err = filepath.EvalSymlinks(dir); err != nil {
 		return nil, err
 	}
-	e := &Engine{dir: dir, tasks: make(map[string]*entry), done: make(chan struct{}), now: time.Now, awake: awakeTime, online: networkAvailable}
+	e := &Engine{dir: dir, tasks: make(map[string]*entry), done: make(chan struct{}), now: time.Now, awake: awakeTime, online: networkAvailable, seedTarget: config.SeedTarget}
 	e.ctx, e.cancel = context.WithCancel(context.Background())
 	defer func() {
 		if err != nil {
@@ -430,6 +435,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 	if err := validateIdentity(j.ID, spec); err != nil {
 		return err
 	}
+	appendBuiltinTrackers(spec)
 	for _, other := range e.tasks {
 		if other == j {
 			continue
@@ -628,6 +634,20 @@ func (e *Engine) SetUploadLimit(bytes int64) error {
 	return nil
 }
 
+// SetSeedTarget changes the seeding-time stop target for running and future
+// tasks. A non-positive duration restores the default one hour; -1 seeds
+// without a time limit. Seeding time already accumulated is not reset.
+func (e *Engine) SetSeedTarget(target time.Duration) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.seedTarget = target
+	for _, j := range e.tasks {
+		if target == seedForever || target > 0 {
+			j.Policy.SeedTarget = target
+		}
+	}
+}
+
 // SetNetworkAvailable overrides automatic detection until the engine is closed.
 // The core can provide authoritative OS network-change events, including on non-Windows hosts.
 func (e *Engine) SetNetworkAvailable(available bool) {
@@ -698,6 +718,9 @@ func (e *Engine) sampleLocked(j *entry, now time.Time, awake time.Duration, onli
 	stats := t.Stats()
 	cur := observation{at: now, awake: awake, up: stats.BytesWrittenData.Int64(), down: stats.BytesReadData.Int64()}
 	cur.eligible = j.Complete && online && !e.suspended && !j.Policy.Paused && !j.Policy.ManuallyStopped && !j.Policy.AutoStopped && j.err == nil
+	if e.seedTarget == seedForever || e.seedTarget > 0 {
+		j.Policy.SeedTarget = e.seedTarget
+	}
 	j.Policy.observe(j.previous, cur, j.Complete, j.TotalBytes)
 	if dt := now.Sub(j.previous.at).Seconds(); dt > 0 {
 		j.downSpeed = int64(float64(counterDelta(j.previous.down, cur.down)) / dt)

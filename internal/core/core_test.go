@@ -675,6 +675,7 @@ func TestDirectoriesAreFixedAndPreviewMatchesCommit(t *testing.T) {
 	rootA := settings.DownloadRoot
 	settings.DownloadRoot = filepath.Join(filepath.Dir(path), "other-root")
 	settings.UploadLimitBytes = 42
+	settings.SeedMinutes = -1
 	if err := c.SetSettings(settings); err != nil {
 		t.Fatal(err)
 	}
@@ -705,7 +706,7 @@ func TestDirectoriesAreFixedAndPreviewMatchesCommit(t *testing.T) {
 	}
 	c = openTest(t, path, Options{DownloadRoot: "ignored"})
 	got, _ := c.GetSettings()
-	if got.DownloadRoot != settings.DownloadRoot || got.UploadLimitBytes != 42 {
+	if got.DownloadRoot != settings.DownloadRoot || got.UploadLimitBytes != 42 || got.SeedMinutes != -1 {
 		t.Fatal(got)
 	}
 	if current(t, c, sub.ID).Directory != sub.Directory {

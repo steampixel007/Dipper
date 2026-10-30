@@ -69,3 +69,40 @@ func TestPolicyHourRatioImportedFilesAndRestartEpoch(t *testing.T) {
 		t.Fatal("new epoch counters lost/doubled:", restarted)
 	}
 }
+
+func TestPolicyHonorsConfiguredSeedTarget(t *testing.T) {
+	drive := func(p *policyState, seconds int64) {
+		t.Helper()
+		prev := observation{at: time.Unix(100, 0), awake: 100 * time.Second, eligible: true}
+		for i := int64(0); i < seconds; i++ {
+			next := observation{at: prev.at.Add(time.Second), awake: prev.awake + time.Second, eligible: true}
+			p.observe(prev, next, true, 100)
+			prev = next
+		}
+	}
+	short := policyState{SeedTarget: 30 * time.Minute}
+	drive(&short, 30*60)
+	if !short.AutoStopped || short.SeedingTime != 30*time.Minute {
+		t.Fatalf("30-minute target not enforced: %+v", short)
+	}
+	forever := policyState{SeedTarget: seedForever, SeedingTime: time.Hour, DownloadedBytes: 100, UploadedBytes: 50}
+	drive(&forever, 2)
+	if forever.AutoStopped {
+		t.Fatalf("unlimited seed target stopped on time: %+v", forever)
+	}
+	ratio := policyState{SeedTarget: seedForever, DownloadedBytes: 100, UploadedBytes: 50}
+	drive(&ratio, 1)
+	if ratio.AutoStopped {
+		t.Fatalf("unlimited seed target stopped below ratio: %+v", ratio)
+	}
+	ratio.UploadedBytes = 99
+	ratio.observe(observation{}, observation{up: 1}, true, 100)
+	if !ratio.AutoStopped {
+		t.Fatalf("unlimited seed target ignored the ratio stop: %+v", ratio)
+	}
+	unset := policyState{SeedTarget: 0}
+	drive(&unset, 60*60)
+	if !unset.AutoStopped || unset.SeedingTime != time.Hour {
+		t.Fatalf("default hour target not kept for zero target: %+v", unset)
+	}
+}
