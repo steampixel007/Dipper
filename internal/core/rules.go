@@ -95,10 +95,10 @@ func ParseEpisode(title string) string {
 	return ""
 }
 
-var suggestionPattern = regexp.MustCompile(`(?i)\b(?:2160p|1080p|720p|480p|HEVC|AVC|x265|x264|H[.]?265|H[.]?264|AAC|FLAC|MKV|MP4|CHS|CHT|GB|BIG5|WEB-DL|BDRip)\b|简日内嵌|繁日内嵌|简体|繁体|簡體|繁體|内封|內封|内嵌|內嵌|合集`)
-
+// SuggestWords is kept for callers that want a quick suggestion list; it is
+// the recognized release labels in title order.
 func SuggestWords(title string) []string {
-	return cleanWords(suggestionPattern.FindAllString(Normalize(title), -1))
+	return ReleaseTags(title)
 }
 
 func SubscriptionID(animeID, groupID string) string {

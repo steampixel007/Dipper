@@ -355,8 +355,11 @@ closes the popover without changing the draft.
 Include uses blue and `＋`; exclude uses red and `−`. A word cannot be required
 and excluded at once. Custom text needs an explicit direction; alternate
 spellings form one any-of group instead of a silent synonym rule. Parsing
-resolution, subtitle, or codec labels helps reading and suggesting words but
-never adds a restriction without the user's choice. The
+resolution, codec, source, container, audio, subtitle and version labels into
+recognized words helps reading and suggesting words but never adds a
+restriction without the user's choice. Recognized labels render as quiet tags
+on each release row, and the quick-filter row lists words by how often they
+appear across the current releases. The
 [filter screen](docs/assets/ui/02-filter.png) illustrates the two-column
 arrangement.
 

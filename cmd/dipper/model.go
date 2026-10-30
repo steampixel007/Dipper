@@ -329,14 +329,22 @@ func (s *State) addAliases() {
 }
 
 func (s *State) quickWords() []string {
-	var words []string
+	counts := map[string]int{}
 	for _, r := range s.resources() {
 		for _, w := range r.Tokens {
-			if !slices.Contains(words, w) {
-				words = append(words, w)
-			}
+			counts[w]++
 		}
 	}
+	words := make([]string, 0, len(counts))
+	for w := range counts {
+		words = append(words, w)
+	}
+	slices.SortStableFunc(words, func(a, b string) int {
+		if counts[a] != counts[b] {
+			return counts[b] - counts[a]
+		}
+		return strings.Compare(a, b)
+	})
 	return words
 }
 func (s *State) selected() ([]Resource, int) {

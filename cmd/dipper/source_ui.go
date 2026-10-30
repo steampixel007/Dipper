@@ -372,7 +372,7 @@ func (s *State) refreshHistory() {
 			}
 			s.History = rows
 			for _, r := range rows {
-				s.ResourceList = append(s.ResourceList, Resource{ID: r.ID, Title: r.Title, Published: r.Published, Episode: core.ParseEpisode(r.Title), MB: int((r.Size + 999999) / 1000000), Tokens: core.SuggestWords(r.Title)})
+				s.ResourceList = append(s.ResourceList, Resource{ID: r.ID, Title: r.Title, Published: r.Published, Episode: core.ParseEpisode(r.Title), MB: int((r.Size + 999999) / 1000000), Tokens: core.ReleaseTags(r.Title)})
 			}
 			s.initSelection()
 			s.Notice = fmt.Sprintf("已加载 %d 条历史资源", len(rows))

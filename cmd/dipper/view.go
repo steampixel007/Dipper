@@ -561,6 +561,17 @@ func (s *State) ruleEditor(c *ui.Context) {
 	})
 }
 
+// tagChip renders one recognized release label as a quiet tag. Clicking it
+// still opens the same word filter popover as an explicit chip.
+func (s *State) tagChip(c *ui.Context, key, word string) {
+	col, bg := colors(c).ink, colors(c).canvas
+	if choice := s.wordChoice(word); choice == wordWant {
+		col, bg = colors(c).blue, colors(c).blueWash
+	} else if choice == wordAvoid {
+		col, bg = colors(c).avoidInk, colors(c).avoidWash
+	}
+	quiet(c, key, word, func() { s.WordAnchor = key; s.WordOpen = true }).Label("筛选 "+word).FontSize(11).Padding(4, 8).Radius(4).Border(1, colors(c).line).Background(bg).TextColor(col).Tooltip("选择只要、不要，或移除条件")
+}
 func (s *State) wordChip(c *ui.Context, key, word string) {
 	choice := s.wordChoice(word)
 	label := word
@@ -735,7 +746,7 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 		caption(c, published)
 		ui.Row(c).Wrap().Gap(4).Children(func() {
 			for i, word := range r.Tokens {
-				s.wordChip(c, fmt.Sprintf("token-%s-%d", r.ID, i), word)
+				s.tagChip(c, fmt.Sprintf("tag-%s-%d", r.ID, i), word)
 			}
 			ui.Spacer(c)
 			quiet(c, "suggest-"+r.ID, "照这条选版本", func() {

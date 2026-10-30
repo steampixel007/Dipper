@@ -19,6 +19,7 @@ in. It has no UI dependency: the window calls it, it never calls the window.
 | `store.go` | `Core`, SQLite open and schema, the in-memory `diskState`, transactions, directory naming |
 | `engine.go` | `CreateSubscription`, `Check`, `DownloadExisting`, `UpdateRule`, `SetPaused`, `RemoveSubscription`, `RemoveTask`, `DeleteTask`, `ResetTask`, `RetryPending`, the scheduler and `flush` |
 | `rules.go` | `Normalize`, `NormalizeRule`, `Match`, `ParseEpisode`, `SuggestWords` |
+| `tags.go` | `ReleaseTags`: recognized resolution, codec, container, source, audio, subtitle and version labels |
 | `hash.go` | `ResourceHash`, `resolveHash`, the bencode reader that derives a torrent's v1 info hash |
 | `download_root.go`, `video_*.go` | The default download root per platform |
 | `internal/proxy` | The proxy modes settings and HTTP requests share |
@@ -73,7 +74,7 @@ script and punctuation differences outside that range keep their literal
 meaning. This matters for a Chinese catalog where `简` and `繁` are different
 words, not spelling variants.
 
-`ParseEpisode` and `SuggestWords` are for the window, not for matching. An
+`ParseEpisode`, `SuggestWords` and `ReleaseTags` are for the window, not for matching. An
 episode number is never part of identity.
 
 ## Revision and cancellation
