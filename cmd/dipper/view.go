@@ -168,8 +168,9 @@ func (s *State) view(c *ui.Context) {
 	s.cancelDialog(c)
 	s.removeDialog(c)
 	s.helpDialog(c)
+	s.summaryDialog(c)
 	s.closeDialog(c)
-	if s.Page == "detail" && !s.Confirm && !s.Help && !s.ClosePrompt {
+	if s.Page == "detail" && !s.Confirm && !s.Help && !s.SummaryOpen && !s.ClosePrompt {
 		c.OnShortcut(ui.Ctrl, ui.KeyZ, s.undoFilter)
 		c.OnShortcut(ui.Ctrl, ui.KeyY, s.redoFilter)
 		c.OnShortcut(ui.Ctrl|ui.Shift, ui.KeyZ, s.redoFilter)
@@ -425,6 +426,7 @@ func (s *State) detail(c *ui.Context) {
 		ui.Row(c).Grow(1).MinHeight(0).Gap(0).Children(func() {
 			ui.Scroll(c.Key("detail-options")).Width(306).FillHeight().Padding(22, 22, 24, 28).BorderWidth(0, 1, 0, 0).BorderColor(colors(c).line).Children(func() {
 				ui.Column(c).Gap(14).Children(func() {
+					s.animeSummary(c, a)
 					heading(c, "字幕组")
 					if s.DetailLoading {
 						caption(c, "正在加载字幕组…")

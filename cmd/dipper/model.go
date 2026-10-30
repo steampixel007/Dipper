@@ -15,11 +15,12 @@ import (
 )
 
 type Anime struct {
-	ID     string `json:"id"`
-	Title  string `json:"title"`
-	Day    int    `json:"day"`
-	Cover  string `json:"cover"`
-	Source string `json:"source"`
+	ID      string `json:"id"`
+	Title   string `json:"title"`
+	Day     int    `json:"day"`
+	Cover   string `json:"cover"`
+	Source  string `json:"source"`
+	Summary string `json:"summary,omitempty"`
 }
 type Rule struct {
 	All  []string   `json:"all,omitempty"`
@@ -113,6 +114,7 @@ type State struct {
 	AnimeID                    string
 	Group                      int
 	ChoosingGroup              bool
+	SummaryOpen                bool
 	Rule                       Rule
 	Checked                    map[string]bool
 	Editing                    bool

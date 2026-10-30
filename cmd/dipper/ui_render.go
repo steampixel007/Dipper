@@ -17,7 +17,7 @@ func uiRenderFixture() *State {
 	s.Root = `C:\Downloads\Dipper`
 	s.ProxyAuto = "跟随系统代理：http://127.0.0.1:7897"
 	s.Catalog = []Anime{
-		{ID: "render-1", Title: "星海旅记", Day: 1, Cover: "3887.jpg"},
+		{ID: "render-1", Title: "星海旅记", Day: 1, Cover: "3887.jpg", Summary: "为了寻找失落的星图，少女与伙伴们踏上穿越群岛的旅途。在陌生的港口与夜空下，一段关于相遇、离别与成长的故事缓缓展开。"},
 		{ID: "render-2", Title: "雨后的星期天", Day: 0, Cover: "3984.jpg"},
 		{ID: "render-3", Title: "向着下一站", Day: 3, Cover: "4031.jpg"},
 		{ID: "render-4", Title: "花与远方", Day: 5, Cover: "4056.jpg"},
@@ -76,6 +76,7 @@ func renderScreens(dir string) error {
 			s.TrayAvailable = true
 			s.ClosePrompt = true
 		}},
+		{name: "09-anime-summary", page: "detail", configure: func(s *State) { s.SummaryOpen = true }},
 	} {
 		for _, appearance := range []string{appearanceLight, appearanceDark} {
 			s := uiRenderFixture()

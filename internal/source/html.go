@@ -156,7 +156,7 @@ func (c *Client) Detail(ctx context.Context, animeID string) (Detail, error) {
 		return Detail{}, err
 	}
 	result := Detail{Anime: Anime{ID: animeID, Title: clean(title.Text()), Cover: cover,
-		Summary: clean(doc.Find(".bangumi-summary, .bangumi-description").First().Text())}, Groups: make([]Group, 0)}
+		Summary: clean(doc.Find(".central-container > .header2-desc, .bangumi-summary, .bangumi-description").First().Text())}, Groups: make([]Group, 0)}
 	doc.Find(".bangumi-info").Each(func(_ int, info *goquery.Selection) {
 		if text := clean(info.Text()); strings.HasPrefix(text, "放送日期：") {
 			result.Anime.Day = weekday(strings.TrimSpace(strings.TrimPrefix(text, "放送日期：")))

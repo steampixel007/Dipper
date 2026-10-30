@@ -81,6 +81,13 @@ The detail page runs in one of two modes, distinguished by `Backfill`:
 - **Backfill** — pick releases from an existing subscription's history to
   download now, without changing the rule.
 
+Above the subtitle groups, a four-line synopsis preview opens a scrollable
+reading dialog. Opening or closing it preserves resource selection, filter
+drafts and scroll position. Loading, unavailable and missing descriptions have
+distinct copy. Catalog and core state refreshes retain a loaded synopsis, while a
+successful detail response is authoritative. Opening another anime closes the
+reading dialog. `anime_summary_test.go` checks the rendering and interaction.
+
 The two modes share the resource list but not the confirm action. Keeping them
 distinct is what makes "I cancelled this one release" not change what future
 releases are matched against.

@@ -87,7 +87,7 @@ func fromAnime(a source.Anime) Anime {
 	if n, err := strconv.Atoi(a.Day); err == nil {
 		day = n
 	}
-	return Anime{ID: a.ID, Title: a.Title, Cover: a.Cover, Day: day, Source: "蜜柑计划"}
+	return Anime{ID: a.ID, Title: a.Title, Cover: a.Cover, Day: day, Source: "蜜柑计划", Summary: a.Summary}
 }
 
 func (s *State) refreshCatalog() {
@@ -126,6 +126,7 @@ func (s *State) refreshCatalog() {
 			}
 			for _, a := range rows {
 				v := fromAnime(a)
+				v.Summary = s.KnownAnime[a.ID].Summary
 				s.Catalog = append(s.Catalog, v)
 				s.KnownAnime[a.ID] = v
 			}
@@ -199,6 +200,7 @@ func (s *State) openAnime(id string) {
 	s.History = nil
 	s.ResourceList = nil
 	s.ChoosingGroup = false
+	s.SummaryOpen = false
 	s.Rule = Rule{}
 	s.Checked = map[string]bool{}
 	s.EditID = ""

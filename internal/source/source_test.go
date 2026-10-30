@@ -127,7 +127,7 @@ func TestDetailRealSamples(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if detail.Anime.ID != id || detail.Anime.Title == "" || detail.Anime.Summary != "" {
+			if detail.Anime.ID != id || detail.Anime.Title == "" {
 				t.Fatalf("unexpected anime: %+v", detail.Anime)
 			}
 			found := false

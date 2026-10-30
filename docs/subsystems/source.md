@@ -78,6 +78,11 @@ failure means the page structure changed and retrying will not help.
 
 ## Parsing
 
+Detail pages provide an optional synopsis in the direct `.header2-desc` child
+of the desktop `.central-container`. It is normalized as plain text and kept
+in `Anime.Summary`; descriptions inside individual resource entries are not
+anime synopses. A missing synopsis is valid and does not block subtitle groups.
+
 The catalog and history parsers are positional: they read a table's rows and
 cells by their place in the markup. This is why `testdata/` holds saved pages —
 a parser change is checked against the real markup it must read, not against a
