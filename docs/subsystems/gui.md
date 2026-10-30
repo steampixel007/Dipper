@@ -92,6 +92,9 @@ reading dialog. `anime_summary_test.go` checks the rendering and interaction.
 The following page searches saved follows by anime title, subtitle group, or a
 word the saved rule requires; the count line reports how many follow cards match
 and offers a clear action, and an empty result offers a way to clear the search.
+Card actions resolve the subscription by its stable ID, never by its position in
+the filtered list, so a narrowed search cannot pause, edit, or open the
+resources of a follow the card does not show.
 Each card shows a pending-release count with the recent release titles when the
 scheduler has not yet handed them over, and a 下载中 mark while an uncompleted
 transfer for that anime is running.

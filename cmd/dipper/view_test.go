@@ -365,6 +365,78 @@ func TestUIFollowingUsesSubscriptionIdentityAndRSSResult(t *testing.T) {
 	}
 }
 
+func TestUIFollowingActionsSurviveSearchFilter(t *testing.T) {
+	kernel, err := core.Open(filepath.Join(t.TempDir(), "dipper.db"), core.Options{
+		DisableScheduler: true,
+		Feed:             func(context.Context, string, string) ([]core.Resource, error) { return nil, nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { kernel.Close() })
+	ctx := context.Background()
+	res := core.Resource{ID: "filter-1", Title: "1080p", Magnet: "magnet:?xt=urn:btih:" + strings.Repeat("ab", 20), Size: 100}
+	subA, err := kernel.CreateSubscription(ctx, core.Anime{ID: "filter-anime-a", Title: "追番甲"}, core.Group{ID: "filter-group-a", Name: "字幕组甲"}, core.Rule{}, []core.Resource{res}, []string{"filter-1"})
+	if err != nil && subA.ID == "" {
+		t.Fatalf("first subscription not committed: %v", err)
+	}
+	subB, err := kernel.CreateSubscription(ctx, core.Anime{ID: "filter-anime-b", Title: "追番乙"}, core.Group{ID: "filter-group-b", Name: "字幕组乙"}, core.Rule{}, []core.Resource{res}, []string{"filter-1"})
+	if err != nil && subB.ID == "" {
+		t.Fatalf("second subscription not committed: %v", err)
+	}
+	s := uiFixture(t, "following")
+	s.Core = kernel
+	s.Engine = &downloader.Engine{}
+	s.Ctx = ctx
+	// Keep action results off the action goroutine, as the window does.
+	updates := make(chan func(), 2)
+	s.Update = func(fn func()) { updates <- fn }
+	snapshot, err := kernel.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.project(snapshot, nil)
+	s.FollowSearch = "字幕组乙"
+	tt := ui.NewTester(s.view, 1320, 860)
+
+	uiClick(t, tt, "修改条件 字幕组乙")
+	if s.EditID != subB.ID || !s.Editing || s.Page != "detail" {
+		t.Fatalf("edit after filter picked id=%q, want %q", s.EditID, subB.ID)
+	}
+
+	s.Page = "following"
+	tt.Frame()
+	uiClick(t, tt, "查看资源 字幕组乙")
+	if s.EditID != subB.ID || !s.Backfill || !s.ViewResources || s.Page != "detail" {
+		t.Fatalf("view after filter picked id=%q, want %q", s.EditID, subB.ID)
+	}
+
+	s.Page = "following"
+	tt.Frame()
+	uiClick(t, tt, "暂停追番 字幕组乙")
+	deadline := time.NewTimer(2 * time.Second)
+	defer deadline.Stop()
+	for s.Notice != "追番状态已更新" {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatalf("notice = %q", s.Notice)
+		}
+	}
+	snapshot, err = kernel.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	paused := map[string]bool{}
+	for _, sub := range snapshot.Subscriptions {
+		paused[sub.ID] = sub.Paused
+	}
+	if !paused[subB.ID] || paused[subA.ID] {
+		t.Fatalf("pause after filter hit the wrong follow: a=%v b=%v", paused[subA.ID], paused[subB.ID])
+	}
+}
+
 func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	s := uiFixture(t, "following")
 	sub := s.Subscriptions[0]

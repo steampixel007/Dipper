@@ -444,11 +444,14 @@ func (s *State) undoSave() {
 	}()
 }
 
-func (s *State) pauseSubscription(index int) {
-	if s.Core == nil || index < 0 || index >= len(s.Subscriptions) {
+func (s *State) pauseSubscription(id string) {
+	if s.Core == nil {
 		return
 	}
-	sub := s.Subscriptions[index]
+	sub, ok := s.subscription(id)
+	if !ok {
+		return
+	}
 	s.runAction(func() error { return s.Core.SetPaused(s.Ctx, sub.ID, !sub.Paused) }, "追番状态已更新")
 }
 
@@ -462,11 +465,13 @@ func (s *State) removeSubscription(id string) {
 	}
 	s.runAction(func() error { return s.Core.RemoveSubscription(s.Ctx, id) }, "已取消追番《"+title+"》")
 }
-func (s *State) check(index int) {
-	if s.Core == nil || index < 0 || index >= len(s.Subscriptions) || s.Subscriptions[index].Paused {
+func (s *State) check(id string) {
+	if s.Core == nil {
 		return
 	}
-	id := s.Subscriptions[index].ID
+	if sub, ok := s.subscription(id); !ok || sub.Paused {
+		return
+	}
 	s.Notice = "正在检查 RSS…"
 	s.runAction(func() error { return s.Core.Check(s.Ctx, id) }, "RSS 检查完成")
 }

@@ -224,22 +224,22 @@ func (s *State) openAnime(id string) {
 	s.refreshDetail()
 }
 
-func (s *State) editSubscription(index int) {
-	if index < 0 || index >= len(s.Subscriptions) {
+func (s *State) editSubscription(id string) {
+	sub, ok := s.subscription(id)
+	if !ok {
 		return
 	}
-	sub := s.Subscriptions[index]
 	s.openAnime(sub.AnimeID)
 	s.EditID = sub.ID
 	s.Editing = true
 	s.Rule = cloneRule(sub.Rule)
 }
 
-func (s *State) viewSubscriptionResources(index int) {
-	if index < 0 || index >= len(s.Subscriptions) {
+func (s *State) viewSubscriptionResources(id string) {
+	sub, ok := s.subscription(id)
+	if !ok {
 		return
 	}
-	sub := s.Subscriptions[index]
 	s.openAnime(sub.AnimeID)
 	s.EditID = sub.ID
 	s.Backfill = true

@@ -530,8 +530,7 @@ func (s *State) ruleEditor(c *ui.Context) {
 				})
 			})
 		}
-		for i, g := range s.Rule.Any {
-			idx := i
+		for idx, g := range s.Rule.Any {
 			ui.Column(c).Padding(8, 10).Radius(6).Background(colors(c).blueWash).Gap(4).Children(func() {
 				ui.Row(c).Gap(4).Children(func() {
 					ui.Text(c, "这些写法，有一个就行").FontSize(12).TextColor(colors(c).blue).Grow(1)
@@ -1028,8 +1027,7 @@ func (s *State) following(c *ui.Context) {
 		}
 		ui.Scroll(c.Key("following-list")).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Gap(14).Children(func() {
-				for i, sub := range subs {
-					idx := i
+				for _, sub := range subs {
 					item := sub
 					a := s.anime(item.AnimeID)
 					ui.Row(c.Key("subscription-"+item.ID)).Gap(18).Padding(18).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
@@ -1070,14 +1068,14 @@ func (s *State) following(c *ui.Context) {
 							caption(c, fmt.Sprintf("已跳过 %d 条已有资源 · 文件夹：%s", len(item.Skipped), item.Folder))
 						})
 						ui.Column(c).Gap(7).Children(func() {
-							secondary(c, "view-sub-"+item.ID, "查看资源", func() { s.viewSubscriptionResources(idx) }).Label("查看资源 " + item.GroupName).FontSize(12).Disabled(s.Busy)
+							secondary(c, "view-sub-"+item.ID, "查看资源", func() { s.viewSubscriptionResources(item.ID) }).Label("查看资源 " + item.GroupName).FontSize(12).Disabled(s.Busy)
 							label := "暂停追番"
 							if item.Paused {
 								label = "恢复追番"
 							}
-							secondary(c, "pause-sub-"+item.ID, label, func() { s.pauseSubscription(idx) }).Label(label + " " + item.GroupName).FontSize(12).Disabled(s.Busy)
-							quiet(c, "edit-sub-"+item.ID, "修改条件", func() { s.editSubscription(idx) }).Label("修改条件 " + item.GroupName).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
-							quiet(c, "check-sub-"+item.ID, "立即检查", func() { s.check(idx) }).Label("立即检查 " + item.GroupName).FontSize(12).Disabled(item.Paused || s.Busy)
+							secondary(c, "pause-sub-"+item.ID, label, func() { s.pauseSubscription(item.ID) }).Label(label + " " + item.GroupName).FontSize(12).Disabled(s.Busy)
+							quiet(c, "edit-sub-"+item.ID, "修改条件", func() { s.editSubscription(item.ID) }).Label("修改条件 " + item.GroupName).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
+							quiet(c, "check-sub-"+item.ID, "立即检查", func() { s.check(item.ID) }).Label("立即检查 " + item.GroupName).FontSize(12).Disabled(item.Paused || s.Busy)
 							quiet(c, "cancel-sub-"+item.ID, "取消追番", func() { s.CancelID, s.CancelPrompt = item.ID, true }).Label("取消追番 " + item.GroupName).FontSize(12).TextColor(colors(c).errorInk).Disabled(s.Busy)
 						})
 					})
