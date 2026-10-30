@@ -200,6 +200,7 @@ func (s *State) openAnime(id string) {
 	s.History = nil
 	s.ResourceList = nil
 	s.ChoosingGroup = false
+	s.GroupSearch = ""
 	s.SummaryOpen = false
 	s.Rule = Rule{}
 	s.Checked = map[string]bool{}
@@ -320,9 +321,9 @@ func (s *State) chooseGroup(index int) {
 		s.WordOpen = false
 		s.Suggestions = false
 		s.refreshHistory()
+		s.ResourceScroll = ui.ScrollState{}
 	}
 	s.ChoosingGroup = false
-	s.ResourceScroll = ui.ScrollState{}
 }
 
 func (s *State) refreshHistory() {

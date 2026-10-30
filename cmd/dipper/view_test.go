@@ -150,6 +150,8 @@ func TestUIDynamicGroupsAndEmptyGroups(t *testing.T) {
 	s.Group = -1
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, s.Groups[3])
+	uiClick(t, tt, "搜索字幕组")
+	tt.Type(s.Groups[3])
 	uiClick(t, tt, "选择字幕组 "+s.Groups[3])
 	if s.Group != 3 {
 		t.Fatal("fourth source group was not selected")

@@ -434,28 +434,7 @@ func (s *State) detail(c *ui.Context) {
 						ui.Text(c, s.DetailError).FontSize(12).TextColor(colors(c).amber)
 						secondary(c, "retry-detail", "重试加载字幕组", s.refreshDetail).FontSize(12).Disabled(s.Busy)
 					} else if !s.hasGroup() || s.ChoosingGroup {
-						caption(c, "字幕组负责翻译和发布。同一部番剧可能有多个版本，先看这组发了什么。")
-						ui.Column(c).Gap(8).Children(func() {
-							for i, g := range s.Groups {
-								idx := i
-								name := g
-								b := ui.ButtonBase(c.Key(fmt.Sprintf("group-%d", i))).Label("选择字幕组 "+name).Column().Gap(4).FillWidth().Padding(11, 13).Border(1, colors(c).line).Radius(8).Background(colors(c).paper).Cursor(ui.CursorPointer)
-								if s.Group == i {
-									b.BorderColor(colors(c).blue).Background(colors(c).blueWash)
-								} else if b.Hovered() {
-									b.BorderColor(colors(c).hoverLine)
-								}
-								b.Children(func() {
-									ui.Row(c).Gap(8).Children(func() {
-										ui.Text(c, name).FontWeight(600).FontSize(13)
-										ui.Spacer(c)
-										if s.Group == idx {
-											ui.Box(c).TextColor(colors(c).blue).Children(func() { icon(c, "check") })
-										}
-									})
-								}).OnClick(func() { s.chooseGroup(idx) }).Disabled(s.Busy || idx >= len(s.GroupIDs) || s.GroupIDs[idx] == "")
-							}
-						})
+						s.groupPicker(c)
 					} else {
 						ui.Row(c).Padding(10, 12).Radius(6).Border(1, colors(c).blue).Background(colors(c).blueWash).Children(func() {
 							ui.Text(c, s.Groups[s.Group]).FontSize(13).FontWeight(600).Grow(1)

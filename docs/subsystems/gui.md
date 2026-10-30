@@ -92,6 +92,17 @@ The two modes share the resource list but not the confirm action. Keeping them
 distinct is what makes "I cancelled this one release" not change what future
 releases are matched against.
 
+Subtitle-group selection supports a local name search with a result count and
+one-click reset. Search is case/width insensitive, retains source order and
+never changes the active group, filter draft or release selection. Results keep
+their original source indices so a filtered click selects the correct group.
+Known complete counts are shown as resource counts; a truncated or absent
+count offers the release history without claiming a total. A new anime clears
+the search. `group_picker_test.go` covers typing, selection and recovery.
+Re-selecting the current group closes the picker without resetting the release
+scroll position; selecting another group resets it for the new history.
+Search remains clearable if a later source refresh leaves zero or one group.
+
 The settings page has a proxy card: a three-way choice (自动 / 关闭 / 自定义),
 the address auto mode currently follows, and a 测试 button that saves the
 current values and then probes the source origin. Test feedback and the

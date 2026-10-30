@@ -59,6 +59,8 @@ which the taskbar and Explorer read before any window exists.
 
 Anime details keep a short synopsis above the subtitle groups. Full text opens
 in a reading dialog so the release preview and its selection keep their place.
+Group choices include a local name search, result counts and known release
+counts, retaining the source order. Names wrap to two lines within each row.
 
 - **Browse before configuring.** Open on the anime catalog. Finding an anime,
   choosing a fansub group, and reading real release titles precede any rule.

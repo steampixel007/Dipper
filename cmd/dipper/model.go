@@ -114,6 +114,7 @@ type State struct {
 	AnimeID                    string
 	Group                      int
 	ChoosingGroup              bool
+	GroupSearch                string
 	SummaryOpen                bool
 	Rule                       Rule
 	Checked                    map[string]bool
