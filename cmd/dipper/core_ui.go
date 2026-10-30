@@ -489,6 +489,29 @@ func (s *State) runAction(action func() error, message string) {
 		})
 	}()
 }
+func (s *State) playDownload(index int) {
+	if s.Engine == nil || index < 0 || index >= len(s.Downloads) {
+		return
+	}
+	d := s.Downloads[index]
+	s.runAction(func() error {
+		files, err := s.Engine.PlayableFiles(d.ID)
+		if err != nil {
+			return err
+		}
+		for _, path := range files {
+			if isPlayableMedia(path) {
+				s.PlayFile(path)
+				return nil
+			}
+		}
+		if len(files) > 0 {
+			s.PlayFile(files[0])
+			return nil
+		}
+		return errors.New("未找到可播放的文件")
+	}, "已打开播放器")
+}
 func (s *State) pauseDownload(index int) {
 	if s.Engine == nil || index < 0 || index >= len(s.Downloads) {
 		return

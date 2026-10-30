@@ -596,6 +596,112 @@ func TestConcurrentEnsureAndClose(t *testing.T) {
 	}
 }
 
+func TestPlayableFilesRequireFinishedDownload(t *testing.T) {
+	f := newFixture(t, 2<<20)
+	root := t.TempDir()
+	task := Task{ID: "episode/hash", Magnet: f.magnet, Folder: filepath.Join(root, "content")}
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state"), UploadLimit: 128 << 10})
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := e.PlayableFiles(task.ID); err != nil || len(got) != 0 {
+		t.Fatalf("playable files before completion: %v, %v", got, err)
+	}
+	waitFor(t, "download completes", 30*time.Second, func() bool { return one(t, e).Complete })
+	files, err := e.PlayableFiles(task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 3 {
+		t.Fatalf("finished task offered %d files: %v", len(files), files)
+	}
+	for _, path := range files {
+		if !filepath.IsAbs(path) {
+			t.Fatalf("playable path is not absolute: %q", path)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(task.Folder, "release", "video.mkv")); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Stop(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := e.PlayableFiles(task.ID); err != nil || len(got) != 3 {
+		t.Fatalf("playable files after manual stop: %v, %v", got, err)
+	}
+	if _, err := e.PlayableFiles("missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("playable files of an unknown task: %v", err)
+	}
+}
+
+func TestPlayableFilesRequireWholeFiles(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	info, err := f.mi.UnmarshalInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	data := consumerStorage(dir)
+	t.Cleanup(func() {
+		if err := data.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	tor, err := data.OpenTorrent(context.Background(), &info, f.mi.HashInfoBytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := tor.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if err := os.MkdirAll(filepath.Join(dir, "release", "subs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	empty := filepath.Join(dir, "release", "subs", "empty.txt")
+	if err := os.WriteFile(empty, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var offset int64 = -1
+	for _, file := range info.UpvertedFiles() {
+		if filepath.ToSlash(filepath.Join(file.BestPath()...)) == "subs/字幕.ass" {
+			offset = file.TorrentOffset + file.Length - 1
+		}
+	}
+	if offset < 0 {
+		t.Fatal("fixture has no subtitle file")
+	}
+	pieceInfo := info.Piece(int(offset / info.PieceLength))
+	piece := tor.Piece(pieceInfo)
+	if _, err := piece.WriteAt([]byte{1}, offset-pieceInfo.Offset()); err != nil {
+		t.Fatal(err)
+	}
+	if piece.Completion().Complete {
+		t.Fatal("partial write unexpectedly completed the piece")
+	}
+	e := testEngine(t, Config{DataDir: filepath.Join(t.TempDir(), "state")})
+	e.mu.Lock()
+	attached, _ := e.client.AddTorrentInfoHashWithStorage(f.mi.HashInfoBytes(), data)
+	e.tasks["partial"] = &entry{savedTask: savedTask{Task: Task{ID: "partial", Folder: dir}, Complete: true}, torrent: attached}
+	e.mu.Unlock()
+	files, err := e.PlayableFiles("partial")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range files {
+		if filepath.Base(path) != "empty.txt" {
+			t.Fatalf("partial files were offered: %v", files)
+		}
+	}
+	e.mu.Lock()
+	e.tasks["partial"].Complete = false
+	e.mu.Unlock()
+	if files, err := e.PlayableFiles("partial"); err != nil || len(files) != 0 {
+		t.Fatalf("unfinished task offered files: %v, %v", files, err)
+	}
+}
+
 func TestCorruptCheckpointFails(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "tasks.json"), []byte("{"), 0o600); err != nil {

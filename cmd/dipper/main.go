@@ -198,6 +198,11 @@ func main() {
 				s.Notice = "无法打开文件夹：" + err.Error()
 			}
 		}
+		s.PlayFile = func(path string) {
+			if err := mygo.Shell.OpenPath(path); err != nil {
+				s.Notice = "无法播放：" + err.Error()
+			}
+		}
 		s.PickFolder = func() {
 			current := s.Root
 			go func() {

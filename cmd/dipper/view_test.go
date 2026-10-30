@@ -693,6 +693,92 @@ func TestUIDownloadsUseMeasuredSpeedsErrorsAndOpenFolder(t *testing.T) {
 	uiRequireText(t, tt, "分享比例未知", "停止做种")
 }
 
+type playTestEngine struct{ files []string }
+
+func (*playTestEngine) Snapshot() []downloader.Snapshot {
+	return []downloader.Snapshot{{ID: "render-download-3", Progress: 1}}
+}
+func (*playTestEngine) Pause(string) error          { return fmt.Errorf("unexpected pause") }
+func (*playTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
+func (*playTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
+func (*playTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
+func (*playTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
+func (*playTestEngine) SetSeedTarget(time.Duration) {}
+func (e *playTestEngine) PlayableFiles(string) ([]string, error) {
+	if e.files == nil {
+		return nil, fmt.Errorf("no files")
+	}
+	return e.files, nil
+}
+
+func TestUIDownloadPlayButtonOpensFirstVideo(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[2:3]
+	played := ""
+	s.Engine = &playTestEngine{files: []string{"C:\\Downloads\\Dipper\\episode.mkv", "C:\\Downloads\\Dipper\\extra.txt"}}
+	s.PlayFile = func(path string) { played = path }
+	updates := make(chan func(), 2)
+	s.Update = func(fn func()) { updates <- fn }
+	tt := ui.NewTester(s.view, 1320, 860)
+	if _, ok := tt.Find("播放"); !ok {
+		t.Fatal("a finished download must offer 播放")
+	}
+	uiClick(t, tt, "播放")
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for played == "" && s.SaveError == "" {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatal("play did not open a file")
+		}
+	}
+	if played != "C:\\Downloads\\Dipper\\episode.mkv" {
+		t.Fatalf("played %q, want the first video file", played)
+	}
+	if _, ok := tt.Find("播放"); !ok {
+		t.Fatal("播放 must stay visible after playing")
+	}
+}
+
+func TestUIDownloadPlayReportsMissingFiles(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[2:3]
+	s.Engine = &playTestEngine{files: nil}
+	s.PlayFile = func(string) {}
+	updates := make(chan func(), 2)
+	s.Update = func(fn func()) { updates <- fn }
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "播放")
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for s.SaveError == "" {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatal("missing files must surface a save error")
+		}
+	}
+}
+
+func TestUIDownloadOffersNoPlayButtonBeforeFinish(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[:1]
+	s.PlayFile = func(string) {}
+	tt := ui.NewTester(s.view, 1320, 860)
+	if _, ok := tt.Find("播放"); ok {
+		t.Fatal("a downloading task must not offer 播放")
+	}
+	s.Downloads[0].Progress = 1
+	s.Downloads[0].Failed = true
+	tt.Frame()
+	if _, ok := tt.Find("播放"); ok {
+		t.Fatal("a failed task must not offer 播放")
+	}
+}
+
 func TestUICompletedPausedDownloadCanResume(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads = s.Downloads[2:3]

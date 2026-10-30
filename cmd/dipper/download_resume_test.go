@@ -55,6 +55,9 @@ func (e *resumeTestEngine) Resume(id string) error {
 	return nil
 }
 
+func (*resumeTestEngine) PlayableFiles(string) ([]string, error) {
+	return nil, fmt.Errorf("unexpected play")
+}
 func (*resumeTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
 func (*resumeTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
 func (*resumeTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
