@@ -234,7 +234,11 @@ func (s *State) sidebar(c *ui.Context) {
 func (s *State) topbar(c *ui.Context) {
 	names := map[string]string{"browse": "浏览番剧", "detail": "浏览番剧 / 开始追番", "following": "我的追番", "downloads": "下载", "settings": "设置"}
 	if s.Backfill {
-		names["detail"] = "浏览番剧 / 补下已有资源"
+		if s.ViewResources {
+			names["detail"] = "我的追番 / 查看资源"
+		} else {
+			names["detail"] = "浏览番剧 / 补下已有资源"
+		}
 	}
 	bar := c.TitleBar()
 	ui.Row(c).Height(64).Shrink(0).Padding(0, bar.Right+24, 0, 28).Gap(12).Background(colors(c).chrome).DragWindow().Children(func() {
@@ -406,8 +410,14 @@ func (s *State) detail(c *ui.Context) {
 	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
 		ui.Column(c).Padding(18, 28, 16).Gap(12).Children(func() {
 			ui.Row(c).Gap(6).Children(func() {
-				iconButton(c, "back-browse", "返回番剧列表", "back", func() { s.Page = "browse" })
-				quiet(c, "back-list", "返回番剧列表", func() { s.Page = "browse" }).FontSize(12).TextColor(colors(c).muted)
+				backLabel := "返回番剧列表"
+				backPage := "browse"
+				if s.DetailReturn == "following" {
+					backLabel = "返回我的追番"
+					backPage = "following"
+				}
+				iconButton(c, "back-browse", backLabel, "back", func() { s.Page = backPage })
+				quiet(c, "back-list", backLabel, func() { s.Page = backPage }).FontSize(12).TextColor(colors(c).muted)
 			})
 			ui.Row(c).Gap(16).Children(func() {
 				cover(c, a, 52, 72)
@@ -415,7 +425,9 @@ func (s *State) detail(c *ui.Context) {
 					ui.Text(c, a.Title).FontSize(23).FontWeight(700).MaxLines(2)
 					caption(c, dayName(a.Day)+" · 来源：蜜柑计划")
 				})
-				if s.Backfill {
+				if s.ViewResources {
+					badge(c, "查看已追番资源", colors(c).blue, colors(c).blueWash)
+				} else if s.Backfill {
 					badge(c, "主动勾选已有资源", colors(c).blue, colors(c).blueWash)
 				} else {
 					badge(c, "先选版本，再自动追番", colors(c).blue, colors(c).blueWash)
@@ -640,7 +652,9 @@ func (s *State) preview(c *ui.Context) {
 			caption(c, "只排除写出这些词的标题。标题没写的，也会匹配。")
 		}
 	}
-	if s.Backfill {
+	if s.ViewResources {
+		caption(c, "勾选需要的资源补下，不会修改已保存的追番条件。")
+	} else if s.Backfill {
 		caption(c, "主动勾选需要补下的已有资源。这里的筛选只用于本次选择，不修改已保存的追番条件。")
 	} else if s.Editing {
 		caption(c, "调整条件只影响以后未读的新资源。已读、已跳过的资源不会自动补下。")
@@ -788,7 +802,9 @@ func (s *State) detailFooter(c *ui.Context) {
 				}
 			}).Disabled(!s.detailReady() || s.Busy || (s.Backfill && len(resources) == 0))
 		})
-		if s.Backfill {
+		if s.ViewResources {
+			caption(c, "已保存条件，仅用于筛选与确认，不修改。")
+		} else if s.Backfill {
 			caption(c, "本次补下不会修改已保存的追番条件。")
 		} else {
 			caption(c, "以后发布的新资源会按这些标题条件自动下载。")
@@ -1015,6 +1031,7 @@ func (s *State) following(c *ui.Context) {
 							caption(c, fmt.Sprintf("已跳过 %d 条已有资源 · 文件夹：%s", len(item.Skipped), item.Folder))
 						})
 						ui.Column(c).Gap(7).Children(func() {
+							secondary(c, "view-sub-"+item.ID, "查看资源", func() { s.viewSubscriptionResources(idx) }).Label("查看资源 " + item.GroupName).FontSize(12).Disabled(s.Busy)
 							label := "暂停追番"
 							if item.Paused {
 								label = "恢复追番"

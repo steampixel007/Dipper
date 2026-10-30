@@ -72,6 +72,14 @@ func renderScreens(dir string) error {
 			s.beginBackfill()
 			s.Checked[s.ResourceList[0].ID] = true
 		}},
+		{name: "11-view-resources", page: "detail", configure: func(s *State) {
+			s.EditID = s.Subscriptions[0].ID
+			s.Backfill = true
+			s.ViewResources = true
+			s.DetailReturn = "following"
+			s.Rule = cloneRule(s.Subscriptions[0].Rule)
+			s.Checked = map[string]bool{}
+		}},
 		{name: "08-close-window", page: "browse", configure: func(s *State) {
 			s.Platform = "windows"
 			s.TrayAvailable = true

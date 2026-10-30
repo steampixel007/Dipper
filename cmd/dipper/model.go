@@ -101,6 +101,8 @@ type State struct {
 	EditID                                             string
 	ProposedFolder                                     string
 	Backfill                                           bool
+	ViewResources                                      bool
+	DetailReturn                                       string
 	catalogRevision, detailRevision, historyRevision   uint64
 	catalogCancel, detailCancel, historyCancel         context.CancelFunc
 
@@ -196,7 +198,7 @@ func (s *State) initSelection() {
 	for _, r := range s.resources() {
 		if _, seen := s.Checked[r.ID]; !seen {
 			ok, _ := decide(r.Title, s.Rule)
-			if ok {
+			if ok && !s.Backfill {
 				s.Checked[r.ID] = true
 			}
 		}
