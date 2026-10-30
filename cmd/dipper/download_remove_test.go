@@ -89,6 +89,9 @@ func (e *removalTestEngine) Remove(id string) error {
 	return cleanupErr
 }
 
+func (*removalTestEngine) PlayableFiles(string) ([]string, error) {
+	return nil, fmt.Errorf("unexpected play")
+}
 func (*removalTestEngine) Pause(string) error          { return fmt.Errorf("unexpected pause") }
 func (*removalTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
 func (*removalTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }

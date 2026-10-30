@@ -1182,6 +1182,9 @@ func (s *State) downloads(c *ui.Context) {
 									s.OpenFolder(d.Folder)
 								}
 							}).FontSize(12).Disabled(s.OpenFolder == nil || d.Folder == "")
+							if d.Progress >= 1 && !d.Failed {
+								quiet(c, "play-"+d.ID, "播放", func() { s.playDownload(idx) }).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
+							}
 						})
 						caption(c, "保存位置："+d.Folder)
 						if d.Progress >= 1 && !d.Stopped {

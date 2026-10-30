@@ -7,6 +7,7 @@ import (
 	"dipper.local/dipper/internal/source"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -84,6 +85,7 @@ type downloadEngine interface {
 	Pause(string) error
 	Resume(string) error
 	Stop(string) error
+	PlayableFiles(string) ([]string, error)
 	Remove(string) error
 	SetUploadLimit(int64) error
 	SetSeedTarget(time.Duration)
@@ -154,6 +156,7 @@ type State struct {
 	ApplyAppearance            func(string)
 	PickFolder                 func()
 	OpenFolder                 func(string)
+	PlayFile                   func(string)
 	Quit                       func()
 	Platform                   string
 	ClosePrompt, RememberClose bool
@@ -396,6 +399,13 @@ func sizeText(mb int) string {
 		return fmt.Sprintf("%.2f GB", float64(mb)/1000)
 	}
 	return fmt.Sprintf("%d MB", mb)
+}
+func isPlayableMedia(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".mkv", ".mp4", ".avi", ".ts", ".webm", ".mov":
+		return true
+	}
+	return false
 }
 func safeName(name string) string {
 	return strings.TrimRight(strings.NewReplacer("/", "／", `\`, "＼", ":", "：", "*", "＊", "?", "？", `"`, "＂", "<", "＜", ">", "＞", "|", "｜").Replace(name), ". ")

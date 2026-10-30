@@ -736,6 +736,83 @@ func (e *Engine) sampleLocked(j *entry, now time.Time, awake time.Duration, onli
 	e.enableLocked(j)
 }
 
+// PlayableFiles lists the files of a finished task that can be opened by the
+// system player. A task must have downloaded its whole content: files on disk
+// are never the source of truth, a task that has not finished has none, and a
+// partial file is not offered. The returned paths are absolute and sorted by
+// their path inside the torrent, so an episode pack opens in release order.
+func (e *Engine) PlayableFiles(id string) ([]string, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.closed {
+		return nil, ErrClosed
+	}
+	j := e.tasks[id]
+	if j == nil {
+		return nil, ErrNotFound
+	}
+	if !j.Complete {
+		return nil, nil
+	}
+	if j.torrent == nil || j.torrent.Info() == nil {
+		return e.playableFromMetadataLocked(j)
+	}
+	files := j.torrent.Files()
+	paths := make([]string, 0, len(files))
+	for _, f := range files {
+		if f.BytesCompleted() < f.Length() {
+			continue
+		}
+		if path, ok := existingFile(j.Folder, f.Path()); ok {
+			paths = append(paths, path)
+		}
+	}
+	sort.Slice(paths, func(i, j int) bool { return strings.ToLower(paths[i]) < strings.ToLower(paths[j]) })
+	return paths, nil
+}
+
+// A stopped or restarted task has no attached torrent. Its saved metadata still
+// names the files, and a complete task has every piece, so the metadata is the
+// durable source for playback.
+func (e *Engine) playableFromMetadataLocked(j *entry) ([]string, error) {
+	b, err := os.ReadFile(e.metadataPath(j.ID))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	mi, err := metainfo.Load(bytes.NewReader(b))
+	if err != nil {
+		return nil, fmt.Errorf("read saved torrent metadata: %w", err)
+	}
+	info, err := mi.UnmarshalInfo()
+	if err != nil {
+		return nil, fmt.Errorf("parse saved torrent metadata: %w", err)
+	}
+	files := info.UpvertedFiles()
+	paths := make([]string, 0, len(files))
+	for _, f := range files {
+		parts := append([]string{info.BestName()}, f.BestPath()...)
+		if path, ok := existingFile(j.Folder, strings.Join(parts, "/")); ok {
+			paths = append(paths, path)
+		}
+	}
+	sort.Slice(paths, func(i, j int) bool { return strings.ToLower(paths[i]) < strings.ToLower(paths[j]) })
+	return paths, nil
+}
+
+func existingFile(folder, torrentPath string) (string, bool) {
+	for _, part := range strings.Split(filepath.ToSlash(torrentPath), "/") {
+		if safeComponent(part) != nil {
+			return "", false
+		}
+	}
+	path := filepath.Join(folder, filepath.FromSlash(torrentPath))
+	stat, err := os.Stat(path)
+	return path, err == nil && stat.Mode().IsRegular()
+}
+
 func (e *Engine) Snapshot() []Snapshot {
 	e.mu.Lock()
 	defer e.mu.Unlock()
