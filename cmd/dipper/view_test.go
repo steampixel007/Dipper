@@ -710,6 +710,16 @@ func (e *playTestEngine) PlayableFiles(string) ([]string, error) {
 	}
 	return e.files, nil
 }
+func (e *playTestEngine) DownloadFiles(string) ([]downloader.DownloadedFile, error) {
+	if e.files == nil {
+		return nil, fmt.Errorf("no files")
+	}
+	result := make([]downloader.DownloadedFile, 0, len(e.files))
+	for _, path := range e.files {
+		result = append(result, downloader.DownloadedFile{Path: path})
+	}
+	return result, nil
+}
 
 func TestUIDownloadPlayButtonOpensFirstVideo(t *testing.T) {
 	s := uiFixture(t, "downloads")
@@ -763,6 +773,70 @@ func TestUIDownloadPlayReportsMissingFiles(t *testing.T) {
 	}
 }
 
+type filesTestEngine struct{ files []downloader.DownloadedFile }
+
+func (*filesTestEngine) Snapshot() []downloader.Snapshot {
+	return []downloader.Snapshot{{ID: "render-download-3", Progress: 1}}
+}
+func (*filesTestEngine) Pause(string) error          { return fmt.Errorf("unexpected pause") }
+func (*filesTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
+func (*filesTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
+func (*filesTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
+func (*filesTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
+func (*filesTestEngine) SetSeedTarget(time.Duration) {}
+func (*filesTestEngine) PlayableFiles(string) ([]string, error) {
+	return nil, fmt.Errorf("unexpected play")
+}
+func (e *filesTestEngine) DownloadFiles(string) ([]downloader.DownloadedFile, error) {
+	return e.files, nil
+}
+
+func TestUIDownloadFilesDialogShowsEntriesAndActions(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[2:3]
+	played, copied := "", ""
+	s.Engine = &filesTestEngine{files: []downloader.DownloadedFile{
+		{Path: `C:\Downloads\Dipper\release\video.mkv`, Size: 1024},
+		{Path: `C:\Downloads\Dipper\release\subs\字幕.ass`, Size: 2048},
+	}}
+	s.PlayFile = func(path string) { played = path }
+	s.CopyText = func(text string) { copied = text }
+	updates := make(chan func(), 4)
+	s.Update = func(fn func()) { updates <- fn }
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "文件列表")
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for len(s.Files) == 0 {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatal("file list did not load")
+		}
+	}
+	tt.Frame()
+	uiRequireText(t, tt, "video.mkv", "字幕.ass", "复制路径", "播放此文件")
+	uiClick(t, tt, "播放此文件")
+	if played != `C:\Downloads\Dipper\release\video.mkv` {
+		t.Fatalf("played %q, want the mkv file", played)
+	}
+	uiClick(t, tt, "复制路径")
+	if copied != `C:\Downloads\Dipper\release\video.mkv` {
+		t.Fatalf("copied %q, want the mkv path", copied)
+	}
+}
+
+func TestUIDownloadFilesEntryHiddenBeforeFinish(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[:1]
+	s.Engine = &filesTestEngine{}
+	s.CopyText = func(string) {}
+	tt := ui.NewTester(s.view, 1320, 860)
+	if _, ok := tt.Find("文件列表"); ok {
+		t.Fatal("a downloading task must not offer 文件列表")
+	}
+}
 func TestUIDownloadOffersNoPlayButtonBeforeFinish(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads = s.Downloads[:1]

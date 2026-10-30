@@ -55,6 +55,9 @@ func (e *resumeTestEngine) Resume(id string) error {
 	return nil
 }
 
+func (*resumeTestEngine) DownloadFiles(string) ([]downloader.DownloadedFile, error) {
+	return nil, fmt.Errorf("unexpected files")
+}
 func (*resumeTestEngine) PlayableFiles(string) ([]string, error) {
 	return nil, fmt.Errorf("unexpected play")
 }

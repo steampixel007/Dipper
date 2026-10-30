@@ -634,6 +634,48 @@ func TestPlayableFilesRequireFinishedDownload(t *testing.T) {
 	}
 }
 
+func TestDownloadFilesReportSizesAfterStop(t *testing.T) {
+	f := newFixture(t, 2<<20)
+	root := t.TempDir()
+	task := Task{ID: "episode/hash", Magnet: f.magnet, Folder: filepath.Join(root, "content")}
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state"), UploadLimit: 128 << 10})
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := e.DownloadFiles(task.ID); err != nil || len(got) != 0 {
+		t.Fatalf("download files before completion: %v, %v", got, err)
+	}
+	waitFor(t, "download completes", 30*time.Second, func() bool { return one(t, e).Complete })
+	got, err := e.DownloadFiles(task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("finished task offered %d files: %v", len(got), got)
+	}
+	for i, df := range got {
+		if !filepath.IsAbs(df.Path) {
+			t.Fatalf("download file path is not absolute: %q", df.Path)
+		}
+		stat, err := os.Stat(df.Path)
+		if err != nil || stat.Size() != df.Size {
+			t.Fatalf("size of file %d: stat=%v size=%d", i, err, df.Size)
+		}
+	}
+	if err := e.Stop(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	stopped, err := e.DownloadFiles(task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stopped) != len(got) {
+		t.Fatalf("download files after manual stop: %v", stopped)
+	}
+	if _, err := e.DownloadFiles("missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("download files of an unknown task: %v", err)
+	}
+}
 func TestPlayableFilesRequireWholeFiles(t *testing.T) {
 	f := newFixture(t, 128<<10)
 	info, err := f.mi.UnmarshalInfo()

@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -170,6 +171,7 @@ func (s *State) view(c *ui.Context) {
 	s.helpDialog(c)
 	s.summaryDialog(c)
 	s.closeDialog(c)
+	s.filesDialog(c)
 	if s.Page == "detail" && !s.Confirm && !s.Help && !s.SummaryOpen && !s.ClosePrompt {
 		c.OnShortcut(ui.Ctrl, ui.KeyZ, s.undoFilter)
 		c.OnShortcut(ui.Ctrl, ui.KeyY, s.redoFilter)
@@ -1183,6 +1185,7 @@ func (s *State) downloads(c *ui.Context) {
 								}
 							}).FontSize(12).Disabled(s.OpenFolder == nil || d.Folder == "")
 							if d.Progress >= 1 && !d.Failed {
+								quiet(c, "files-"+d.ID, "文件列表", func() { s.openFiles(idx) }).FontSize(12).Disabled(s.Busy)
 								quiet(c, "play-"+d.ID, "播放", func() { s.playDownload(idx) }).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
 							}
 						})
@@ -1291,6 +1294,79 @@ func (s *State) settings(c *ui.Context) {
 			s.windowSettings(c)
 		})
 	})
+}
+
+func (s *State) filesDialog(c *ui.Context) {
+	ui.DialogBase(c, &s.FilesOpen, func(backdrop, panel ui.Element) {
+		backdrop.Background(colors(c).scrim).Transition(fadeTransition)
+		panel.Width(560).MaxHeight(560).Padding(24).Gap(16).Radius(12).Background(colors(c).paper)
+		var d Download
+		for _, v := range s.Downloads {
+			if v.ID == s.FilesID {
+				d = v
+				break
+			}
+		}
+		ui.Row(c).Gap(12).Children(func() {
+			ui.Text(c, d.Title).FontSize(21).FontWeight(700).Grow(1).MaxLines(2)
+			iconButton(c, "close-files", "关闭文件列表", "close", func() { s.FilesOpen = false })
+		})
+		switch {
+		case s.FilesError != "":
+			caption(c, s.FilesError)
+		case len(s.Files) == 0:
+			caption(c, "正在读取文件列表…")
+		default:
+			ui.Scroll(c.Key("files-list")).MaxHeight(360).MinHeight(0).Children(func() {
+				ui.Column(c).Gap(8).Children(func() {
+					for _, f := range s.Files {
+						name := filepath.Base(f.Path)
+						dir := filepath.Dir(f.Path)
+						ui.Row(c).Gap(12).Padding(10, 12).Radius(8).Background(colors(c).canvas).Children(func() {
+							ui.Column(c).Grow(1).Gap(3).Children(func() {
+								ui.Text(c, name).FontSize(13).FontWeight(600).SingleLine()
+								caption(c, dir+" · "+byteSize(f.Size))
+							})
+							quiet(c, "copy-path-"+name, "复制路径", func() { s.copyPath(f.Path) }).FontSize(12)
+							if isPlayableMedia(f.Path) {
+								quiet(c, "play-file-"+name, "播放此文件", func() { s.playFile(f.Path) }).FontSize(12).TextColor(colors(c).blue)
+							}
+						})
+					}
+				})
+			})
+		}
+		caption(c, "已保存位置："+d.Folder)
+	})
+}
+
+func byteSize(bytes int64) string {
+	if bytes <= 0 {
+		return "0 B"
+	}
+	const unit = 1000
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "kMGTPE"[exp])
+}
+
+func (s *State) playFile(path string) {
+	if s.PlayFile != nil {
+		s.PlayFile(path)
+	}
+}
+
+func (s *State) copyPath(path string) {
+	s.FilesError = ""
+	if s.CopyText != nil {
+		s.CopyText(path)
+	}
 }
 
 func (s *State) helpDialog(c *ui.Context) {
