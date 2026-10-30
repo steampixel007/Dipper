@@ -656,7 +656,7 @@ func TestUIRenderScreensOffline(t *testing.T) {
 		t.Fatal(err)
 	}
 	var previous []byte
-	for _, name := range []string{"01-browse", "02-filter", "03-following", "04-downloads", "05-settings", "06-source-error", "07-backfill", "08-close-window"} {
+	for _, name := range []string{"01-browse", "02-filter", "03-following", "04-downloads", "05-settings", "06-source-error", "07-backfill", "08-close-window", "11-view-resources"} {
 		data, err := os.ReadFile(filepath.Join(dir, name+".png"))
 		if err != nil {
 			t.Fatal(err)

@@ -207,6 +207,8 @@ func (s *State) openAnime(id string) {
 	s.EditID = ""
 	s.Editing = false
 	s.Backfill = false
+	s.ViewResources = false
+	s.DetailReturn = ""
 	s.Keyword = ""
 	s.WordOpen = false
 	s.ShowAliases = false
@@ -230,6 +232,20 @@ func (s *State) editSubscription(index int) {
 	s.EditID = sub.ID
 	s.Editing = true
 	s.Rule = cloneRule(sub.Rule)
+}
+
+func (s *State) viewSubscriptionResources(index int) {
+	if index < 0 || index >= len(s.Subscriptions) {
+		return
+	}
+	sub := s.Subscriptions[index]
+	s.openAnime(sub.AnimeID)
+	s.EditID = sub.ID
+	s.Backfill = true
+	s.ViewResources = true
+	s.DetailReturn = "following"
+	s.Rule = cloneRule(sub.Rule)
+	s.Notice = ""
 }
 
 func (s *State) refreshDetail() {
