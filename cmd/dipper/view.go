@@ -987,11 +987,14 @@ func joinWords(words []string) string {
 
 func (s *State) following(c *ui.Context) {
 	ui.Column(c).Grow(1).MinHeight(0).Padding(26, 28).Gap(20).Children(func() {
-		ui.Row(c).Children(func() {
+		ui.Row(c).Gap(16).Children(func() {
 			ui.Column(c).Grow(1).Gap(6).Children(func() {
 				ui.Text(c, "喜欢的故事，不错过更新。").FontSize(28).FontWeight(700)
 				caption(c, "暂停追番只停止检查新资源，已开始的下载会继续。")
 			})
+			if ui.TextInput(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(220).Height(36).Background(colors(c).paper).Changed() {
+				s.ResourceScroll = ui.ScrollState{}
+			}
 			secondary(c, "find-more", "添加追番", func() { s.Page = "browse" })
 		})
 		if s.Notice != "" {
@@ -1006,9 +1009,26 @@ func (s *State) following(c *ui.Context) {
 			s.empty(c, "还没有开始追番", "先找到一部喜欢的番剧，选好版本，后续就不用反复找资源了。", "浏览番剧", func() { s.Page = "browse" })
 			return
 		}
+		var subs []Subscription
+		for _, sub := range s.Subscriptions {
+			if s.follows(sub) {
+				subs = append(subs, sub)
+			}
+		}
+		ui.Row(c).Gap(6).Children(func() {
+			caption(c, fmt.Sprintf("%d 部追番", len(subs)))
+			ui.Spacer(c)
+			if strings.TrimSpace(s.FollowSearch) != "" {
+				quiet(c, "clear-follow-search", "清除搜索", func() { s.FollowSearch = "" }).FontSize(12).TextColor(colors(c).blue).Padding(3, 0)
+			}
+		})
+		if len(subs) == 0 {
+			s.empty(c, "没有找到这部追番", "试试缩短番名，或清除搜索。", "清除搜索", func() { s.FollowSearch = "" })
+			return
+		}
 		ui.Scroll(c.Key("following-list")).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Gap(14).Children(func() {
-				for i, sub := range s.Subscriptions {
+				for i, sub := range subs {
 					idx := i
 					item := sub
 					a := s.anime(item.AnimeID)
@@ -1019,8 +1039,13 @@ func (s *State) following(c *ui.Context) {
 								ui.Text(c, a.Title).FontSize(17).FontWeight(600)
 								if item.Paused {
 									badge(c, "已暂停", colors(c).muted, colors(c).canvas)
+								} else if item.Active {
+									badge(c, "下载中", colors(c).blue, colors(c).blueWash)
 								} else {
 									badge(c, "自动追番中", colors(c).green, colors(c).greenWash)
+								}
+								if item.NewCount > 0 {
+									badge(c, fmt.Sprintf("新资源 %d 条", item.NewCount), colors(c).amber, colors(c).amberWash)
 								}
 							})
 							group := item.GroupName
@@ -1039,6 +1064,9 @@ func (s *State) following(c *ui.Context) {
 								status += " · 检查失败"
 							}
 							caption(c, status)
+							if len(item.Recent) > 0 {
+								caption(c, "最近新到："+strings.Join(item.Recent, " / "))
+							}
 							caption(c, fmt.Sprintf("已跳过 %d 条已有资源 · 文件夹：%s", len(item.Skipped), item.Folder))
 						})
 						ui.Column(c).Gap(7).Children(func() {
@@ -1309,4 +1337,26 @@ func (s *State) titlePreferences(c *ui.Context) {
 		})
 		secondary(c, "close-suggestions", "完成选版本", func() { s.Suggestions = false }).FillWidth()
 	})
+}
+
+// follows keeps the subscription when the follow search matches its anime
+// title, subtitle group, or a word the saved rule requires.
+func (s *State) follows(sub Subscription) bool {
+	query := normalize(strings.TrimSpace(s.FollowSearch))
+	if query == "" {
+		return true
+	}
+	a := s.anime(sub.AnimeID)
+	if strings.Contains(normalize(a.Title), query) {
+		return true
+	}
+	if strings.Contains(normalize(sub.GroupName), query) {
+		return true
+	}
+	for _, w := range sub.Rule.All {
+		if strings.Contains(normalize(w), query) {
+			return true
+		}
+	}
+	return false
 }

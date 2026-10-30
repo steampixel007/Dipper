@@ -271,6 +271,20 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 			if item.Read {
 				v.Read = append(v.Read, key)
 			}
+			if item.Status == core.ItemPending {
+				v.NewCount++
+				if len(v.Recent) < 3 {
+					v.Recent = append(v.Recent, item.Resource.Title)
+				}
+			}
+		}
+		if !sub.Paused {
+			for _, d := range s.Downloads {
+				if d.AnimeID == sub.Anime.ID && d.Progress < 1 && !d.Paused && !d.Failed {
+					v.Active = true
+					break
+				}
+			}
 		}
 		s.Subscriptions = append(s.Subscriptions, v)
 	}

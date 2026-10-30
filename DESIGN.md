@@ -291,7 +291,7 @@ preserves catalog filters and scroll position.
 | --- | --- |
 | Browse | Year and season heading, search, season and weekday controls, then poster grid. A short hint can be dismissed; the guide opens on request. |
 | Anime detail | Fansub group and editable conditions on the left; quick words, match count, reasons and release rows on the right; current-run summary and primary action below. |
-| My follows | Saved rules, latest check result, folder, pause/resume, edit and check-now actions. |
+| My follows | Follow search with a matching count, saved rules, latest check result, pending-release summary and download marker, folder, pause/resume, edit and check-now actions. |
 | Downloads | Separate aggregate upload/download speeds; per-task progress and speed, with pause/resume/retry or seeding actions appropriate to state. |
 | Settings | Appearance, source line, download location, shared upload limit, seeding-duration target, and window/background behavior. |
 
