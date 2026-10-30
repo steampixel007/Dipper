@@ -320,6 +320,34 @@ func TestUIBackfillEntryRequiresExplicitSelectionAndKeepsSavedRule(t *testing.T)
 	}
 }
 
+func TestUIFollowingSearchFiltersByTitle(t *testing.T) {
+	s := uiFixture(t, "following")
+	tt := ui.NewTester(s.view, 1320, 860)
+	s.FollowSearch = "组乙"
+	tt.Frame()
+	uiRequireText(t, tt, "1 部追番", "清除搜索")
+	if tt.HasText(s.Subscriptions[0].GroupName) {
+		t.Fatal("follow search did not filter out the other subscription")
+	}
+	uiClick(t, tt, "清除搜索")
+	if s.FollowSearch != "" {
+		t.Fatal("clearing the follow search did not clear the query")
+	}
+	s.FollowSearch = "不存在的追番"
+	tt.Frame()
+	uiRequireText(t, tt, "没有找到这部追番")
+	uiClick(t, tt, "清除搜索")
+}
+
+func TestUIFollowingShowsPendingAndActiveSummary(t *testing.T) {
+	s := uiFixture(t, "following")
+	s.Subscriptions[0].NewCount = 2
+	s.Subscriptions[0].Recent = []string{"[桥接字幕组] 桥接番剧 - 03 [1080p].mkv", "[桥接字幕组] 桥接番剧 - 04 [1080p].mkv"}
+	s.Subscriptions[1].Active = true
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "新资源 2 条", "最近新到：", "下载中")
+}
+
 func TestUIFollowingUsesSubscriptionIdentityAndRSSResult(t *testing.T) {
 	s := uiFixture(t, "following")
 	s.Catalog = nil

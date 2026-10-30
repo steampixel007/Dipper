@@ -48,6 +48,9 @@ type Subscription struct {
 	Read                   []string
 	LastCheck              string
 	CheckFailed            bool
+	NewCount               int
+	Recent                 []string
+	Active                 bool
 }
 type Download struct {
 	Error                               string
@@ -116,6 +119,7 @@ type State struct {
 	Season                     string
 	Day                        int
 	Search                     string
+	FollowSearch               string
 	AnimeID                    string
 	Group                      int
 	ChoosingGroup              bool

@@ -89,6 +89,13 @@ successful detail response is authoritative. Opening another anime closes the
 reading dialog. `anime_summary_test.go` checks the rendering and interaction.
 
 
+The following page searches saved follows by anime title, subtitle group, or a
+word the saved rule requires; the count line reports how many follow cards match
+and offers a clear action, and an empty result offers a way to clear the search.
+Each card shows a pending-release count with the recent release titles when the
+scheduler has not yet handed them over, and a 下载中 mark while an uncompleted
+transfer for that anime is running.
+
 Following cards offer 查看资源 as a separate entry into the detail page. It
 locks the saved subscription's group and rule, opens as a view-only backfill
 where nothing is selected while history loads and a later history result must
