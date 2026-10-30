@@ -57,6 +57,9 @@ which the taskbar and Explorer read before any window exists.
 
 ## Design principles
 
+Anime details keep a short synopsis above the subtitle groups. Full text opens
+in a reading dialog so the release preview and its selection keep their place.
+
 - **Browse before configuring.** Open on the anime catalog. Finding an anime,
   choosing a fansub group, and reading real release titles precede any rule.
   First use must not demand an RSS URL, BT configuration, or regular expressions.

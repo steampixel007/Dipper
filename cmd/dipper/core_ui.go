@@ -214,7 +214,7 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 		if n, err := strconv.Atoi(a.Day); err == nil {
 			day = n
 		}
-		s.KnownAnime[a.ID] = Anime{ID: a.ID, Title: a.Title, Cover: a.Cover, Day: day, Source: "蜜柑计划"}
+		s.KnownAnime[a.ID] = Anime{ID: a.ID, Title: a.Title, Cover: a.Cover, Day: day, Source: "蜜柑计划", Summary: s.KnownAnime[a.ID].Summary}
 	}
 	s.Subscriptions = nil
 	for _, sub := range state.Subscriptions {
