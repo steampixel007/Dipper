@@ -544,14 +544,21 @@ func (s *State) openFiles(index int) {
 	}
 	d := s.Downloads[index]
 	s.FilesOpen, s.FilesID, s.FilesError = true, d.ID, ""
+	s.Files, s.FilesLoading = nil, true
+	s.filesRevision++
+	revision := s.filesRevision
 	go func() {
 		files, err := s.Engine.DownloadFiles(d.ID)
 		s.Update(func() {
+			if revision != s.filesRevision {
+				return
+			}
 			if err != nil {
 				s.FilesError = err.Error()
 			} else {
 				s.Files = files
 			}
+			s.FilesLoading = false
 		})
 	}()
 }

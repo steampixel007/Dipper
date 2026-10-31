@@ -1529,3 +1529,153 @@ func TestUIDownloadsFilterResetSurvivesEmptyFilter(t *testing.T) {
 		t.Fatalf("scroll was not reset through the empty filter: %+v", s.DownloadScroll)
 	}
 }
+
+type gatedFilesEngine struct {
+	playTestEngine
+	gates map[string]chan struct{}
+	calls chan string
+	files map[string][]downloader.DownloadedFile
+}
+
+func (e *gatedFilesEngine) DownloadFiles(id string) ([]downloader.DownloadedFile, error) {
+	e.calls <- id
+	<-e.gates[id]
+	return e.files[id], nil
+}
+
+func TestUIFilesDialogScopesResultsToTask(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	first, second := s.Downloads[2], s.Downloads[2]
+	first.ID, second.ID = "files-a", "files-b"
+	s.Downloads = []Download{first, second}
+	engine := &gatedFilesEngine{
+		gates: map[string]chan struct{}{
+			"files-a": make(chan struct{}),
+			"files-b": make(chan struct{}),
+		},
+		calls: make(chan string, 2),
+		files: map[string][]downloader.DownloadedFile{
+			"files-a": {{Path: `C:\Downloads\first.mkv`, Size: 1}},
+			"files-b": {{Path: `C:\Downloads\second.mkv`, Size: 2}},
+		},
+	}
+	s.Engine = engine
+	s.PlayFile = func(string) error { return nil }
+	updates := make(chan func(), 8)
+	s.Update = func(fn func()) { updates <- fn }
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "文件列表")
+	if got := <-engine.calls; got != "files-a" {
+		t.Fatalf("first open requested %q, want files-a", got)
+	}
+	s.openFiles(1)
+	if got := <-engine.calls; got != "files-b" {
+		t.Fatalf("second open requested %q, want files-b", got)
+	}
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	close(engine.gates["files-b"])
+	for len(s.Files) == 0 {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatal("second task's file list never applied")
+		}
+	}
+	if s.Files[0].Path != `C:\Downloads\second.mkv` {
+		t.Fatalf("dialog shows %q, want the second task's file", s.Files[0].Path)
+	}
+	close(engine.gates["files-a"])
+	for {
+		select {
+		case fn := <-updates:
+			fn()
+			if s.Files[0].Path != `C:\Downloads\second.mkv` {
+				t.Fatalf("stale first-task result overwrote the dialog: %q", s.Files[0].Path)
+			}
+			return
+		case <-deadline.C:
+			t.Fatal("stale first-task result never arrived")
+		}
+	}
+}
+
+func TestUIFilesDialogClearsStaleEntriesOnOpen(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	first, second := s.Downloads[2], s.Downloads[2]
+	first.ID, second.ID = "files-a", "files-b"
+	s.Downloads = []Download{first, second}
+	engine := &gatedFilesEngine{
+		gates: map[string]chan struct{}{
+			"files-a": make(chan struct{}),
+			"files-b": make(chan struct{}),
+		},
+		calls: make(chan string, 2),
+		files: map[string][]downloader.DownloadedFile{
+			"files-a": {{Path: `C:\Downloads\first.mkv`, Size: 1}},
+			"files-b": {{Path: `C:\Downloads\second.mkv`, Size: 2}},
+		},
+	}
+	s.Engine = engine
+	s.PlayFile = func(string) error { return nil }
+	updates := make(chan func(), 8)
+	s.Update = func(fn func()) { updates <- fn }
+	t.Cleanup(func() {
+		close(engine.gates["files-a"])
+		select {
+		case fn := <-updates:
+			fn()
+		case <-time.After(5 * time.Second):
+		}
+	})
+	tt := ui.NewTester(s.view, 1320, 860)
+	s.openFiles(1)
+	if got := <-engine.calls; got != "files-b" {
+		t.Fatalf("first open requested %q, want files-b", got)
+	}
+	close(engine.gates["files-b"])
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for len(s.Files) == 0 {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatal("file list did not load")
+		}
+	}
+	tt.Frame()
+	uiRequireText(t, tt, "second.mkv")
+	s.openFiles(0)
+	if got := <-engine.calls; got != "files-a" {
+		t.Fatalf("second open requested %q, want files-a", got)
+	}
+	if len(s.Files) != 0 {
+		t.Fatalf("previous task's entries stayed during loading: %v", s.Files)
+	}
+}
+
+func TestUIFilesDialogEmptyResultIsTerminal(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[2:3]
+	s.Engine = &filesTestEngine{files: []downloader.DownloadedFile{}}
+	s.PlayFile = func(string) error { return nil }
+	updates := make(chan func(), 4)
+	s.Update = func(fn func()) { updates <- fn }
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "文件列表")
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	select {
+	case fn := <-updates:
+		fn()
+	case <-deadline.C:
+		t.Fatal("empty result never applied")
+	}
+	tt.Frame()
+	if tt.HasText("正在读取文件列表") {
+		t.Fatal("an empty file list must not leave the dialog loading forever")
+	}
+	uiRequireText(t, tt, "文件可能已被移动或删除")
+}
