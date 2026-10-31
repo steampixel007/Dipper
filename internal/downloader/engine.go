@@ -103,6 +103,7 @@ type savedTask struct {
 	TotalBytes     int64       `json:"total_bytes"`
 	CompletedBytes int64       `json:"completed_bytes"`
 	Complete       bool        `json:"complete"`
+	AppliedExtra   []string    `json:"applied_extra,omitempty"`
 }
 
 type checkpoint struct {
@@ -455,8 +456,8 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 	if err := validateIdentity(j.ID, spec); err != nil {
 		return err
 	}
-	injected := injectedExtra(spec, e.extraTrackers)
-	appendTrackers(spec, e.extraTrackers, builtinTrackers)
+	tiers, injected := reconciledTiers(spec.Trackers, j.appliedExtra, e.extraTrackers)
+	spec.Trackers = tiers
 	for _, other := range e.tasks {
 		if other == j {
 			continue
@@ -690,11 +691,12 @@ func (e *Engine) SetExtraTrackers(trackers []string) {
 	defer e.mu.Unlock()
 	e.extraTrackers = trackers
 	for _, j := range e.tasks {
-		previous := j.appliedExtra
-		j.appliedExtra = trackers
 		if j.torrent == nil {
+			// A detached task keeps its provenance; the next admission
+			// reconciles the saved metadata against the new tier.
 			continue
 		}
+		previous := j.appliedExtra
 		tiers, injected := reconciledTiers(j.torrent.Metainfo().AnnounceList, previous, trackers)
 		j.torrent.ModifyTrackers(tiers)
 		j.appliedExtra = injected
@@ -991,7 +993,9 @@ func (e *Engine) load() error {
 				return errors.New("checkpoint task folders overlap")
 			}
 		}
-		e.tasks[saved.ID] = &entry{savedTask: saved}
+		j := &entry{savedTask: saved}
+		j.appliedExtra = saved.AppliedExtra
+		e.tasks[saved.ID] = j
 	}
 	return nil
 }
@@ -999,7 +1003,9 @@ func (e *Engine) load() error {
 func (e *Engine) saveLocked() error {
 	state := checkpoint{Version: 1, Tasks: make([]savedTask, 0, len(e.tasks))}
 	for _, j := range e.tasks {
-		state.Tasks = append(state.Tasks, j.savedTask)
+		saved := j.savedTask
+		saved.AppliedExtra = j.appliedExtra
+		state.Tasks = append(state.Tasks, saved)
 	}
 	sort.Slice(state.Tasks, func(i, j int) bool { return state.Tasks[i].ID < state.Tasks[j].ID })
 	b, err := json.MarshalIndent(state, "", "  ")

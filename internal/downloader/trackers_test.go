@@ -292,6 +292,79 @@ func TestAdmissionExtrasClearOnRunningTasks(t *testing.T) {
 	}
 }
 
+func TestResumedTaskDropsClearedExtraTrackers(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	var b bytes.Buffer
+	if err := f.mi.Write(&b); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write(b.Bytes()) }))
+	defer server.Close()
+	root := t.TempDir()
+	extra := "udp://resume.example.com:1337/announce"
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state"), ExtraTrackers: []string{extra}})
+	task := Task{ID: "url", TorrentURL: server.URL, Folder: filepath.Join(root, "data")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Pause(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.SetExtraTrackers(nil)
+	if err := e.Resume(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.mu.Lock()
+	j := e.tasks[task.ID]
+	if j == nil || j.torrent == nil {
+		e.mu.Unlock()
+		t.Fatal("resumed task has no torrent")
+	}
+	announce := j.torrent.Metainfo().AnnounceList
+	e.mu.Unlock()
+	if hasAll(announce, []string{extra}) {
+		t.Fatalf("resumed task still announces the cleared tracker: %v", announce)
+	}
+	if !hasAll(announce, builtinTrackers) {
+		t.Fatalf("resumed task lost the built-in trackers: %v", announce)
+	}
+}
+
+func TestRestartedEngineDropsClearedExtraTrackers(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	var b bytes.Buffer
+	if err := f.mi.Write(&b); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write(b.Bytes()) }))
+	defer server.Close()
+	root := t.TempDir()
+	extra := "udp://restart.example.com:1337/announce"
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state"), ExtraTrackers: []string{extra}})
+	task := Task{ID: "url", TorrentURL: server.URL, Folder: filepath.Join(root, "data")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Close(); err != nil {
+		t.Fatal(err)
+	}
+	restarted := testEngine(t, Config{DataDir: filepath.Join(root, "state")})
+	restarted.mu.Lock()
+	j := restarted.tasks[task.ID]
+	if j == nil || j.torrent == nil {
+		restarted.mu.Unlock()
+		t.Fatal("restarted task has no torrent")
+	}
+	announce := j.torrent.Metainfo().AnnounceList
+	restarted.mu.Unlock()
+	if hasAll(announce, []string{extra}) {
+		t.Fatalf("restarted task still announces the cleared tracker: %v", announce)
+	}
+	if !hasAll(announce, builtinTrackers) {
+		t.Fatalf("restarted task lost the built-in trackers: %v", announce)
+	}
+}
+
 func TestAdmissionKeepsSourceTrackersUnderConfiguredExtras(t *testing.T) {
 	f := newFixture(t, 128<<10)
 	shared := "udp://source.example.com:1337/announce"

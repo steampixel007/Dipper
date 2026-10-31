@@ -75,6 +75,10 @@ well-known; peer exchange and DHT stay primary.
 previously applied user URLs and the built-ins, and re-appends the current
 user tier and the built-ins, so removing a tracker in settings also stops
 announcing it on running tasks and disappears from the persisted metadata.
+The URLs actually injected as the user tier are recorded in the task
+checkpoint, so reconciliation on pause, resume and restart still strips them
+after the setting clears them, even though the saved metadata already carries
+them.
 
 The context only governs admission and the metadata request. Once a task is
 admitted its lifetime belongs to the engine, so a cancelled admission context
