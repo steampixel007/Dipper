@@ -124,9 +124,10 @@ func reconciledTiers(current [][]string, previous, extras []string) ([][]string,
 	return tiers, injected
 }
 
-// injectedExtra reports which configured tracker URLs the admission append
-// actually added: URLs the torrent's own metadata already carries are not
-// user additions, so clearing the setting must not remove them.
+// injectedExtra reports which configured tracker URLs admission will add as
+// the user tier: URLs the spec's announce list already carries are not user
+// additions, so clearing the setting must not remove them. Call it before
+// appendTrackers mutates the spec.
 func injectedExtra(spec *torrent.TorrentSpec, extras []string) []string {
 	own := make(map[string]bool)
 	for _, tier := range spec.Trackers {

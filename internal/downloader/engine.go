@@ -455,6 +455,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 	if err := validateIdentity(j.ID, spec); err != nil {
 		return err
 	}
+	injected := injectedExtra(spec, e.extraTrackers)
 	appendTrackers(spec, e.extraTrackers, builtinTrackers)
 	for _, other := range e.tasks {
 		if other == j {
@@ -481,7 +482,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 		return failure.err
 	}
 	j.torrent, j.err, j.requested, j.metadataSaved = t, nil, false, false
-	j.appliedExtra = injectedExtra(spec, e.extraTrackers)
+	j.appliedExtra = injected
 	j.InfoHash = t.InfoHash().HexString()
 	j.Complete = false
 	j.previous = observation{at: e.now(), awake: e.awake()}
