@@ -220,6 +220,7 @@ func (s *State) openAnime(id, from string) {
 	s.AnyDraft = ""
 	s.ResourceScroll = ui.ScrollState{}
 	s.OnlyMatches = false
+	s.EpisodeFilter = ""
 	s.Notice = ""
 	s.HistoryError = ""
 	s.refreshDetail()
@@ -358,6 +359,7 @@ func (s *State) chooseGroup(index int) {
 		s.Suggestions = false
 		s.refreshHistory()
 		s.ResourceScroll = ui.ScrollState{}
+		s.EpisodeFilter = ""
 	}
 	s.ChoosingGroup = false
 }

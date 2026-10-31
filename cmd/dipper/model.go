@@ -173,6 +173,8 @@ type State struct {
 	DownloadFilter             DownloadFilter
 	SuggestedResource          Resource
 	OnlyMatches                bool
+	EpisodeFilter              string
+	EpisodeFilterScroll        float32
 	Notice, SaveError          string
 	SourceTesting              bool
 	SourceRouteError           string
@@ -424,6 +426,19 @@ func (s *State) matchSummary() (int, int, int) {
 	}
 	return n, len(eps), total
 }
+
+// toggleEpisodeFilter narrows the resource preview to one episode; clicking
+// the active episode's badge clears the filter.
+func (s *State) toggleEpisodeFilter(ep string) {
+	if s.EpisodeFilter == ep {
+		s.EpisodeFilter = ""
+		s.ResourceScroll.Y = s.EpisodeFilterScroll
+	} else {
+		s.EpisodeFilter = ep
+		s.EpisodeFilterScroll = s.ResourceScroll.Y
+	}
+}
+
 func (s *State) duplicates(ep string) int {
 	if ep == "" {
 		return 0
