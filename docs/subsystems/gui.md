@@ -235,11 +235,13 @@ fixed frame in browsing, detail and following views: scaled uniformly,
 centered, and cropped to the frame, so a poster never shows filler beside it.
 `blueWash` is the box for the loading and no-cover states.
 
-**Known limit:** the cache has no size cap and no eviction. A cover is fetched
-once and then kept forever, so the folder grows with every anime ever browsed.
-Adding eviction is a real change, not a tidy-up: it must decide what a browsing
-session can afford to re-fetch, and it must not delete a cover the current page
-is still showing.
+Both caches are capped. The in-memory bitmap cache keeps the
+`coverCacheCap` most recently used covers; eviction never drops a cover the
+rows of the current load are still showing, and an evicted cover re-decodes
+from the disk cache when its page needs it again. The on-disk cache keeps its
+total payload within `coverDiskCap` by deleting the oldest files first, never
+a file the current rows just used, so the folder stops growing with every
+anime ever browsed; an evicted file re-fetches from the source.
 
 ## Brand marks
 
