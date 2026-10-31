@@ -296,7 +296,7 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 		if !sub.LastCheck.IsZero() {
 			check = sub.LastCheck.Local().Format("01-02 15:04:05")
 		}
-		v := Subscription{ID: sub.ID, AnimeID: sub.Anime.ID, GroupID: sub.Group.ID, GroupName: sub.Group.Name, Group: -1, Rule: uiRule(sub.Rule), Folder: sub.Directory, Paused: sub.Paused, LastCheck: check, LastError: sub.LastError, CheckFailed: sub.LastError != ""}
+		v := Subscription{ID: sub.ID, AnimeID: sub.Anime.ID, GroupID: sub.Group.ID, GroupName: sub.Group.Name, Group: -1, Rule: uiRule(sub.Rule), Folder: sub.Directory, Paused: sub.Paused, LastCheck: check, LastError: sub.LastError, CheckFailed: sub.LastError != "", NewTitles: map[string]bool{}}
 		for key, item := range sub.Items {
 			if item.Status == core.ItemSkipped {
 				v.Skipped = append(v.Skipped, key)
@@ -306,6 +306,7 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 			}
 			if item.Status == core.ItemPending {
 				v.NewCount++
+				v.NewTitles[normalize(item.Resource.Title)] = true
 				if len(v.Recent) < 3 {
 					v.Recent = append(v.Recent, item.Resource.Title)
 				}

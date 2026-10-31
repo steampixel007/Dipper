@@ -32,8 +32,9 @@ func TestUIFollowedResourcesMarkNewReleases(t *testing.T) {
 		}
 		tester.Frame()
 	}
-	first := state.previewResources()[0]
-	sub.Recent = []string{first.Title}
+	first, second := state.previewResources()[0], state.previewResources()[1]
+	sub.Recent = nil
+	sub.NewTitles = map[string]bool{normalize(first.Title): true, normalize(second.Title): true}
 	state.Subscriptions[0] = sub
 	tester.Frame()
 
@@ -44,16 +45,16 @@ func TestUIFollowedResourcesMarkNewReleases(t *testing.T) {
 			count++
 		}
 	}
-	if count != 1 {
-		t.Fatalf("exactly one row should be marked new, got %d", count)
+	if count != 2 {
+		t.Fatalf("both pending rows should be marked new, got %d", count)
 	}
 
-	sub.Recent = nil
+	sub.NewTitles = nil
 	state.Subscriptions[0] = sub
 	tester.Frame()
 	for _, text := range tester.Texts() {
 		if text == "新" {
-			t.Fatal("new marks survived an empty recent list")
+			t.Fatal("new marks survived an empty pending set")
 		}
 	}
 }

@@ -52,6 +52,7 @@ type Subscription struct {
 	LastError              string
 	NewCount               int
 	Recent                 []string
+	NewTitles              map[string]bool
 	Active                 bool
 	Progress               float64
 	// Completed counts this anime's downloads that finished without failing.
@@ -464,8 +465,8 @@ func builtinTrackerSummary() string {
 	return strings.Join(downloader.BuiltinTrackers(), "、")
 }
 
-// isNewRelease reports whether the title is one of the subscription's latest
-// pending RSS releases, so the followed resource view can mark it as new.
+// isNewRelease reports whether the title is one of the subscription's pending
+// RSS releases, so the followed resource view can mark it as new.
 func (s *State) isNewRelease(title string) bool {
 	if s.EditID == "" {
 		return false
@@ -474,13 +475,7 @@ func (s *State) isNewRelease(title string) bool {
 	if !ok {
 		return false
 	}
-	norm := normalize(title)
-	for _, recent := range sub.Recent {
-		if normalize(recent) == norm {
-			return true
-		}
-	}
-	return false
+	return sub.NewTitles[normalize(title)]
 }
 
 // groupFolder returns the anime's download directory. A transfer's folder is
