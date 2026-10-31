@@ -521,6 +521,10 @@ func (s *State) detail(c *ui.Context) {
 				ui.Row(c).Gap(8).Children(func() {
 					heading(c, "资源预览")
 					ui.Spacer(c)
+					if s.EpisodeFilter != "" {
+						badge(c, "只看第 "+s.EpisodeFilter+" 集", colors(c).blue, colors(c).blueWash)
+						quiet(c, "clear-episode-filter", "清除", func() { s.toggleEpisodeFilter(s.EpisodeFilter) }).FontSize(12).Padding(3, 0).TextColor(colors(c).blue)
+					}
 					if s.detailReady() {
 						ui.Checkbox(c.Key("only-matches"), &s.OnlyMatches, "只看匹配").FontSize(12)
 					}
@@ -769,6 +773,9 @@ func (s *State) preview(c *ui.Context) {
 				if s.OnlyMatches && !ok {
 					continue
 				}
+				if s.EpisodeFilter != "" && res.Episode != s.EpisodeFilter {
+					continue
+				}
 				s.resourceRow(c, res)
 			}
 		})
@@ -840,7 +847,12 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 				badge(c, "正在参考", colors(c).blue, colors(c).blueWash)
 			}
 			if count := s.duplicates(r.Episode); count > 1 && ok {
-				badge(c, fmt.Sprintf("本集匹配 %d 条", count), colors(c).amber, colors(c).amberWash)
+				ep := r.Episode
+				fg, bg := colors(c).amber, colors(c).amberWash
+				if s.EpisodeFilter == r.Episode {
+					fg, bg = colors(c).blue, colors(c).blueWash
+				}
+				quiet(c, "filter-episode-"+r.Episode, fmt.Sprintf("本集匹配 %d 条", count), func() { s.toggleEpisodeFilter(ep) }).FontSize(11).FontWeight(600).TextColor(fg).Background(bg).Radius(4).Padding(3, 7)
 			}
 			if d, idx, found := s.downloadForResource(r); found {
 				switch {

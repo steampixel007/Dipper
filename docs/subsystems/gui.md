@@ -158,6 +158,8 @@ releases are matched against.
 
 The resource preview renders rows in episode order: numeric ascending (so 第 10 集 follows 第 2 集), releases without an episode last, and ties keep their publish order. The stored resource list keeps publish order; sorting is a render concern only.
 
+When several releases share an episode, each row shows a 本集匹配 N 条 badge that is also a button: clicking it narrows the preview to that episode, clicking the active episode's badge or the 清除 chip above the list clears the filter. The filter is per session — opening another anime or choosing another subtitle group resets it — and it only hides rows in the preview, never the stored list or what a subscription matches.
+
 Subtitle-group selection supports a local name search with a result count and
 one-click reset. Search is case/width insensitive, retains source order and
 never changes the active group, filter draft or release selection. Results keep
