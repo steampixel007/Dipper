@@ -187,6 +187,7 @@ type State struct {
 	FollowScroll               ui.ScrollState
 	DownloadScroll             ui.ScrollState
 	DownloadFilterLast         DownloadFilter
+	DownloadSearch             string
 	// CollapsedDownloads hides one anime's download rows on the downloads
 	// page; the choice is per-session.
 	CollapsedDownloads         map[string]bool
