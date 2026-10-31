@@ -524,8 +524,11 @@ func (s *State) downloadGroupETA(indices []int) string {
 	remaining, speed := 0.0, 0.0
 	for _, i := range indices {
 		d := s.Downloads[i]
-		if d.MB <= 0 || d.Progress >= 1 || d.Paused || d.Stopped || d.Failed {
+		if d.Paused || d.Stopped || d.Failed || d.Progress >= 1 {
 			continue
+		}
+		if d.MB <= 0 {
+			return ""
 		}
 		remaining += (1 - d.Progress) * float64(d.MB)
 		speed += d.DownSpeed

@@ -62,3 +62,13 @@ func TestDownloadGroupETAEmptyWithoutActiveTransfers(t *testing.T) {
 		t.Fatalf("group ETA = %q, want empty", got)
 	}
 }
+
+func TestDownloadGroupETAEmptyWhenActiveSizeUnknown(t *testing.T) {
+	s := &State{Downloads: []Download{
+		{MB: 240, Progress: .5, DownSpeed: 1},
+		{MB: 0, Progress: .1, DownSpeed: 1},
+	}}
+	if got := s.downloadGroupETA([]int{0, 1}); got != "" {
+		t.Fatalf("group ETA = %q, want empty while an active transfer has unknown size", got)
+	}
+}
