@@ -883,6 +883,11 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 				}
 				if d.Progress >= 1 && !d.Failed {
 					quiet(c, "play-resource-"+r.ID, "播放", func() { s.playDownload(idx) }).Label("播放 "+r.ID).FontSize(12).TextColor(colors(c).blue).Padding(3, 0).Disabled(s.Busy)
+					quiet(c, "open-resource-folder-"+r.ID, "打开文件夹", func() {
+						if s.OpenFolder != nil {
+							s.OpenFolder(d.Folder)
+						}
+					}).Label("打开文件夹 "+r.ID).FontSize(12).TextColor(colors(c).blue).Padding(3, 0).Disabled(s.Busy || s.OpenFolder == nil)
 				}
 			}
 			ui.Spacer(c)
