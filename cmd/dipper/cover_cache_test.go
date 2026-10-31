@@ -4,8 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -155,18 +158,24 @@ func TestLoadCoversEvictsAfterAsyncInsert(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.CoverDir = t.TempDir()
-	if err := os.MkdirAll(s.CoverDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(s.CoverDir, fmt.Sprintf("%x", sha256.Sum256([]byte(s.Catalog[0].Cover)))), poster, 0644); err != nil {
-		t.Fatal(err)
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.Ctx = ctx
 	updates := make(chan func(), 64)
-	s.Update = func(fn func()) { updates <- fn }
-	s.Source = source.New("http://127.0.0.1")
+	// One acknowledgement channel for the single cover this test submits:
+	// closing it releases the worker exactly once and lets it exit without
+	// ever touching a replaced channel.
+	processed := make(chan struct{})
+	var releaseWorker sync.Once
+	s.Update = func(fn func()) {
+		updates <- fn
+		<-processed
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Write(poster)
+	}))
+	defer server.Close()
+	s.Source = source.New(server.URL)
 	filler, err := ui.DecodeBitmap(poster)
 	if err != nil {
 		t.Fatal(err)
@@ -178,14 +187,26 @@ func TestLoadCoversEvictsAfterAsyncInsert(t *testing.T) {
 		coverOrder = append(coverOrder, u)
 	}
 	coversMu.Unlock()
-	url := s.Catalog[0].Cover
+	url := server.URL + "/" + s.Catalog[0].Cover
 	s.loadCovers(ctx, []source.Anime{{ID: s.Catalog[0].ID, Cover: url}})
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
+	key := filepath.Join(s.CoverDir, fmt.Sprintf("%x", sha256.Sum256([]byte(url))))
 	for loadingCovers[url] {
 		select {
 		case fn := <-updates:
 			fn()
+			coversMu.Lock()
+			loading := loadingCovers[url]
+			coversMu.Unlock()
+			if !loading {
+				// The worker is parked inside s.Update, so every disk write
+				// it performs before that call must already be on disk.
+				if _, err := os.Stat(key); err != nil {
+					t.Fatalf("cover cache file missing when the load finished: %v", err)
+				}
+			}
+			releaseWorker.Do(func() { close(processed) })
 		case <-deadline.C:
 			t.Fatal("cover load did not finish")
 		}
