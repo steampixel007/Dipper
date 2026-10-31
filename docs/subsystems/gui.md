@@ -74,7 +74,10 @@ it calls the bridge in `core_ui.go` or `source_ui.go`.
 
 The downloads page offers one transfer action per task state: pause during a
 download, resume while paused or stopped before completion, retry on failure,
-or stop seeding after completion. It does not also offer a stop-download action
+or stop seeding after completion. A row that is actively
+downloading also shows its estimated remaining time, derived from the
+remaining size and the current speed, and hides the estimate whenever the
+transfer pauses, stops, fails or the speed is unknown. It does not also offer a stop-download action
 beside pause: both preserve progress and require an explicit resume. Deletion
 and opening the folder remain available separately. A single resume click clears
 both pause and manual-stop intent, including tasks stopped before completion.
