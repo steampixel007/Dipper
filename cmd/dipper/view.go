@@ -777,6 +777,7 @@ func (s *State) preview(c *ui.Context) {
 	}
 	ui.Scroll(c.Key("resources")).TrackScroll(&s.ResourceScroll).Grow(1).MinHeight(0).Padding(0, 0, 18).Children(func() {
 		ui.Column(c).Gap(0).Children(func() {
+			visible := 0
 			for _, r := range s.previewResources() {
 				res := r
 				ok, _ := decide(res.Title, s.Rule)
@@ -794,7 +795,11 @@ func (s *State) preview(c *ui.Context) {
 				if s.OnlyNew && s.ViewResources && s.EditID != "" && !s.isNewRelease(res.Title) {
 					continue
 				}
+				visible++
 				s.resourceRow(c, res)
+			}
+			if visible == 0 && len(s.previewResources()) > 0 {
+				s.empty(c, "没有符合筛选的资源", "试试清除筛选，看看这个字幕组的全部资源。", "清除筛选", s.clearPreviewFilters)
 			}
 		})
 	})
@@ -1337,6 +1342,14 @@ func (s *State) hasNewRelease() bool {
 		}
 	}
 	return false
+}
+
+// clearPreviewFilters resets the view-only preview filters — 只看匹配, the
+// episode chip, 只看已在下载库 and 只看新资源 — without touching the saved rule.
+func (s *State) clearPreviewFilters() {
+	s.OnlyMatches, s.OnlyDownloaded, s.OnlyNew = false, false, false
+	s.EpisodeFilter = ""
+	s.ResourceScroll = ui.ScrollState{}
 }
 
 // downloadSearches reports whether the download survives the downloads-page
