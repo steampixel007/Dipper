@@ -232,7 +232,7 @@ func (s *State) sidebar(c *ui.Context) {
 						ui.Textf(c, "%d", len(s.Downloads)).FontSize(12)
 					}
 				}
-			}).OnClick(func() { s.Page = current.id; s.Notice = "" })
+			}).OnClick(func() { s.enterPage(current.id); s.Notice = "" })
 		}
 		ui.Spacer(c)
 		ui.Column(c).Padding(12).Gap(8).Children(func() {
@@ -243,7 +243,7 @@ func (s *State) sidebar(c *ui.Context) {
 			caption(c, "每次更新，少一点等待。")
 		})
 		ui.Divider(c).Background(colors(c).line)
-		b := ui.ButtonBase(c.Key("nav-settings")).Height(42).Padding(0, 14).Gap(12).Radius(8).Children(func() { icon(c, "settings"); ui.Text(c, "设置") }).OnClick(func() { s.Page = "settings"; s.Notice = "" })
+		b := ui.ButtonBase(c.Key("nav-settings")).Height(42).Padding(0, 14).Gap(12).Radius(8).Children(func() { icon(c, "settings"); ui.Text(c, "设置") }).OnClick(func() { s.enterPage("settings"); s.Notice = "" })
 		tactile(b)
 		if s.Page == "settings" {
 			b.Background(colors(c).paper).TextColor(colors(c).ink)
@@ -419,6 +419,19 @@ func catalogYears(selected string) []string {
 func pageLoading(c *ui.Context, text string) {
 	ui.Column(c).Grow(1).Center().Gap(14).Children(func() { caption(c, text) })
 }
+
+// enterPage switches pages and reloads covers the switch may have evicted.
+func (s *State) enterPage(page string) {
+	if s.Page == page {
+		return
+	}
+	s.Page = page
+	switch page {
+	case "browse", "following":
+		s.loadCovers(s.Ctx, s.pageCoverRows(page))
+	}
+}
+
 func (s *State) empty(c *ui.Context, title, body, button string, action func()) {
 	ui.Column(c).Grow(1).Center().Gap(14).Children(func() {
 		ui.Box(c).TextColor(colors(c).muted).Children(func() { icon(c, "browse") })
@@ -442,8 +455,8 @@ func (s *State) detail(c *ui.Context) {
 					backLabel = "返回下载"
 					backPage = "downloads"
 				}
-				iconButton(c, "back-browse", backLabel, "back", func() { s.Page = backPage })
-				quiet(c, "back-list", backLabel, func() { s.Page = backPage }).FontSize(12).TextColor(colors(c).muted)
+				iconButton(c, "back-browse", backLabel, "back", func() { s.enterPage(backPage) })
+				quiet(c, "back-list", backLabel, func() { s.enterPage(backPage) }).FontSize(12).TextColor(colors(c).muted)
 			})
 			ui.Row(c).Gap(16).Children(func() {
 				cover(c, a, 52, 72)
@@ -1104,7 +1117,7 @@ func (s *State) following(c *ui.Context) {
 					break
 				}
 			}
-			secondary(c, "find-more", "添加追番", func() { s.Page = "browse" })
+			secondary(c, "find-more", "添加追番", func() { s.enterPage("browse") })
 		})
 		if s.Notice != "" {
 			ui.Row(c).Gap(12).Padding(12, 16).Radius(6).TextColor(colors(c).green).Background(colors(c).greenWash).Children(func() {
@@ -1115,7 +1128,7 @@ func (s *State) following(c *ui.Context) {
 			})
 		}
 		if len(s.Subscriptions) == 0 {
-			s.empty(c, "还没有开始追番", "先找到一部喜欢的番剧，选好版本，后续就不用反复找资源了。", "浏览番剧", func() { s.Page = "browse" })
+			s.empty(c, "还没有开始追番", "先找到一部喜欢的番剧，选好版本，后续就不用反复找资源了。", "浏览番剧", func() { s.enterPage("browse") })
 			return
 		}
 		var subs []Subscription
@@ -1279,7 +1292,7 @@ func (s *State) downloads(c *ui.Context) {
 			})
 		})
 		if len(s.Downloads) == 0 {
-			s.empty(c, "下载列表还是空的", "在番剧详情确认资源后，下载会出现在这里。", "去选一部番剧", func() { s.Page = "browse" })
+			s.empty(c, "下载列表还是空的", "在番剧详情确认资源后，下载会出现在这里。", "去选一部番剧", func() { s.enterPage("browse") })
 			return
 		}
 
