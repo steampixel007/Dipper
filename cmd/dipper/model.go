@@ -439,6 +439,25 @@ func (s *State) toggleEpisodeFilter(ep string) {
 	}
 }
 
+// latestCompletedEpisode returns the index of the finished download with the
+// highest episode number for the anime, so the follow card can offer the
+// newest watchable release in one click.
+func (s *State) latestCompletedEpisode(animeID string) (int, bool) {
+	best := -1
+	var bestNum float64
+	for i, d := range s.Downloads {
+		if d.AnimeID != animeID || d.Failed || d.Progress < 1 || d.Episode == "" {
+			continue
+		}
+		num, ok := episodeNumber(d.Episode)
+		if !ok || (best != -1 && num <= bestNum) {
+			continue
+		}
+		best, bestNum = i, num
+	}
+	return best, best != -1
+}
+
 func (s *State) duplicates(ep string) int {
 	if ep == "" {
 		return 0

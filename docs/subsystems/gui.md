@@ -144,6 +144,10 @@ entries whose last transfer failed and falling back to the item count when
 none did.
 The card itself is a button that opens the same resource list as 查看资源, so the
 whole card is the large target and the side buttons stay distinct actions.
+A follow with finished, non-failed downloads also offers a 播放第 N 集 shortcut
+above 查看资源: it plays the completed transfer with the highest episode number
+for that anime, so watching the newest finished episode is one click from the
+card. Transfers without a parsed episode number never produce the shortcut.
 
 Following cards offer 查看资源 as a separate entry into the detail page. It
 locks the saved subscription's group and rule, opens as a view-only backfill

@@ -1229,6 +1229,10 @@ func (s *State) following(c *ui.Context) {
 							caption(c, fmt.Sprintf("已跳过 %d 条已有资源 · 文件夹：%s", len(item.Skipped), item.Folder))
 						})
 						ui.Column(c).Gap(7).Children(func() {
+							if idx, ok := s.latestCompletedEpisode(item.AnimeID); ok {
+								d := s.Downloads[idx]
+								quiet(c, "play-latest-"+item.ID, "播放第 "+d.Episode+" 集", func() { s.playDownload(idx) }).Label("播放第 " + d.Episode + " 集 " + item.GroupName).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
+							}
 							secondary(c, "view-sub-"+item.ID, "查看资源", func() { s.viewSubscriptionResources(item.ID) }).Label("查看资源 " + item.GroupName).FontSize(12).Disabled(s.Busy)
 							label := "暂停追番"
 							if item.Paused {
