@@ -1419,7 +1419,7 @@ func (s *State) downloads(c *ui.Context) {
 							ui.Text(c, s.anime(group.animeID).Title).FontSize(16).FontWeight(700).Grow(1)
 							caption(c, group.summary)
 							if folder := s.groupFolder(group.animeID); folder != "" {
-								quiet(c, "open-group-folder-"+group.animeID, "打开文件夹", func() {
+								quiet(c, "open-group-folder-"+group.animeID, "打开番剧文件夹", func() {
 									if s.OpenFolder != nil {
 										s.OpenFolder(folder)
 									}
