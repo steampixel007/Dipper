@@ -1390,6 +1390,9 @@ func (s *State) downloads(c *ui.Context) {
 					parts = append(parts, fmt.Sprintf("%d %s", counts[segment.filter], segment.label))
 				}
 			}
+			if eta := s.downloadGroupETA(group.indices); eta != "" {
+				parts = append(parts, eta)
+			}
 			group.summary = strings.Join(parts, " · ")
 		}
 		ui.Row(c).Children(func() {

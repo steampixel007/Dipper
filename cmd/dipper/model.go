@@ -499,7 +499,11 @@ func downloadETA(d Download) string {
 	if d.MB <= 0 || d.Progress >= 1 || d.DownSpeed <= 0 || d.Paused || d.Stopped || d.Failed {
 		return ""
 	}
-	seconds := (1 - d.Progress) * float64(d.MB) / d.DownSpeed
+	return etaText((1 - d.Progress) * float64(d.MB) / d.DownSpeed)
+}
+
+// etaText renders a remaining duration in seconds as a coarse human estimate.
+func etaText(seconds float64) string {
 	minutes := int(seconds / 60)
 	switch {
 	case minutes < 1:
@@ -511,6 +515,25 @@ func downloadETA(d Download) string {
 	default:
 		return fmt.Sprintf("剩余约 %d 小时 %d 分钟", minutes/60, minutes%60)
 	}
+}
+
+// downloadGroupETA estimates a group's remaining download time from the
+// combined measured speed of its active transfers; empty means nothing is
+// actively downloading or the sizes and speeds are unknown.
+func (s *State) downloadGroupETA(indices []int) string {
+	remaining, speed := 0.0, 0.0
+	for _, i := range indices {
+		d := s.Downloads[i]
+		if d.MB <= 0 || d.Progress >= 1 || d.Paused || d.Stopped || d.Failed {
+			continue
+		}
+		remaining += (1 - d.Progress) * float64(d.MB)
+		speed += d.DownSpeed
+	}
+	if remaining <= 0 || speed <= 0 {
+		return ""
+	}
+	return etaText(remaining / speed)
 }
 
 func speedText(mbPerSecond float64, upload bool) string {
