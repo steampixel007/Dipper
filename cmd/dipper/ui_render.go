@@ -40,7 +40,7 @@ func uiRenderFixture() *State {
 	folder := filepath.Join(s.Root, s.Catalog[0].Title)
 	s.Subscriptions = []Subscription{
 		{ID: "render-sub-1", AnimeID: s.AnimeID, GroupID: s.GroupIDs[0], GroupName: s.Groups[0], Folder: folder, Rule: Rule{All: []string{"1080p"}}, LastCheck: "2025-04-14 22:01 · 新增 1 条"},
-		{ID: "render-sub-2", AnimeID: s.AnimeID, GroupID: s.GroupIDs[1], GroupName: s.Groups[1], Folder: folder, CheckFailed: true, LastCheck: "2025-04-14 22:02 · RSS 请求超时"},
+		{ID: "render-sub-2", AnimeID: s.AnimeID, GroupID: s.GroupIDs[1], GroupName: s.Groups[1], Folder: folder, LastCheck: "2025-04-14 22:02", LastError: "RSS 请求超时", CheckFailed: true},
 	}
 	s.Downloads = []Download{
 		{ID: "render-download-1", AnimeID: s.AnimeID, Title: s.ResourceList[0].Title, Folder: folder, MB: 486, Progress: .43, DownSpeed: 2.7, UpSpeed: .08},

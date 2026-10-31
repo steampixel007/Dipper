@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image/png"
 	"os"
@@ -362,6 +363,52 @@ func TestUIFollowingUsesSubscriptionIdentityAndRSSResult(t *testing.T) {
 	uiClick(t, tt, "修改条件 "+s.Subscriptions[1].GroupName)
 	if s.EditID != wantID || !s.Editing || s.Page != "detail" {
 		t.Fatalf("edited wrong subscription: id=%q, want %q", s.EditID, wantID)
+	}
+}
+
+func TestUIFollowingFailedCheckOffersInlineRetry(t *testing.T) {
+	kernel, err := core.Open(filepath.Join(t.TempDir(), "dipper.db"), core.Options{
+		DisableScheduler: true,
+		Feed: func(context.Context, string, string) ([]core.Resource, error) {
+			return nil, errors.New("RSS 请求超时")
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { kernel.Close() })
+	ctx := context.Background()
+	res := core.Resource{ID: "retry-1", Title: "1080p", Magnet: "magnet:?xt=urn:btih:" + strings.Repeat("ab", 20), Size: 100}
+	sub, err := kernel.CreateSubscription(ctx, core.Anime{ID: "retry-anime", Title: "追番丙"}, core.Group{ID: "retry-group", Name: "字幕组丙"}, core.Rule{}, []core.Resource{res}, []string{"retry-1"})
+	if err != nil && sub.ID == "" {
+		t.Fatalf("subscription not committed: %v", err)
+	}
+	if err := kernel.Check(ctx, sub.ID); err == nil {
+		t.Fatal("expected the seeded feed failure to fail the check")
+	}
+	s := uiFixture(t, "following")
+	s.Core = kernel
+	s.Engine = &downloader.Engine{}
+	s.Ctx = ctx
+	updates := make(chan func(), 2)
+	s.Update = func(fn func()) { updates <- fn }
+	snapshot, err := kernel.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.project(snapshot, nil)
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "RSS 检查失败：RSS 请求超时")
+	uiClick(t, tt, "重试检查 字幕组丙")
+	deadline := time.NewTimer(2 * time.Second)
+	defer deadline.Stop()
+	for s.SaveError != "RSS 请求超时" {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatalf("save error = %q; texts=%q", s.SaveError, tt.Texts())
+		}
 	}
 }
 
