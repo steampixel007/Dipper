@@ -222,6 +222,7 @@ func (s *State) openAnime(id, from string) {
 	s.OnlyMatches = false
 	s.EpisodeFilter = ""
 	s.OnlyDownloaded = false
+	s.OnlyNew = false
 	s.Notice = ""
 	s.HistoryError = ""
 	s.refreshDetail()

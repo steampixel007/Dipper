@@ -187,7 +187,9 @@ When several releases share an episode, each row shows a 本集匹配 N 条 badg
 Beside 只看匹配, a 只看已在下载库 checkbox hides preview rows that have
 no download in the library, whatever the download state — including failed
 transfers. Opening another anime resets it, like the episode filter, and it
-only affects the preview rows, never the stored list.
+only affects the preview rows, never the stored list. In the followed resource view, a 只看新资源
+checkbox beside it hides releases outside the subscription's pending set; it
+renders only while something is pending and resets with the other filters.
 
 Subtitle-group selection supports a local name search with a result count and
 one-click reset. Search is case/width insensitive, retains source order and

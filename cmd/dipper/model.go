@@ -175,6 +175,7 @@ type State struct {
 	SuggestedResource          Resource
 	OnlyMatches                bool
 	OnlyDownloaded             bool
+	OnlyNew                    bool
 	EpisodeFilter              string
 	EpisodeFilterScroll        float32
 	Notice, SaveError          string
