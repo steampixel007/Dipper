@@ -18,7 +18,7 @@ components, and interaction conventions are specified in
 | --- | --- |
 | `main.go` | Process start: single instance, data directory, engine and core construction, the window |
 | `model.go` | `State`, `Saved`, the update loop, and the helpers that turn core types into UI types |
-| `view.go` | The pages: browse, detail, following, downloads, settings |
+| `view.go` | The pages: browse, detail, following, episodes, downloads, settings |
 | `core_ui.go` | The bridge to `core`: subscriptions, tasks, settings |
 | `source_ui.go` | The bridge to `source`: catalog, detail, history, covers |
 | `covers.go` | Cover image loading and its cache |
@@ -68,7 +68,7 @@ reading forever. `TestUIFilesDialogScopesResultsToTask`,
 
 ## Pages
 
-`Page` is one of `browse`, `detail`, `following`, `downloads`, `settings`. Each
+`Page` is one of `browse`, `detail`, `following`, `episodes`, `downloads`, `settings`. Each
 page is a function over `State` in `view.go`; a page never calls `core` directly,
 it calls the bridge in `core_ui.go` or `source_ui.go`.
 
@@ -163,12 +163,20 @@ The 我的追番 navigation entry counts failed checks while any follow is faili
 and falls back to the follow count when all are healthy. The 下载 navigation entry does the same for failed downloads, counting
 entries whose last transfer failed and falling back to the item count when
 none did.
-The card itself is a button that opens the same resource list as 查看资源, so the
+The card itself is a button that opens the follow's episode library, so the
 whole card is the large target and the side buttons stay distinct actions.
 A follow with finished, non-failed downloads also offers a 播放第 N 集 shortcut
 above 查看资源: it plays the completed transfer with the highest episode number
 for that anime, so watching the newest finished episode is one click from the
 card. Transfers without a parsed episode number never produce the shortcut.
+
+The episode library (`episodes` page) is a follow's watch view: it lists that
+anime's downloads sorted by episode number, marks each transfer's state, and
+offers 播放 beside completed transfers, so watching does not go through the
+release list. Releases without a parsed episode number sort last, labeled
+其他资源. The library is reached from the follow card and stays per-run state:
+it follows one subscription ID, and rule editing or release picking stay on the
+resource view reached through 查看资源.
 
 Inside the followed resource view, rows whose title matches one of the
 subscription's latest pending RSS releases (the source of the card's

@@ -82,6 +82,11 @@ func renderScreens(dir string) error {
 			s.Rule = cloneRule(s.Subscriptions[0].Rule)
 			s.Checked = map[string]bool{}
 		}},
+		{name: "13-episode-library", page: "episodes", configure: func(s *State) {
+			s.LibraryID = s.Subscriptions[0].ID
+			s.Downloads[0].Episode = "02"
+			s.Downloads[2].Episode = "05"
+		}},
 		{name: "08-close-window", page: "browse", configure: func(s *State) {
 			s.Platform = "windows"
 			s.TrayAvailable = true

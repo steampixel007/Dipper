@@ -155,6 +155,8 @@ func (s *State) view(c *ui.Context) {
 						s.detail(c)
 					case "following":
 						s.following(c)
+					case "episodes":
+						s.library(c)
 					case "downloads":
 						s.downloads(c)
 					case "settings":
@@ -191,7 +193,7 @@ func (s *State) sidebar(c *ui.Context) {
 		})
 		for _, nav := range []struct{ id, label string }{{"browse", "浏览番剧"}, {"following", "我的追番"}, {"downloads", "下载"}} {
 			current := nav
-			active := s.Page == nav.id || (s.Page == "detail" && nav.id == "browse")
+			active := s.Page == nav.id || (s.Page == "detail" && nav.id == "browse") || (s.Page == "episodes" && nav.id == "following")
 			b := ui.ButtonBase(c.Key("nav-"+nav.id)).Label(current.label).FillWidth().Height(44).Padding(0, 14).Gap(12).Radius(8).Cursor(ui.CursorPointer)
 			tactile(b)
 			if active {
@@ -256,6 +258,7 @@ func (s *State) sidebar(c *ui.Context) {
 
 func (s *State) topbar(c *ui.Context) {
 	names := map[string]string{"browse": "浏览番剧", "detail": "浏览番剧 / 开始追番", "following": "我的追番", "downloads": "下载", "settings": "设置"}
+	names["episodes"] = "我的追番 / 影音库"
 	if s.Backfill {
 		if s.ViewResources {
 			names["detail"] = "我的追番 / 查看资源"
@@ -437,7 +440,7 @@ func (s *State) enterPage(page string) {
 	}
 	s.Page = page
 	switch page {
-	case "browse", "following":
+	case "browse", "following", "episodes":
 		s.loadCovers(s.Ctx, s.pageCoverRows(page))
 	}
 }
@@ -1294,7 +1297,108 @@ func (s *State) following(c *ui.Context) {
 							quiet(c, "check-sub-"+item.ID, "立即检查", func() { s.check(item.ID) }).Label("立即检查 " + item.GroupName).FontSize(12).Disabled(item.Paused || s.Busy)
 							quiet(c, "cancel-sub-"+item.ID, "取消追番", func() { s.CancelID, s.CancelPrompt = item.ID, true }).Label("取消追番 " + item.GroupName).FontSize(12).TextColor(colors(c).errorInk).Disabled(s.Busy)
 						})
-					}).OnClick(func() { s.viewSubscriptionResources(item.ID) })
+					}).OnClick(func() { s.openLibrary(item.ID) })
+				}
+			})
+		})
+	})
+}
+
+// libraryEpisodes lists the indices of one anime's downloads sorted by
+// episode number, so a season reads top to bottom; transfers without an
+// episode sort last.
+func (s *State) libraryEpisodes(animeID string) []int {
+	indices := make([]int, 0, len(s.Downloads))
+	for i, d := range s.Downloads {
+		if d.AnimeID == animeID {
+			indices = append(indices, i)
+		}
+	}
+	slices.SortStableFunc(indices, func(a, b int) int {
+		ea, oka := episodeNumber(s.Downloads[a].Episode)
+		eb, okb := episodeNumber(s.Downloads[b].Episode)
+		switch {
+		case oka && okb:
+			return cmp.Compare(ea, eb)
+		case oka:
+			return -1
+		case okb:
+			return 1
+		default:
+			return 0
+		}
+	})
+	return indices
+}
+
+// library is the watch view of one follow: its downloaded episodes, ready to
+// play. Picking releases and changing the rule stay on the resource view.
+func (s *State) library(c *ui.Context) {
+	sub, ok := s.subscription(s.LibraryID)
+	if !ok {
+		s.empty(c, "找不到这条追番", "它可能已被取消追番。", "回到我的追番", func() { s.enterPage("following") })
+		return
+	}
+	a := s.anime(sub.AnimeID)
+	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
+		ui.Row(c).Padding(18, 28, 0).Gap(6).Children(func() {
+			iconButton(c, "back-following", "返回我的追番", "back", func() { s.enterPage("following") })
+			quiet(c, "back-following-list", "返回我的追番", func() { s.enterPage("following") }).FontSize(12).TextColor(colors(c).muted)
+		})
+		ui.Row(c).Padding(12, 28, 16).Gap(16).Children(func() {
+			cover(c, a, 52, 72)
+			ui.Column(c).Grow(1).Gap(7).Children(func() {
+				ui.Text(c, a.Title).FontSize(23).FontWeight(700).MaxLines(2)
+				caption(c, sub.GroupName+" · 文件夹："+sub.Folder)
+			})
+			secondary(c, "library-edit", "修改条件", func() { s.editSubscription(sub.ID) }).Label("修改条件 " + sub.GroupName).FontSize(12).Disabled(s.Busy)
+			secondary(c, "library-resources", "查看资源", func() { s.viewSubscriptionResources(sub.ID) }).Label("查看资源 " + sub.GroupName).FontSize(12).Disabled(s.Busy)
+		})
+		ui.Divider(c).Background(colors(c).line)
+		indices := s.libraryEpisodes(sub.AnimeID)
+		if len(indices) == 0 {
+			s.empty(c, "还没有已下载的剧集", "已开始的下载会出现在这里，下载完成后点开就能看。", "查看资源", func() { s.viewSubscriptionResources(sub.ID) })
+			return
+		}
+		ui.Scroll(c.Key("episode-list")).Grow(1).MinHeight(0).Padding(14, 28, 24).Children(func() {
+			ui.Column(c).Gap(12).Children(func() {
+				caption(c, fmt.Sprintf("已下载 %d 集", len(indices)))
+				for _, i := range indices {
+					idx := i
+					d := s.Downloads[idx]
+					ui.Row(c.Key("episode-"+d.ID)).Gap(12).Padding(14, 16).Background(colors(c).paper).Border(1, colors(c).line).Radius(8).Children(func() {
+						ep := "其他资源"
+						if d.Episode != "" {
+							ep = "第 " + d.Episode + " 集"
+						}
+						ui.Text(c, ep).FontSize(14).FontWeight(600)
+						switch {
+						case d.Failed:
+							badge(c, "下载失败", colors(c).amber, colors(c).amberWash)
+						case d.Progress < 1 && d.Stopped:
+							badge(c, "已停止", colors(c).muted, colors(c).canvas)
+						case d.Progress < 1 && d.Paused:
+							badge(c, "已暂停", colors(c).muted, colors(c).canvas)
+						case d.Progress < 1:
+							badge(c, fmt.Sprintf("下载中 %d%%", int(d.Progress*100)), colors(c).blue, colors(c).blueWash)
+						default:
+							badge(c, "可播放", colors(c).green, colors(c).greenWash)
+						}
+						ui.Column(c).Grow(1).MinWidth(0).Gap(4).Children(func() {
+							ui.Text(c, d.Title).FontSize(12).TextColor(colors(c).muted).MaxLines(2)
+							if d.Error != "" {
+								ui.Text(c, d.Error).FontSize(12).TextColor(colors(c).amber)
+							}
+						})
+						if d.Progress >= 1 && !d.Failed {
+							quiet(c, "play-episode-"+d.ID, "播放", func() { s.playDownload(idx) }).Label("播放 " + d.ID).FontSize(13).TextColor(colors(c).blue).Disabled(s.Busy)
+							quiet(c, "open-episode-folder-"+d.ID, "打开文件夹", func() {
+								if s.OpenFolder != nil {
+									s.OpenFolder(d.Folder)
+								}
+							}).Label("打开文件夹 " + d.ID).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy || s.OpenFolder == nil || d.Folder == "")
+						}
+					})
 				}
 			})
 		})

@@ -137,6 +137,7 @@ type State struct {
 	SourceLoading, DetailLoading, HistoryLoading, Busy bool
 	SourceError, DetailError, HistoryError             string
 	EditID                                             string
+	LibraryID                                          string
 	ProposedFolder                                     string
 	Backfill                                           bool
 	ViewResources                                      bool
