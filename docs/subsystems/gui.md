@@ -128,6 +128,10 @@ actually running. The download filter resets its scroll on every filter
 change, including filters whose list renders empty. Each anime group has a 收起/展开
 toggle whose state lives only for the session, so a fresh start lists every
 group open.
+The group summary ends with a 剩余约 N estimate when the group's active
+transfers have known sizes and measured speeds: the leftover bytes of every
+running transfer divided by their combined speed, reusing the row-level
+estimate's wording.
 Each group header also offers 打开番剧文件夹 for the anime's download directory, so a
 collapsed group still reaches its files. A transfer's folder is its own hash
 directory under the anime directory, so the header opens the parent and is

@@ -39,3 +39,36 @@ func TestUIDownloadRowShowsETA(t *testing.T) {
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, "剩余约 2 分钟")
 }
+
+func TestDownloadGroupETAMixesActiveTransfers(t *testing.T) {
+	s := &State{Downloads: []Download{
+		{MB: 200, Progress: .5, DownSpeed: 2},
+		{MB: 280, Progress: .5, DownSpeed: 2},
+		{MB: 100, Progress: 0, DownSpeed: 9, Paused: true},
+		{MB: 100, Progress: .5, DownSpeed: 9, Failed: true},
+	}}
+	if got := s.downloadGroupETA([]int{0, 1, 2, 3}); got != "剩余约 1 分钟" {
+		t.Fatalf("group ETA = %q, want 剩余约 1 分钟", got)
+	}
+}
+
+func TestDownloadGroupETAEmptyWithoutActiveTransfers(t *testing.T) {
+	s := &State{Downloads: []Download{
+		{MB: 100, Progress: .5, DownSpeed: 2, Paused: true},
+		{MB: 100, Progress: .5, Failed: true},
+		{MB: 100, Progress: 1, DownSpeed: 2},
+	}}
+	if got := s.downloadGroupETA([]int{0, 1, 2}); got != "" {
+		t.Fatalf("group ETA = %q, want empty", got)
+	}
+}
+
+func TestDownloadGroupETAEmptyWhenActiveSizeUnknown(t *testing.T) {
+	s := &State{Downloads: []Download{
+		{MB: 240, Progress: .5, DownSpeed: 1},
+		{MB: 0, Progress: .1, DownSpeed: 1},
+	}}
+	if got := s.downloadGroupETA([]int{0, 1}); got != "" {
+		t.Fatalf("group ETA = %q, want empty while an active transfer has unknown size", got)
+	}
+}
