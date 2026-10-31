@@ -22,6 +22,9 @@ func TestReleaseTagsRecognizeCommonLabels(t *testing.T) {
 		{"[组] 剧名 [B-Global][1080P][Dolby Vision][MKV]", []string{"1080p", "mkv", "b-global", "dolby vision"}},
 		{"[组] 剧名 [AT-X][720p][HLG][MP4]", []string{"720p", "mp4", "at-x", "hlg"}},
 		{"[组] 剧名 [1920x1080][x264][FLAC]", []string{"x264", "flac"}},
+		{"[组] 剧名 [1080P][MP4/MKV]", []string{"1080p", "mp4", "mkv"}},
+		{"[组] 剧名 [1080P][繁体][MP4]", []string{"1080p", "mp4", "繁体"}},
+		{"[组] 剧名 [720P][简体MP4]", []string{"720p", "mp4", "简体"}},
 	}
 	for _, tc := range cases {
 		got := ReleaseTags(tc.title)

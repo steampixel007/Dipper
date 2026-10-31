@@ -1679,3 +1679,14 @@ func TestUIFilesDialogEmptyResultIsTerminal(t *testing.T) {
 	}
 	uiRequireText(t, tt, "文件可能已被移动或删除")
 }
+
+func TestUIResourceTagOpensFilterPopover(t *testing.T) {
+	s := uiFixture(t, "detail")
+	tt := ui.NewTester(func(c *ui.Context) { s.tagChip(c, "tag-render-resource-3-1", "CHS") }, 420, 320)
+	uiClick(t, tt, "筛选 CHS")
+	uiRequireText(t, tt, "怎么筛选「CHS」？", "只要含「CHS」的", "不要含「CHS」的")
+	uiClick(t, tt, "只要含「CHS」的")
+	if !slices.Contains(s.Rule.All, "CHS") {
+		t.Fatalf("tag popover did not add the rule: %+v", s.Rule)
+	}
+}
