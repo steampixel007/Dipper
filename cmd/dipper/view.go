@@ -717,6 +717,17 @@ func (s *State) preview(c *ui.Context) {
 	})
 }
 
+// downloadForResource finds the download started from this resource; a
+// download keeps the resource title it was created from.
+func (s *State) downloadForResource(r Resource) (Download, int, bool) {
+	for i, d := range s.Downloads {
+		if d.Title == r.Title {
+			return d, i, true
+		}
+	}
+	return Download{}, 0, false
+}
+
 func (s *State) resourceRow(c *ui.Context, r Resource) {
 	ok, reason := decide(r.Title, s.Rule)
 	ui.Column(c.Key("resource-"+r.ID)).Padding(12, 0).Gap(7).BorderWidth(0, 0, 1, 0).BorderColor(colors(c).line).Transition(rowTransition).Children(func() {
@@ -735,6 +746,21 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 			}
 			if count := s.duplicates(r.Episode); count > 1 && ok {
 				badge(c, fmt.Sprintf("本集匹配 %d 条", count), colors(c).amber, colors(c).amberWash)
+			}
+			if d, idx, found := s.downloadForResource(r); found {
+				switch {
+				case d.Failed:
+					badge(c, "下载失败", colors(c).amber, colors(c).amberWash)
+				case d.Progress < 1 && d.Paused:
+					badge(c, "已暂停", colors(c).muted, colors(c).canvas)
+				case d.Progress < 1:
+					badge(c, fmt.Sprintf("下载中 %d%%", int(d.Progress*100)), colors(c).blue, colors(c).blueWash)
+				default:
+					badge(c, "已在下载库", colors(c).green, colors(c).greenWash)
+				}
+				if d.Progress >= 1 && !d.Failed {
+					quiet(c, "play-resource-"+r.ID, "播放", func() { s.playDownload(idx) }).Label("播放 "+r.ID).FontSize(12).TextColor(colors(c).blue).Padding(3, 0).Disabled(s.Busy)
+				}
 			}
 			ui.Spacer(c)
 			caption(c, resourceSize(r.MB))
