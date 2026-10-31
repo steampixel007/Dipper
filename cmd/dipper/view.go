@@ -481,6 +481,7 @@ func (s *State) detail(c *ui.Context) {
 						s.Keyword = ""
 						s.WordOpen = false
 						s.Rule = Rule{}
+						s.OnlyNew = false
 					}).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
 				} else if s.Backfill {
 					badge(c, "主动勾选已有资源", colors(c).blue, colors(c).blueWash)
@@ -533,6 +534,9 @@ func (s *State) detail(c *ui.Context) {
 					if s.detailReady() {
 						ui.Checkbox(c.Key("only-matches"), &s.OnlyMatches, "只看匹配").FontSize(12)
 						ui.Checkbox(c.Key("only-downloaded"), &s.OnlyDownloaded, "只看已在下载库").FontSize(12)
+						if s.ViewResources && s.EditID != "" && (s.OnlyNew || s.hasNewRelease()) {
+							ui.Checkbox(c.Key("only-new"), &s.OnlyNew, "只看新资源").FontSize(12)
+						}
 					}
 				})
 				if s.DetailLoading {
@@ -786,6 +790,9 @@ func (s *State) preview(c *ui.Context) {
 					if _, _, found := s.downloadForResource(res); !found {
 						continue
 					}
+				}
+				if s.OnlyNew && s.ViewResources && s.EditID != "" && !s.isNewRelease(res.Title) {
+					continue
 				}
 				s.resourceRow(c, res)
 			}
@@ -1318,6 +1325,18 @@ func (s *State) toggleDownloadGroup(animeID string) {
 		s.CollapsedDownloads = make(map[string]bool)
 	}
 	s.CollapsedDownloads[animeID] = !s.CollapsedDownloads[animeID]
+}
+
+// hasNewRelease reports whether the followed resource view has any release
+// still waiting in the subscription's pending set, so 只看新资源 only shows
+// when it can hide something.
+func (s *State) hasNewRelease() bool {
+	for _, res := range s.resources() {
+		if s.isNewRelease(res.Title) {
+			return true
+		}
+	}
+	return false
 }
 
 // downloadSearches reports whether the download survives the downloads-page
