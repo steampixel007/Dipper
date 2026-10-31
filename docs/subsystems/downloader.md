@@ -70,6 +70,15 @@ The engine applies them on first admission, on restart from persisted metadata,
 and to a magnet fetched over HTTP, so a torrent whose announce list is empty,
 unreachable or blocked still has redundancy. They are deliberately few and
 well-known; peer exchange and DHT stay primary.
+`SetExtraTrackers` replaces the user tier rather than only adding to it:
+`reconciledTiers` keeps each torrent's own metadata tiers, strips the
+previously applied user URLs and the built-ins, and re-appends the current
+user tier and the built-ins, so removing a tracker in settings also stops
+announcing it on running tasks and disappears from the persisted metadata.
+The URLs actually injected as the user tier are recorded in the task
+checkpoint, so reconciliation on pause, resume and restart still strips them
+after the setting clears them, even though the saved metadata already carries
+them.
 
 The context only governs admission and the metadata request. Once a task is
 admitted its lifetime belongs to the engine, so a cancelled admission context
@@ -224,8 +233,11 @@ The seeding-time stop target is `policyState.SeedTarget`: a positive duration,
 `-1` to seed without a time limit (the ratio target still applies), and zero
 or any other negative value for the default one hour. The host passes the
 setting at construction (`Config.SeedTarget`) and may change it at runtime with
-`SetSeedTarget`; the change applies to running and future tasks and is
-persisted in the checkpoint.
+`SetSeedTarget`; the change applies to running and future tasks — including
+restoring the default over a previously customized target — and the sampler
+reapplies the engine setting on every sample, so a checkpoint restored with a
+custom target returns to the default when the engine reopens without one.
+The change is persisted in the checkpoint.
 
 ## Tests
 

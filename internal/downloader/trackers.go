@@ -65,3 +65,61 @@ func normalizeTrackers(trackers []string) []string {
 	}
 	return clean
 }
+
+// reconciledTiers rebuilds a torrent's announce list when the user tracker
+// tier changes: the torrent's own metadata tiers stay, the previously applied
+// user URLs and the built-ins are stripped, and the current user tier plus
+// the built-ins are appended as their own tiers. It also reports which
+// configured URLs the rebuilt list actually injected as the user tier.
+func reconciledTiers(current [][]string, previous, extras []string) ([][]string, []string) {
+	drop := make(map[string]bool)
+	for _, tracker := range previous {
+		drop[tracker] = true
+	}
+	for _, tracker := range builtinTrackers {
+		drop[tracker] = true
+	}
+	var tiers [][]string
+	seen := make(map[string]bool)
+	add := func(tier []string) {
+		var clean []string
+		for _, tracker := range tier {
+			if drop[tracker] || seen[tracker] {
+				continue
+			}
+			seen[tracker] = true
+			clean = append(clean, tracker)
+		}
+		if len(clean) > 0 {
+			tiers = append(tiers, clean)
+		}
+	}
+	for _, tier := range current {
+		add(tier)
+	}
+	// URLs from the new user tier that the surviving own tiers already carry
+	// are not user additions; only genuinely injected ones may be removed by a
+	// later settings change.
+	var injected []string
+	for _, tracker := range extras {
+		if !seen[tracker] {
+			injected = append(injected, tracker)
+		}
+	}
+	// The new user tier and the built-ins are intentional; they bypass the
+	// removal filter and deduplicate against whatever survived it.
+	for _, tier := range [][]string{extras, builtinTrackers} {
+		var clean []string
+		for _, tracker := range tier {
+			if tracker == "" || seen[tracker] {
+				continue
+			}
+			seen[tracker] = true
+			clean = append(clean, tracker)
+		}
+		if len(clean) > 0 {
+			tiers = append(tiers, clean)
+		}
+	}
+	return tiers, injected
+}

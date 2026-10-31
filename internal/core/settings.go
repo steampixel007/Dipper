@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -41,12 +42,20 @@ func SeedRatioTarget(label string) float64 {
 	return 1
 }
 
+// TrackerError reports a tracker line whose announce URL cannot be parsed.
+// The UI bridge translates it for display while keeping the offending line.
+type TrackerError struct{ Line string }
+
+func (e *TrackerError) Error() string {
+	return "invalid tracker " + strconv.Quote(e.Line)
+}
+
 // ValidateTrackers rejects raw tracker text that carries a line no announce
 // URL can be parsed from.
 func ValidateTrackers(text string) error {
 	for _, line := range trackerLines(text) {
 		if trackerURL(line) == "" {
-			return fmt.Errorf("invalid tracker %q", line)
+			return &TrackerError{Line: line}
 		}
 	}
 	return nil

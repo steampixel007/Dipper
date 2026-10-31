@@ -103,6 +103,7 @@ type savedTask struct {
 	TotalBytes     int64       `json:"total_bytes"`
 	CompletedBytes int64       `json:"completed_bytes"`
 	Complete       bool        `json:"complete"`
+	AppliedExtra   []string    `json:"applied_extra,omitempty"`
 }
 
 type checkpoint struct {
@@ -455,7 +456,8 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 	if err := validateIdentity(j.ID, spec); err != nil {
 		return err
 	}
-	appendTrackers(spec, e.extraTrackers, builtinTrackers)
+	tiers, injected := reconciledTiers(spec.Trackers, j.appliedExtra, e.extraTrackers)
+	spec.Trackers = tiers
 	for _, other := range e.tasks {
 		if other == j {
 			continue
@@ -481,7 +483,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 		return failure.err
 	}
 	j.torrent, j.err, j.requested, j.metadataSaved = t, nil, false, false
-	j.appliedExtra = e.extraTrackers
+	j.appliedExtra = injected
 	j.InfoHash = t.InfoHash().HexString()
 	j.Complete = false
 	j.previous = observation{at: e.now(), awake: e.awake()}
@@ -663,9 +665,7 @@ func (e *Engine) SetSeedTarget(target time.Duration) {
 	defer e.mu.Unlock()
 	e.seedTarget = target
 	for _, j := range e.tasks {
-		if target == seedForever || target > 0 {
-			j.Policy.SeedTarget = target
-		}
+		j.Policy.SeedTarget = target
 	}
 }
 
@@ -691,20 +691,16 @@ func (e *Engine) SetExtraTrackers(trackers []string) {
 	defer e.mu.Unlock()
 	e.extraTrackers = trackers
 	for _, j := range e.tasks {
-		seen := make(map[string]bool)
-		for _, tracker := range j.appliedExtra {
-			seen[tracker] = true
+		if j.torrent == nil {
+			// A detached task keeps its provenance; the next admission
+			// reconciles the saved metadata against the new tier.
+			continue
 		}
-		var fresh []string
-		for _, tracker := range trackers {
-			if !seen[tracker] {
-				fresh = append(fresh, tracker)
-			}
-		}
-		if len(fresh) > 0 && j.torrent != nil {
-			j.torrent.AddTrackers([][]string{fresh})
-		}
-		j.appliedExtra = trackers
+		previous := j.appliedExtra
+		tiers, injected := reconciledTiers(j.torrent.Metainfo().AnnounceList, previous, trackers)
+		j.torrent.ModifyTrackers(tiers)
+		j.appliedExtra = injected
+		j.metadataSaved = false
 	}
 }
 
@@ -778,9 +774,7 @@ func (e *Engine) sampleLocked(j *entry, now time.Time, awake time.Duration, onli
 	stats := t.Stats()
 	cur := observation{at: now, awake: awake, up: stats.BytesWrittenData.Int64(), down: stats.BytesReadData.Int64()}
 	cur.eligible = j.Complete && online && !e.suspended && !j.Policy.Paused && !j.Policy.ManuallyStopped && !j.Policy.AutoStopped && j.err == nil
-	if e.seedTarget == seedForever || e.seedTarget > 0 {
-		j.Policy.SeedTarget = e.seedTarget
-	}
+	j.Policy.SeedTarget = e.seedTarget
 	j.Policy.RatioTarget = e.ratioTarget
 	j.Policy.observe(j.previous, cur, j.Complete, j.TotalBytes)
 	if dt := now.Sub(j.previous.at).Seconds(); dt > 0 {
@@ -999,7 +993,9 @@ func (e *Engine) load() error {
 				return errors.New("checkpoint task folders overlap")
 			}
 		}
-		e.tasks[saved.ID] = &entry{savedTask: saved}
+		j := &entry{savedTask: saved}
+		j.appliedExtra = saved.AppliedExtra
+		e.tasks[saved.ID] = j
 	}
 	return nil
 }
@@ -1007,7 +1003,9 @@ func (e *Engine) load() error {
 func (e *Engine) saveLocked() error {
 	state := checkpoint{Version: 1, Tasks: make([]savedTask, 0, len(e.tasks))}
 	for _, j := range e.tasks {
-		state.Tasks = append(state.Tasks, j.savedTask)
+		saved := j.savedTask
+		saved.AppliedExtra = j.appliedExtra
+		state.Tasks = append(state.Tasks, saved)
 	}
 	sort.Slice(state.Tasks, func(i, j int) bool { return state.Tasks[i].ID < state.Tasks[j].ID })
 	b, err := json.MarshalIndent(state, "", "  ")

@@ -196,7 +196,12 @@ func (s *State) save() {
 	}
 	settings := core.Settings{DownloadRoot: s.Root, UploadLimitBytes: uploadLimit(s.Upload), SeedMinutes: seedMinutes(s.Seed), SeedRatio: seedRatioLabel(s.SeedRatio), ExtraTrackers: s.ExtraTrackers, ProxyMode: mode, ProxyURL: s.ProxyURL}
 	if err := s.Core.SetSettings(settings); err != nil {
-		s.SaveError = "设置保存失败：" + err.Error()
+		var bad *core.TrackerError
+		if errors.As(err, &bad) {
+			s.SaveError = "设置保存失败：无法识别的 tracker 地址 " + strconv.Quote(bad.Line) + "，请修正后重试。"
+		} else {
+			s.SaveError = "设置保存失败：" + err.Error()
+		}
 		return
 	}
 	proxy.Configure(mode, settings.ProxyURL)
