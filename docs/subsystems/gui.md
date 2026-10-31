@@ -121,7 +121,9 @@ Paused and stopped transfers are never running marks: resource rows and
 download groups label them 已暂停 / 已停止, the follow card skips them when
 deciding 下载中, and the pause-all toggle counts only transfers that are
 actually running. The download filter resets its scroll on every filter
-change, including filters whose list renders empty.
+change, including filters whose list renders empty. Each anime group has a 收起/展开
+toggle whose state lives only for the session, so a fresh start lists every
+group open.
 Resource rows match downloads by identity, not by title: the core-resolved
 info hash first, then the resource ID recorded on the task, so two releases
 with the same title never show each other's progress or playback.
