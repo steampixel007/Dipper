@@ -1230,7 +1230,10 @@ func (s *State) following(c *ui.Context) {
 									badge(c, "自动追番中", colors(c).green, colors(c).greenWash)
 								}
 								if item.NewCount > 0 {
-									badge(c, fmt.Sprintf("新资源 %d 条", item.NewCount), colors(c).amber, colors(c).amberWash)
+									quiet(c, "open-new-"+item.ID, fmt.Sprintf("新资源 %d 条", item.NewCount), func() {
+										s.viewSubscriptionResources(item.ID)
+										s.OnlyNew = true
+									}).Label(fmt.Sprintf("新资源 %d 条 %s", item.NewCount, item.GroupName)).FontSize(11).FontWeight(600).TextColor(colors(c).amber).Background(colors(c).amberWash).Radius(4).Padding(3, 7).Disabled(s.Busy)
 								}
 								if item.Completed > 0 {
 									badge(c, fmt.Sprintf("已下载 %d 个资源", item.Completed), colors(c).muted, colors(c).canvas)
