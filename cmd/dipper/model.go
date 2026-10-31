@@ -174,6 +174,7 @@ type State struct {
 	SuggestedResource          Resource
 	OnlyMatches                bool
 	EpisodeFilter              string
+	EpisodeFilterScroll        float32
 	Notice, SaveError          string
 	SourceTesting              bool
 	SourceRouteError           string
@@ -431,10 +432,11 @@ func (s *State) matchSummary() (int, int, int) {
 func (s *State) toggleEpisodeFilter(ep string) {
 	if s.EpisodeFilter == ep {
 		s.EpisodeFilter = ""
+		s.ResourceScroll.Y = s.EpisodeFilterScroll
 	} else {
 		s.EpisodeFilter = ep
+		s.EpisodeFilterScroll = s.ResourceScroll.Y
 	}
-	s.ResourceScroll = ui.ScrollState{}
 }
 
 func (s *State) duplicates(ep string) int {
