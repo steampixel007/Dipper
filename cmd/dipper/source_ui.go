@@ -235,6 +235,7 @@ func (s *State) openFollowedResources(id, from string) {
 			s.EditID = sub.ID
 			s.Backfill = true
 			s.ViewResources = true
+			s.Rule = cloneRule(sub.Rule)
 			break
 		}
 	}
@@ -331,6 +332,9 @@ func (s *State) refreshDetail() {
 }
 
 func (s *State) chooseGroup(index int) {
+	if s.ViewResources {
+		return
+	}
 	if index < 0 || index >= len(s.GroupIDs) {
 		return
 	}

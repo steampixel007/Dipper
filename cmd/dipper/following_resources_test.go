@@ -187,3 +187,34 @@ func TestUIFollowingViewResourcesAllowsExplicitBackfillSelection(t *testing.T) {
 	}
 	uiRequireText(t, tester, "确认补下已有资源", "已保存条件，仅用于筛选与确认，不修改。")
 }
+
+func TestUIFollowedResourceViewKeepsSavedGroupAndRule(t *testing.T) {
+	s := uiFixture(t, "browse")
+	sub := s.Subscriptions[0]
+	s.openFollowedResources(sub.AnimeID, "browse")
+	// refreshDetail repopulates the group list asynchronously and re-selects
+	// the saved subscription's group; mirror that settled state here.
+	s.Groups = []string{"回归测试组甲", "回归测试组乙"}
+	s.GroupIDs = []string{"render-group-1", "render-group-2"}
+	s.GroupCounts = []int{3, -1}
+	s.Group = 0
+	if !s.ViewResources || !s.Backfill || s.EditID != sub.ID {
+		t.Fatalf("wrong view state: view=%v backfill=%v edit=%q", s.ViewResources, s.Backfill, s.EditID)
+	}
+	if !reflect.DeepEqual(s.Rule, cloneRule(sub.Rule)) {
+		t.Fatalf("view entry lost the saved rule: %+v", s.Rule)
+	}
+	tt := ui.NewTester(s.view, 1320, 860)
+	if tt.HasText("更换") {
+		t.Fatal("view mode still offers group switching")
+	}
+	groupIndex := s.Group
+	uiClick(t, tt, "重新选版本")
+	if s.EditID != "" || s.ViewResources || s.Group != -1 {
+		t.Fatalf("fresh selection did not reset view state: edit=%q view=%v group=%d", s.EditID, s.ViewResources, s.Group)
+	}
+	s.chooseGroup(groupIndex)
+	if s.EditID != sub.ID || !s.Editing {
+		t.Fatalf("reselecting the same group lost the subscription: edit=%q editing=%v", s.EditID, s.Editing)
+	}
+}
