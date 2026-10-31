@@ -1587,16 +1587,16 @@ func TestUIFilesDialogScopesResultsToTask(t *testing.T) {
 		t.Fatalf("dialog shows %q, want the second task's file", s.Files[0].Path)
 	}
 	close(engine.gates["files-a"])
-	stale := time.After(300 * time.Millisecond)
 	for {
 		select {
 		case fn := <-updates:
 			fn()
-		case <-stale:
 			if s.Files[0].Path != `C:\Downloads\second.mkv` {
 				t.Fatalf("stale first-task result overwrote the dialog: %q", s.Files[0].Path)
 			}
 			return
+		case <-deadline.C:
+			t.Fatal("stale first-task result never arrived")
 		}
 	}
 }
