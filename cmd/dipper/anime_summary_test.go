@@ -45,7 +45,7 @@ func TestUIAnimeSummaryReadingPreservesDraft(t *testing.T) {
 					t.Fatal("reading the synopsis changed the release selection, filter or scroll position")
 				}
 				state.SummaryOpen = true
-				state.openAnime(state.Catalog[1].ID)
+				state.openAnime(state.Catalog[1].ID, "browse")
 				if state.SummaryOpen {
 					t.Fatal("opening another anime retained the previous reading dialog")
 				}

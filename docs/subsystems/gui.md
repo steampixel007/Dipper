@@ -80,6 +80,10 @@ The detail page runs in one of two modes, distinguished by `Backfill`:
   match, and confirm. Existing matches are selected by default.
 - **Backfill** — pick releases from an existing subscription's history to
   download now, without changing the rule.
+Opening an anime that already has a follow (from the browse grid or the downloads
+page) goes straight into that follow's resource list; 重新选版本 in the header
+switches back to the subscribe mode for the same anime, and the back button
+returns to the page the request came from.
 
 Above the subtitle groups, a four-line synopsis preview opens a scrollable
 reading dialog. Opening or closing it preserves resource selection, filter

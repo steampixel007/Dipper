@@ -192,7 +192,7 @@ func (s *State) switchSourceRoute(label string) {
 	}()
 }
 
-func (s *State) openAnime(id string) {
+func (s *State) openAnime(id, from string) {
 	s.AnimeID = id
 	s.Page = "detail"
 	s.Group = -1
@@ -210,7 +210,7 @@ func (s *State) openAnime(id string) {
 	s.Editing = false
 	s.Backfill = false
 	s.ViewResources = false
-	s.DetailReturn = ""
+	s.DetailReturn = from
 	s.Keyword = ""
 	s.WordOpen = false
 	s.ShowAliases = false
@@ -225,12 +225,27 @@ func (s *State) openAnime(id string) {
 	s.refreshDetail()
 }
 
+// openFollowedResources opens an anime that already has a follow straight
+// into its resource list; anime without a follow fall back to the normal
+// version-selection flow.
+func (s *State) openFollowedResources(id, from string) {
+	s.openAnime(id, from)
+	for _, sub := range s.Subscriptions {
+		if sub.AnimeID == id {
+			s.EditID = sub.ID
+			s.Backfill = true
+			s.ViewResources = true
+			break
+		}
+	}
+}
+
 func (s *State) editSubscription(id string) {
 	sub, ok := s.subscription(id)
 	if !ok {
 		return
 	}
-	s.openAnime(sub.AnimeID)
+	s.openAnime(sub.AnimeID, "following")
 	s.EditID = sub.ID
 	s.Editing = true
 	s.Rule = cloneRule(sub.Rule)
@@ -241,11 +256,10 @@ func (s *State) viewSubscriptionResources(id string) {
 	if !ok {
 		return
 	}
-	s.openAnime(sub.AnimeID)
+	s.openAnime(sub.AnimeID, "following")
 	s.EditID = sub.ID
 	s.Backfill = true
 	s.ViewResources = true
-	s.DetailReturn = "following"
 	s.Rule = cloneRule(sub.Rule)
 	s.Notice = ""
 }
