@@ -94,7 +94,7 @@ The detail page runs in one of two modes, distinguished by `Backfill`:
 - **Backfill** — pick releases from an existing subscription's history to
   download now, without changing the rule.
 Browse cards mark followed anime with a 已追番 badge and, when the anime
-has finished transfers, an 已下载 N 集 progress badge beside it using the
+has finished transfers, an 已下载 N 个资源 progress badge beside it using the
 follow card's completed-count semantics. Opening an anime that already has a follow (from the browse grid or the downloads
 page) goes straight into that follow's resource list; 重新选版本 in the header
 switches back to the subscribe mode for the same anime, and the back button

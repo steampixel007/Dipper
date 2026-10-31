@@ -389,7 +389,7 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
 					ui.Column(c).Absolute().Top(8).Left(8).Gap(4).Children(func() {
 						ui.Text(c, "已追番").FontSize(11).TextColor(colors(c).accentText).Background(colors(c).blue).Radius(4).Padding(4, 7)
 						if n := s.completedDownloads(a.ID); n > 0 {
-							ui.Text(c, fmt.Sprintf("已下载 %d 集", n)).FontSize(11).TextColor(colors(c).green).Background(colors(c).greenWash).Radius(4).Padding(4, 7)
+							ui.Text(c, fmt.Sprintf("已下载 %d 个资源", n)).FontSize(11).TextColor(colors(c).green).Background(colors(c).greenWash).Radius(4).Padding(4, 7)
 						}
 					})
 					break
