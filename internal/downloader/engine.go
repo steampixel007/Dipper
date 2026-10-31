@@ -894,12 +894,9 @@ func existingFileWithSize(folder, torrentPath string) (string, int64, bool) {
 		return "", 0, false
 	}
 	defer root.Close()
-	file, err := root.Open(torrentPath)
-	if err != nil {
-		return "", 0, false
-	}
-	defer file.Close()
-	stat, err := file.Stat()
+	// Stat, not Open: opening a FIFO on unix would block while the engine
+	// lock is held, and the contents are never read here.
+	stat, err := root.Stat(torrentPath)
 	if err != nil || !stat.Mode().IsRegular() {
 		return "", 0, false
 	}
