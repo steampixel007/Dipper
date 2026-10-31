@@ -554,6 +554,93 @@ func TestUIDownloadListScrollResetsOnFilterChange(t *testing.T) {
 	}
 }
 
+func TestUIFollowingRetryFailedChecksBatch(t *testing.T) {
+	kernel, err := core.Open(filepath.Join(t.TempDir(), "dipper.db"), core.Options{
+		DisableScheduler: true,
+		Feed: func(_ context.Context, _, groupID string) ([]core.Resource, error) {
+			if groupID == "batch-group-a" {
+				return nil, errors.New("RSS 请求超时")
+			}
+			return nil, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { kernel.Close() })
+	ctx := context.Background()
+	res := core.Resource{ID: "batch-1", Title: "1080p", Magnet: "magnet:?xt=urn:btih:" + strings.Repeat("ab", 20), Size: 100}
+	subA, err := kernel.CreateSubscription(ctx, core.Anime{ID: "batch-anime-a", Title: "追番甲"}, core.Group{ID: "batch-group-a", Name: "字幕组甲"}, core.Rule{}, []core.Resource{res}, []string{"batch-1"})
+	if err != nil && subA.ID == "" {
+		t.Fatalf("first subscription not committed: %v", err)
+	}
+	subB, err := kernel.CreateSubscription(ctx, core.Anime{ID: "batch-anime-b", Title: "追番乙"}, core.Group{ID: "batch-group-b", Name: "字幕组乙"}, core.Rule{}, nil, nil)
+	if err != nil && subB.ID == "" {
+		t.Fatalf("second subscription not committed: %v", err)
+	}
+	snapshot, err := kernel.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seeded := map[string]core.Subscription{}
+	for _, sub := range snapshot.Subscriptions {
+		seeded[sub.ID] = sub
+	}
+	if seeded[subA.ID].LastError == "" || seeded[subA.ID].Failures != 1 || seeded[subB.ID].LastError != "" {
+		t.Fatalf("seed state: a-err=%q a-failures=%d b-err=%q", seeded[subA.ID].LastError, seeded[subA.ID].Failures, seeded[subB.ID].LastError)
+	}
+	s := uiFixture(t, "following")
+	s.Core = kernel
+	s.Engine = &downloader.Engine{}
+	s.Ctx = ctx
+	updates := make(chan func(), 4)
+	s.Update = func(fn func()) { updates <- fn }
+	snapshot, err = kernel.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.project(snapshot, nil)
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "重试失败检查")
+	uiClick(t, tt, "重试失败检查")
+	deadline := time.NewTimer(4 * time.Second)
+	defer deadline.Stop()
+	for {
+		snapshot, err = kernel.Snapshot()
+		if err != nil {
+			t.Fatal(err)
+		}
+		state := map[string]core.Subscription{}
+		for _, sub := range snapshot.Subscriptions {
+			state[sub.ID] = sub
+		}
+		if state[subA.ID].Failures >= 2 {
+			if !state[subB.ID].LastCheck.IsZero() {
+				t.Fatal("batch retry checked a healthy follow")
+			}
+			break
+		}
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatalf("batch retry state: failures=%d", state[subA.ID].Failures)
+		}
+	}
+}
+
+func TestUIFollowingHidesRetryWhenChecksHealthy(t *testing.T) {
+	s := uiFixture(t, "following")
+	for i := range s.Subscriptions {
+		s.Subscriptions[i].CheckFailed = false
+		s.Subscriptions[i].LastError = ""
+	}
+	tt := ui.NewTester(s.view, 1320, 860)
+	if tt.HasText("重试失败检查") {
+		t.Fatal("healthy follows still offered the batch retry action")
+	}
+}
+
 func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	s := uiFixture(t, "following")
 	sub := s.Subscriptions[0]

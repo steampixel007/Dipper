@@ -495,6 +495,17 @@ func (s *State) check(id string) {
 	s.Notice = "正在检查 RSS…"
 	s.runAction(func() error { return s.Core.Check(s.Ctx, id) }, "RSS 检查完成")
 }
+
+// retryFailedChecks re-checks every follow whose last RSS check failed; the
+// per-subscription guard skips paused follows.
+func (s *State) retryFailedChecks() {
+	for _, sub := range s.Subscriptions {
+		if sub.CheckFailed {
+			s.check(sub.ID)
+		}
+	}
+}
+
 func (s *State) runAction(action func() error, message string) {
 	go func() {
 		err := action()
