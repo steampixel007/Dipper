@@ -1621,6 +1621,14 @@ func TestUIFilesDialogClearsStaleEntriesOnOpen(t *testing.T) {
 	s.PlayFile = func(string) error { return nil }
 	updates := make(chan func(), 8)
 	s.Update = func(fn func()) { updates <- fn }
+	t.Cleanup(func() {
+		close(engine.gates["files-a"])
+		select {
+		case fn := <-updates:
+			fn()
+		case <-time.After(5 * time.Second):
+		}
+	})
 	tt := ui.NewTester(s.view, 1320, 860)
 	s.openFiles(1)
 	if got := <-engine.calls; got != "files-b" {
