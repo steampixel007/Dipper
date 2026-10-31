@@ -1444,11 +1444,39 @@ func TestUIProjectionSkipsStoppedTransferForActiveMarker(t *testing.T) {
 	}
 }
 
+type resumeAllTestEngine struct {
+	playTestEngine
+	resumed []string
+}
+
+func (e *resumeAllTestEngine) Resume(id string) error {
+	e.resumed = append(e.resumed, id)
+	return nil
+}
+
 func TestUIDownloadsPauseAllIgnoresStoppedTransfers(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads[0].Stopped = true
+	engine := &resumeAllTestEngine{}
+	s.Engine = engine
+	updates := make(chan func(), 4)
+	s.Update = func(fn func()) { updates <- fn }
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, "继续全部下载")
+	uiClick(t, tt, "继续全部下载")
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for len(engine.resumed) == 0 && s.SaveError == "" {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatal("resume-all never completed")
+		}
+	}
+	if !slices.Equal(engine.resumed, []string{"render-download-1"}) {
+		t.Fatalf("resume-all resumed %v, want the stopped transfer", engine.resumed)
+	}
 }
 
 func TestUIDownloadsFilterResetSurvivesEmptyFilter(t *testing.T) {

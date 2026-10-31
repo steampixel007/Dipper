@@ -625,7 +625,7 @@ func (s *State) pauseAllDownloads(paused bool) {
 	}
 	var ids []string
 	for _, d := range s.Downloads {
-		if !d.Failed && ((paused && d.Progress < 1) || (!paused && d.Paused)) {
+		if !d.Failed && ((paused && d.Progress < 1) || (!paused && (d.Paused || (d.Stopped && d.Progress < 1)))) {
 			ids = append(ids, d.ID)
 		}
 	}
