@@ -1466,12 +1466,18 @@ func TestUIDownloadsPauseAllIgnoresStoppedTransfers(t *testing.T) {
 	uiClick(t, tt, "继续全部下载")
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
-	for len(engine.resumed) == 0 && s.SaveError == "" {
+	for {
+		var update func()
 		select {
-		case fn := <-updates:
-			fn()
+		case update = <-updates:
 		case <-deadline.C:
 			t.Fatal("resume-all never completed")
+		}
+		// Executing the completion callback synchronizes with the action
+		// goroutine; only then may the recorded IDs be read.
+		update()
+		if s.SaveError != "" || len(engine.resumed) > 0 {
+			break
 		}
 	}
 	if !slices.Equal(engine.resumed, []string{"render-download-1"}) {
