@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/anacrolix/torrent"
@@ -20,6 +21,12 @@ var builtinTrackers = []string{
 
 // appendTrackers appends each tier as its own announce tier, skipping URLs an
 // earlier tier already carries, and mutates the spec in place.
+// BuiltinTrackers returns the announce URLs every task receives after its own
+// tiers and the user's extra tier.
+func BuiltinTrackers() []string {
+	return slices.Clone(builtinTrackers)
+}
+
 func appendTrackers(spec *torrent.TorrentSpec, tiers ...[]string) {
 	if spec == nil {
 		return

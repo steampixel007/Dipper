@@ -458,6 +458,12 @@ func (s *State) latestCompletedEpisode(animeID string) (int, bool) {
 	return best, best != -1
 }
 
+// builtinTrackerSummary joins the engine's built-in announce URLs for the
+// settings page, so users can see what Dipper adds by itself.
+func builtinTrackerSummary() string {
+	return strings.Join(downloader.BuiltinTrackers(), "、")
+}
+
 // groupFolder returns the anime's download directory. A transfer's folder is
 // its own hash directory under the anime directory, so the group header opens
 // the parent and reaches every release even while the group is collapsed.
