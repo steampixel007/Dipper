@@ -191,7 +191,9 @@ only affects the preview rows, never the stored list. In the followed resource v
 checkbox beside it hides releases outside the subscription's pending set. It
 stays rendered while active even if the pending set empties, so the history
 remains one toggle away; leaving the followed-resource view resets it with
-the other filters.
+the other filters. When every row is hidden by these
+filters, the preview offers a 没有符合筛选的资源 empty state whose 清除筛选
+action resets all of them without touching the saved rule.
 
 Subtitle-group selection supports a local name search with a result count and
 one-click reset. Search is case/width insensitive, retains source order and
