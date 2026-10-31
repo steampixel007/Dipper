@@ -221,6 +221,7 @@ func (s *State) openAnime(id, from string) {
 	s.ResourceScroll = ui.ScrollState{}
 	s.OnlyMatches = false
 	s.EpisodeFilter = ""
+	s.OnlyDownloaded = false
 	s.Notice = ""
 	s.HistoryError = ""
 	s.refreshDetail()
