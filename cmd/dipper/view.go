@@ -220,7 +220,17 @@ func (s *State) sidebar(c *ui.Context) {
 					}
 				}
 				if current.id == "downloads" && len(s.Downloads) > 0 {
-					ui.Textf(c, "%d", len(s.Downloads)).FontSize(12)
+					failed := 0
+					for _, d := range s.Downloads {
+						if d.Failed {
+							failed++
+						}
+					}
+					if failed > 0 {
+						ui.Textf(c, "%d 失败", failed).FontSize(12).FontWeight(600).TextColor(colors(c).amber)
+					} else {
+						ui.Textf(c, "%d", len(s.Downloads)).FontSize(12)
+					}
 				}
 			}).OnClick(func() { s.Page = current.id; s.Notice = "" })
 		}
