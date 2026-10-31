@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -161,7 +162,11 @@ func TestLoadCoversEvictsAfterAsyncInsert(t *testing.T) {
 	defer cancel()
 	s.Ctx = ctx
 	updates := make(chan func(), 64)
+	// One acknowledgement channel for the single cover this test submits:
+	// closing it releases the worker exactly once and lets it exit without
+	// ever touching a replaced channel.
 	processed := make(chan struct{})
+	var releaseWorker sync.Once
 	s.Update = func(fn func()) {
 		updates <- fn
 		<-processed
@@ -201,8 +206,7 @@ func TestLoadCoversEvictsAfterAsyncInsert(t *testing.T) {
 					t.Fatalf("cover cache file missing when the load finished: %v", err)
 				}
 			}
-			close(processed)
-			processed = make(chan struct{})
+			releaseWorker.Do(func() { close(processed) })
 		case <-deadline.C:
 			t.Fatal("cover load did not finish")
 		}
