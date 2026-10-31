@@ -1595,6 +1595,7 @@ func (s *State) settings(c *ui.Context) {
 					if s.TrackerFeedback != "" {
 						caption(c, s.TrackerFeedback)
 					}
+					caption(c, "每个任务都会自动追加这些内置 Tracker："+builtinTrackerSummary()+"。")
 				})
 				caption(c, "下载完成后，"+s.seedStopRule()+"。")
 			})

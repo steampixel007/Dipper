@@ -186,6 +186,10 @@ the address auto mode currently follows, and a 测试 button that saves the
 current values and then probes the source origin. Test feedback and the
 in-flight flag are per-run state, not settings.
 
+The sharing card's 追加 Tracker input is followed by a caption listing the
+engine's built-in announce URLs (`downloader.BuiltinTrackers`), so users can see what
+Dipper appends to every task without reading the source.
+
 ## Startup
 
 Release packaging generates a temporary Go source file that sets `main.version`
