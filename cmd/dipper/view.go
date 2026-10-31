@@ -1273,6 +1273,15 @@ func downloadState(d Download) DownloadFilter {
 	}
 }
 
+// toggleDownloadGroup flips one anime's collapsed state on the downloads
+// page. The map is per-session, so a fresh start shows every group open.
+func (s *State) toggleDownloadGroup(animeID string) {
+	if s.CollapsedDownloads == nil {
+		s.CollapsedDownloads = make(map[string]bool)
+	}
+	s.CollapsedDownloads[animeID] = !s.CollapsedDownloads[animeID]
+}
+
 func (s *State) downloadMatches(d Download) bool {
 	return s.DownloadFilter == downloadsAll || downloadState(d) == s.DownloadFilter
 }
@@ -1377,11 +1386,20 @@ func (s *State) downloads(c *ui.Context) {
 				for _, g := range groups {
 					group := g
 					ui.Column(c.Key("download-group-" + group.animeID)).Gap(8).Children(func() {
+						collapsed := s.CollapsedDownloads[group.animeID]
+						toggle := "收起"
+						if collapsed {
+							toggle = "展开"
+						}
 						ui.Row(c).Gap(12).Children(func() {
 							ui.Text(c, s.anime(group.animeID).Title).FontSize(16).FontWeight(700).Grow(1)
 							caption(c, group.summary)
 							quiet(c, "group-detail-"+group.animeID, "查看详情", func() { s.openFollowedResources(group.animeID, "downloads") }).FontSize(12)
+							quiet(c, "toggle-group-"+group.animeID, toggle, func() { s.toggleDownloadGroup(group.animeID) }).FontSize(12)
 						})
+						if collapsed {
+							return
+						}
 						if group.bytes > 0 {
 							share := float64(group.done) / float64(group.bytes)
 							box := ui.Box(c.Key("download-group-progress-" + group.animeID)).Height(4)
