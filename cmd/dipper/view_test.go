@@ -569,7 +569,7 @@ func TestUIRemoveDialogStopButtonAndLayout(t *testing.T) {
 	s.Downloads[0].Stopped = true
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, "已停止")
-	if tt.HasText("已完成") {
+	if tt.HasText("已完成 · 做种中") || tt.HasText("已完成 · 已停止做种") {
 		t.Fatal("a stopped mid-download task must not read as completed")
 	}
 	if _, ok := tt.Find("停止下载"); ok {
@@ -665,6 +665,47 @@ func TestUIActionsDelegateInsteadOfChangingFixtureState(t *testing.T) {
 	if s.Subscriptions[0].Paused || s.Subscriptions[0].LastCheck != "2025-04-14 22:01 · 新增 1 条" {
 		t.Fatal("UI simulated a subscription operation without core")
 	}
+}
+
+func TestUIDownloadsGroupByAnimeWithSummary(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	tt := ui.NewTester(s.view, 1320, 860)
+	headers := 0
+	for _, text := range tt.Texts() {
+		if text == "星海旅记" {
+			headers++
+		}
+	}
+	if headers != 1 {
+		t.Errorf("anime header shown %d times; want one per group; texts=%q", headers, tt.Texts())
+	}
+	uiRequireText(t, tt, "3 个资源 · 1 下载中 · 1 已完成 · 1 失败", "444 MB / 722 MB")
+}
+
+func TestUIDownloadsFilterHidesOtherStates(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.DownloadFilter = downloadsCompleted
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiScrollTo(t, tt, "停止做种")
+	uiRequireText(t, tt, "停止做种")
+	if tt.HasText("连接超时，请重试") {
+		t.Error("failed download visible under completed filter")
+	}
+	if tt.HasText("208 MB / 486 MB") {
+		t.Error("downloading download visible under completed filter")
+	}
+}
+
+func TestUIDownloadsEmptyFilterOffersReset(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.DownloadFilter = downloadsPaused
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "这个状态下没有下载", "查看全部下载")
+	uiClick(t, tt, "查看全部下载")
+	if s.DownloadFilter != downloadsAll {
+		t.Fatalf("filter is %d; want downloadsAll", s.DownloadFilter)
+	}
+	uiRequireText(t, tt, "3 个资源 · 1 下载中 · 1 已完成 · 1 失败")
 }
 
 func TestUIDownloadsUseMeasuredSpeedsErrorsAndOpenFolder(t *testing.T) {

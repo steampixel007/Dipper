@@ -63,6 +63,19 @@ type Download struct {
 	SeedSeconds                         int
 	UploadedMB                          float64
 }
+
+// DownloadFilter narrows the downloads page to one transfer state; the value
+// is per-run, so the page keeps the choice only for the session.
+type DownloadFilter int
+
+const (
+	downloadsAll DownloadFilter = iota
+	downloadsDownloading
+	downloadsCompleted
+	downloadsPaused
+	downloadsFailed
+)
+
 type Saved struct {
 	Root          string
 	Upload        string
@@ -142,6 +155,7 @@ type State struct {
 	CancelID                   string
 	RemovePrompt               bool
 	RemoveID                   string
+	DownloadFilter             DownloadFilter
 	SuggestedResource          Resource
 	OnlyMatches                bool
 	Notice, SaveError          string
