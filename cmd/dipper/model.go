@@ -180,7 +180,7 @@ type State struct {
 	ApplyAppearance            func(string)
 	PickFolder                 func()
 	OpenFolder                 func(string)
-	PlayFile                   func(string)
+	PlayFile                   func(string) error
 	CopyText                   func(string)
 	Quit                       func()
 	Platform                   string

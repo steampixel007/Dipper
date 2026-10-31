@@ -48,7 +48,7 @@ func uiRenderFixture() *State {
 		{ID: "render-download-3", AnimeID: s.AnimeID, Title: s.ResourceList[2].Title, Folder: folder, MB: 236, Progress: 1, UploadedMB: 84, UpSpeed: .12, SeedSeconds: 720},
 	}
 	s.OpenFolder = func(string) {}
-	s.PlayFile = func(string) {}
+	s.PlayFile = func(string) error { return nil }
 	s.CopyText = func(string) {}
 	return s
 }

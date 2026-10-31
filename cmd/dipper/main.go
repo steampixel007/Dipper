@@ -198,10 +198,11 @@ func main() {
 				s.Notice = "无法打开文件夹：" + err.Error()
 			}
 		}
-		s.PlayFile = func(path string) {
+		s.PlayFile = func(path string) error {
 			if err := mygo.Shell.OpenPath(path); err != nil {
-				s.Notice = "无法播放：" + err.Error()
+				return fmt.Errorf("无法播放：%w", err)
 			}
+			return nil
 		}
 		s.CopyText = func(text string) {
 			mygo.Clipboard.WriteText(text)
