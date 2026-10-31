@@ -16,7 +16,7 @@ done its job. It implements `core.Downloader`, whose contract is in
 
 | File | Holds |
 | --- | --- |
-| `engine.go` | The engine, task registration, the client's configuration, progress sampling, pause and resume, manual stop, removal |
+| `engine.go` | The engine, task registration, the client's configuration, progress sampling, pause and resume, manual stop, removal; file listing and playback candidates resolve through the task root (`os.Root`), never following reparse points out of it |
 | `storage.go` | `diskStorage`, `diskTorrent`, `diskPiece`: path safety and piece-to-file mapping |
 | `policy.go` | `policyState`: byte counters, seeding time, and the stop decision |
 | `trackers.go` | The public tracker list appended to every admitted task |

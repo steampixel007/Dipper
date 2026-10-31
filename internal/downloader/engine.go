@@ -889,12 +889,21 @@ func existingFileWithSize(folder, torrentPath string) (string, int64, bool) {
 			return "", 0, false
 		}
 	}
-	path := filepath.Join(folder, filepath.FromSlash(torrentPath))
-	stat, err := os.Stat(path)
+	root, err := os.OpenRoot(folder)
+	if err != nil {
+		return "", 0, false
+	}
+	defer root.Close()
+	file, err := root.Open(torrentPath)
+	if err != nil {
+		return "", 0, false
+	}
+	defer file.Close()
+	stat, err := file.Stat()
 	if err != nil || !stat.Mode().IsRegular() {
 		return "", 0, false
 	}
-	return path, stat.Size(), true
+	return filepath.Join(folder, filepath.FromSlash(torrentPath)), stat.Size(), true
 }
 
 func sortDownloadedFiles(files []DownloadedFile) {

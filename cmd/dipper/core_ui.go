@@ -532,13 +532,8 @@ func (s *State) playDownload(index int) {
 		}
 		for _, path := range files {
 			if isPlayableMedia(path) {
-				s.PlayFile(path)
-				return nil
+				return s.PlayFile(path)
 			}
-		}
-		if len(files) > 0 {
-			s.PlayFile(files[0])
-			return nil
 		}
 		return errors.New("未找到可播放的文件")
 	}, "已打开播放器")

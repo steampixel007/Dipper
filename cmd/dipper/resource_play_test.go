@@ -31,7 +31,7 @@ func TestUIResourceRowPlayOpensDownloadedRelease(t *testing.T) {
 	played := ""
 	engine := &playTestEngine{files: []string{filepath.Join(s.Root, "星海旅记", "episode.mkv")}}
 	s.Engine = engine
-	s.PlayFile = func(path string) { played = path }
+	s.PlayFile = func(path string) error { played = path; return nil }
 	updates := make(chan func(), 2)
 	s.Update = func(fn func()) { updates <- fn }
 	s.Downloads[0].Progress = 1

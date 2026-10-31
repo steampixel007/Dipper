@@ -1013,7 +1013,7 @@ func TestUIDownloadPlayButtonOpensFirstVideo(t *testing.T) {
 	s.Downloads = s.Downloads[2:3]
 	played := ""
 	s.Engine = &playTestEngine{files: []string{"C:\\Downloads\\Dipper\\episode.mkv", "C:\\Downloads\\Dipper\\extra.txt"}}
-	s.PlayFile = func(path string) { played = path }
+	s.PlayFile = func(path string) error { played = path; return nil }
 	updates := make(chan func(), 2)
 	s.Update = func(fn func()) { updates <- fn }
 	tt := ui.NewTester(s.view, 1320, 860)
@@ -1039,11 +1039,42 @@ func TestUIDownloadPlayButtonOpensFirstVideo(t *testing.T) {
 	}
 }
 
+func TestUIDownloadPlayRejectsNonMediaFiles(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[2:3]
+	played := ""
+	s.Engine = &playTestEngine{files: []string{"C:\\Downloads\\readme.txt", "C:\\Downloads\\setup.exe"}}
+	s.PlayFile = func(path string) error { played = path; return nil }
+	updates := make(chan func(), 2)
+	s.Update = func(fn func()) { updates <- fn }
+	tt := ui.NewTester(s.view, 1320, 860)
+	if _, ok := tt.Find("播放"); !ok {
+		t.Fatal("finished download must offer 播放")
+	}
+	uiClick(t, tt, "播放")
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for s.SaveError == "" && played == "" {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatal("play never settled")
+		}
+	}
+	if played != "" {
+		t.Fatalf("unrecognized file was opened: %q", played)
+	}
+	if s.SaveError != "未找到可播放的文件" {
+		t.Fatalf("missing-media error not reported: %q", s.SaveError)
+	}
+}
+
 func TestUIDownloadPlayReportsMissingFiles(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads = s.Downloads[2:3]
 	s.Engine = &playTestEngine{files: nil}
-	s.PlayFile = func(string) {}
+	s.PlayFile = func(string) error { return nil }
 	updates := make(chan func(), 2)
 	s.Update = func(fn func()) { updates <- fn }
 	tt := ui.NewTester(s.view, 1320, 860)
@@ -1089,7 +1120,7 @@ func TestUIDownloadFilesDialogShowsEntriesAndActions(t *testing.T) {
 		{Path: `C:\Downloads\Dipper\release\video.mkv`, Size: 1024},
 		{Path: `C:\Downloads\Dipper\release\subs\字幕.ass`, Size: 2048},
 	}}
-	s.PlayFile = func(path string) { played = path }
+	s.PlayFile = func(path string) error { played = path; return nil }
 	s.CopyText = func(text string) { copied = text }
 	updates := make(chan func(), 4)
 	s.Update = func(fn func()) { updates <- fn }
@@ -1130,7 +1161,7 @@ func TestUIDownloadFilesEntryHiddenBeforeFinish(t *testing.T) {
 func TestUIDownloadOffersNoPlayButtonBeforeFinish(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads = s.Downloads[:1]
-	s.PlayFile = func(string) {}
+	s.PlayFile = func(string) error { return nil }
 	tt := ui.NewTester(s.view, 1320, 860)
 	if _, ok := tt.Find("播放"); ok {
 		t.Fatal("a downloading task must not offer 播放")

@@ -1603,8 +1603,11 @@ func byteSize(bytes int64) string {
 }
 
 func (s *State) playFile(path string) {
-	if s.PlayFile != nil {
-		s.PlayFile(path)
+	if s.PlayFile == nil {
+		return
+	}
+	if err := s.PlayFile(path); err != nil && s.FilesError == "" {
+		s.FilesError = err.Error()
 	}
 }
 
