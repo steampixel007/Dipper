@@ -58,11 +58,14 @@ type Download struct {
 	Error                               string
 	DownSpeed, UpSpeed                  float64
 	ID, AnimeID, Title, Episode, Folder string
-	MB                                  int
-	Progress                            float64
-	Paused, Failed, Stopped             bool
-	SeedSeconds                         int
-	UploadedMB                          float64
+	// ResourceID is the source resource the task was created from; titles
+	// are not unique across releases.
+	ResourceID              string
+	MB                      int
+	Progress                float64
+	Paused, Failed, Stopped bool
+	SeedSeconds             int
+	UploadedMB              float64
 }
 
 // DownloadFilter narrows the downloads page to one transfer state; the value
@@ -114,15 +117,18 @@ type downloadEngine interface {
 var _ downloadEngine = (*downloader.Engine)(nil)
 
 type State struct {
-	Core                                               *core.Core
-	Engine                                             downloadEngine
-	Source                                             *source.Client
-	Ctx                                                context.Context
-	Update                                             func(func())
-	Groups, GroupIDs                                   []string
-	GroupCounts                                        []int
-	History                                            []source.Resource
-	ResourceList                                       []Resource
+	Core             *core.Core
+	Engine           downloadEngine
+	Source           *source.Client
+	Ctx              context.Context
+	Update           func(func())
+	Groups, GroupIDs []string
+	GroupCounts      []int
+	History          []source.Resource
+	ResourceList     []Resource
+	// resourceHashes bridges a viewed resource to the info hash the core
+	// resolved for it, so resource rows match downloads by content identity.
+	resourceHashes                                     map[string]string
 	KnownAnime                                         map[string]Anime
 	SourceLoading, DetailLoading, HistoryLoading, Busy bool
 	SourceError, DetailError, HistoryError             string

@@ -804,11 +804,19 @@ func episodeNumber(episode string) (float64, bool) {
 	return value, err == nil
 }
 
-// downloadForResource finds the download started from this resource; a
-// download keeps the resource title it was created from.
+// downloadForResource finds the download for this resource by identity:
+// the core-resolved info hash first, then the resource the task was created
+// from. Titles repeat across releases and never identify a download.
 func (s *State) downloadForResource(r Resource) (Download, int, bool) {
+	if hash := s.resourceHashes[r.ID]; hash != "" {
+		for i, d := range s.Downloads {
+			if d.ID == hash {
+				return d, i, true
+			}
+		}
+	}
 	for i, d := range s.Downloads {
-		if d.Title == r.Title {
+		if d.ResourceID == r.ID {
 			return d, i, true
 		}
 	}

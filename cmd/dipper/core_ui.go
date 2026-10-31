@@ -274,6 +274,14 @@ func (s *State) testProxy() {
 }
 
 func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
+	s.resourceHashes = make(map[string]string)
+	for _, sub := range state.Subscriptions {
+		for id, item := range sub.Items {
+			if item.Hash != "" {
+				s.resourceHashes[id] = item.Hash
+			}
+		}
+	}
 	for _, record := range state.Anime {
 		a := record.Anime
 		day := -1
@@ -321,7 +329,7 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 	for _, record := range state.Tasks {
 		task := record.Task
 		r := task.Resource
-		d := Download{ID: task.Hash, AnimeID: task.AnimeID, Title: r.Title, Episode: core.ParseEpisode(r.Title), Folder: task.Directory, MB: int((r.Size + 999999) / 1000000), Error: record.LastError, Failed: record.LastError != ""}
+		d := Download{ID: task.Hash, AnimeID: task.AnimeID, ResourceID: r.ID, Title: r.Title, Episode: core.ParseEpisode(r.Title), Folder: task.Directory, MB: int((r.Size + 999999) / 1000000), Error: record.LastError, Failed: record.LastError != ""}
 		if snap, ok := byID[task.Hash]; ok {
 			d.Progress = snap.Progress
 			d.Paused = snap.Paused

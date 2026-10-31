@@ -43,9 +43,9 @@ func uiRenderFixture() *State {
 		{ID: "render-sub-2", AnimeID: s.AnimeID, GroupID: s.GroupIDs[1], GroupName: s.Groups[1], Folder: folder, LastCheck: "2025-04-14 22:02", LastError: "RSS 请求超时", CheckFailed: true},
 	}
 	s.Downloads = []Download{
-		{ID: "render-download-1", AnimeID: s.AnimeID, Title: s.ResourceList[0].Title, Folder: folder, MB: 486, Progress: .43, DownSpeed: 2.7, UpSpeed: .08},
-		{ID: "render-download-2", AnimeID: s.AnimeID, Title: s.ResourceList[1].Title, Folder: folder, Progress: .12, Failed: true, Error: "连接超时，请重试"},
-		{ID: "render-download-3", AnimeID: s.AnimeID, Title: s.ResourceList[2].Title, Folder: folder, MB: 236, Progress: 1, UploadedMB: 84, UpSpeed: .12, SeedSeconds: 720},
+		{ID: "render-download-1", AnimeID: s.AnimeID, ResourceID: s.ResourceList[0].ID, Title: s.ResourceList[0].Title, Folder: folder, MB: 486, Progress: .43, DownSpeed: 2.7, UpSpeed: .08},
+		{ID: "render-download-2", AnimeID: s.AnimeID, ResourceID: s.ResourceList[1].ID, Title: s.ResourceList[1].Title, Folder: folder, Progress: .12, Failed: true, Error: "连接超时，请重试"},
+		{ID: "render-download-3", AnimeID: s.AnimeID, ResourceID: s.ResourceList[2].ID, Title: s.ResourceList[2].Title, Folder: folder, MB: 236, Progress: 1, UploadedMB: 84, UpSpeed: .12, SeedSeconds: 720},
 	}
 	s.OpenFolder = func(string) {}
 	s.PlayFile = func(string) error { return nil }
