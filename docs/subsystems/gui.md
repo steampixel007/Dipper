@@ -141,7 +141,8 @@ directory under the anime directory, so the header opens the parent and is
 hidden when no transfer folder is known.
 Resource rows match downloads by identity, not by title: the core-resolved
 info hash first, then the resource ID recorded on the task, so two releases
-with the same title never show each other's progress or playback.
+with the same title never show each other's progress or playback. A completed row offers 打开文件夹 for that
+download's folder beside 播放, disabled while a batch action is running.
 A failed RSS check is shown as an amber row with the stored error text and an
 inline 重试检查 action that re-checks that one follow; it stays disabled while
 the follow is paused or the window is busy.
