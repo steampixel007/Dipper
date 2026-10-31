@@ -608,7 +608,10 @@ func (s *State) tagChip(c *ui.Context, key, word string) {
 	} else if choice == wordAvoid {
 		col, bg = colors(c).avoidInk, colors(c).avoidWash
 	}
-	quiet(c, key, word, func() { s.WordAnchor = key; s.WordOpen = true }).Label("筛选 "+word).FontSize(11).Padding(4, 8).Radius(4).Border(1, colors(c).line).Background(bg).TextColor(col).Tooltip("选择只要、不要，或移除条件")
+	b := quiet(c, key, word, func() { s.WordAnchor = key; s.WordOpen = true }).Label("筛选 "+word).FontSize(11).Padding(4, 8).Radius(4).Border(1, colors(c).line).Background(bg).TextColor(col).Tooltip("选择只要、不要，或移除条件")
+	if s.WordAnchor == key {
+		s.wordPopover(c, b, key, word)
+	}
 }
 func (s *State) wordChip(c *ui.Context, key, word string) {
 	choice := s.wordChoice(word)
@@ -624,36 +627,41 @@ func (s *State) wordChip(c *ui.Context, key, word string) {
 	}
 	b := quiet(c, key, label, func() { s.WordAnchor = key; s.WordOpen = true }).Label("筛选 "+word).FontSize(12).Padding(5, 8).Radius(5).Border(1, colors(c).line).Background(bg).TextColor(col).Tooltip("选择只要、不要，或移除条件")
 	if s.WordAnchor == key {
-		ui.PopoverBase(c.Key("word-popup-"+key), b, &s.WordOpen, func(panel ui.Element) {
-			panel.Width(320).Margin(6, 0, 0).Padding(10).Gap(6).Radius(10).Background(colors(c).paper).Border(1, colors(c).line).Shadow(0, 6, 20, 0, colors(c).popoverShadow).Transition(popupTransition)
-			ui.Text(c, "怎么筛选「"+word+"」？").FontSize(14).FontWeight(600).Padding(4, 6)
-			for _, option := range []struct {
-				label, description string
-				choice             wordChoice
-				color, bg          ui.Color
-			}{{"只要含这个词的", "标题必须出现这个词", wordWant, colors(c).blue, colors(c).blueWash}, {"不要含这个词的", "标题出现这个词就排除", wordAvoid, colors(c).avoidInk, colors(c).avoidWash}} {
-				o := option
-				count := s.countRuleMatches(ruleWithWord(s.Rule, word, o.choice))
-				button := ui.ButtonBase(c.Key(fmt.Sprintf("word-choice-%d", o.choice))).Label(map[wordChoice]string{wordWant: "只要含「" + word + "」的", wordAvoid: "不要含「" + word + "」的"}[o.choice]).Column().FillWidth().Gap(5).Padding(12).Radius(6).Border(1, colors(c).line).Background(colors(c).paper).Cursor(ui.CursorPointer)
-				tactile(button)
-				if button.Hovered() || choice == o.choice {
-					button.Background(o.bg).BorderColor(o.color)
-				}
-				button.Children(func() {
-					ui.Row(c).Gap(8).Children(func() {
-						ui.Text(c, o.label).FontSize(13).FontWeight(600).TextColor(o.color)
-						ui.Spacer(c)
-						ui.Textf(c, "剩 %d 条", count).FontSize(12).TextColor(o.color)
-					})
-					caption(c, o.description)
-				}).OnClick(func() { s.setWord(word, o.choice) })
-			}
-			if choice != wordUnrestricted {
-				quiet(c, "unrestrict-word", "不再限制这个词", func() { s.setWord(word, wordUnrestricted) }).Label("不再限制「" + word + "」").FontSize(12).FillWidth()
-			}
-			caption(c, "只匹配原标题，不判断视频内容。")
-		})
+		s.wordPopover(c, b, key, word)
 	}
+}
+
+func (s *State) wordPopover(c *ui.Context, anchor ui.Element, key, word string) {
+	choice := s.wordChoice(word)
+	ui.PopoverBase(c.Key("word-popup-"+key), anchor, &s.WordOpen, func(panel ui.Element) {
+		panel.Width(320).Margin(6, 0, 0).Padding(10).Gap(6).Radius(10).Background(colors(c).paper).Border(1, colors(c).line).Shadow(0, 6, 20, 0, colors(c).popoverShadow).Transition(popupTransition)
+		ui.Text(c, "怎么筛选「"+word+"」？").FontSize(14).FontWeight(600).Padding(4, 6)
+		for _, option := range []struct {
+			label, description string
+			choice             wordChoice
+			color, bg          ui.Color
+		}{{"只要含这个词的", "标题必须出现这个词", wordWant, colors(c).blue, colors(c).blueWash}, {"不要含这个词的", "标题出现这个词就排除", wordAvoid, colors(c).avoidInk, colors(c).avoidWash}} {
+			o := option
+			count := s.countRuleMatches(ruleWithWord(s.Rule, word, o.choice))
+			button := ui.ButtonBase(c.Key(fmt.Sprintf("word-choice-%d", o.choice))).Label(map[wordChoice]string{wordWant: "只要含「" + word + "」的", wordAvoid: "不要含「" + word + "」的"}[o.choice]).Column().FillWidth().Gap(5).Padding(12).Radius(6).Border(1, colors(c).line).Background(colors(c).paper).Cursor(ui.CursorPointer)
+			tactile(button)
+			if button.Hovered() || choice == o.choice {
+				button.Background(o.bg).BorderColor(o.color)
+			}
+			button.Children(func() {
+				ui.Row(c).Gap(8).Children(func() {
+					ui.Text(c, o.label).FontSize(13).FontWeight(600).TextColor(o.color)
+					ui.Spacer(c)
+					ui.Textf(c, "剩 %d 条", count).FontSize(12).TextColor(o.color)
+				})
+				caption(c, o.description)
+			}).OnClick(func() { s.setWord(word, o.choice) })
+		}
+		if choice != wordUnrestricted {
+			quiet(c, "unrestrict-word", "不再限制这个词", func() { s.setWord(word, wordUnrestricted) }).Label("不再限制「" + word + "」").FontSize(12).FillWidth()
+		}
+		caption(c, "只匹配原标题，不判断视频内容。")
+	})
 }
 
 func (s *State) quickFilter(c *ui.Context) {
