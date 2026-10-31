@@ -47,8 +47,12 @@ func (s *State) groupPicker(c *ui.Context) {
 			} else if button.Hovered() {
 				button.BorderColor(colors(c).hoverLine)
 			}
+			followed := index < len(s.GroupIDs) && s.followedGroup(s.GroupIDs[index])
 			tactile(button).Children(func() {
 				ui.Row(c).FillWidth().Gap(8).Children(func() {
+					if followed {
+						badge(c, "正在追", colors(c).green, colors(c).greenWash)
+					}
 					ui.Text(c, name).FontWeight(600).FontSize(13).Grow(1).MinWidth(0).MaxLines(2)
 					if s.Group == index {
 						ui.Box(c).TextColor(colors(c).blue).Children(func() { icon(c, "check") })
@@ -62,4 +66,15 @@ func (s *State) groupPicker(c *ui.Context) {
 			}).OnClick(func() { s.chooseGroup(index) }).Disabled(s.Busy || index >= len(s.GroupIDs) || s.GroupIDs[index] == "")
 		}
 	})
+}
+
+// followedGroup reports whether the current anime already follows the named
+// group, so the picker can mark it 正在追.
+func (s *State) followedGroup(groupID string) bool {
+	for _, sub := range s.Subscriptions {
+		if sub.AnimeID == s.AnimeID && sub.GroupID == groupID {
+			return true
+		}
+	}
+	return false
 }
