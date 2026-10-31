@@ -206,7 +206,17 @@ func (s *State) sidebar(c *ui.Context) {
 				ui.Text(c, current.label)
 				ui.Spacer(c)
 				if current.id == "following" && len(s.Subscriptions) > 0 {
-					ui.Textf(c, "%d", len(s.Subscriptions)).FontSize(12)
+					failed := 0
+					for _, sub := range s.Subscriptions {
+						if sub.CheckFailed {
+							failed++
+						}
+					}
+					if failed > 0 {
+						ui.Textf(c, "%d 失败", failed).FontSize(12).FontWeight(600).TextColor(colors(c).amber)
+					} else {
+						ui.Textf(c, "%d", len(s.Subscriptions)).FontSize(12)
+					}
 				}
 				if current.id == "downloads" && len(s.Downloads) > 0 {
 					ui.Textf(c, "%d", len(s.Downloads)).FontSize(12)

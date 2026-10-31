@@ -666,6 +666,18 @@ func TestUIDownloadsShowDashForStoppedTransfers(t *testing.T) {
 	uiRequireText(t, tt, "↓ —", "↑ 120 KB/s")
 }
 
+func TestUINavigationCallsOutFailedChecks(t *testing.T) {
+	s := uiFixture(t, "browse")
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "1 失败")
+	s.Subscriptions[1].CheckFailed = false
+	s.Subscriptions[1].LastError = ""
+	healthy := ui.NewTester(s.view, 1320, 860)
+	if healthy.HasText("失败") {
+		t.Fatal("healthy follows still flagged a failure in the navigation")
+	}
+}
+
 func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	s := uiFixture(t, "following")
 	sub := s.Subscriptions[0]
