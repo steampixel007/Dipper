@@ -848,6 +848,9 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 				ep = "第 " + r.Episode + " 集"
 			}
 			ui.Text(c, ep).FontSize(13).FontWeight(600)
+			if s.isNewRelease(r.Title) {
+				badge(c, "新", colors(c).blue, colors(c).blueWash)
+			}
 			if s.Suggestions && s.SuggestedResource.ID == r.ID {
 				badge(c, "正在参考", colors(c).blue, colors(c).blueWash)
 			}

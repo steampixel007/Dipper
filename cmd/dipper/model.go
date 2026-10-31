@@ -464,6 +464,25 @@ func builtinTrackerSummary() string {
 	return strings.Join(downloader.BuiltinTrackers(), "、")
 }
 
+// isNewRelease reports whether the title is one of the subscription's latest
+// pending RSS releases, so the followed resource view can mark it as new.
+func (s *State) isNewRelease(title string) bool {
+	if s.EditID == "" {
+		return false
+	}
+	sub, ok := s.subscription(s.EditID)
+	if !ok {
+		return false
+	}
+	norm := normalize(title)
+	for _, recent := range sub.Recent {
+		if normalize(recent) == norm {
+			return true
+		}
+	}
+	return false
+}
+
 // groupFolder returns the anime's download directory. A transfer's folder is
 // its own hash directory under the anime directory, so the group header opens
 // the parent and reaches every release even while the group is collapsed.

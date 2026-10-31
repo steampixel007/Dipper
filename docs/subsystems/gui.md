@@ -159,6 +159,12 @@ above 查看资源: it plays the completed transfer with the highest episode num
 for that anime, so watching the newest finished episode is one click from the
 card. Transfers without a parsed episode number never produce the shortcut.
 
+Inside the followed resource view, rows whose title matches one of the
+subscription's latest pending RSS releases (the source of the card's
+新资源 N 条 badge) carry a 新 badge, so the newest check's releases are
+identifiable without rereading titles. The mark follows the subscription's
+current pending list and disappears with it.
+
 Following cards offer 查看资源 as a separate entry into the detail page. It
 locks the saved subscription's group and rule, opens as a view-only backfill
 where nothing is selected while history loads and a later history result must
