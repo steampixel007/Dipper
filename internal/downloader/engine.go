@@ -663,9 +663,7 @@ func (e *Engine) SetSeedTarget(target time.Duration) {
 	defer e.mu.Unlock()
 	e.seedTarget = target
 	for _, j := range e.tasks {
-		if target == seedForever || target > 0 {
-			j.Policy.SeedTarget = target
-		}
+		j.Policy.SeedTarget = target
 	}
 }
 
@@ -691,20 +689,12 @@ func (e *Engine) SetExtraTrackers(trackers []string) {
 	defer e.mu.Unlock()
 	e.extraTrackers = trackers
 	for _, j := range e.tasks {
-		seen := make(map[string]bool)
-		for _, tracker := range j.appliedExtra {
-			seen[tracker] = true
-		}
-		var fresh []string
-		for _, tracker := range trackers {
-			if !seen[tracker] {
-				fresh = append(fresh, tracker)
-			}
-		}
-		if len(fresh) > 0 && j.torrent != nil {
-			j.torrent.AddTrackers([][]string{fresh})
-		}
+		previous := j.appliedExtra
 		j.appliedExtra = trackers
+		if j.torrent == nil {
+			continue
+		}
+		j.torrent.ModifyTrackers(reconciledTiers(j.torrent.Metainfo().AnnounceList, previous, trackers))
 	}
 }
 
@@ -778,9 +768,7 @@ func (e *Engine) sampleLocked(j *entry, now time.Time, awake time.Duration, onli
 	stats := t.Stats()
 	cur := observation{at: now, awake: awake, up: stats.BytesWrittenData.Int64(), down: stats.BytesReadData.Int64()}
 	cur.eligible = j.Complete && online && !e.suspended && !j.Policy.Paused && !j.Policy.ManuallyStopped && !j.Policy.AutoStopped && j.err == nil
-	if e.seedTarget == seedForever || e.seedTarget > 0 {
-		j.Policy.SeedTarget = e.seedTarget
-	}
+	j.Policy.SeedTarget = e.seedTarget
 	j.Policy.RatioTarget = e.ratioTarget
 	j.Policy.observe(j.previous, cur, j.Complete, j.TotalBytes)
 	if dt := now.Sub(j.previous.at).Seconds(); dt > 0 {

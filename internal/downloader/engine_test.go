@@ -778,3 +778,44 @@ func (seedPiece) WriteAt([]byte, int64) (int, error) { return 0, errors.New("rea
 func (seedPiece) MarkComplete() error                { return nil }
 func (seedPiece) MarkNotComplete() error             { return nil }
 func (seedPiece) Completion() storage.Completion     { return storage.Completion{Ok: true, Complete: true} }
+
+func TestSetSeedTargetAppliesDefaultToExistingTasks(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	var buf bytes.Buffer
+	if err := f.mi.Write(&buf); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write(buf.Bytes()) }))
+	defer server.Close()
+	root := t.TempDir()
+	cfg := testEngine(t, Config{DataDir: filepath.Join(root, "state")})
+	task := Task{ID: "url", TorrentURL: server.URL, Folder: filepath.Join(root, "data")}
+	if err := cfg.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	cfg.SetSeedTarget(-1)
+	cfg.SetSeedTarget(0)
+	cfg.mu.Lock()
+	j := cfg.tasks[task.ID]
+	if j == nil {
+		cfg.mu.Unlock()
+		t.Fatal("admitted task is missing")
+	}
+	got := j.Policy.SeedTarget
+	cfg.mu.Unlock()
+	if got != 0 {
+		t.Fatalf("restoring the default left SeedTarget %v on the running task", got)
+	}
+	if target := j.Policy.target(); target != defaultSeedTarget {
+		t.Fatalf("policy target %v, want the default %v", target, defaultSeedTarget)
+	}
+	cfg.mu.Lock()
+	j.Policy.SeedTarget = -1
+	cfg.seedTarget = 0
+	cfg.sampleLocked(j, cfg.now(), cfg.awake(), false)
+	got = j.Policy.SeedTarget
+	cfg.mu.Unlock()
+	if got != 0 {
+		t.Fatalf("sampling left the restored target %v instead of the default", got)
+	}
+}

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -59,5 +60,19 @@ func TestSettingsValidateSeedRatioAndTrackers(t *testing.T) {
 	}
 	if got.SeedRatio != "2:1" || got.ExtraTrackers != "udp://a.example.com:1337/announce" {
 		t.Fatalf("settings roundtrip lost seed options: %+v", got)
+	}
+}
+
+func TestValidateTrackersReportsTheOffendingLine(t *testing.T) {
+	err := ValidateTrackers("udp://ok.example.com:1/announce\nftp://nope/announce")
+	var bad *TrackerError
+	if !errors.As(err, &bad) {
+		t.Fatalf("ValidateTrackers = %v, want a TrackerError", err)
+	}
+	if bad.Line != "ftp://nope/announce" {
+		t.Fatalf("TrackerError.Line = %q", bad.Line)
+	}
+	if err.Error() != `invalid tracker "ftp://nope/announce"` {
+		t.Fatalf("ValidateTrackers = %q", err.Error())
 	}
 }

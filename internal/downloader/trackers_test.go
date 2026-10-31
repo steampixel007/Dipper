@@ -167,3 +167,56 @@ func TestSetExtraTrackersAnnouncesToRunningTask(t *testing.T) {
 		t.Fatalf("running torrent lacks the late tracker: %v", announce)
 	}
 }
+
+func TestSetExtraTrackersReconcilesRemovals(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	var b bytes.Buffer
+	if err := f.mi.Write(&b); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write(b.Bytes()) }))
+	defer server.Close()
+	root := t.TempDir()
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state")})
+	task := Task{ID: "url", TorrentURL: server.URL, Folder: filepath.Join(root, "data")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	keep := "udp://keep.example.com:1337/announce"
+	drop := "udp://drop.example.com:1337/announce"
+	e.SetExtraTrackers([]string{keep, drop})
+	e.SetExtraTrackers([]string{keep})
+	e.mu.Lock()
+	j := e.tasks[task.ID]
+	if j == nil || j.torrent == nil {
+		e.mu.Unlock()
+		t.Fatal("admitted task has no torrent")
+	}
+	announce := j.torrent.Metainfo().AnnounceList
+	j.metadataSaved = false
+	if err := e.saveMetadataLocked(j); err != nil {
+		e.mu.Unlock()
+		t.Fatal(err)
+	}
+	e.mu.Unlock()
+	if hasAll(announce, []string{drop}) {
+		t.Fatalf("removed tracker still announced: %v", announce)
+	}
+	if !hasAll(announce, []string{keep}) || !hasAll(announce, builtinTrackers) {
+		t.Fatalf("reconciled list lost kept or builtin trackers: %v", announce)
+	}
+	data, err := os.ReadFile(e.metadataPath(task.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := decodeSpec(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasAll(saved.Trackers, []string{drop}) {
+		t.Fatalf("persisted metadata still carries the removed tracker: %v", saved.Trackers)
+	}
+	if !hasAll(saved.Trackers, []string{keep}) || !hasAll(saved.Trackers, builtinTrackers) {
+		t.Fatalf("persisted metadata lost kept or builtin trackers: %v", saved.Trackers)
+	}
+}
