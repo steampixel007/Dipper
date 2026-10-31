@@ -73,14 +73,18 @@ func normalizeTrackers(trackers []string) []string {
 	return clean
 }
 
-// reconciledTiers rebuilds a torrent's announce list when the user tracker
+// reconciledTiers rebuilds a torrent's announce list when a dynamic tracker
 // tier changes: the torrent's own metadata tiers stay, the previously applied
-// user URLs and the built-ins are stripped, and the current user tier plus
-// the built-ins are appended as their own tiers. It also reports which
-// configured URLs the rebuilt list actually injected as the user tier.
-func reconciledTiers(current [][]string, previous, extras []string) ([][]string, []string) {
+// user and remote URLs and the built-ins are stripped, and the current user,
+// remote and built-in tiers are appended in that order. It also reports which
+// configured URLs each dynamic tier actually injected, so a later settings
+// change removes only what the tiers added.
+func reconciledTiers(current [][]string, previousUser, user, previousRemote, remote []string) ([][]string, []string, []string) {
 	drop := make(map[string]bool)
-	for _, tracker := range previous {
+	for _, tracker := range previousUser {
+		drop[tracker] = true
+	}
+	for _, tracker := range previousRemote {
 		drop[tracker] = true
 	}
 	for _, tracker := range builtinTrackers {
@@ -88,10 +92,10 @@ func reconciledTiers(current [][]string, previous, extras []string) ([][]string,
 	}
 	var tiers [][]string
 	seen := make(map[string]bool)
-	add := func(tier []string) {
+	add := func(tier []string, bypassDrop bool) {
 		var clean []string
 		for _, tracker := range tier {
-			if drop[tracker] || seen[tracker] {
+			if (drop[tracker] && !bypassDrop) || tracker == "" || seen[tracker] {
 				continue
 			}
 			seen[tracker] = true
@@ -102,31 +106,27 @@ func reconciledTiers(current [][]string, previous, extras []string) ([][]string,
 		}
 	}
 	for _, tier := range current {
-		add(tier)
+		add(tier, false)
 	}
-	// URLs from the new user tier that the surviving own tiers already carry
-	// are not user additions; only genuinely injected ones may be removed by a
-	// later settings change.
+	// URLs from a new tier that the surviving own tiers already carry are
+	// not that tier's additions; only genuinely injected ones may be removed
+	// by a later settings change.
+	injectedUser := newlyInjected(user, seen)
+	add(user, true)
+	injectedRemote := newlyInjected(remote, seen)
+	// The new dynamic tiers and the built-ins are intentional; they bypass
+	// the removal filter and deduplicate against whatever survived it.
+	add(remote, true)
+	add(builtinTrackers, true)
+	return tiers, injectedUser, injectedRemote
+}
+
+func newlyInjected(trackers []string, seen map[string]bool) []string {
 	var injected []string
-	for _, tracker := range extras {
-		if !seen[tracker] {
+	for _, tracker := range trackers {
+		if tracker != "" && !seen[tracker] {
 			injected = append(injected, tracker)
 		}
 	}
-	// The new user tier and the built-ins are intentional; they bypass the
-	// removal filter and deduplicate against whatever survived it.
-	for _, tier := range [][]string{extras, builtinTrackers} {
-		var clean []string
-		for _, tracker := range tier {
-			if tracker == "" || seen[tracker] {
-				continue
-			}
-			seen[tracker] = true
-			clean = append(clean, tracker)
-		}
-		if len(clean) > 0 {
-			tiers = append(tiers, clean)
-		}
-	}
-	return tiers, injected
+	return injected
 }
