@@ -1193,6 +1193,18 @@ func (s *State) following(c *ui.Context) {
 				subs = append(subs, sub)
 			}
 		}
+		// Failed RSS checks float above the saved order so a silent failure
+		// cannot hide at the bottom of a long list.
+		slices.SortStableFunc(subs, func(a, b Subscription) int {
+			switch {
+			case a.CheckFailed && !b.CheckFailed:
+				return -1
+			case !a.CheckFailed && b.CheckFailed:
+				return 1
+			default:
+				return 0
+			}
+		})
 		ui.Row(c).Gap(6).Children(func() {
 			caption(c, fmt.Sprintf("%d 部追番", len(subs)))
 			ui.Spacer(c)

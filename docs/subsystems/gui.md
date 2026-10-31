@@ -112,7 +112,8 @@ The browse page search matches the follow search: typing resets the catalog
 scroll to the top and a non-empty search offers 清除搜索 beside the input.
 The following page searches saved follows by anime title, subtitle group, or a
 word the saved rule requires; the count line reports how many follow cards match
-and offers a clear action, and an empty result offers a way to clear the search.
+and offers a clear action, and an empty result offers a way to clear the search. Cards whose last RSS check failed
+float above the saved order so a silent failure cannot hide at the bottom.
 Card actions resolve the subscription by its stable ID, never by its position in
 the filtered list, so a narrowed search cannot pause, edit, or open the
 resources of a follow the card does not show.
