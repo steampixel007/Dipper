@@ -206,7 +206,8 @@ never changes the active group, filter draft or release selection. Results keep
 their original source indices so a filtered click selects the correct group.
 Known complete counts are shown as resource counts; a truncated or absent
 count offers the release history without claiming a total. A new anime clears
-the search. `group_picker_test.go` covers typing, selection and recovery.
+the search. Picker cards mark a group the
+anime already follows with a 正在追 badge. `group_picker_test.go` covers typing, selection and recovery.
 Re-selecting the current group closes the picker without resetting the release
 scroll position; selecting another group resets it for the new history.
 Search remains clearable if a later source refresh leaves zero or one group.
