@@ -518,6 +518,42 @@ func TestUIDetailFreshSelectionFromResourceView(t *testing.T) {
 	}
 }
 
+func TestUIFollowingListScrollSurvivesNavigation(t *testing.T) {
+	s := uiFixture(t, "following")
+	tt := ui.NewTester(s.view, 1320, 480)
+	tt.Frame()
+	bounds := tt.Image().Bounds()
+	tt.Scroll(float32(bounds.Dx())*.5, float32(bounds.Dy())*.5, 0, 400)
+	tt.Advance(300 * time.Millisecond)
+	if s.FollowScroll.Y == 0 {
+		t.Fatal("following list scroll position was not tracked")
+	}
+	s.Page = "downloads"
+	tt.Frame()
+	s.Page = "following"
+	tt.Frame()
+	if s.FollowScroll.Y == 0 {
+		t.Fatal("returning to following reset the scroll position")
+	}
+	uiClick(t, tt, "搜索追番")
+	tt.Type("星")
+	if s.FollowScroll.Y != 0 {
+		t.Fatalf("searching did not reset the follow scroll: %v", s.FollowScroll.Y)
+	}
+}
+
+func TestUIDownloadListScrollResetsOnFilterChange(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	tt := ui.NewTester(s.view, 1320, 860)
+	tt.Frame()
+	s.DownloadScroll.Y = 260
+	tt.Frame()
+	uiClick(t, tt, "已完成")
+	if s.DownloadScroll.Y != 0 {
+		t.Fatalf("filter change did not reset the download scroll: %v", s.DownloadScroll.Y)
+	}
+}
+
 func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	s := uiFixture(t, "following")
 	sub := s.Subscriptions[0]

@@ -171,6 +171,9 @@ type State struct {
 	SourceFailed               bool
 	CatalogScroll              ui.ScrollState
 	ResourceScroll             ui.ScrollState
+	FollowScroll               ui.ScrollState
+	DownloadScroll             ui.ScrollState
+	DownloadFilterLast         DownloadFilter
 	Dir                        string
 	ConfigDir                  string
 	CoverDir                   string

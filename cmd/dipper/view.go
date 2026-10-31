@@ -1033,7 +1033,7 @@ func (s *State) following(c *ui.Context) {
 				caption(c, "暂停追番只停止检查新资源，已开始的下载会继续。")
 			})
 			if ui.TextInput(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(220).Height(36).Background(colors(c).paper).Changed() {
-				s.ResourceScroll = ui.ScrollState{}
+				s.FollowScroll = ui.ScrollState{}
 			}
 			secondary(c, "find-more", "添加追番", func() { s.Page = "browse" })
 		})
@@ -1066,7 +1066,7 @@ func (s *State) following(c *ui.Context) {
 			s.empty(c, "没有找到这部追番", "试试缩短番名，或清除搜索。", "清除搜索", func() { s.FollowSearch = "" })
 			return
 		}
-		ui.Scroll(c.Key("following-list")).Grow(1).MinHeight(0).Children(func() {
+		ui.Scroll(c.Key("following-list")).TrackScroll(&s.FollowScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Gap(14).Children(func() {
 				for _, sub := range subs {
 					item := sub
@@ -1270,11 +1270,15 @@ func (s *State) downloads(c *ui.Context) {
 			}
 			quiet(c, "pause-all", pauseLabel, func() { s.pauseAllDownloads(active > 0) }).FontSize(12).Disabled(s.Busy)
 		})
+		if s.DownloadFilterLast != s.DownloadFilter {
+			s.DownloadFilterLast = s.DownloadFilter
+			s.DownloadScroll = ui.ScrollState{}
+		}
 		ui.Row(c).Gap(12).Children(func() {
 			ui.Segmented(c.Key("download-filter"), (*int)(&s.DownloadFilter), "全部", "下载中", "已完成", "已暂停", "已失败")
 			ui.Spacer(c)
 		})
-		ui.Scroll(c.Key("download-list")).Grow(1).MinHeight(0).Children(func() {
+		ui.Scroll(c.Key("download-list")).TrackScroll(&s.DownloadScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Gap(12).Children(func() {
 				for _, g := range groups {
 					group := g
