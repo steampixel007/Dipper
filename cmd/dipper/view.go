@@ -386,7 +386,12 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
 			cover(c, a, width, width*1.36)
 			for _, sub := range s.Subscriptions {
 				if sub.AnimeID == a.ID {
-					ui.Text(c, "已追番").Absolute().Top(8).Left(8).FontSize(11).TextColor(colors(c).accentText).Background(colors(c).blue).Radius(4).Padding(4, 7)
+					ui.Column(c).Absolute().Top(8).Left(8).Gap(4).Children(func() {
+						ui.Text(c, "已追番").FontSize(11).TextColor(colors(c).accentText).Background(colors(c).blue).Radius(4).Padding(4, 7)
+						if n := s.completedDownloads(a.ID); n > 0 {
+							ui.Text(c, fmt.Sprintf("已下载 %d 集", n)).FontSize(11).TextColor(colors(c).green).Background(colors(c).greenWash).Radius(4).Padding(4, 7)
+						}
+					})
 					break
 				}
 			}
@@ -1342,6 +1347,18 @@ func (s *State) hasNewRelease() bool {
 		}
 	}
 	return false
+}
+
+// completedDownloads counts an anime's finished transfers with the follow
+// card's 已下载 semantics: progress complete and not failed.
+func (s *State) completedDownloads(animeID string) int {
+	count := 0
+	for _, d := range s.Downloads {
+		if d.AnimeID == animeID && d.Progress >= 1 && !d.Failed {
+			count++
+		}
+	}
+	return count
 }
 
 // clearPreviewFilters resets the view-only preview filters — 只看匹配, the
