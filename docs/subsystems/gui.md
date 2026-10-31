@@ -111,7 +111,9 @@ the filtered list, so a narrowed search cannot pause, edit, or open the
 resources of a follow the card does not show.
 Each card shows a pending-release count with the recent release titles when the
 scheduler has not yet handed them over, and a 下载中 mark while an uncompleted
-transfer for that anime is running.
+transfer for that anime is running. The mark carries the follow's overall
+download progress, weighted by the known size of each transfer, so several
+running episodes read as one 下载中 75% badge instead of a bare mark.
 Paused and stopped transfers are never running marks: resource rows and
 download groups label them 已暂停 / 已停止, the follow card skips them when
 deciding 下载中, and the pause-all toggle counts only transfers that are
