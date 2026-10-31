@@ -193,6 +193,8 @@ type State struct {
 	FilesID                    string
 	Files                      []downloader.DownloadedFile
 	FilesError                 string
+	FilesLoading               bool
+	filesRevision              int
 }
 
 var seasons = []string{"冬", "春", "夏", "秋"}

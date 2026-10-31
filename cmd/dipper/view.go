@@ -1560,8 +1560,10 @@ func (s *State) filesDialog(c *ui.Context) {
 		switch {
 		case s.FilesError != "":
 			caption(c, s.FilesError)
-		case len(s.Files) == 0:
+		case s.FilesLoading:
 			caption(c, "正在读取文件列表…")
+		case len(s.Files) == 0:
+			caption(c, "文件列表是空的，文件可能已被移动或删除。")
 		default:
 			ui.Scroll(c.Key("files-list")).MaxHeight(360).MinHeight(0).Children(func() {
 				ui.Column(c).Gap(8).Children(func() {

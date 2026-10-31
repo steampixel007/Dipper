@@ -48,6 +48,7 @@ Each async load has a revision and a cancel pair:
 ```
 catalogRevision, detailRevision, historyRevision   uint64
 catalogCancel,  detailCancel,  historyCancel       context.CancelFunc
+filesRevision                                       int
 ```
 
 Starting a load increments its revision and cancels the previous one. A result
@@ -55,6 +56,15 @@ that arrives with a stale revision is dropped rather than applied. This is the
 same pattern `core` uses for subscriptions, and for the same reason: without it,
 a slow catalog fetch for a season the user already navigated away from would
 overwrite the newer page.
+
+The download file dialog loads its list through the same revision guard
+(`filesRevision`) without a cancel pair: opening another task clears the
+previous task's entries and drops a stale result instead of applying it. While
+the load runs the dialog shows a loading line, and an empty result is a
+terminal state with its own copy — an empty list must never leave the dialog
+reading forever. `TestUIFilesDialogScopesResultsToTask`,
+`TestUIFilesDialogClearsStaleEntriesOnOpen` and
+`TestUIFilesDialogEmptyResultIsTerminal` check the three states.
 
 ## Pages
 
