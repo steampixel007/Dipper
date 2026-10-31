@@ -672,6 +672,8 @@ func TestUINavigationCallsOutFailedChecks(t *testing.T) {
 	uiRequireText(t, tt, "1 失败")
 	s.Subscriptions[1].CheckFailed = false
 	s.Subscriptions[1].LastError = ""
+	s.Downloads[1].Failed = false
+	s.Downloads[1].Error = ""
 	healthy := ui.NewTester(s.view, 1320, 860)
 	if healthy.HasText("失败") {
 		t.Fatal("healthy follows still flagged a failure in the navigation")
@@ -1396,4 +1398,18 @@ func TestUIResourcePreviewSortsByEpisode(t *testing.T) {
 		}
 		previous = position
 	}
+}
+
+func TestUIDownloadNavCallsOutFailures(t *testing.T) {
+	s := uiFixture(t, "browse")
+	for i := range s.Downloads {
+		s.Downloads[i].Failed = false
+		s.Downloads[i].Error = ""
+	}
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "3")
+	s.Downloads[0].Failed = true
+	s.Downloads[2].Failed = true
+	broken := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, broken, "2 失败")
 }
