@@ -458,6 +458,7 @@ func (s *State) detail(c *ui.Context) {
 						s.Backfill = false
 						s.ViewResources = false
 						s.ChoosingGroup = true
+						s.Group = -1
 						s.Checked = map[string]bool{}
 						s.Keyword = ""
 						s.WordOpen = false
@@ -486,7 +487,9 @@ func (s *State) detail(c *ui.Context) {
 					} else {
 						ui.Row(c).Padding(10, 12).Radius(6).Border(1, colors(c).blue).Background(colors(c).blueWash).Children(func() {
 							ui.Text(c, s.Groups[s.Group]).FontSize(13).FontWeight(600).Grow(1)
-							quiet(c, "change-group", "更换", func() { s.ChoosingGroup = true }).FontSize(12).TextColor(colors(c).blue).Padding(3, 4).Disabled(s.Busy)
+							if !s.ViewResources {
+								quiet(c, "change-group", "更换", func() { s.ChoosingGroup = true }).FontSize(12).TextColor(colors(c).blue).Padding(3, 4).Disabled(s.Busy)
+							}
 						})
 					}
 					if s.detailReady() {

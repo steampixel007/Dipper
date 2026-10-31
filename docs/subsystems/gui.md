@@ -121,7 +121,10 @@ whole card is the large target and the side buttons stay distinct actions.
 Following cards offer 查看资源 as a separate entry into the detail page. It
 locks the saved subscription's group and rule, opens as a view-only backfill
 where nothing is selected while history loads and a later history result must
-not auto-select matches, and returns to 我的追番. The saved rule is never
+not auto-select matches, and returns to 我的追番.
+Group switching is hidden in this mode, and 重新选版本 resets the group
+selection so rechoosing the same group re-identifies its subscription instead
+of creating a duplicate. The saved rule is never
 modified by entry or by the manual selection. The two modes share the resource list but not the confirm action. Keeping them
 distinct is what makes "I cancelled this one release" not change what future
 releases are matched against.
