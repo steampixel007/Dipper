@@ -33,3 +33,21 @@ func TestReleaseTagsRecognizeCommonLabels(t *testing.T) {
 		}
 	}
 }
+
+func TestReleaseTagsRecognizeCollections(t *testing.T) {
+	cases := []struct {
+		title string
+		want  []string
+	}{
+		{"[组] 剧名 合集 [01-12][1080P][HEVC]", []string{"1080p", "hevc", "合集"}},
+		{"[组] 剧名 全集合集 [1080P]", []string{"1080p", "全集", "合集"}},
+		{"[组] 剧名 第01-12集 合集 [1080P][简日内嵌][MKV]", []string{"1080p", "mkv", "简日内嵌", "合集"}},
+		{"[组] 剧名 - 01 [1080P][HEVC]", []string{"1080p", "hevc"}},
+	}
+	for _, tc := range cases {
+		got := ReleaseTags(tc.title)
+		if !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%q: got %v, want %v", tc.title, got, tc.want)
+		}
+	}
+}
