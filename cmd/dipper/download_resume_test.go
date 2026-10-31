@@ -65,6 +65,8 @@ func (*resumeTestEngine) Stop(string) error           { return fmt.Errorf("unexp
 func (*resumeTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
 func (*resumeTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
 func (*resumeTestEngine) SetSeedTarget(time.Duration) {}
+func (*resumeTestEngine) SetRatioTarget(float64)      {}
+func (*resumeTestEngine) SetExtraTrackers([]string)   {}
 
 func TestUIDownloadTransferActionChangesIntentOnce(t *testing.T) {
 	for _, tc := range []struct {

@@ -1087,14 +1087,33 @@ func (s *State) following(c *ui.Context) {
 	})
 }
 
-func (s *State) seedStopCopy() string {
-	if s.Seed == "不限时长" {
-		return "做种达到分享比例 1:1"
+// seedStopRule describes both seeding stop conditions in one clause.
+func (s *State) seedStopRule() string {
+	timeCopy := ""
+	switch s.Seed {
+	case "不限时长":
+	case "1 小时":
+		timeCopy = "有效做种 1 小时"
+	default:
+		timeCopy = "有效做种 " + s.Seed
 	}
-	if s.Seed != "1 小时" {
-		return "累计做种 " + s.Seed
+	ratioCopy := ""
+	switch s.SeedRatio {
+	case "不限":
+	case "2:1", "3:1":
+		ratioCopy = "分享比例 " + s.SeedRatio
+	default:
+		ratioCopy = "分享比例 1:1"
 	}
-	return "累计做种 1 小时"
+	switch {
+	case timeCopy == "" && ratioCopy == "":
+		return "下载完成后不会自动停止做种"
+	case timeCopy == "":
+		return ratioCopy + "即停止做种"
+	case ratioCopy == "":
+		return timeCopy + "即停止做种"
+	}
+	return ratioCopy + "或" + timeCopy + "，满足任一即停止做种"
 }
 
 func downloadState(d Download) DownloadFilter {
@@ -1281,7 +1300,7 @@ func (s *State) downloads(c *ui.Context) {
 									caption(c, "保存位置："+d.Folder)
 									if d.Progress >= 1 && !d.Stopped {
 										if d.MB > 0 {
-											caption(c, fmt.Sprintf("已分享 %.2f 倍 · 做种 %d 分钟；达到 1:1 或%s后停止。", d.UploadedMB/float64(d.MB), d.SeedSeconds/60, s.seedStopCopy()))
+											caption(c, fmt.Sprintf("已分享 %.2f 倍 · 做种 %d 分钟；%s。", d.UploadedMB/float64(d.MB), d.SeedSeconds/60, s.seedStopRule()))
 										} else {
 											caption(c, fmt.Sprintf("大小未知，分享比例未知 · 做种 %d 分钟", d.SeedSeconds/60))
 										}
@@ -1298,7 +1317,7 @@ func (s *State) downloads(c *ui.Context) {
 				}
 			})
 		})
-		caption(c, "全局上传上限 "+s.Upload+"；完成后达到分享比例 1:1，或"+s.seedStopCopy()+"即停止。")
+		caption(c, "全局上传上限 "+s.Upload+"；完成后"+s.seedStopRule()+"。")
 	})
 }
 
@@ -1352,11 +1371,31 @@ func (s *State) settings(c *ui.Context) {
 				ui.Row(c).Gap(16).Children(func() {
 					ui.Column(c).Grow(1).Gap(5).Children(func() {
 						ui.Text(c, "做种时长").FontSize(14)
-						caption(c, "下载完成后按这个时长做种；达到分享比例 1:1 也会提前停止。")
+						caption(c, "下载完成后按这个时长做种。")
 					})
 					ui.Select(c.Key("seed-duration"), &s.Seed, seedOptions).Label("做种时长选择").Width(140).OnChange(s.save).Disabled(s.Busy)
 				})
-				caption(c, "下载完成后，分享比例达到 1:1，或有效做种达到设定时长，满足任一即停止。")
+				ui.Row(c).Gap(16).Children(func() {
+					ui.Column(c).Grow(1).Gap(5).Children(func() {
+						ui.Text(c, "停止分享比例").FontSize(14)
+						caption(c, "上传量达到下载量的这个倍数就提前停止；选择不限则只按做种时长停止。")
+					})
+					ui.Select(c.Key("seed-ratio"), &s.SeedRatio, ratioOptions).Label("停止分享比例").Width(140).OnChange(s.save).Disabled(s.Busy)
+				})
+				ui.Column(c).Gap(5).Children(func() {
+					ui.Row(c).Gap(16).Children(func() {
+						ui.Column(c).Grow(1).Gap(5).Children(func() {
+							ui.Text(c, "追加 Tracker").FontSize(14)
+							caption(c, "每行一个 udp:// 或 http(s):// 地址，按回车或保存后生效；无效的行会被拒绝。")
+						})
+						secondary(c, "save-trackers", "保存", s.save).FontSize(12).Disabled(s.Busy)
+					})
+					ui.TextInput(c.Key("extra-trackers"), &s.ExtraTrackers).Label("追加 Tracker").Placeholder("udp://tracker.example.com:1337/announce").FillWidth().Height(32).OnChange(func() { s.TrackerFeedback = "" }).OnSubmit(s.save)
+					if s.TrackerFeedback != "" {
+						caption(c, s.TrackerFeedback)
+					}
+				})
+				caption(c, "下载完成后，"+s.seedStopRule()+"。")
 			})
 			ui.Column(c).Gap(14).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
 				heading(c, "网络与代理")

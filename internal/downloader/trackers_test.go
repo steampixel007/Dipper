@@ -86,3 +86,84 @@ func hasAll(tiers [][]string, want []string) bool {
 	}
 	return true
 }
+
+func TestExtraTrackersMergeAsOwnTierBeforeBuiltins(t *testing.T) {
+	spec := torrent.TorrentSpec{Trackers: [][]string{{builtinTrackers[0]}}}
+	extra := normalizeTrackers([]string{"udp://extra.example.com:1337/announce", "udp://extra.example.com:1337/announce", builtinTrackers[0]})
+	appendTrackers(&spec, extra, builtinTrackers)
+	tiers := spec.Trackers
+	if len(tiers) != 3 || len(tiers[1]) != 1 || tiers[1][0] != "udp://extra.example.com:1337/announce" {
+		t.Fatalf("user tier must carry only its own URLs before the built-ins: %v", tiers)
+	}
+	if !hasAll(tiers, builtinTrackers) {
+		t.Fatalf("missing built-in trackers: %v", tiers)
+	}
+}
+
+func TestEngineMergesExtraTrackersIntoTorrentAndMetadata(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	var b bytes.Buffer
+	if err := f.mi.Write(&b); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write(b.Bytes()) }))
+	defer server.Close()
+	root := t.TempDir()
+	extra := []string{"udp://extra.example.com:1337/announce"}
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state"), ExtraTrackers: extra})
+	task := Task{ID: "url", TorrentURL: server.URL, Folder: filepath.Join(root, "data")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	e.mu.Lock()
+	j := e.tasks[task.ID]
+	if j == nil || j.torrent == nil {
+		e.mu.Unlock()
+		t.Fatal("admitted task has no torrent")
+	}
+	announce := j.torrent.Metainfo().AnnounceList
+	e.mu.Unlock()
+	if !hasAll(announce, extra) || !hasAll(announce, builtinTrackers) {
+		t.Fatalf("engine torrent lacks extra or built-in trackers: %v", announce)
+	}
+	data, err := os.ReadFile(e.metadataPath(task.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := decodeSpec(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasAll(saved.Trackers, extra) {
+		t.Fatalf("persisted metadata lacks extra trackers: %v", saved.Trackers)
+	}
+}
+
+func TestSetExtraTrackersAnnouncesToRunningTask(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	var b bytes.Buffer
+	if err := f.mi.Write(&b); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write(b.Bytes()) }))
+	defer server.Close()
+	root := t.TempDir()
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state")})
+	task := Task{ID: "url", TorrentURL: server.URL, Folder: filepath.Join(root, "data")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	late := "udp://late.example.com:1337/announce"
+	e.SetExtraTrackers([]string{late, late})
+	e.mu.Lock()
+	j := e.tasks[task.ID]
+	if j == nil || j.torrent == nil {
+		e.mu.Unlock()
+		t.Fatal("admitted task has no torrent")
+	}
+	announce := j.torrent.Metainfo().AnnounceList
+	e.mu.Unlock()
+	if !hasAll(announce, []string{late}) {
+		t.Fatalf("running torrent lacks the late tracker: %v", announce)
+	}
+}

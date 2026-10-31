@@ -77,21 +77,24 @@ const (
 )
 
 type Saved struct {
-	Root          string
-	Upload        string
-	Seed          string
-	ProxyMode     int
-	ProxyURL      string
-	ProxyAuto     string
-	ProxyFeedback string
-	ProxyTesting  bool
-	SourceRoute   string
-	Subscriptions []Subscription
-	Downloads     []Download
-	IntroHidden   bool
-	ReduceEffects bool
-	Appearance    string
-	CloseBehavior string
+	Root            string
+	Upload          string
+	Seed            string
+	SeedRatio       string
+	TrackerFeedback string
+	ExtraTrackers   string
+	ProxyMode       int
+	ProxyURL        string
+	ProxyAuto       string
+	ProxyFeedback   string
+	ProxyTesting    bool
+	SourceRoute     string
+	Subscriptions   []Subscription
+	Downloads       []Download
+	IntroHidden     bool
+	ReduceEffects   bool
+	Appearance      string
+	CloseBehavior   string
 }
 type downloadEngine interface {
 	Snapshot() []downloader.Snapshot
@@ -103,6 +106,8 @@ type downloadEngine interface {
 	Remove(string) error
 	SetUploadLimit(int64) error
 	SetSeedTarget(time.Duration)
+	SetRatioTarget(float64)
+	SetExtraTrackers([]string)
 }
 
 var _ downloadEngine = (*downloader.Engine)(nil)

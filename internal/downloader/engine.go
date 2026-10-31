@@ -35,6 +35,13 @@ type Config struct {
 	// seed without a time limit (the ratio target still applies). Zero and
 	// any other negative value select the default one hour.
 	SeedTarget time.Duration
+	// RatioTarget is the share-ratio stop target: a positive multiple of the
+	// downloaded size, -1 to stop only on seeding time, zero for the default
+	// 1:1.
+	RatioTarget float64
+	// ExtraTrackers are user-configured announce URLs appended after the
+	// task's own tiers and before the built-in public trackers.
+	ExtraTrackers []string
 }
 
 type Task struct {
@@ -114,6 +121,7 @@ type entry struct {
 	downSpeed     int64
 	upSpeed       int64
 	err           error
+	appliedExtra  []string
 }
 
 type Engine struct {
@@ -134,6 +142,8 @@ type Engine struct {
 	awake         func() time.Duration
 	online        func() bool
 	seedTarget    time.Duration
+	ratioTarget   float64
+	extraTrackers []string
 	checkpointErr error
 }
 
@@ -155,7 +165,11 @@ func newEngine(config Config, configure func(*torrent.ClientConfig)) (_ *Engine,
 	if dir, err = filepath.EvalSymlinks(dir); err != nil {
 		return nil, err
 	}
-	e := &Engine{dir: dir, tasks: make(map[string]*entry), done: make(chan struct{}), now: time.Now, awake: awakeTime, online: networkAvailable, seedTarget: config.SeedTarget}
+	ratio := config.RatioTarget
+	if ratio != seedRatioUnlimited && ratio <= 0 {
+		ratio = 1
+	}
+	e := &Engine{dir: dir, tasks: make(map[string]*entry), done: make(chan struct{}), now: time.Now, awake: awakeTime, online: networkAvailable, seedTarget: config.SeedTarget, ratioTarget: ratio, extraTrackers: normalizeTrackers(config.ExtraTrackers)}
 	e.ctx, e.cancel = context.WithCancel(context.Background())
 	defer func() {
 		if err != nil {
@@ -441,7 +455,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 	if err := validateIdentity(j.ID, spec); err != nil {
 		return err
 	}
-	appendBuiltinTrackers(spec)
+	appendTrackers(spec, e.extraTrackers, builtinTrackers)
 	for _, other := range e.tasks {
 		if other == j {
 			continue
@@ -467,6 +481,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 		return failure.err
 	}
 	j.torrent, j.err, j.requested, j.metadataSaved = t, nil, false, false
+	j.appliedExtra = e.extraTrackers
 	j.InfoHash = t.InfoHash().HexString()
 	j.Complete = false
 	j.previous = observation{at: e.now(), awake: e.awake()}
@@ -654,6 +669,45 @@ func (e *Engine) SetSeedTarget(target time.Duration) {
 	}
 }
 
+// SetRatioTarget changes the share-ratio stop target for running and future
+// tasks; -1 stops only on seeding time.
+func (e *Engine) SetRatioTarget(target float64) {
+	if target != seedRatioUnlimited && target <= 0 {
+		target = 1
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.ratioTarget = target
+	for _, j := range e.tasks {
+		j.Policy.RatioTarget = target
+	}
+}
+
+// SetExtraTrackers replaces the user tracker tier and announces new URLs to
+// running tasks; every admission also merges the tier into the spec.
+func (e *Engine) SetExtraTrackers(trackers []string) {
+	trackers = normalizeTrackers(trackers)
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.extraTrackers = trackers
+	for _, j := range e.tasks {
+		seen := make(map[string]bool)
+		for _, tracker := range j.appliedExtra {
+			seen[tracker] = true
+		}
+		var fresh []string
+		for _, tracker := range trackers {
+			if !seen[tracker] {
+				fresh = append(fresh, tracker)
+			}
+		}
+		if len(fresh) > 0 && j.torrent != nil {
+			j.torrent.AddTrackers([][]string{fresh})
+		}
+		j.appliedExtra = trackers
+	}
+}
+
 // SetNetworkAvailable overrides automatic detection until the engine is closed.
 // The core can provide authoritative OS network-change events, including on non-Windows hosts.
 func (e *Engine) SetNetworkAvailable(available bool) {
@@ -727,6 +781,7 @@ func (e *Engine) sampleLocked(j *entry, now time.Time, awake time.Duration, onli
 	if e.seedTarget == seedForever || e.seedTarget > 0 {
 		j.Policy.SeedTarget = e.seedTarget
 	}
+	j.Policy.RatioTarget = e.ratioTarget
 	j.Policy.observe(j.previous, cur, j.Complete, j.TotalBytes)
 	if dt := now.Sub(j.previous.at).Seconds(); dt > 0 {
 		j.downSpeed = int64(float64(counterDelta(j.previous.down, cur.down)) / dt)

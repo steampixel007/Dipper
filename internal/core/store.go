@@ -308,6 +308,13 @@ func (c *Core) UpdateSettings(ctx context.Context, settings Settings) error {
 	if err := proxy.Validate(settings.ProxyMode, settings.ProxyURL); err != nil {
 		return err
 	}
+	if err := ValidateSeedRatio(settings.SeedRatio); err != nil {
+		return err
+	}
+	if err := ValidateTrackers(settings.ExtraTrackers); err != nil {
+		return err
+	}
+
 	root, err := filepath.Abs(settings.DownloadRoot)
 	if err != nil {
 		return err

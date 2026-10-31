@@ -745,6 +745,9 @@ func (*playTestEngine) Stop(string) error           { return fmt.Errorf("unexpec
 func (*playTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
 func (*playTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
 func (*playTestEngine) SetSeedTarget(time.Duration) {}
+func (*playTestEngine) SetRatioTarget(float64)      {}
+func (*playTestEngine) SetExtraTrackers([]string)   {}
+
 func (e *playTestEngine) PlayableFiles(string) ([]string, error) {
 	if e.files == nil {
 		return nil, fmt.Errorf("no files")
@@ -825,6 +828,9 @@ func (*filesTestEngine) Stop(string) error           { return fmt.Errorf("unexpe
 func (*filesTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
 func (*filesTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
 func (*filesTestEngine) SetSeedTarget(time.Duration) {}
+func (*filesTestEngine) SetRatioTarget(float64)      {}
+func (*filesTestEngine) SetExtraTrackers([]string)   {}
+
 func (*filesTestEngine) PlayableFiles(string) ([]string, error) {
 	return nil, fmt.Errorf("unexpected play")
 }
@@ -970,7 +976,7 @@ func TestUISettingsSeedDurationSavesAndUpdatesCopy(t *testing.T) {
 	s.Seed = "1 小时"
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiScrollTo(t, tt, "做种时长选择")
-	uiRequireText(t, tt, "做种时长选择", "下载完成后按这个时长做种；达到分享比例 1:1 也会提前停止。")
+	uiRequireText(t, tt, "做种时长选择", "下载完成后按这个时长做种。")
 	tt.Click("做种时长选择")
 	tt.Advance(300 * time.Millisecond)
 	if !tt.HasText("30 分钟") {
@@ -981,27 +987,47 @@ func TestUISettingsSeedDurationSavesAndUpdatesCopy(t *testing.T) {
 	if s.Seed != "30 分钟" {
 		t.Fatalf("seed choice = %q", s.Seed)
 	}
-	uiRequireText(t, tt, "下载完成后，分享比例达到 1:1，或有效做种达到设定时长，满足任一即停止。")
+	uiRequireText(t, tt, "分享比例 1:1或有效做种 30 分钟，满足任一即停止做种。")
 	if s.SaveError != "" {
 		t.Fatalf("seed save failed: %q", s.SaveError)
 	}
 	s.Seed = "不限时长"
 	tt.Frame()
-	uiRequireText(t, tt, "下载完成后，分享比例达到 1:1，或有效做种达到设定时长，满足任一即停止。")
-	// The download page must reflect the same choice through seedStopCopy.
+	uiRequireText(t, tt, "分享比例 1:1即停止做种。")
+	// The download page must reflect the same choice through seedStopRule.
 	s.Page = "downloads"
 	tt.Frame()
-	uiRequireText(t, tt, "做种达到分享比例 1:1")
+	uiRequireText(t, tt, "分享比例 1:1即停止做种")
 }
-func TestUISeedStopCopyFollowsDownloadsPage(t *testing.T) {
+func TestUISeedStopRuleFollowsDownloadsPage(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads = s.Downloads[2:3]
 	s.Seed = "不限时长"
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "做种达到分享比例 1:1")
+	uiRequireText(t, tt, "分享比例 1:1即停止做种")
 	s.Seed = "30 分钟"
+	s.SeedRatio = "2:1"
 	tt.Frame()
-	uiRequireText(t, tt, "累计做种 30 分钟")
+	uiRequireText(t, tt, "分享比例 2:1或有效做种 30 分钟，满足任一即停止做种")
+}
+
+func TestUISeedStopRuleWithoutLimitsSaysSo(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads = s.Downloads[2:3]
+	s.Seed = "不限时长"
+	s.SeedRatio = "不限"
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "下载完成后不会自动停止做种。")
+}
+
+func TestUISettingsShowSeedAdvancedOptions(t *testing.T) {
+	s := uiFixture(t, "settings")
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiScrollTo(t, tt, "停止分享比例")
+	uiRequireText(t, tt, "停止分享比例", "追加 Tracker", "1:1")
+	if s.SeedRatio != "1:1" {
+		t.Fatalf("default seed ratio = %q, want 1:1", s.SeedRatio)
+	}
 }
 
 func TestUIRenderScreensOffline(t *testing.T) {
