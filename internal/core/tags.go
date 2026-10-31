@@ -48,6 +48,9 @@ func ReleaseTags(title string) []string {
 	for _, m := range flagsPattern.FindAllStringSubmatch(title, -1) {
 		add(m[1])
 	}
+	for _, m := range collectionPattern.FindAllStringSubmatch(title, -1) {
+		add(m[1])
+	}
 	return out
 }
 
@@ -61,3 +64,4 @@ var hdrPattern = regexp.MustCompile("(?i)\\b(hdr10\\+|hdr10\\b|hdr\\b|dolby.?vis
 var audioPattern = regexp.MustCompile("(?i)\\b(10bit|8bit|aac|flac|ac3|eac3|opus|dts)\\b")
 var standaloneSubtitlePattern = regexp.MustCompile("(\u7b80\u4f53|\u7e41\u4f53|\u7b80\u4e2d|\u7e41\u4e2d|\u7b80\u65e5|\u7e41\u65e5|\u7b80\u7e41)([^\u4e00-\u9fff]|$)")
 var flagsPattern = regexp.MustCompile("(?i)\\b(v\\d+|chs|cht|gb|big5|\u7b80|\u7e41|\u7b80\u7e41|\u5916\u6302|\u5185\u5d4c|\u5185\u5c01)\\b")
+var collectionPattern = regexp.MustCompile("((?:\u5168|\u5408)\u96c6)")
