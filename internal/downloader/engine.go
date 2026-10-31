@@ -481,7 +481,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 		return failure.err
 	}
 	j.torrent, j.err, j.requested, j.metadataSaved = t, nil, false, false
-	j.appliedExtra = e.extraTrackers
+	j.appliedExtra = injectedExtra(spec, e.extraTrackers)
 	j.InfoHash = t.InfoHash().HexString()
 	j.Complete = false
 	j.previous = observation{at: e.now(), awake: e.awake()}
@@ -694,7 +694,10 @@ func (e *Engine) SetExtraTrackers(trackers []string) {
 		if j.torrent == nil {
 			continue
 		}
-		j.torrent.ModifyTrackers(reconciledTiers(j.torrent.Metainfo().AnnounceList, previous, trackers))
+		tiers, injected := reconciledTiers(j.torrent.Metainfo().AnnounceList, previous, trackers)
+		j.torrent.ModifyTrackers(tiers)
+		j.appliedExtra = injected
+		j.metadataSaved = false
 	}
 }
 

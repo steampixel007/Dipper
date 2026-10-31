@@ -182,6 +182,12 @@ func TestSetExtraTrackersReconcilesRemovals(t *testing.T) {
 	if err := e.Ensure(task); err != nil {
 		t.Fatal(err)
 	}
+	e.mu.Lock()
+	if err := e.saveMetadataLocked(e.tasks[task.ID]); err != nil {
+		e.mu.Unlock()
+		t.Fatal(err)
+	}
+	e.mu.Unlock()
 	keep := "udp://keep.example.com:1337/announce"
 	drop := "udp://drop.example.com:1337/announce"
 	e.SetExtraTrackers([]string{keep, drop})
@@ -193,7 +199,6 @@ func TestSetExtraTrackersReconcilesRemovals(t *testing.T) {
 		t.Fatal("admitted task has no torrent")
 	}
 	announce := j.torrent.Metainfo().AnnounceList
-	j.metadataSaved = false
 	if err := e.saveMetadataLocked(j); err != nil {
 		e.mu.Unlock()
 		t.Fatal(err)
@@ -218,5 +223,39 @@ func TestSetExtraTrackersReconcilesRemovals(t *testing.T) {
 	}
 	if !hasAll(saved.Trackers, []string{keep}) || !hasAll(saved.Trackers, builtinTrackers) {
 		t.Fatalf("persisted metadata lost kept or builtin trackers: %v", saved.Trackers)
+	}
+}
+
+func TestSetExtraTrackersKeepsSourceTrackers(t *testing.T) {
+	f := newFixture(t, 128<<10)
+	shared := "udp://source.example.com:1337/announce"
+	f.mi.AnnounceList = [][]string{{shared}}
+	var b bytes.Buffer
+	if err := f.mi.Write(&b); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write(b.Bytes()) }))
+	defer server.Close()
+	root := t.TempDir()
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state")})
+	task := Task{ID: "url", TorrentURL: server.URL, Folder: filepath.Join(root, "data")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	e.SetExtraTrackers([]string{shared})
+	e.SetExtraTrackers(nil)
+	e.mu.Lock()
+	j := e.tasks[task.ID]
+	if j == nil || j.torrent == nil {
+		e.mu.Unlock()
+		t.Fatal("admitted task has no torrent")
+	}
+	announce := j.torrent.Metainfo().AnnounceList
+	e.mu.Unlock()
+	if !hasAll(announce, []string{shared}) {
+		t.Fatalf("clearing settings removed the torrent's own tracker: %v", announce)
+	}
+	if !hasAll(announce, builtinTrackers) {
+		t.Fatalf("clearing settings lost the built-in trackers: %v", announce)
 	}
 }

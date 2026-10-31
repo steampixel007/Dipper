@@ -69,8 +69,9 @@ func normalizeTrackers(trackers []string) []string {
 // reconciledTiers rebuilds a torrent's announce list when the user tracker
 // tier changes: the torrent's own metadata tiers stay, the previously applied
 // user URLs and the built-ins are stripped, and the current user tier plus
-// the built-ins are appended as their own tiers.
-func reconciledTiers(current [][]string, previous, extras []string) [][]string {
+// the built-ins are appended as their own tiers. It also reports which
+// configured URLs the rebuilt list actually injected as the user tier.
+func reconciledTiers(current [][]string, previous, extras []string) ([][]string, []string) {
 	drop := make(map[string]bool)
 	for _, tracker := range previous {
 		drop[tracker] = true
@@ -96,6 +97,15 @@ func reconciledTiers(current [][]string, previous, extras []string) [][]string {
 	for _, tier := range current {
 		add(tier)
 	}
+	// URLs from the new user tier that the surviving own tiers already carry
+	// are not user additions; only genuinely injected ones may be removed by a
+	// later settings change.
+	var injected []string
+	for _, tracker := range extras {
+		if !seen[tracker] {
+			injected = append(injected, tracker)
+		}
+	}
 	// The new user tier and the built-ins are intentional; they bypass the
 	// removal filter and deduplicate against whatever survived it.
 	for _, tier := range [][]string{extras, builtinTrackers} {
@@ -111,5 +121,24 @@ func reconciledTiers(current [][]string, previous, extras []string) [][]string {
 			tiers = append(tiers, clean)
 		}
 	}
-	return tiers
+	return tiers, injected
+}
+
+// injectedExtra reports which configured tracker URLs the admission append
+// actually added: URLs the torrent's own metadata already carries are not
+// user additions, so clearing the setting must not remove them.
+func injectedExtra(spec *torrent.TorrentSpec, extras []string) []string {
+	own := make(map[string]bool)
+	for _, tier := range spec.Trackers {
+		for _, tracker := range tier {
+			own[tracker] = true
+		}
+	}
+	var injected []string
+	for _, tracker := range extras {
+		if !own[tracker] {
+			injected = append(injected, tracker)
+		}
+	}
+	return injected
 }
