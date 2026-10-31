@@ -1035,6 +1035,12 @@ func (s *State) following(c *ui.Context) {
 			if ui.TextInput(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(220).Height(36).Background(colors(c).paper).Changed() {
 				s.FollowScroll = ui.ScrollState{}
 			}
+			for _, sub := range s.Subscriptions {
+				if sub.CheckFailed {
+					quiet(c, "retry-failed-checks", "重试失败检查", s.retryFailedChecks).FontSize(12).TextColor(colors(c).amber).Disabled(s.Busy)
+					break
+				}
+			}
 			secondary(c, "find-more", "添加追番", func() { s.Page = "browse" })
 		})
 		if s.Notice != "" {
