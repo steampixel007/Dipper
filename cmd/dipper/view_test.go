@@ -494,6 +494,30 @@ func TestUIFollowingCardClickOpensResourceList(t *testing.T) {
 	}
 }
 
+func TestUIBrowseCardOpensFollowedResourceList(t *testing.T) {
+	s := uiFixture(t, "browse")
+	tt := ui.NewTester(s.view, 1320, 860)
+	title := s.KnownAnime[s.AnimeID].Title
+	wantID := s.Subscriptions[0].ID
+	uiClick(t, tt, "查看 "+title)
+	if s.Page != "detail" || !s.ViewResources || !s.Backfill || s.EditID != wantID || s.DetailReturn != "browse" {
+		t.Fatalf("followed anime state: page=%q view=%v backfill=%v edit=%q return=%q", s.Page, s.ViewResources, s.Backfill, s.EditID, s.DetailReturn)
+	}
+}
+
+func TestUIDetailFreshSelectionFromResourceView(t *testing.T) {
+	s := uiFixture(t, "following")
+	s.openFollowedResources(s.Subscriptions[0].AnimeID, "following")
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "重新选版本")
+	if s.ViewResources || s.Backfill || s.EditID != "" || !s.ChoosingGroup {
+		t.Fatalf("fresh selection state: view=%v backfill=%v edit=%q choosing=%v", s.ViewResources, s.Backfill, s.EditID, s.ChoosingGroup)
+	}
+	if !reflect.DeepEqual(s.Rule, Rule{}) {
+		t.Fatalf("fresh selection kept the saved rule: %+v", s.Rule)
+	}
+}
+
 func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	s := uiFixture(t, "following")
 	sub := s.Subscriptions[0]

@@ -374,7 +374,7 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
 				hint.TextColor(colors(c).blue)
 			}
 		})
-	}).OnClick(func() { s.openAnime(a.ID) })
+	}).OnClick(func() { s.openFollowedResources(a.ID, "browse") })
 }
 func dayName(d int) string {
 	if d < 0 || d > 6 {
@@ -417,6 +417,9 @@ func (s *State) detail(c *ui.Context) {
 				if s.DetailReturn == "following" {
 					backLabel = "返回我的追番"
 					backPage = "following"
+				} else if s.DetailReturn == "downloads" {
+					backLabel = "返回下载"
+					backPage = "downloads"
 				}
 				iconButton(c, "back-browse", backLabel, "back", func() { s.Page = backPage })
 				quiet(c, "back-list", backLabel, func() { s.Page = backPage }).FontSize(12).TextColor(colors(c).muted)
@@ -429,6 +432,16 @@ func (s *State) detail(c *ui.Context) {
 				})
 				if s.ViewResources {
 					badge(c, "查看已追番资源", colors(c).blue, colors(c).blueWash)
+					quiet(c, "fresh-selection", "重新选版本", func() {
+						s.EditID = ""
+						s.Backfill = false
+						s.ViewResources = false
+						s.ChoosingGroup = true
+						s.Checked = map[string]bool{}
+						s.Keyword = ""
+						s.WordOpen = false
+						s.Rule = Rule{}
+					}).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
 				} else if s.Backfill {
 					badge(c, "主动勾选已有资源", colors(c).blue, colors(c).blueWash)
 				} else {
@@ -1269,7 +1282,7 @@ func (s *State) downloads(c *ui.Context) {
 						ui.Row(c).Gap(12).Children(func() {
 							ui.Text(c, s.anime(group.animeID).Title).FontSize(16).FontWeight(700).Grow(1)
 							caption(c, group.summary)
-							quiet(c, "group-detail-"+group.animeID, "查看详情", func() { s.openAnime(group.animeID) }).FontSize(12)
+							quiet(c, "group-detail-"+group.animeID, "查看详情", func() { s.openFollowedResources(group.animeID, "downloads") }).FontSize(12)
 						})
 						if group.bytes > 0 {
 							share := float64(group.done) / float64(group.bytes)

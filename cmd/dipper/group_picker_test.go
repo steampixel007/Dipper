@@ -26,7 +26,7 @@ func TestUIGroupSearchSelectsOriginalSourceGroup(t *testing.T) {
 			if state.Group != 3 || state.GroupIDs[state.Group] != "render-group-4" || state.ChoosingGroup {
 				t.Fatal("filtered group click selected the filtered index instead of the source group")
 			}
-			state.openAnime(state.Catalog[1].ID)
+			state.openAnime(state.Catalog[1].ID, "browse")
 			if state.GroupSearch != "" {
 				t.Fatal("opening another anime retained the previous subtitle-group search")
 			}
