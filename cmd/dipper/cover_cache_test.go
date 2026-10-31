@@ -145,3 +145,99 @@ func TestLoadCoversKeepsCurrentRowsThroughEviction(t *testing.T) {
 		t.Fatal("current page cover was evicted")
 	}
 }
+
+func TestLoadCoversEvictsAfterAsyncInsert(t *testing.T) {
+	uiTestImages.Do(loadImages)
+	resetCoverCache(t)
+	s := uiFixture(t, "browse")
+	poster, err := assets.ReadFile("assets/" + s.Catalog[0].Cover)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.CoverDir = t.TempDir()
+	if err := os.MkdirAll(s.CoverDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(s.CoverDir, fmt.Sprintf("%x", sha256.Sum256([]byte(s.Catalog[0].Cover)))), poster, 0644); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.Ctx = ctx
+	updates := make(chan func(), 64)
+	s.Update = func(fn func()) { updates <- fn }
+	s.Source = source.New("http://127.0.0.1")
+	filler, err := ui.DecodeBitmap(poster)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coversMu.Lock()
+	for i := 0; i < coverCacheCap; i++ {
+		u := fmt.Sprintf("filler-%d.jpg", i)
+		covers[u] = filler
+		coverOrder = append(coverOrder, u)
+	}
+	coversMu.Unlock()
+	url := s.Catalog[0].Cover
+	s.loadCovers(ctx, []source.Anime{{ID: s.Catalog[0].ID, Cover: url}})
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for loadingCovers[url] {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatal("cover load did not finish")
+		}
+	}
+	coversMu.Lock()
+	defer coversMu.Unlock()
+	if covers[url] == nil {
+		t.Fatal("admitted cover was evicted by its own insert")
+	}
+	if len(covers) > coverCacheCap {
+		t.Fatalf("async insert left %d covers over the cap", len(covers))
+	}
+}
+
+func TestUIPageSwitchReloadsEvictedCovers(t *testing.T) {
+	uiTestImages.Do(loadImages)
+	resetCoverCache(t)
+	s := uiFixture(t, "browse")
+	url := s.anime(s.Subscriptions[0].AnimeID).Cover
+	poster, err := assets.ReadFile("assets/" + url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.CoverDir = t.TempDir()
+	if err := os.MkdirAll(s.CoverDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(s.CoverDir, fmt.Sprintf("%x", sha256.Sum256([]byte(url)))), poster, 0644); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.Ctx = ctx
+	s.Source = source.New("http://127.0.0.1")
+	updates := make(chan func(), 64)
+	s.Update = func(fn func()) { updates <- fn }
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "我的追番")
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		coversMu.Lock()
+		loaded := covers[url] != nil
+		coversMu.Unlock()
+		if loaded {
+			return
+		}
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline.C:
+			t.Fatal("entering following did not reload the evicted cover")
+		}
+	}
+}

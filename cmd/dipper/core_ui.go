@@ -410,7 +410,7 @@ func (s *State) commit() {
 				return
 			}
 			s.Confirm = false
-			s.Page = "following"
+			s.enterPage("following")
 			if !backfill {
 				s.UndoSaved = previous
 			}
@@ -420,7 +420,7 @@ func (s *State) commit() {
 			}
 			if backfill {
 				s.Notice = "已提交选中的历史资源，追番条件保持原样。"
-				s.Page = "downloads"
+				s.enterPage("downloads")
 				s.Backfill = false
 			}
 			if err != nil {

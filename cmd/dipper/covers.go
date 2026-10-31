@@ -97,6 +97,13 @@ func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 					covers[a.Cover] = bitmap
 				}
 				coversMu.Unlock()
+				inUse := make(map[string]bool)
+				for _, row := range s.pageCoverRows(s.Page) {
+					if row.Cover != "" {
+						inUse[row.Cover] = true
+					}
+				}
+				evictCovers(inUse)
 			})
 			if s.CoverDir != "" {
 				if os.MkdirAll(filepath.Dir(path), 0755) == nil {
@@ -106,6 +113,29 @@ func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 			}
 		}
 	}()
+}
+
+// pageCoverRows lists the rows the named page shows, whose covers must
+// survive eviction and reload after it.
+func (s *State) pageCoverRows(page string) []source.Anime {
+	switch page {
+	case "following":
+		rows := make([]source.Anime, 0, len(s.Subscriptions))
+		for _, sub := range s.Subscriptions {
+			a := s.anime(sub.AnimeID)
+			rows = append(rows, source.Anime{ID: a.ID, Cover: a.Cover})
+		}
+		return rows
+	case "detail":
+		a := s.anime(s.AnimeID)
+		return []source.Anime{{ID: a.ID, Cover: a.Cover}}
+	default:
+		rows := make([]source.Anime, 0, len(s.Catalog))
+		for _, a := range s.Catalog {
+			rows = append(rows, source.Anime{ID: a.ID, Cover: a.Cover})
+		}
+		return rows
+	}
 }
 
 // touchCover marks a cover as recently used for eviction.

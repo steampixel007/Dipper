@@ -275,9 +275,13 @@ centered, and cropped to the frame, so a poster never shows filler beside it.
 `blueWash` is the box for the loading and no-cover states.
 
 Both caches are capped. The in-memory bitmap cache keeps the
-`coverCacheCap` most recently used covers; eviction never drops a cover the
-rows of the current load are still showing, and an evicted cover re-decodes
-from the disk cache when its page needs it again. The on-disk cache keeps its
+`coverCacheCap` most recently used covers; eviction runs when a load starts
+and again when each decoded bitmap is admitted, so a finished load cannot
+leave the cache over its cap. Eviction never drops a cover the rows of the
+current page (`pageCoverRows`) are still showing. A page switch goes through
+`enterPage`, which reloads the new page's evicted covers with the
+application context, so revisiting 我的追番 or the catalog never leaves a
+spinner for a cover the disk cache still has. The on-disk cache keeps its
 total payload within `coverDiskCap` by deleting the oldest files first, never
 a file the current rows just used, so the folder stops growing with every
 anime ever browsed; an evicted file re-fetches from the source.
