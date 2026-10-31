@@ -106,3 +106,21 @@ func TestPolicyHonorsConfiguredSeedTarget(t *testing.T) {
 		t.Fatalf("default hour target not kept for zero target: %+v", unset)
 	}
 }
+
+func TestPolicyStopsAtConfiguredShareRatio(t *testing.T) {
+	p := policyState{DownloadedBytes: 100, UploadedBytes: 199, RatioTarget: 2}
+	if p.reached(0) {
+		t.Fatal("a 2:1 target stopped before twice the downloaded size")
+	}
+	p.UploadedBytes = 200
+	if !p.reached(0) {
+		t.Fatal("a 2:1 target did not stop at twice the downloaded size")
+	}
+}
+
+func TestPolicyUnlimitedRatioStopsOnlyOnSeedingTime(t *testing.T) {
+	p := policyState{DownloadedBytes: 100, UploadedBytes: 5000, RatioTarget: seedRatioUnlimited}
+	if p.reached(0) {
+		t.Fatal("an unlimited ratio target stopped on uploaded bytes")
+	}
+}

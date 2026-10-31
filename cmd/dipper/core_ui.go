@@ -90,6 +90,8 @@ func uploadLabel(limit int64) string {
 
 var seedOptions = []string{"30 分钟", "1 小时", "2 小时", "不限时长"}
 
+var ratioOptions = []string{"1:1", "2:1", "3:1", "不限"}
+
 func seedMinutes(label string) int64 {
 	switch label {
 	case "30 分钟":
@@ -114,6 +116,22 @@ func seedLabel(minutes int64) string {
 	return "1 小时"
 }
 
+func seedRatioLabel(ratio string) string {
+	for _, option := range core.SeedRatioOptions {
+		if option == ratio {
+			return option
+		}
+	}
+	return "1:1"
+}
+
+func trackerFeedback(text string) string {
+	if trackers := core.ParseTrackers(text); len(trackers) > 0 {
+		return fmt.Sprintf("已追加 %d 个 Tracker。", len(trackers))
+	}
+	return ""
+}
+
 func seedDuration(minutes int64) time.Duration {
 	if minutes == -1 {
 		return -1
@@ -132,6 +150,8 @@ func (s *State) loadSaved() error {
 	s.Root = state.Settings.DownloadRoot
 	s.Upload = uploadLabel(state.Settings.UploadLimitBytes)
 	s.Seed = seedLabel(state.Settings.SeedMinutes)
+	s.SeedRatio = seedRatioLabel(state.Settings.SeedRatio)
+	s.ExtraTrackers = state.Settings.ExtraTrackers
 	s.ProxyMode = proxyModeIndex(state.Settings.ProxyMode)
 	s.ProxyURL = state.Settings.ProxyURL
 	proxy.Configure(state.Settings.ProxyMode, state.Settings.ProxyURL)
@@ -174,7 +194,7 @@ func (s *State) save() {
 	if mode != proxy.ModeCustom {
 		s.ProxyURL = ""
 	}
-	settings := core.Settings{DownloadRoot: s.Root, UploadLimitBytes: uploadLimit(s.Upload), SeedMinutes: seedMinutes(s.Seed), ProxyMode: mode, ProxyURL: s.ProxyURL}
+	settings := core.Settings{DownloadRoot: s.Root, UploadLimitBytes: uploadLimit(s.Upload), SeedMinutes: seedMinutes(s.Seed), SeedRatio: seedRatioLabel(s.SeedRatio), ExtraTrackers: s.ExtraTrackers, ProxyMode: mode, ProxyURL: s.ProxyURL}
 	if err := s.Core.SetSettings(settings); err != nil {
 		s.SaveError = "设置保存失败：" + err.Error()
 		return
@@ -188,6 +208,9 @@ func (s *State) save() {
 		return
 	}
 	s.Engine.SetSeedTarget(seedDuration(settings.SeedMinutes))
+	s.Engine.SetRatioTarget(core.SeedRatioTarget(settings.SeedRatio))
+	s.Engine.SetExtraTrackers(core.ParseTrackers(settings.ExtraTrackers))
+	s.TrackerFeedback = trackerFeedback(settings.ExtraTrackers)
 	if err := s.savePreferences(); err != nil {
 		s.SaveError = "界面设置保存失败：" + err.Error()
 	} else {

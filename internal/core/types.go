@@ -66,6 +66,12 @@ type Settings struct {
 	// the address ProxyMode "custom" uses.
 	ProxyMode string `json:",omitempty"`
 	ProxyURL  string `json:",omitempty"`
+	// SeedRatio is the share-ratio stop target: one of SeedRatioOptions or
+	// empty for the default 1:1.
+	SeedRatio string `json:",omitempty"`
+	// ExtraTrackers is the raw user tracker text, one announce URL per line;
+	// whitespace, commas and semicolons also separate entries.
+	ExtraTrackers string `json:",omitempty"`
 }
 
 type Options struct {

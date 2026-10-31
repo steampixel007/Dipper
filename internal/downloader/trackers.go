@@ -1,6 +1,10 @@
 package downloader
 
-import "github.com/anacrolix/torrent"
+import (
+	"strings"
+
+	"github.com/anacrolix/torrent"
+)
 
 // builtinTrackers are stable public HTTP and UDP trackers appended to every
 // task after its own announce tiers. They add redundancy for torrents whose
@@ -14,10 +18,9 @@ var builtinTrackers = []string{
 	"udp://open.demonii.com:1337/announce",
 }
 
-// appendBuiltinTrackers appends the built-in tracker list as its own announce
-// tier, skipping URLs any existing tier already carries, and mutates the spec
-// in place.
-func appendBuiltinTrackers(spec *torrent.TorrentSpec) {
+// appendTrackers appends each tier as its own announce tier, skipping URLs an
+// earlier tier already carries, and mutates the spec in place.
+func appendTrackers(spec *torrent.TorrentSpec, tiers ...[]string) {
 	if spec == nil {
 		return
 	}
@@ -27,13 +30,38 @@ func appendBuiltinTrackers(spec *torrent.TorrentSpec) {
 			seen[tracker] = true
 		}
 	}
-	var extra []string
-	for _, tracker := range builtinTrackers {
-		if !seen[tracker] {
-			extra = append(extra, tracker)
+	for _, tier := range tiers {
+		var extra []string
+		for _, tracker := range tier {
+			if !seen[tracker] {
+				extra = append(extra, tracker)
+			}
+		}
+		if len(extra) > 0 {
+			spec.Trackers = append(spec.Trackers, extra)
+			for _, tracker := range extra {
+				seen[tracker] = true
+			}
 		}
 	}
-	if len(extra) > 0 {
-		spec.Trackers = append(spec.Trackers, extra)
+}
+
+func appendBuiltinTrackers(spec *torrent.TorrentSpec) {
+	appendTrackers(spec, builtinTrackers)
+}
+
+// normalizeTrackers trims user-supplied announce URLs, drops empties and
+// keeps the first copy of every URL.
+func normalizeTrackers(trackers []string) []string {
+	var clean []string
+	seen := make(map[string]bool)
+	for _, tracker := range trackers {
+		tracker = strings.TrimSpace(tracker)
+		if tracker == "" || seen[tracker] {
+			continue
+		}
+		seen[tracker] = true
+		clean = append(clean, tracker)
 	}
+	return clean
 }
