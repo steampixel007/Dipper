@@ -10,7 +10,8 @@ done its job. It implements `core.Downloader`, whose contract is in
 - Where a task's files live and how pieces map onto them.
 - The transfer policy: when seeding stops.
 - The shared upload limit.
-- The built-in tracker list and the per-task seeding-time target.
+- The built-in tracker list, the automatically refreshed public list, and the
+  per-task seeding-time target.
 
 ## Files
 
@@ -20,6 +21,7 @@ done its job. It implements `core.Downloader`, whose contract is in
 | `storage.go` | `diskStorage`, `diskTorrent`, `diskPiece`: path safety and piece-to-file mapping |
 | `policy.go` | `policyState`: byte counters, seeding time, and the stop decision |
 | `trackers.go` | The public tracker list appended to every admitted task |
+| `../../internal/trackers` | Fetching, validating and caching the remote public tracker list |
 | `platform_windows.go`, `platform_other.go` | The platform-specific pieces of the engine |
 
 ## The `Ensure` contract
@@ -64,12 +66,21 @@ merged. If the fetch fails it falls back to the magnet; an identity mismatch
 fails outright, and a cancelled context does not fall back. The metadata request
 has a 30-second timeout and a 16 MiB cap.
 
-Every admitted task also gets `trackers.go`'s built-in public trackers appended
-as its last announce tier, skipping any URL a previous tier already carries.
+Every admitted task also gets a tier of announce URLs from the automatically
+refreshed public list (`internal/trackers`, currently
+XIU2/TrackersListCollection's `best.txt` via a CDN mirror with the upstream raw
+file as fallback) and then `trackers.go`'s built-in public trackers appended as
+its last tier, skipping any URL a previous tier already carries.
 The engine applies them on first admission, on restart from persisted metadata,
 and to a magnet fetched over HTTP, so a torrent whose announce list is empty,
 unreachable or blocked still has redundancy. They are deliberately few and
 well-known; peer exchange and DHT stay primary.
+The host refreshes the remote list at most once a day, in the background after
+startup, and never blocks admission on it: the cached list covers the run until
+a refresh succeeds, and a refresh that fails, returns an oversized body, or
+carries one line that is not an announce URL is rejected wholesale, keeping the
+previous cache. `SetRemoteTrackers` replaces the remote tier with the same
+reconciliation `SetExtraTrackers` applies to the user tier.
 `SetExtraTrackers` replaces the user tier rather than only adding to it:
 `reconciledTiers` keeps each torrent's own metadata tiers, strips the
 previously applied user URLs and the built-ins, and re-appends the current

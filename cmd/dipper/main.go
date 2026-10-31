@@ -17,6 +17,7 @@ import (
 	"dipper.local/dipper/internal/instance"
 	"dipper.local/dipper/internal/proxy"
 	"dipper.local/dipper/internal/source"
+	"dipper.local/dipper/internal/trackers"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 )
@@ -106,13 +107,26 @@ func main() {
 		return
 	}
 	proxy.Configure(settings.ProxyMode, settings.ProxyURL)
-	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(paths.DataDir, "engine"), UploadLimit: settings.UploadLimitBytes, SeedTarget: seedDuration(settings.SeedMinutes), RatioTarget: core.SeedRatioTarget(settings.SeedRatio), ExtraTrackers: core.ParseTrackers(settings.ExtraTrackers)})
+	trackersPath := filepath.Join(paths.DataDir, "trackers.json")
+	savedList := trackers.Load(trackersPath)
+	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(paths.DataDir, "engine"), UploadLimit: settings.UploadLimitBytes, SeedTarget: seedDuration(settings.SeedMinutes), RatioTarget: core.SeedRatioTarget(settings.SeedRatio), ExtraTrackers: core.ParseTrackers(settings.ExtraTrackers), RemoteTrackers: savedList.URLs})
 	if err != nil {
 		failStartup(fmt.Errorf("无法打开下载状态：%w", err))
 		return
 	}
 	defer engine.Close()
 	adapter.engine = engine
+	if savedList.Stale(time.Now()) {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			list, err := trackers.Refresh(ctx, trackersPath, time.Now(), trackers.FetchHTTP)
+			if err != nil {
+				slog.Warn("tracker list refresh failed", "err", err)
+			}
+			engine.SetRemoteTrackers(list.URLs)
+		}()
+	}
 	s := newAppState(ctx, paths.DataDir, src, kernel, engine)
 	s.ConfigDir = paths.ConfigDir
 	s.CoverDir = paths.CoverDir
