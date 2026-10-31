@@ -117,6 +117,9 @@ download groups label them 已暂停 / 已停止, the follow card skips them whe
 deciding 下载中, and the pause-all toggle counts only transfers that are
 actually running. The download filter resets its scroll on every filter
 change, including filters whose list renders empty.
+Resource rows match downloads by identity, not by title: the core-resolved
+info hash first, then the resource ID recorded on the task, so two releases
+with the same title never show each other's progress or playback.
 A failed RSS check is shown as an amber row with the stored error text and an
 inline 重试检查 action that re-checks that one follow; it stays disabled while
 the follow is paused or the window is busy.
