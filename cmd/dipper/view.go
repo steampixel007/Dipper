@@ -532,6 +532,7 @@ func (s *State) detail(c *ui.Context) {
 					}
 					if s.detailReady() {
 						ui.Checkbox(c.Key("only-matches"), &s.OnlyMatches, "只看匹配").FontSize(12)
+						ui.Checkbox(c.Key("only-downloaded"), &s.OnlyDownloaded, "只看已在下载库").FontSize(12)
 					}
 				})
 				if s.DetailLoading {
@@ -780,6 +781,11 @@ func (s *State) preview(c *ui.Context) {
 				}
 				if s.EpisodeFilter != "" && res.Episode != s.EpisodeFilter {
 					continue
+				}
+				if s.OnlyDownloaded {
+					if _, _, found := s.downloadForResource(res); !found {
+						continue
+					}
 				}
 				s.resourceRow(c, res)
 			}

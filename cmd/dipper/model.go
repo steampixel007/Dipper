@@ -174,6 +174,7 @@ type State struct {
 	DownloadFilter             DownloadFilter
 	SuggestedResource          Resource
 	OnlyMatches                bool
+	OnlyDownloaded             bool
 	EpisodeFilter              string
 	EpisodeFilterScroll        float32
 	Notice, SaveError          string
