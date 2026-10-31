@@ -817,6 +817,8 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 				switch {
 				case d.Failed:
 					badge(c, "下载失败", colors(c).amber, colors(c).amberWash)
+				case d.Progress < 1 && d.Stopped:
+					badge(c, "已停止", colors(c).muted, colors(c).canvas)
 				case d.Progress < 1 && d.Paused:
 					badge(c, "已暂停", colors(c).muted, colors(c).canvas)
 				case d.Progress < 1:
@@ -1245,9 +1247,13 @@ func (s *State) downloadMatches(d Download) bool {
 func (s *State) downloads(c *ui.Context) {
 	active := 0
 	for _, d := range s.Downloads {
-		if !d.Paused && !d.Failed && d.Progress < 1 {
+		if !d.Paused && !d.Stopped && !d.Failed && d.Progress < 1 {
 			active++
 		}
+	}
+	if s.DownloadFilterLast != s.DownloadFilter {
+		s.DownloadFilterLast = s.DownloadFilter
+		s.DownloadScroll = ui.ScrollState{}
 	}
 	ui.Column(c).Grow(1).MinHeight(0).Padding(26, 28).Gap(18).Children(func() {
 		ui.Row(c).Gap(24).Children(func() {
@@ -1329,10 +1335,6 @@ func (s *State) downloads(c *ui.Context) {
 			}
 			quiet(c, "pause-all", pauseLabel, func() { s.pauseAllDownloads(active > 0) }).FontSize(12).Disabled(s.Busy)
 		})
-		if s.DownloadFilterLast != s.DownloadFilter {
-			s.DownloadFilterLast = s.DownloadFilter
-			s.DownloadScroll = ui.ScrollState{}
-		}
 		ui.Row(c).Gap(12).Children(func() {
 			ui.Segmented(c.Key("download-filter"), (*int)(&s.DownloadFilter), "全部", "下载中", "已完成", "已暂停", "已失败")
 			ui.Spacer(c)

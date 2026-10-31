@@ -300,7 +300,7 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 		}
 		if !sub.Paused {
 			for _, d := range s.Downloads {
-				if d.AnimeID == sub.Anime.ID && d.Progress < 1 && !d.Paused && !d.Failed {
+				if d.AnimeID == sub.Anime.ID && d.Progress < 1 && !d.Paused && !d.Stopped && !d.Failed {
 					v.Active = true
 					break
 				}
@@ -625,7 +625,7 @@ func (s *State) pauseAllDownloads(paused bool) {
 	}
 	var ids []string
 	for _, d := range s.Downloads {
-		if !d.Failed && ((paused && d.Progress < 1) || (!paused && d.Paused)) {
+		if !d.Failed && ((paused && d.Progress < 1) || (!paused && (d.Paused || (d.Stopped && d.Progress < 1)))) {
 			ids = append(ids, d.ID)
 		}
 	}

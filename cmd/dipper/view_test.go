@@ -1413,3 +1413,88 @@ func TestUIDownloadNavCallsOutFailures(t *testing.T) {
 	broken := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, broken, "2 失败")
 }
+
+func TestUIResourceRowShowsStoppedTransfer(t *testing.T) {
+	s := uiFixture(t, "detail")
+	s.Downloads[0].Stopped = true
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "已停止")
+	if tt.HasText("下载中 43%") {
+		t.Fatal("stopped transfer still shows live progress on the resource row")
+	}
+}
+
+func TestUIProjectionSkipsStoppedTransferForActiveMarker(t *testing.T) {
+	s := uiFixture(t, "following")
+	// project reads the previous s.Downloads while rebuilding them, so seed
+	// the stale view with the stopped transfer exactly as a live refresh would.
+	s.Downloads = []Download{{ID: "task-x", AnimeID: "render-1", Progress: .4, Stopped: true}}
+	s.project(core.State{
+		Subscriptions: []core.Subscription{{ID: "sub-x", Anime: core.Anime{ID: "render-1"}, Group: core.Group{ID: "g1", Name: "组"}}},
+		Tasks:         []core.TaskRecord{{Task: core.DownloadTask{Hash: "task-x", AnimeID: "render-1", Resource: core.Resource{Title: "星海旅记 - 01"}, Directory: `C:Downloads`}}},
+	}, []downloader.Snapshot{{ID: "task-x", ManuallyStopped: true, TotalBytes: 100, CompletedBytes: 40, Progress: .4}})
+	if len(s.Subscriptions) != 1 || s.Subscriptions[0].ID != "sub-x" {
+		t.Fatalf("projection lost the subscription: %+v", s.Subscriptions)
+	}
+	if s.Subscriptions[0].Active {
+		t.Fatal("stopped transfer marks the follow as downloading")
+	}
+	if len(s.Downloads) != 1 || !s.Downloads[0].Stopped {
+		t.Fatalf("stopped state was not projected: %+v", s.Downloads)
+	}
+}
+
+type resumeAllTestEngine struct {
+	playTestEngine
+	resumed []string
+}
+
+func (e *resumeAllTestEngine) Resume(id string) error {
+	e.resumed = append(e.resumed, id)
+	return nil
+}
+
+func TestUIDownloadsPauseAllIgnoresStoppedTransfers(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.Downloads[0].Stopped = true
+	engine := &resumeAllTestEngine{}
+	s.Engine = engine
+	updates := make(chan func(), 4)
+	s.Update = func(fn func()) { updates <- fn }
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "继续全部下载")
+	uiClick(t, tt, "继续全部下载")
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		var update func()
+		select {
+		case update = <-updates:
+		case <-deadline.C:
+			t.Fatal("resume-all never completed")
+		}
+		// Executing the completion callback synchronizes with the action
+		// goroutine; only then may the recorded IDs be read.
+		update()
+		if s.SaveError != "" || len(engine.resumed) > 0 {
+			break
+		}
+	}
+	if !slices.Equal(engine.resumed, []string{"render-download-1"}) {
+		t.Fatalf("resume-all resumed %v, want the stopped transfer", engine.resumed)
+	}
+}
+
+func TestUIDownloadsFilterResetSurvivesEmptyFilter(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.DownloadScroll = ui.ScrollState{Y: 400}
+	s.DownloadFilter = downloadsPaused
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "查看全部下载")
+	if s.DownloadFilter != downloadsAll {
+		t.Fatal("return-to-all click did not apply")
+	}
+	if s.DownloadScroll.X != 0 || s.DownloadScroll.Y != 0 {
+		t.Fatalf("scroll was not reset through the empty filter: %+v", s.DownloadScroll)
+	}
+}
