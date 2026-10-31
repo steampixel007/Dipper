@@ -49,6 +49,7 @@ type Subscription struct {
 	Read                   []string
 	LastCheck              string
 	CheckFailed            bool
+	LastError              string
 	NewCount               int
 	Recent                 []string
 	Active                 bool

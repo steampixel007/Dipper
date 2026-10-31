@@ -98,6 +98,9 @@ resources of a follow the card does not show.
 Each card shows a pending-release count with the recent release titles when the
 scheduler has not yet handed them over, and a 下载中 mark while an uncompleted
 transfer for that anime is running.
+A failed RSS check is shown as an amber row with the stored error text and an
+inline 重试检查 action that re-checks that one follow; it stays disabled while
+the follow is paused or the window is busy.
 
 Following cards offer 查看资源 as a separate entry into the detail page. It
 locks the saved subscription's group and rule, opens as a view-only backfill

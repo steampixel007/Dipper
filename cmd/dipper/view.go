@@ -1086,10 +1086,17 @@ func (s *State) following(c *ui.Context) {
 							if item.LastCheck != "" {
 								status = "最近 RSS 检查：" + item.LastCheck
 							}
-							if item.CheckFailed {
-								status += " · 检查失败"
-							}
 							caption(c, status)
+							if item.CheckFailed {
+								summary := item.LastError
+								if summary == "" {
+									summary = "未知错误"
+								}
+								ui.Row(c).Gap(8).Padding(8, 12).Radius(6).Background(colors(c).amberWash).Children(func() {
+									ui.Text(c, "RSS 检查失败："+summary).FontSize(12).TextColor(colors(c).amber).Grow(1)
+									quiet(c, "retry-check-"+item.ID, "重试检查", func() { s.check(item.ID) }).Label("重试检查 " + item.GroupName).FontSize(12).Disabled(item.Paused || s.Busy)
+								})
+							}
 							if len(item.Recent) > 0 {
 								caption(c, "最近新到："+strings.Join(item.Recent, " / "))
 							}
