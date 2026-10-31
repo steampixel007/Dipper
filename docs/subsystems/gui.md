@@ -132,7 +132,9 @@ filters groups by anime title or release title, case/width-insensitive;
 typing resets the download scroll, and a search with no matches offers its own
 empty state with 清除搜索. Each anime group has a 收起/展开
 toggle whose state lives only for the session, so a fresh start lists every
-group open.
+group open. Rows inside a group sort by episode
+number like the resource preview — numeric ascending, releases without an
+episode last, ties keeping task order — so a season reads top to bottom.
 The group summary ends with a 剩余约 N estimate when the group's active
 transfers have known sizes and measured speeds: the leftover bytes of every
 running transfer divided by their combined speed, reusing the row-level

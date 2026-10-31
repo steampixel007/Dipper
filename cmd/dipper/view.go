@@ -1469,6 +1469,20 @@ func (s *State) downloads(c *ui.Context) {
 		}
 		for gi := range groups {
 			group := &groups[gi]
+			slices.SortStableFunc(group.indices, func(a, b int) int {
+				ea, oka := episodeNumber(s.Downloads[a].Episode)
+				eb, okb := episodeNumber(s.Downloads[b].Episode)
+				switch {
+				case oka && okb:
+					return cmp.Compare(ea, eb)
+				case oka:
+					return -1
+				case okb:
+					return 1
+				default:
+					return 0
+				}
+			})
 			counts := map[DownloadFilter]int{}
 			for _, idx := range group.indices {
 				counts[downloadState(s.Downloads[idx])]++
