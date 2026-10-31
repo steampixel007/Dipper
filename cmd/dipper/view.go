@@ -1418,6 +1418,13 @@ func (s *State) downloads(c *ui.Context) {
 						ui.Row(c).Gap(12).Children(func() {
 							ui.Text(c, s.anime(group.animeID).Title).FontSize(16).FontWeight(700).Grow(1)
 							caption(c, group.summary)
+							if folder := s.groupFolder(group.animeID); folder != "" {
+								quiet(c, "open-group-folder-"+group.animeID, "打开番剧文件夹", func() {
+									if s.OpenFolder != nil {
+										s.OpenFolder(folder)
+									}
+								}).FontSize(12).Disabled(s.OpenFolder == nil)
+							}
 							quiet(c, "group-detail-"+group.animeID, "查看详情", func() { s.openFollowedResources(group.animeID, "downloads") }).FontSize(12)
 							quiet(c, "toggle-group-"+group.animeID, toggle, func() { s.toggleDownloadGroup(group.animeID) }).FontSize(12)
 						})

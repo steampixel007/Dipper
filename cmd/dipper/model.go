@@ -458,6 +458,18 @@ func (s *State) latestCompletedEpisode(animeID string) (int, bool) {
 	return best, best != -1
 }
 
+// groupFolder returns the anime's download directory. A transfer's folder is
+// its own hash directory under the anime directory, so the group header opens
+// the parent and reaches every release even while the group is collapsed.
+func (s *State) groupFolder(animeID string) string {
+	for _, d := range s.Downloads {
+		if d.AnimeID == animeID && d.Folder != "" {
+			return filepath.Dir(d.Folder)
+		}
+	}
+	return ""
+}
+
 func (s *State) duplicates(ep string) int {
 	if ep == "" {
 		return 0
