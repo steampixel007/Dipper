@@ -484,14 +484,15 @@ func TestUIFollowingActionsSurviveSearchFilter(t *testing.T) {
 	}
 }
 
-func TestUIFollowingCardClickOpensResourceList(t *testing.T) {
+func TestUIFollowingCardClickOpensEpisodeLibrary(t *testing.T) {
 	s := uiFixture(t, "following")
 	tt := ui.NewTester(s.view, 1320, 860)
 	wantID := s.Subscriptions[0].ID
 	uiClick(t, tt, "打开追番 "+s.Subscriptions[0].GroupName)
-	if s.Page != "detail" || !s.ViewResources || !s.Backfill || s.EditID != wantID || s.DetailReturn != "following" {
-		t.Fatalf("card click state: page=%q resources=%v backfill=%v edit=%q return=%q", s.Page, s.ViewResources, s.Backfill, s.EditID, s.DetailReturn)
+	if s.Page != "episodes" || s.LibraryID != wantID {
+		t.Fatalf("card click state: page=%q library=%q", s.Page, s.LibraryID)
 	}
+	uiRequireText(t, tt, "查看资源", "修改条件", "已下载 3 集")
 }
 
 func TestUIBrowseCardOpensFollowedResourceList(t *testing.T) {
@@ -1310,7 +1311,7 @@ func TestUIRenderScreensOffline(t *testing.T) {
 		t.Fatal(err)
 	}
 	var previous []byte
-	for _, name := range []string{"01-browse", "02-filter", "03-following", "04-downloads", "05-settings", "06-source-error", "07-backfill", "08-close-window", "11-view-resources", "12-seed-settings"} {
+	for _, name := range []string{"01-browse", "02-filter", "03-following", "04-downloads", "05-settings", "06-source-error", "07-backfill", "08-close-window", "11-view-resources", "13-episode-library", "12-seed-settings"} {
 		data, err := os.ReadFile(filepath.Join(dir, name+".png"))
 		if err != nil {
 			t.Fatal(err)

@@ -132,6 +132,13 @@ func (s *State) pageCoverRows(page string) []source.Anime {
 	case "detail":
 		a := s.anime(s.AnimeID)
 		return []source.Anime{{ID: a.ID, Cover: a.Cover}}
+	case "episodes":
+		sub, ok := s.subscription(s.LibraryID)
+		if !ok {
+			return nil
+		}
+		a := s.anime(sub.AnimeID)
+		return []source.Anime{{ID: a.ID, Cover: a.Cover}}
 	default:
 		rows := make([]source.Anime, 0, len(s.Catalog))
 		for _, a := range s.Catalog {

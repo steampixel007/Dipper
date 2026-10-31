@@ -268,6 +268,23 @@ func (s *State) viewSubscriptionResources(id string) {
 	s.Notice = ""
 }
 
+// openLibrary shows one follow's episode library: the anime's downloaded
+// episodes, ready to play. The resource view behind it stays the way to pick
+// releases or change the rule.
+func (s *State) openLibrary(id string) {
+	sub, ok := s.subscription(id)
+	if !ok {
+		return
+	}
+	s.LibraryID = id
+	s.Page = "episodes"
+	s.Notice = ""
+	a := s.anime(sub.AnimeID)
+	if s.Source != nil && a.Cover != "" {
+		s.loadCovers(s.Ctx, []source.Anime{{ID: a.ID, Cover: a.Cover}})
+	}
+}
+
 func (s *State) refreshDetail() {
 	if s.Source == nil {
 		return
