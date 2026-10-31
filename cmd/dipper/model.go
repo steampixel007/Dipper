@@ -458,6 +458,17 @@ func (s *State) latestCompletedEpisode(animeID string) (int, bool) {
 	return best, best != -1
 }
 
+// groupFolder returns the download folder shared by an anime's transfers; the
+// group header uses it to open the folder without expanding the group.
+func (s *State) groupFolder(animeID string) string {
+	for _, d := range s.Downloads {
+		if d.AnimeID == animeID {
+			return d.Folder
+		}
+	}
+	return ""
+}
+
 func (s *State) duplicates(ep string) int {
 	if ep == "" {
 		return 0
