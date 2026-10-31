@@ -1367,3 +1367,33 @@ func TestUICoverInFlightShowsLoadingIndicator(t *testing.T) {
 		t.Errorf("bird fallback painted over a loading cover (%d ink pixels)", n)
 	}
 }
+
+func TestUIResourcePreviewSortsByEpisode(t *testing.T) {
+	s := uiFixture(t, "detail")
+	s.ResourceList = []Resource{
+		{ID: "ep-10", Title: "[回归测试组甲] 星海旅记 - 10 [1080p][简日内嵌].mkv", Episode: "10", Published: "2025-06-09 21:30"},
+		{ID: "ep-02", Title: "[回归测试组甲] 星海旅记 - 02 [1080p][简日内嵌].mkv", Episode: "02", Published: "2025-04-14 21:30"},
+		{ID: "ep-none", Title: "[回归测试组甲] 星海旅记 特别篇 [1080p][简日内嵌].mkv", Published: "2025-04-07 21:30"},
+		{ID: "ep-01", Title: "[回归测试组甲] 星海旅记 - 01 [1080p][简日内嵌].mkv", Episode: "01", Published: "2025-04-07 21:30"},
+		{ID: "ep-35", Title: "[回归测试组甲] 星海旅记 - 3.5 [1080p][简日内嵌].mkv", Episode: "3.5", Published: "2025-05-07 21:30"},
+	}
+	tt := ui.NewTester(s.view, 1320, 860)
+	position := func(label string) int {
+		for i, text := range tt.Texts() {
+			if text == label {
+				return i
+			}
+		}
+		t.Fatalf("preview is missing %q", label)
+		return -1
+	}
+	labels := []string{"第 01 集", "第 02 集", "第 3.5 集", "第 10 集", "其他资源"}
+	previous := -1
+	for _, label := range labels {
+		position := position(label)
+		if position <= previous {
+			t.Fatalf("preview rows are not in episode order: %q landed after %d", label, previous)
+		}
+		previous = position
+	}
+}

@@ -124,6 +124,8 @@ modified by entry or by the manual selection. The two modes share the resource l
 distinct is what makes "I cancelled this one release" not change what future
 releases are matched against.
 
+The resource preview renders rows in episode order: numeric ascending (so 第 10 集 follows 第 2 集), releases without an episode last, and ties keep their publish order. The stored resource list keeps publish order; sorting is a render concern only.
+
 Subtitle-group selection supports a local name search with a result count and
 one-click reset. Search is case/width insensitive, retains source order and
 never changes the active group, filter draft or release selection. Results keep

@@ -175,7 +175,8 @@ func TestUIFollowingViewResourcesAllowsExplicitBackfillSelection(t *testing.T) {
 	if len(state.ResourceList) == 0 {
 		t.Fatal("view mode has no resources")
 	}
-	first := state.ResourceList[0]
+	first := state.previewResources()[0]
+	uiScrollTo(t, tester, "选择 "+first.ID)
 	uiClick(t, tester, "选择 "+first.ID)
 	if !state.Checked[first.ID] {
 		t.Fatal("manual selection did not apply")

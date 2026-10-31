@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"embed"
 	"fmt"
 	"path/filepath"
@@ -728,7 +729,7 @@ func (s *State) preview(c *ui.Context) {
 	}
 	ui.Scroll(c.Key("resources")).TrackScroll(&s.ResourceScroll).Grow(1).MinHeight(0).Padding(0, 0, 18).Children(func() {
 		ui.Column(c).Gap(0).Children(func() {
-			for _, r := range s.resources() {
+			for _, r := range s.previewResources() {
 				res := r
 				ok, _ := decide(res.Title, s.Rule)
 				if s.OnlyMatches && !ok {
@@ -738,6 +739,35 @@ func (s *State) preview(c *ui.Context) {
 			}
 		})
 	})
+}
+
+// previewResources orders the preview rows by episode number so a season
+// reads top to bottom; releases without an episode sort last.
+func (s *State) previewResources() []Resource {
+	list := slices.Clone(s.resources())
+	slices.SortStableFunc(list, func(a, b Resource) int {
+		ea, oka := episodeNumber(a.Episode)
+		eb, okb := episodeNumber(b.Episode)
+		switch {
+		case oka && okb:
+			return cmp.Compare(ea, eb)
+		case oka:
+			return -1
+		case okb:
+			return 1
+		default:
+			return 0
+		}
+	})
+	return list
+}
+
+func episodeNumber(episode string) (float64, bool) {
+	if episode == "" {
+		return 0, false
+	}
+	value, err := strconv.ParseFloat(episode, 64)
+	return value, err == nil
 }
 
 // downloadForResource finds the download started from this resource; a
