@@ -105,6 +105,9 @@ transfer for that anime is running.
 A failed RSS check is shown as an amber row with the stored error text and an
 inline 重试检查 action that re-checks that one follow; it stays disabled while
 the follow is paused or the window is busy.
+The following and downloads lists remember their scroll position across page
+switches; searching follows or switching the download filter jumps back to the
+top.
 The card itself is a button that opens the same resource list as 查看资源, so the
 whole card is the large target and the side buttons stay distinct actions.
 
