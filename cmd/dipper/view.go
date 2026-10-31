@@ -1557,6 +1557,9 @@ func (s *State) downloads(c *ui.Context) {
 								ui.Column(c.Key("download-"+d.ID)).Padding(16, 18).Gap(9).Background(colors(c).paper).Radius(8).Border(1, colors(c).line).Children(func() {
 									ui.Row(c).Gap(12).Children(func() {
 										ui.Spacer(c)
+										if d.Episode != "" {
+											badge(c, "第 "+d.Episode+" 集", colors(c).muted, colors(c).canvas)
+										}
 										status := "下载中"
 										col := colors(c).blue
 										switch {
