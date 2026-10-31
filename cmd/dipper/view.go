@@ -1058,7 +1058,11 @@ func (s *State) following(c *ui.Context) {
 				for _, sub := range subs {
 					item := sub
 					a := s.anime(item.AnimeID)
-					ui.Row(c.Key("subscription-"+item.ID)).Gap(18).Padding(18).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
+					card := ui.ButtonBase(c.Key("subscription-"+item.ID)).Label("打开追番 "+item.GroupName).Row().Gap(18).Padding(18).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Cursor(ui.CursorPointer)
+					if card.Hovered() {
+						card.Background(colors(c).chrome)
+					}
+					tactile(card).Children(func() {
 						cover(c, a, 68, 94)
 						ui.Column(c).Grow(1).MinWidth(0).Gap(8).Children(func() {
 							ui.Row(c).Gap(8).Children(func() {
@@ -1113,7 +1117,7 @@ func (s *State) following(c *ui.Context) {
 							quiet(c, "check-sub-"+item.ID, "立即检查", func() { s.check(item.ID) }).Label("立即检查 " + item.GroupName).FontSize(12).Disabled(item.Paused || s.Busy)
 							quiet(c, "cancel-sub-"+item.ID, "取消追番", func() { s.CancelID, s.CancelPrompt = item.ID, true }).Label("取消追番 " + item.GroupName).FontSize(12).TextColor(colors(c).errorInk).Disabled(s.Busy)
 						})
-					})
+					}).OnClick(func() { s.viewSubscriptionResources(item.ID) })
 				}
 			})
 		})

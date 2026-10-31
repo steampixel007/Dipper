@@ -484,6 +484,16 @@ func TestUIFollowingActionsSurviveSearchFilter(t *testing.T) {
 	}
 }
 
+func TestUIFollowingCardClickOpensResourceList(t *testing.T) {
+	s := uiFixture(t, "following")
+	tt := ui.NewTester(s.view, 1320, 860)
+	wantID := s.Subscriptions[0].ID
+	uiClick(t, tt, "打开追番 "+s.Subscriptions[0].GroupName)
+	if s.Page != "detail" || !s.ViewResources || !s.Backfill || s.EditID != wantID || s.DetailReturn != "following" {
+		t.Fatalf("card click state: page=%q resources=%v backfill=%v edit=%q return=%q", s.Page, s.ViewResources, s.Backfill, s.EditID, s.DetailReturn)
+	}
+}
+
 func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	s := uiFixture(t, "following")
 	sub := s.Subscriptions[0]
