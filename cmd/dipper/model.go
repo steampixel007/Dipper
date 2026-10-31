@@ -423,6 +423,24 @@ func (s *State) duplicates(ep string) int {
 	}
 	return n
 }
+
+// speedText formats a transfer speed measured in MB/s: speeds below 1 MB/s
+// show as KB/s and a stopped transfer shows a dash instead of "0.0 MB/s".
+func speedText(mbPerSecond float64, upload bool) string {
+	arrow := "↓"
+	if upload {
+		arrow = "↑"
+	}
+	switch {
+	case mbPerSecond <= 0:
+		return arrow + " —"
+	case mbPerSecond < 1:
+		return fmt.Sprintf("%s %.0f KB/s", arrow, mbPerSecond*1000)
+	default:
+		return fmt.Sprintf("%s %.1f MB/s", arrow, mbPerSecond)
+	}
+}
+
 func sizeText(mb int) string {
 	if mb >= 1000 {
 		return fmt.Sprintf("%.2f GB", float64(mb)/1000)

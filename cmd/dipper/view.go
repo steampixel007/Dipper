@@ -1204,11 +1204,11 @@ func (s *State) downloads(c *ui.Context) {
 			})
 			ui.Column(c).Gap(5).Children(func() {
 				caption(c, "总下载速度")
-				ui.Textf(c, "↓ %.1f MB/s", s.downloadSpeed()).FontSize(20).FontWeight(600).TextColor(colors(c).blue)
+				ui.Text(c, speedText(s.downloadSpeed(), false)).FontSize(20).FontWeight(600).TextColor(colors(c).blue)
 			})
 			ui.Column(c).Gap(5).Children(func() {
 				caption(c, "总上传速度")
-				ui.Textf(c, "↑ %.2f MB/s", s.uploadSpeed()).FontSize(20).FontWeight(600)
+				ui.Text(c, speedText(s.uploadSpeed(), true)).FontSize(20).FontWeight(600)
 			})
 		})
 		if len(s.Downloads) == 0 {
@@ -1335,7 +1335,7 @@ func (s *State) downloads(c *ui.Context) {
 										} else {
 											caption(c, "大小未知")
 										}
-										caption(c, fmt.Sprintf("↓ %.1f MB/s   ↑ %.2f MB/s", d.DownSpeed, d.UpSpeed))
+										caption(c, speedText(d.DownSpeed, false)+"   "+speedText(d.UpSpeed, true))
 										ui.Spacer(c)
 										if d.Paused || d.Stopped && d.Progress < 1 {
 											quiet(c, "pause-"+d.ID, "继续", func() { s.pauseDownload(idx) }).FontSize(12).Disabled(s.Busy)
