@@ -89,7 +89,16 @@ func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 					continue
 				}
 			}
-			// Decode on the UI thread; its bitmap cache is also owned by that thread.
+			if s.CoverDir != "" {
+				if os.MkdirAll(filepath.Dir(path), 0755) == nil {
+					_ = os.WriteFile(path, data, 0644)
+				}
+				evictCoverFiles(s.CoverDir, coverDiskCap, keep)
+			}
+			// Decode on the UI thread; its bitmap cache is also owned by that
+			// thread. Clearing the loading flag here also guarantees every
+			// disk write above finished first, so a caller that waits for the
+			// flag never races the cover cache directory.
 			s.Update(func() {
 				coversMu.Lock()
 				delete(loadingCovers, a.Cover)
@@ -105,12 +114,6 @@ func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 				}
 				evictCovers(inUse)
 			})
-			if s.CoverDir != "" {
-				if os.MkdirAll(filepath.Dir(path), 0755) == nil {
-					_ = os.WriteFile(path, data, 0644)
-				}
-				evictCoverFiles(s.CoverDir, coverDiskCap, keep)
-			}
 		}
 	}()
 }
