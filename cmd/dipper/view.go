@@ -1173,7 +1173,11 @@ func (s *State) following(c *ui.Context) {
 								if item.Paused {
 									badge(c, "已暂停", colors(c).muted, colors(c).canvas)
 								} else if item.Active {
-									badge(c, "下载中", colors(c).blue, colors(c).blueWash)
+									label := "下载中"
+									if item.Progress > 0 {
+										label = fmt.Sprintf("下载中 %d%%", int(item.Progress*100))
+									}
+									badge(c, label, colors(c).blue, colors(c).blueWash)
 								} else {
 									badge(c, "自动追番中", colors(c).green, colors(c).greenWash)
 								}

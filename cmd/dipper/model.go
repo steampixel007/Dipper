@@ -53,6 +53,7 @@ type Subscription struct {
 	NewCount               int
 	Recent                 []string
 	Active                 bool
+	Progress               float64
 }
 type Download struct {
 	Error                               string

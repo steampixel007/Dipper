@@ -348,6 +348,40 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 		}
 		s.Downloads = append(s.Downloads, d)
 	}
+	type followProgress struct{ known, done float64 }
+	weights := map[string]*followProgress{}
+	for _, d := range s.Downloads {
+		w := weights[d.AnimeID]
+		if w == nil {
+			w = &followProgress{}
+			weights[d.AnimeID] = w
+		}
+		if d.MB > 0 {
+			w.known += float64(d.MB)
+			w.done += float64(d.MB) * d.Progress
+		}
+	}
+	for i := range s.Subscriptions {
+		v := &s.Subscriptions[i]
+		w := weights[v.AnimeID]
+		if w == nil {
+			continue
+		}
+		if w.known > 0 {
+			v.Progress = w.done / w.known
+			continue
+		}
+		var count, sum float64
+		for _, d := range s.Downloads {
+			if d.AnimeID == v.AnimeID {
+				count++
+				sum += d.Progress
+			}
+		}
+		if count > 0 {
+			v.Progress = sum / count
+		}
+	}
 }
 
 func (s *State) refreshState() {
