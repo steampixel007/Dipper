@@ -54,6 +54,8 @@ type Subscription struct {
 	Recent                 []string
 	Active                 bool
 	Progress               float64
+	// Completed counts this anime's downloads that finished without failing.
+	Completed int
 }
 type Download struct {
 	Error                               string
