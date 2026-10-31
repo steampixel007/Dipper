@@ -52,6 +52,7 @@ type Subscription struct {
 	LastError              string
 	NewCount               int
 	Recent                 []string
+	NewTitles              map[string]bool
 	Active                 bool
 	Progress               float64
 	// Completed counts this anime's downloads that finished without failing.
@@ -462,6 +463,19 @@ func (s *State) latestCompletedEpisode(animeID string) (int, bool) {
 // settings page, so users can see what Dipper adds by itself.
 func builtinTrackerSummary() string {
 	return strings.Join(downloader.BuiltinTrackers(), "、")
+}
+
+// isNewRelease reports whether the title is one of the subscription's pending
+// RSS releases, so the followed resource view can mark it as new.
+func (s *State) isNewRelease(title string) bool {
+	if s.EditID == "" {
+		return false
+	}
+	sub, ok := s.subscription(s.EditID)
+	if !ok {
+		return false
+	}
+	return sub.NewTitles[normalize(title)]
 }
 
 // groupFolder returns the anime's download directory. A transfer's folder is
