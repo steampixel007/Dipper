@@ -641,6 +641,31 @@ func TestUIFollowingHidesRetryWhenChecksHealthy(t *testing.T) {
 	}
 }
 
+func TestSpeedTextFormatsTransferRates(t *testing.T) {
+	for _, tc := range []struct {
+		mbps   float64
+		want   string
+		upload bool
+	}{
+		{0, "↓ —", false},
+		{-1, "↓ —", false},
+		{0.08, "↓ 80 KB/s", false},
+		{0.999, "↑ 999 KB/s", true},
+		{1, "↓ 1.0 MB/s", false},
+		{2.7, "↓ 2.7 MB/s", false},
+	} {
+		if got := speedText(tc.mbps, tc.upload); got != tc.want {
+			t.Fatalf("speedText(%v, %v) = %q; want %q", tc.mbps, tc.upload, got, tc.want)
+		}
+	}
+}
+
+func TestUIDownloadsShowDashForStoppedTransfers(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "↓ —", "↑ 120 KB/s")
+}
+
 func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	s := uiFixture(t, "following")
 	sub := s.Subscriptions[0]
@@ -919,7 +944,7 @@ func TestUIDownloadsUseMeasuredSpeedsErrorsAndOpenFolder(t *testing.T) {
 	opened := ""
 	s.OpenFolder = func(path string) { opened = path }
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "↓ 2.7 MB/s", "↑ 0.08 MB/s", "大小未知")
+	uiRequireText(t, tt, "↓ 2.7 MB/s", "↑ 80 KB/s", "大小未知")
 	if tt.HasText("4.2 MB/s") || tt.HasText("0 MB / 0 MB") {
 		t.Fatal("download shows fabricated speed or size")
 	}
