@@ -10,10 +10,10 @@ import (
 
 func TestUIFollowingCardPlaysLatestCompleted(t *testing.T) {
 	s := uiFixture(t, "following")
-	played := ""
+	played := make(chan string, 1)
 	engine := &playTestEngine{files: []string{filepath.Join(s.Root, "星海旅记", "episode.mkv")}}
 	s.Engine = engine
-	s.PlayFile = func(path string) error { played = path; return nil }
+	s.PlayFile = func(path string) error { played <- path; return nil }
 	updates := make(chan func(), 2)
 	s.Update = func(fn func()) { updates <- fn }
 	s.Downloads[2].Episode = "02"
@@ -27,15 +27,19 @@ func TestUIFollowingCardPlaysLatestCompleted(t *testing.T) {
 	uiClick(t, tt, "播放第 05 集")
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
-	for played == "" && s.SaveError == "" {
+	var path string
+	opened := false
+	for !opened {
 		select {
+		case path = <-played:
+			opened = true
 		case fn := <-updates:
 			fn()
 		case <-deadline.C:
 			t.Fatal("the follow card play shortcut did not open a file")
 		}
 	}
-	if played != filepath.Join(s.Root, "星海旅记", "episode.mkv") {
-		t.Fatalf("played %q, want the downloaded episode", played)
+	if path != filepath.Join(s.Root, "星海旅记", "episode.mkv") {
+		t.Fatalf("played %q, want the downloaded episode", path)
 	}
 }
