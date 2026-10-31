@@ -435,6 +435,27 @@ func (s *State) duplicates(ep string) int {
 
 // speedText formats a transfer speed measured in MB/s: speeds below 1 MB/s
 // show as KB/s and a stopped transfer shows a dash instead of "0.0 MB/s".
+// downloadETA estimates the remaining download time from the current speed.
+// An empty string means no meaningful estimate: the transfer is not actively
+// downloading, or its size or speed is unknown.
+func downloadETA(d Download) string {
+	if d.MB <= 0 || d.Progress >= 1 || d.DownSpeed <= 0 || d.Paused || d.Stopped || d.Failed {
+		return ""
+	}
+	seconds := (1 - d.Progress) * float64(d.MB) / d.DownSpeed
+	minutes := int(seconds / 60)
+	switch {
+	case minutes < 1:
+		return "剩余不足 1 分钟"
+	case minutes < 60:
+		return fmt.Sprintf("剩余约 %d 分钟", minutes)
+	case minutes%60 == 0:
+		return fmt.Sprintf("剩余约 %d 小时", minutes/60)
+	default:
+		return fmt.Sprintf("剩余约 %d 小时 %d 分钟", minutes/60, minutes%60)
+	}
+}
+
 func speedText(mbPerSecond float64, upload bool) string {
 	arrow := "↓"
 	if upload {

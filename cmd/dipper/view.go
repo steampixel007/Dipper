@@ -1423,7 +1423,11 @@ func (s *State) downloads(c *ui.Context) {
 										} else {
 											caption(c, "大小未知")
 										}
-										caption(c, speedText(d.DownSpeed, false)+"   "+speedText(d.UpSpeed, true))
+										speeds := speedText(d.DownSpeed, false) + "   " + speedText(d.UpSpeed, true)
+										if eta := downloadETA(d); eta != "" {
+											speeds += "   " + eta
+										}
+										caption(c, speeds)
 										ui.Spacer(c)
 										if d.Paused || d.Stopped && d.Progress < 1 {
 											quiet(c, "pause-"+d.ID, "继续", func() { s.pauseDownload(idx) }).FontSize(12).Disabled(s.Busy)
