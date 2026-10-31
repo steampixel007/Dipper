@@ -278,7 +278,12 @@ func (s *State) browse(c *ui.Context) {
 				ui.Text(c, s.Year+" 年"+s.Season+"季番剧").FontSize(26).FontWeight(600).TextColor(colors(c).ink).ContentTransition(ui.ContentTransition{Animation: &contentMotion})
 				caption(c, "找到喜欢的番剧，选好版本，后续更新交给 Dipper。")
 			})
-			ui.TextInput(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(220).Height(36).Background(colors(c).paper)
+			if ui.TextInput(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(220).Height(36).Background(colors(c).paper).Changed() {
+				s.CatalogScroll = ui.ScrollState{}
+			}
+			if strings.TrimSpace(s.Search) != "" {
+				quiet(c, "clear-browse-search", "清除搜索", func() { s.Search = "" }).FontSize(12).TextColor(colors(c).blue)
+			}
 		})
 		ui.Row(c).Gap(8).Children(func() {
 			iconButton(c, "prev-season", "上一季", "back", func() { s.changeSeason(-1) })

@@ -106,6 +106,8 @@ successful detail response is authoritative. Opening another anime closes the
 reading dialog. `anime_summary_test.go` checks the rendering and interaction.
 
 
+The browse page search matches the follow search: typing resets the catalog
+scroll to the top and a non-empty search offers 清除搜索 beside the input.
 The following page searches saved follows by anime title, subtitle group, or a
 word the saved rule requires; the count line reports how many follow cards match
 and offers a clear action, and an empty result offers a way to clear the search.
