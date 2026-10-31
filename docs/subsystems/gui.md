@@ -125,7 +125,10 @@ Paused and stopped transfers are never running marks: resource rows and
 download groups label them 已暂停 / 已停止, the follow card skips them when
 deciding 下载中, and the pause-all toggle counts only transfers that are
 actually running. The download filter resets its scroll on every filter
-change, including filters whose list renders empty. Each anime group has a 收起/展开
+change, including filters whose list renders empty. A search field beside the speed summary
+filters groups by anime title or release title, case/width-insensitive;
+typing resets the download scroll, and a search with no matches offers its own
+empty state with 清除搜索. Each anime group has a 收起/展开
 toggle whose state lives only for the session, so a fresh start lists every
 group open.
 The group summary ends with a 剩余约 N estimate when the group's active

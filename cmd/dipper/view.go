@@ -1315,6 +1315,25 @@ func (s *State) toggleDownloadGroup(animeID string) {
 	s.CollapsedDownloads[animeID] = !s.CollapsedDownloads[animeID]
 }
 
+// downloadSearches reports whether the download survives the downloads-page
+// search: an empty query matches everything, otherwise the anime title or the
+// release title must contain the query.
+func (s *State) downloadSearches(d Download) bool {
+	query := normalize(strings.TrimSpace(s.DownloadSearch))
+	if query == "" {
+		return true
+	}
+	if strings.Contains(normalize(d.Title), query) {
+		return true
+	}
+	return strings.Contains(normalize(s.anime(d.AnimeID).Title), query)
+}
+
+func (s *State) clearDownloadSearch() {
+	s.DownloadSearch = ""
+	s.DownloadScroll = ui.ScrollState{}
+}
+
 func (s *State) downloadMatches(d Download) bool {
 	return s.DownloadFilter == downloadsAll || downloadState(d) == s.DownloadFilter
 }
@@ -1344,6 +1363,12 @@ func (s *State) downloads(c *ui.Context) {
 				caption(c, "总上传速度")
 				ui.Text(c, speedText(s.uploadSpeed(), true)).FontSize(20).FontWeight(600)
 			})
+			if ui.TextInput(c.Key("download-search"), &s.DownloadSearch).Label("搜索下载").Placeholder("搜索番剧或资源").Width(220).Height(36).Background(colors(c).paper).Changed() {
+				s.DownloadScroll = ui.ScrollState{}
+			}
+			if strings.TrimSpace(s.DownloadSearch) != "" {
+				quiet(c, "clear-download-search", "清除搜索", func() { s.clearDownloadSearch() }).FontSize(12).TextColor(colors(c).blue).Padding(3, 0)
+			}
 		})
 		if len(s.Downloads) == 0 {
 			s.empty(c, "下载列表还是空的", "在番剧详情确认资源后，下载会出现在这里。", "去选一部番剧", func() { s.enterPage("browse") })
@@ -1352,11 +1377,15 @@ func (s *State) downloads(c *ui.Context) {
 
 		visible := make([]int, 0, len(s.Downloads))
 		for i, d := range s.Downloads {
-			if s.downloadMatches(d) {
+			if s.downloadMatches(d) && s.downloadSearches(d) {
 				visible = append(visible, i)
 			}
 		}
 		if len(visible) == 0 {
+			if strings.TrimSpace(s.DownloadSearch) != "" {
+				s.empty(c, "没有匹配的下载", "试试缩短关键词，或清除搜索。", "清除搜索", func() { s.clearDownloadSearch() })
+				return
+			}
 			s.empty(c, "这个状态下没有下载", "换个筛选条件，看看其他下载进度。", "查看全部下载", func() { s.DownloadFilter = downloadsAll })
 			return
 		}
