@@ -361,8 +361,15 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 			w.done += float64(d.MB) * d.Progress
 		}
 	}
+	completed := map[string]int{}
+	for _, d := range s.Downloads {
+		if d.Progress >= 1 && !d.Failed {
+			completed[d.AnimeID]++
+		}
+	}
 	for i := range s.Subscriptions {
 		v := &s.Subscriptions[i]
+		v.Completed = completed[v.AnimeID]
 		w := weights[v.AnimeID]
 		if w == nil {
 			continue

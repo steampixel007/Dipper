@@ -1184,6 +1184,9 @@ func (s *State) following(c *ui.Context) {
 								if item.NewCount > 0 {
 									badge(c, fmt.Sprintf("新资源 %d 条", item.NewCount), colors(c).amber, colors(c).amberWash)
 								}
+								if item.Completed > 0 {
+									badge(c, fmt.Sprintf("已下载 %d 个资源", item.Completed), colors(c).muted, colors(c).canvas)
+								}
 							})
 							group := item.GroupName
 							if group == "" {
