@@ -1097,6 +1097,23 @@ func (s *State) seedStopCopy() string {
 	return "累计做种 1 小时"
 }
 
+func downloadState(d Download) DownloadFilter {
+	switch {
+	case d.Failed:
+		return downloadsFailed
+	case d.Progress >= 1:
+		return downloadsCompleted
+	case d.Paused || d.Stopped:
+		return downloadsPaused
+	default:
+		return downloadsDownloading
+	}
+}
+
+func (s *State) downloadMatches(d Download) bool {
+	return s.DownloadFilter == downloadsAll || downloadState(d) == s.DownloadFilter
+}
+
 func (s *State) downloads(c *ui.Context) {
 	active := 0
 	for _, d := range s.Downloads {
@@ -1123,8 +1140,60 @@ func (s *State) downloads(c *ui.Context) {
 			s.empty(c, "下载列表还是空的", "在番剧详情确认资源后，下载会出现在这里。", "去选一部番剧", func() { s.Page = "browse" })
 			return
 		}
+
+		visible := make([]int, 0, len(s.Downloads))
+		for i, d := range s.Downloads {
+			if s.downloadMatches(d) {
+				visible = append(visible, i)
+			}
+		}
+		if len(visible) == 0 {
+			s.empty(c, "这个状态下没有下载", "换个筛选条件，看看其他下载进度。", "查看全部下载", func() { s.DownloadFilter = downloadsAll })
+			return
+		}
+		type downloadGroup struct {
+			animeID string
+			indices []int
+			summary string
+			bytes   int
+			done    int
+		}
+		var groups []downloadGroup
+		byAnime := map[string]int{}
+		for _, idx := range visible {
+			d := s.Downloads[idx]
+			gi, ok := byAnime[d.AnimeID]
+			if !ok {
+				gi = len(groups)
+				byAnime[d.AnimeID] = gi
+				groups = append(groups, downloadGroup{animeID: d.AnimeID})
+			}
+			group := &groups[gi]
+			group.indices = append(group.indices, idx)
+			if d.MB > 0 {
+				group.bytes += d.MB
+				group.done += int(float64(d.MB) * d.Progress)
+			}
+		}
+		for gi := range groups {
+			group := &groups[gi]
+			counts := map[DownloadFilter]int{}
+			for _, idx := range group.indices {
+				counts[downloadState(s.Downloads[idx])]++
+			}
+			parts := []string{fmt.Sprintf("%d 个资源", len(group.indices))}
+			for _, segment := range []struct {
+				filter DownloadFilter
+				label  string
+			}{{downloadsDownloading, "下载中"}, {downloadsCompleted, "已完成"}, {downloadsPaused, "已暂停"}, {downloadsFailed, "失败"}} {
+				if counts[segment.filter] > 0 {
+					parts = append(parts, fmt.Sprintf("%d %s", counts[segment.filter], segment.label))
+				}
+			}
+			group.summary = strings.Join(parts, " · ")
+		}
 		ui.Row(c).Children(func() {
-			caption(c, fmt.Sprintf("%d 个资源 · 含同集的不同版本", len(s.Downloads)))
+			caption(c, fmt.Sprintf("%d 个资源 · 按番剧分组", len(visible)))
 			ui.Spacer(c)
 			pauseLabel := "暂停全部下载"
 			if active == 0 {
@@ -1132,76 +1201,99 @@ func (s *State) downloads(c *ui.Context) {
 			}
 			quiet(c, "pause-all", pauseLabel, func() { s.pauseAllDownloads(active > 0) }).FontSize(12).Disabled(s.Busy)
 		})
+		ui.Row(c).Gap(12).Children(func() {
+			ui.Segmented(c.Key("download-filter"), (*int)(&s.DownloadFilter), "全部", "下载中", "已完成", "已暂停", "已失败")
+			ui.Spacer(c)
+		})
 		ui.Scroll(c.Key("download-list")).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Gap(12).Children(func() {
-				for i, download := range s.Downloads {
-					idx := i
-					d := download
-					ui.Column(c.Key("download-"+d.ID)).Padding(16, 18).Gap(9).Background(colors(c).paper).Radius(8).Border(1, colors(c).line).Children(func() {
+				for _, g := range groups {
+					group := g
+					ui.Column(c.Key("download-group-" + group.animeID)).Gap(8).Children(func() {
 						ui.Row(c).Gap(12).Children(func() {
-							ui.Text(c, s.anime(d.AnimeID).Title).FontSize(15).FontWeight(600).Grow(1)
-							status := "下载中"
-							col := colors(c).blue
-							switch {
-							case d.Paused:
-								status, col = "已暂停", colors(c).muted
-							case d.Failed:
-								status, col = "下载失败", colors(c).amber
-							case d.Stopped && d.Progress < 1:
-								status, col = "已停止", colors(c).muted
-							case d.Progress >= 1 && d.Stopped:
-								status, col = "已完成 · 已停止做种", colors(c).green
-							case d.Progress >= 1:
-								status, col = "已完成 · 做种中", colors(c).green
-							}
-							badge(c, status, col, colors(c).canvas)
+							ui.Text(c, s.anime(group.animeID).Title).FontSize(16).FontWeight(700).Grow(1)
+							caption(c, group.summary)
+							quiet(c, "group-detail-"+group.animeID, "查看详情", func() { s.openAnime(group.animeID) }).FontSize(12)
 						})
-						ui.Text(c, d.Title).FontSize(12).TextColor(colors(c).muted).MaxLines(2)
-						progress := ui.Box(c.Key("transfer-progress")).Height(5)
-						value := progress.Animate("value", float32(d.Progress), 400*time.Millisecond)
-						progress.Children(func() { ui.Progress(c, float64(value)).Height(5).Radius(3) })
-						ui.Row(c).Gap(14).Children(func() {
-							ui.Textf(c, "%.0f%%", d.Progress*100).FontSize(12).FontWeight(600)
-							if d.MB > 0 {
-								caption(c, sizeText(int(float64(d.MB)*d.Progress))+" / "+sizeText(d.MB))
-							} else {
-								caption(c, "大小未知")
-							}
-							caption(c, fmt.Sprintf("↓ %.1f MB/s   ↑ %.2f MB/s", d.DownSpeed, d.UpSpeed))
-							ui.Spacer(c)
-							if d.Paused || d.Stopped && d.Progress < 1 {
-								quiet(c, "pause-"+d.ID, "继续", func() { s.pauseDownload(idx) }).FontSize(12).Disabled(s.Busy)
-							} else if d.Failed {
-								quiet(c, "retry-"+d.ID, "重试", func() { s.retryDownload(idx) }).TextColor(colors(c).blue).FontSize(12).Disabled(s.Busy)
-							} else if d.Progress < 1 {
-								quiet(c, "pause-"+d.ID, "暂停", func() { s.pauseDownload(idx) }).FontSize(12).Disabled(s.Busy)
-							} else if !d.Stopped {
-								quiet(c, "stop-seed-"+d.ID, "停止做种", func() { s.stopDownload(idx) }).FontSize(12).Disabled(s.Busy)
-							}
-							quiet(c, "remove-"+d.ID, "删除", func() { s.RemovePrompt, s.RemoveID = true, d.ID }).FontSize(12).Disabled(s.Busy)
-							quiet(c, "open-folder-"+d.ID, "打开文件夹", func() {
-								if s.OpenFolder != nil {
-									s.OpenFolder(d.Folder)
-								}
-							}).FontSize(12).Disabled(s.OpenFolder == nil || d.Folder == "")
-							if d.Progress >= 1 && !d.Failed {
-								quiet(c, "files-"+d.ID, "文件列表", func() { s.openFiles(idx) }).FontSize(12).Disabled(s.Busy)
-								quiet(c, "play-"+d.ID, "播放", func() { s.playDownload(idx) }).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
+						if group.bytes > 0 {
+							share := float64(group.done) / float64(group.bytes)
+							box := ui.Box(c.Key("download-group-progress-" + group.animeID)).Height(4)
+							value := box.Animate("value", float32(share), 400*time.Millisecond)
+							box.Children(func() { ui.Progress(c, float64(value)).Height(4).Radius(2) })
+							caption(c, sizeText(group.done)+" / "+sizeText(group.bytes))
+						}
+						ui.Column(c).Gap(12).Children(func() {
+							for _, i := range group.indices {
+								idx := i
+								d := s.Downloads[idx]
+								ui.Column(c.Key("download-"+d.ID)).Padding(16, 18).Gap(9).Background(colors(c).paper).Radius(8).Border(1, colors(c).line).Children(func() {
+									ui.Row(c).Gap(12).Children(func() {
+										ui.Spacer(c)
+										status := "下载中"
+										col := colors(c).blue
+										switch {
+										case d.Paused:
+											status, col = "已暂停", colors(c).muted
+										case d.Failed:
+											status, col = "下载失败", colors(c).amber
+										case d.Stopped && d.Progress < 1:
+											status, col = "已停止", colors(c).muted
+										case d.Progress >= 1 && d.Stopped:
+											status, col = "已完成 · 已停止做种", colors(c).green
+										case d.Progress >= 1:
+											status, col = "已完成 · 做种中", colors(c).green
+										}
+										badge(c, status, col, colors(c).canvas)
+									})
+									ui.Text(c, d.Title).FontSize(12).TextColor(colors(c).muted).MaxLines(2)
+									progress := ui.Box(c.Key("transfer-progress")).Height(5)
+									value := progress.Animate("value", float32(d.Progress), 400*time.Millisecond)
+									progress.Children(func() { ui.Progress(c, float64(value)).Height(5).Radius(3) })
+									ui.Row(c).Gap(14).Children(func() {
+										ui.Textf(c, "%.0f%%", d.Progress*100).FontSize(12).FontWeight(600)
+										if d.MB > 0 {
+											caption(c, sizeText(int(float64(d.MB)*d.Progress))+" / "+sizeText(d.MB))
+										} else {
+											caption(c, "大小未知")
+										}
+										caption(c, fmt.Sprintf("↓ %.1f MB/s   ↑ %.2f MB/s", d.DownSpeed, d.UpSpeed))
+										ui.Spacer(c)
+										if d.Paused || d.Stopped && d.Progress < 1 {
+											quiet(c, "pause-"+d.ID, "继续", func() { s.pauseDownload(idx) }).FontSize(12).Disabled(s.Busy)
+										} else if d.Failed {
+											quiet(c, "retry-"+d.ID, "重试", func() { s.retryDownload(idx) }).TextColor(colors(c).blue).FontSize(12).Disabled(s.Busy)
+										} else if d.Progress < 1 {
+											quiet(c, "pause-"+d.ID, "暂停", func() { s.pauseDownload(idx) }).FontSize(12).Disabled(s.Busy)
+										} else if !d.Stopped {
+											quiet(c, "stop-seed-"+d.ID, "停止做种", func() { s.stopDownload(idx) }).FontSize(12).Disabled(s.Busy)
+										}
+										quiet(c, "remove-"+d.ID, "删除", func() { s.RemovePrompt, s.RemoveID = true, d.ID }).FontSize(12).Disabled(s.Busy)
+										quiet(c, "open-folder-"+d.ID, "打开文件夹", func() {
+											if s.OpenFolder != nil {
+												s.OpenFolder(d.Folder)
+											}
+										}).FontSize(12).Disabled(s.OpenFolder == nil || d.Folder == "")
+										if d.Progress >= 1 && !d.Failed {
+											quiet(c, "files-"+d.ID, "文件列表", func() { s.openFiles(idx) }).FontSize(12).Disabled(s.Busy)
+											quiet(c, "play-"+d.ID, "播放", func() { s.playDownload(idx) }).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
+										}
+									})
+									caption(c, "保存位置："+d.Folder)
+									if d.Progress >= 1 && !d.Stopped {
+										if d.MB > 0 {
+											caption(c, fmt.Sprintf("已分享 %.2f 倍 · 做种 %d 分钟；达到 1:1 或%s后停止。", d.UploadedMB/float64(d.MB), d.SeedSeconds/60, s.seedStopCopy()))
+										} else {
+											caption(c, fmt.Sprintf("大小未知，分享比例未知 · 做种 %d 分钟", d.SeedSeconds/60))
+										}
+									}
+									if d.Error != "" {
+										ui.Text(c, d.Error).FontSize(12).TextColor(colors(c).amber)
+									} else if d.Failed {
+										ui.Text(c, "下载失败，请检查网络后重试。").FontSize(12).TextColor(colors(c).amber)
+									}
+								})
 							}
 						})
-						caption(c, "保存位置："+d.Folder)
-						if d.Progress >= 1 && !d.Stopped {
-							if d.MB > 0 {
-								caption(c, fmt.Sprintf("已分享 %.2f 倍 · 做种 %d 分钟；达到 1:1 或%s后停止。", d.UploadedMB/float64(d.MB), d.SeedSeconds/60, s.seedStopCopy()))
-							} else {
-								caption(c, fmt.Sprintf("大小未知，分享比例未知 · 做种 %d 分钟", d.SeedSeconds/60))
-							}
-						}
-						if d.Error != "" {
-							ui.Text(c, d.Error).FontSize(12).TextColor(colors(c).amber)
-						} else if d.Failed {
-							ui.Text(c, "下载失败，请检查网络后重试。").FontSize(12).TextColor(colors(c).amber)
-						}
 					})
 				}
 			})
