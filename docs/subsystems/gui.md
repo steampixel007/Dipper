@@ -111,6 +111,8 @@ top.
 When any follow failed its last check, the header offers 重试失败检查, which
 re-checks every failed follow in one click and is hidden while all follows are
 healthy.
+The 我的追番 navigation entry counts failed checks while any follow is failing
+and falls back to the follow count when all are healthy.
 The card itself is a button that opens the same resource list as 查看资源, so the
 whole card is the large target and the side buttons stay distinct actions.
 
