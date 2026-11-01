@@ -277,6 +277,7 @@ func (s *State) openLibrary(id string) {
 		return
 	}
 	s.LibraryID = id
+	s.LibraryMenuOpen = false
 	s.Page = "episodes"
 	s.Notice = ""
 	a := s.anime(sub.AnimeID)

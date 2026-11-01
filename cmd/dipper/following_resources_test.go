@@ -85,6 +85,8 @@ func TestUIFollowingViewResourcesFixtureBackReturnsToFollowing(t *testing.T) {
 	sub.GroupName = "回归测试组甲"
 	state.Subscriptions[0] = sub
 	tester := ui.NewTester(state.view, 1320, 860)
+	uiClick(t, tester, "打开追番 "+sub.GroupName)
+	uiClick(t, tester, "更多操作")
 	uiClick(t, tester, "查看资源 "+sub.GroupName)
 	uiRequireText(t, tester, "我的追番 / 查看资源", "查看已追番资源", "返回我的追番", "已保存条件，仅用于筛选与确认，不修改。")
 	uiClick(t, tester, "返回我的追番")
@@ -111,6 +113,8 @@ func TestUIFollowingViewResourcesManualSelectionAndReturn(t *testing.T) {
 	updates := make(chan func(), 4)
 	state.Update = func(update func()) { updates <- update }
 	tester := ui.NewTester(state.view, 1320, 860)
+	uiClick(t, tester, "打开追番 "+sub.GroupName)
+	uiClick(t, tester, "更多操作")
 	uiClick(t, tester, "查看资源 "+sub.GroupName)
 	if state.Page != "detail" || !state.ViewResources || !state.Backfill || state.EditID != sub.ID || state.DetailReturn != "following" {
 		t.Fatalf("wrong view state: page=%q view=%v backfill=%v id=%q return=%q", state.Page, state.ViewResources, state.Backfill, state.EditID, state.DetailReturn)
@@ -157,6 +161,8 @@ func TestUIFollowingViewResourcesAllowsExplicitBackfillSelection(t *testing.T) {
 	updates := make(chan func(), 4)
 	state.Update = func(update func()) { updates <- update }
 	tester := ui.NewTester(state.view, 1320, 860)
+	uiClick(t, tester, "打开追番 "+sub.GroupName)
+	uiClick(t, tester, "更多操作")
 	uiClick(t, tester, "查看资源 "+sub.GroupName)
 	if !state.ViewResources || !state.Backfill {
 		t.Fatalf("wrong view state: view=%v backfill=%v", state.ViewResources, state.Backfill)

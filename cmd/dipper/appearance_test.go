@@ -140,7 +140,7 @@ func TestAppearanceRenderedPagesUseDarkSurfacesAndReadableText(t *testing.T) {
 	for _, page := range []struct{ id, heading, caption string }{
 		{"browse", "2025 年春季番剧", "找到喜欢的番剧，选好版本，后续更新交给 Dipper。"},
 		{"detail", "资源预览", "周一 · 来源：蜜柑计划"},
-		{"following", "喜欢的故事，不错过更新。", "暂停追番只停止检查新资源，已开始的下载会继续。"},
+		{"following", "喜欢的故事，不错过更新。", "点击海报，选一集开始观看。"},
 		{"downloads", "更新到了，安心等它下好。", "查看下载进度、传输速度与做种状态。"},
 		{"settings", "让 Dipper 按你的习惯工作。", appearanceText.detail},
 	} {

@@ -111,20 +111,23 @@ reading dialog. `anime_summary_test.go` checks the rendering and interaction.
 The browse page search matches the follow search: typing resets the catalog
 scroll to the top and a non-empty search offers 清除搜索 beside the input.
 The following page searches saved follows by anime title, subtitle group, or a
-word the saved rule requires; the count line reports how many follow cards match
+word the saved rule requires; the count line reports how many follow tiles match
 and offers a clear action, and an empty result offers a way to clear the search. Cards whose last RSS check failed
 float above the saved order so a silent failure cannot hide at the bottom.
 Card actions resolve the subscription by its stable ID, never by its position in
 the filtered list, so a narrowed search cannot pause, edit, or open the
 resources of a follow the card does not show.
-Each card shows a pending-release count with the recent release titles when the
-scheduler has not yet handed them over; the 新资源 N 条 badge is a button that
-opens that follow's resource view with 只看新资源 already on, and a 下载中 mark while an uncompleted
-transfer for that anime is running. The mark carries the follow's overall
+Each tile is a poster: cover, title, and subtitle group, with an 进入剧集库
+hint beside the group so the tile reads as a way in, not a settings panel.
+Rules, RSS timestamps, skipped-resource counts, folder paths, and recent
+release titles stay off the tile. Status is minimal: a 检查失败, 已暂停, or
+下载中 badge on the poster — the progress mark carries the follow's overall
 download progress, weighted by the known size of each transfer, so several
-running episodes read as one 下载中 75% badge instead of a bare mark. A follow with finished
-transfers also shows an 已下载 N 个资源 badge counting its completed
-downloads; failed transfers never count.
+running episodes read as one 下载中 75% badge instead of a bare mark, and the
+自动追番中 badge only appears on hover. A pending-release count keeps its
+新资源 N 条 button that opens that follow's resource view with 只看新资源
+already on, and a finished follow shows a quiet 已下载 N 个资源 count;
+failed transfers never count.
 Paused and stopped transfers are never running marks: resource rows and
 download groups label them 已暂停 / 已停止, the follow card skips them when
 deciding 下载中, and the pause-all toggle counts only transfers that are
@@ -150,9 +153,10 @@ Resource rows match downloads by identity, not by title: the core-resolved
 info hash first, then the resource ID recorded on the task, so two releases
 with the same title never show each other's progress or playback. A completed row offers 打开文件夹 for that
 download's folder beside 播放, disabled while a batch action is running.
-A failed RSS check is shown as an amber row with the stored error text and an
-inline 重试检查 action that re-checks that one follow; it stays disabled while
-the follow is paused or the window is busy.
+A failed RSS check shows a 检查失败 badge on the poster so the failure floats
+visibly; the stored error text and an inline 重试检查 action live in the
+episode library header, where the action re-checks that one follow and stays
+disabled while the follow is paused or the window is busy.
 The following and downloads lists remember their scroll position across page
 switches; searching follows or switching the download filter jumps back to the
 top.
@@ -163,20 +167,20 @@ The 我的追番 navigation entry counts failed checks while any follow is faili
 and falls back to the follow count when all are healthy. The 下载 navigation entry does the same for failed downloads, counting
 entries whose last transfer failed and falling back to the item count when
 none did.
-The card itself is a button that opens the follow's episode library, so the
-whole card is the large target and the side buttons stay distinct actions.
-A follow with finished, non-failed downloads also offers a 播放第 N 集 shortcut
-above 查看资源: it plays the completed transfer with the highest episode number
-for that anime, so watching the newest finished episode is one click from the
-card. Transfers without a parsed episode number never produce the shortcut.
+The whole tile is a button that opens the follow's episode library, so the
+poster is the large target and the tile carries no separate play shortcut:
+watching goes through the library's episode list.
 
-The episode library (`episodes` page) is a follow's watch view: it lists that
-anime's downloads sorted by episode number, marks each transfer's state, and
-offers 播放 beside completed transfers, so watching does not go through the
-release list. Releases without a parsed episode number sort last, labeled
-其他资源. The library is reached from the follow card and stays per-run state:
-it follows one subscription ID, and rule editing or release picking stay on the
-resource view reached through 查看资源.
+The episode library (`episodes` page) is a follow's watch view: a large hero
+(poster, title, status badges, completed-download count, and the failure row
+when the last check failed) above the episode list, so the follow is
+recognizable before the rows. It lists that anime's downloads sorted by
+episode number, marks each transfer's state, and offers 播放 beside completed
+transfers, so watching does not go through the release list. Releases without
+a parsed episode number sort last, labeled 其他资源. The library is reached
+from the follow tile and stays per-run state: it follows one subscription ID,
+and rule editing or release picking stay on the resource view reached through
+查看资源.
 
 Inside the followed resource view, rows whose title matches one of the
 subscription's latest pending RSS releases (the source of the card's
@@ -184,7 +188,9 @@ subscription's latest pending RSS releases (the source of the card's
 identifiable without rereading titles. The mark follows the subscription's
 current pending list and disappears with it.
 
-Following cards offer 查看资源 as a separate entry into the detail page. It
+Following management actions — 查看资源, 修改条件, 暂停/恢复追番, 立即检查,
+打开番剧文件夹, and 取消追番 — collapse into the library hero's ··· popover,
+so the watch view stays the primary surface. 查看资源 opens the detail page. It
 locks the saved subscription's group and rule, opens as a view-only backfill
 where nothing is selected while history loads and a later history result must
 not auto-select matches, and returns to 我的追番.
