@@ -75,7 +75,7 @@ func uiRequireText(t *testing.T, tt *ui.Tester, texts ...string) {
 func TestUIViewPagesAndWindowSizes(t *testing.T) {
 	for _, size := range [][2]int{{1120, 760}, {1320, 860}, {1560, 980}} {
 		for _, page := range []struct{ id, text string }{
-			{"browse", "2025 年春季番剧"}, {"detail", "资源预览"}, {"following", "最近 RSS 检查"}, {"downloads", "总下载速度"}, {"settings", "上传与分享"},
+			{"browse", "2025 年春季番剧"}, {"detail", "资源预览"}, {"following", "进入剧集库"}, {"downloads", "总下载速度"}, {"settings", "上传与分享"},
 		} {
 			t.Run(fmt.Sprintf("%s/%dx%d", page.id, size[0], size[1]), func(t *testing.T) {
 				s := uiFixture(t, page.id)
@@ -346,20 +346,24 @@ func TestUIFollowingShowsPendingAndActiveSummary(t *testing.T) {
 	s.Subscriptions[0].Recent = []string{"[桥接字幕组] 桥接番剧 - 03 [1080p].mkv", "[桥接字幕组] 桥接番剧 - 04 [1080p].mkv"}
 	s.Subscriptions[1].Active = true
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "新资源 2 条", "最近新到：", "下载中")
+	uiRequireText(t, tt, "新资源 2 条", "下载中")
+	if tt.HasText("最近新到：") || tt.HasText("[桥接字幕组] 桥接番剧 - 03") {
+		t.Error("following tiles still list recent release titles")
+	}
 }
 
 func TestUIFollowingUsesSubscriptionIdentityAndRSSResult(t *testing.T) {
 	s := uiFixture(t, "following")
 	s.Catalog = nil
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, s.KnownAnime[s.AnimeID].Title, s.Subscriptions[0].GroupName, s.Subscriptions[1].GroupName, "新增 1 条", "RSS 请求超时", "检查失败")
-	first, ok := tt.Find("修改条件 " + s.Subscriptions[0].GroupName)
-	second, ok2 := tt.Find("修改条件 " + s.Subscriptions[1].GroupName)
-	if !ok || !ok2 || first.Y == second.Y {
-		t.Fatal("same-anime subscriptions did not retain separate controls")
-	}
+	uiRequireText(t, tt, s.KnownAnime[s.AnimeID].Title, s.Subscriptions[0].GroupName, s.Subscriptions[1].GroupName, "检查失败")
 	wantID := s.Subscriptions[1].ID
+	uiClick(t, tt, "打开追番 "+s.Subscriptions[1].GroupName)
+	if s.Page != "episodes" || s.LibraryID != wantID {
+		t.Fatalf("wrong library opened: page=%q library=%q", s.Page, s.LibraryID)
+	}
+	uiRequireText(t, tt, "RSS 请求超时")
+	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "修改条件 "+s.Subscriptions[1].GroupName)
 	if s.EditID != wantID || !s.Editing || s.Page != "detail" {
 		t.Fatalf("edited wrong subscription: id=%q, want %q", s.EditID, wantID)
@@ -398,6 +402,7 @@ func TestUIFollowingFailedCheckOffersInlineRetry(t *testing.T) {
 	}
 	s.project(snapshot, nil)
 	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "打开追番 字幕组丙")
 	uiRequireText(t, tt, "RSS 检查失败：RSS 请求超时")
 	uiClick(t, tt, "重试检查 字幕组丙")
 	deadline := time.NewTimer(2 * time.Second)
@@ -446,6 +451,8 @@ func TestUIFollowingActionsSurviveSearchFilter(t *testing.T) {
 	s.FollowSearch = "字幕组乙"
 	tt := ui.NewTester(s.view, 1320, 860)
 
+	uiClick(t, tt, "打开追番 字幕组乙")
+	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "修改条件 字幕组乙")
 	if s.EditID != subB.ID || !s.Editing || s.Page != "detail" {
 		t.Fatalf("edit after filter picked id=%q, want %q", s.EditID, subB.ID)
@@ -453,6 +460,8 @@ func TestUIFollowingActionsSurviveSearchFilter(t *testing.T) {
 
 	s.Page = "following"
 	tt.Frame()
+	uiClick(t, tt, "打开追番 字幕组乙")
+	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "查看资源 字幕组乙")
 	if s.EditID != subB.ID || !s.Backfill || !s.ViewResources || s.Page != "detail" {
 		t.Fatalf("view after filter picked id=%q, want %q", s.EditID, subB.ID)
@@ -460,6 +469,8 @@ func TestUIFollowingActionsSurviveSearchFilter(t *testing.T) {
 
 	s.Page = "following"
 	tt.Frame()
+	uiClick(t, tt, "打开追番 字幕组乙")
+	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "暂停追番 字幕组乙")
 	deadline := time.NewTimer(2 * time.Second)
 	defer deadline.Stop()
@@ -492,7 +503,8 @@ func TestUIFollowingCardClickOpensEpisodeLibrary(t *testing.T) {
 	if s.Page != "episodes" || s.LibraryID != wantID {
 		t.Fatalf("card click state: page=%q library=%q", s.Page, s.LibraryID)
 	}
-	uiRequireText(t, tt, "查看资源", "修改条件", "已下载 3 集")
+	uiClick(t, tt, "更多操作")
+	uiRequireText(t, tt, "查看资源", "修改条件", "已下载 1 个资源")
 }
 
 func TestUIBrowseCardOpensFollowedResourceList(t *testing.T) {
@@ -685,6 +697,8 @@ func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	s := uiFixture(t, "following")
 	sub := s.Subscriptions[0]
 	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "打开追番 "+sub.GroupName)
+	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "取消追番 "+sub.GroupName)
 	if !s.CancelPrompt || s.CancelID != sub.ID {
 		t.Fatalf("cancel prompt not armed: prompt=%v id=%q", s.CancelPrompt, s.CancelID)
@@ -696,6 +710,7 @@ func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	if s.CancelPrompt {
 		t.Fatal("保留追番 did not close the dialog")
 	}
+	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "取消追番 "+sub.GroupName)
 	uiClick(t, tt, "确认取消追番 "+sub.GroupName)
 	if s.CancelPrompt || s.CancelID != "" {
@@ -730,6 +745,8 @@ func TestUIRemoveSubscriptionForwardsToCore(t *testing.T) {
 	}
 	s.project(snapshot, nil)
 	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "打开追番 桥接字幕组")
+	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "取消追番 桥接字幕组")
 	uiClick(t, tt, "确认取消追番 桥接字幕组")
 	deadline := time.NewTimer(2 * time.Second)
@@ -904,7 +921,10 @@ func TestUIActionsDelegateInsteadOfChangingFixtureState(t *testing.T) {
 	}
 	s.Page = "following"
 	tt.Frame()
+	uiClick(t, tt, "打开追番 "+s.Subscriptions[0].GroupName)
+	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "暂停追番 "+s.Subscriptions[0].GroupName)
+	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "立即检查 "+s.Subscriptions[0].GroupName)
 	if s.Subscriptions[0].Paused || s.Subscriptions[0].LastCheck != "2025-04-14 22:01 · 新增 1 条" {
 		t.Fatal("UI simulated a subscription operation without core")

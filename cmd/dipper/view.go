@@ -54,6 +54,7 @@ var iconPaths = map[string]string{
 	"back":      `<path d="m14 5-7 7 7 7"/>`,
 	"next":      `<path d="m10 5 7 7-7 7"/>`,
 	"help":      `<circle cx="12" cy="12" r="9"/><path d="M9 8a3 3 0 1 1 4 3c-1 .5-1 1-1 2m0 3v.1"/>`,
+	"more":      `<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>`,
 	"check":     `<path d="m5 12 4 4L19 6"/>`,
 	"search":    `<circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/>`,
 	"close":     `<path d="m6 6 12 12M6 18 18 6"/>`,
@@ -351,14 +352,7 @@ func (s *State) browse(c *ui.Context) {
 				s.empty(c, title, body, "清除筛选", func() { s.Search = ""; s.Day = -1 })
 			} else {
 				width, _ := c.Size()
-				cols := int((width - 260) / 180)
-				if cols < 3 {
-					cols = 3
-				}
-				if cols > 6 {
-					cols = 6
-				}
-				cardWidth := (width - 260 - float32(cols-1)*18) / float32(cols)
+				cols, cardWidth := gridColumns(width)
 				ui.Scroll(c.Key("catalog")).TrackScroll(&s.CatalogScroll).Grow(1).MinHeight(0).Padding(0, 0, 24).Children(func() {
 					ui.Grid(c).Columns(cols).GapX(18).GapY(24).Children(func() {
 						for _, a := range filtered {
@@ -439,6 +433,7 @@ func (s *State) enterPage(page string) {
 		return
 	}
 	s.Page = page
+	s.LibraryMenuOpen = false
 	switch page {
 	case "browse", "following", "episodes":
 		s.loadCovers(s.Ctx, s.pageCoverRows(page))
@@ -1165,7 +1160,7 @@ func (s *State) following(c *ui.Context) {
 		ui.Row(c).Gap(16).Children(func() {
 			ui.Column(c).Grow(1).Gap(6).Children(func() {
 				ui.Text(c, "喜欢的故事，不错过更新。").FontSize(28).FontWeight(700)
-				caption(c, "暂停追番只停止检查新资源，已开始的下载会继续。")
+				caption(c, "点击海报，选一集开始观看。")
 			})
 			if ui.TextInput(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(220).Height(36).Background(colors(c).paper).Changed() {
 				s.FollowScroll = ui.ScrollState{}
@@ -1219,89 +1214,91 @@ func (s *State) following(c *ui.Context) {
 			s.empty(c, "没有找到这部追番", "试试缩短番名，或清除搜索。", "清除搜索", func() { s.FollowSearch = "" })
 			return
 		}
-		ui.Scroll(c.Key("following-list")).TrackScroll(&s.FollowScroll).Grow(1).MinHeight(0).Children(func() {
-			ui.Column(c).Gap(14).Children(func() {
+		width, _ := c.Size()
+		cols, cardWidth := gridColumns(width)
+		ui.Scroll(c.Key("following-list")).TrackScroll(&s.FollowScroll).Grow(1).MinHeight(0).Padding(0, 0, 24).Children(func() {
+			ui.Grid(c).Columns(cols).GapX(18).GapY(24).Children(func() {
 				for _, sub := range subs {
 					item := sub
-					a := s.anime(item.AnimeID)
-					card := ui.ButtonBase(c.Key("subscription-"+item.ID)).Label("打开追番 "+item.GroupName).Row().Gap(18).Padding(18).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Cursor(ui.CursorPointer)
-					if card.Hovered() {
-						card.Background(colors(c).chrome)
-					}
-					tactile(card).Children(func() {
-						cover(c, a, 68, 94)
-						ui.Column(c).Grow(1).MinWidth(0).Gap(8).Children(func() {
-							ui.Row(c).Gap(8).Children(func() {
-								ui.Text(c, a.Title).FontSize(17).FontWeight(600)
-								if item.Paused {
-									badge(c, "已暂停", colors(c).muted, colors(c).canvas)
-								} else if item.Active {
-									label := "下载中"
-									if item.Progress > 0 {
-										label = fmt.Sprintf("下载中 %d%%", int(item.Progress*100))
-									}
-									badge(c, label, colors(c).blue, colors(c).blueWash)
-								} else {
-									badge(c, "自动追番中", colors(c).green, colors(c).greenWash)
-								}
-								if item.NewCount > 0 {
-									quiet(c, "open-new-"+item.ID, fmt.Sprintf("新资源 %d 条", item.NewCount), func() {
-										s.viewSubscriptionResources(item.ID)
-										s.OnlyNew = true
-									}).Label(fmt.Sprintf("新资源 %d 条 %s", item.NewCount, item.GroupName)).FontSize(11).FontWeight(600).TextColor(colors(c).amber).Background(colors(c).amberWash).Radius(4).Padding(3, 7).Disabled(s.Busy)
-								}
-								if item.Completed > 0 {
-									badge(c, fmt.Sprintf("已下载 %d 个资源", item.Completed), colors(c).muted, colors(c).canvas)
-								}
-							})
-							group := item.GroupName
-							if group == "" {
-								group = "字幕组名称未知"
-							}
-							caption(c, group+" · 只要："+joinWords(item.Rule.All)+" · 不要："+joinWords(item.Rule.None))
-							for _, g := range item.Rule.Any {
-								caption(c, "任意一词："+strings.Join(g, " / "))
-							}
-							status := "RSS 尚未检查"
-							if item.LastCheck != "" {
-								status = "最近 RSS 检查：" + item.LastCheck
-							}
-							caption(c, status)
-							if item.CheckFailed {
-								summary := item.LastError
-								if summary == "" {
-									summary = "未知错误"
-								}
-								ui.Row(c).Gap(8).Padding(8, 12).Radius(6).Background(colors(c).amberWash).Children(func() {
-									ui.Text(c, "RSS 检查失败："+summary).FontSize(12).TextColor(colors(c).amber).Grow(1)
-									quiet(c, "retry-check-"+item.ID, "重试检查", func() { s.check(item.ID) }).Label("重试检查 " + item.GroupName).FontSize(12).Disabled(item.Paused || s.Busy)
-								})
-							}
-							if len(item.Recent) > 0 {
-								caption(c, "最近新到："+strings.Join(item.Recent, " / "))
-							}
-							caption(c, fmt.Sprintf("已跳过 %d 条已有资源 · 文件夹：%s", len(item.Skipped), item.Folder))
-						})
-						ui.Column(c).Gap(7).Children(func() {
-							if idx, ok := s.latestCompletedEpisode(item.AnimeID); ok {
-								d := s.Downloads[idx]
-								quiet(c, "play-latest-"+item.ID, "播放第 "+d.Episode+" 集", func() { s.playDownload(idx) }).Label("播放第 " + d.Episode + " 集 " + item.GroupName).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
-							}
-							secondary(c, "view-sub-"+item.ID, "查看资源", func() { s.viewSubscriptionResources(item.ID) }).Label("查看资源 " + item.GroupName).FontSize(12).Disabled(s.Busy)
-							label := "暂停追番"
-							if item.Paused {
-								label = "恢复追番"
-							}
-							secondary(c, "pause-sub-"+item.ID, label, func() { s.pauseSubscription(item.ID) }).Label(label + " " + item.GroupName).FontSize(12).Disabled(s.Busy)
-							quiet(c, "edit-sub-"+item.ID, "修改条件", func() { s.editSubscription(item.ID) }).Label("修改条件 " + item.GroupName).FontSize(12).TextColor(colors(c).blue).Disabled(s.Busy)
-							quiet(c, "check-sub-"+item.ID, "立即检查", func() { s.check(item.ID) }).Label("立即检查 " + item.GroupName).FontSize(12).Disabled(item.Paused || s.Busy)
-							quiet(c, "cancel-sub-"+item.ID, "取消追番", func() { s.CancelID, s.CancelPrompt = item.ID, true }).Label("取消追番 " + item.GroupName).FontSize(12).TextColor(colors(c).errorInk).Disabled(s.Busy)
-						})
-					}).OnClick(func() { s.openLibrary(item.ID) })
+					s.followTile(c, item, cardWidth)
 				}
 			})
 		})
 	})
+}
+
+func gridColumns(width float32) (int, float32) {
+	cols := int((width - 260) / 180)
+	if cols < 3 {
+		cols = 3
+	}
+	if cols > 6 {
+		cols = 6
+	}
+	return cols, (width - 260 - float32(cols-1)*18) / float32(cols)
+}
+
+func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
+	a := s.anime(sub.AnimeID)
+	tile := ui.ButtonBase(c.Key("subscription-" + sub.ID)).Label("打开追番 " + sub.GroupName).Column().Gap(8).Padding(0).AlignItems(ui.Stretch).Radius(8).Cursor(ui.CursorPointer)
+	pose := ui.Pose{}
+	if tile.Hovered() {
+		pose.Y = -3
+		pose.Scale = 1.008
+	}
+	if tile.Pressed() {
+		pose.Y = 0
+		pose.Scale = .985
+	}
+	tile.AnimatePose(pose, contentMotion)
+	tile.Children(func() {
+		ui.Box(c).Children(func() {
+			cover(c, a, width, width*1.36)
+			ui.Column(c).Absolute().Top(8).Left(8).Gap(4).AlignItems(ui.Start).Children(func() {
+				if sub.CheckFailed {
+					ui.Text(c, "检查失败").FontSize(11).FontWeight(600).TextColor(colors(c).amber).Background(colors(c).amberWash).Radius(4).Padding(3, 7).SingleLine()
+				}
+				if sub.Paused {
+					badge(c, "已暂停", colors(c).muted, colors(c).canvas)
+				} else if sub.Active {
+					label := "下载中"
+					if sub.Progress > 0 {
+						label = fmt.Sprintf("下载中 %d%%", int(sub.Progress*100))
+					}
+					badge(c, label, colors(c).blue, colors(c).blueWash)
+				} else {
+					status := ui.Text(c, "自动追番中").FontSize(11).FontWeight(600).TextColor(colors(c).green).Background(colors(c).greenWash).Radius(4).Padding(3, 7).SingleLine()
+					if !tile.Hovered() {
+						status.Opacity(0)
+					}
+				}
+			})
+		})
+		ui.Text(c, a.Title).FontSize(14).FontWeight(600).MaxLines(2).Height(39).TextColor(colors(c).ink)
+		ui.Row(c).Gap(5).Children(func() {
+			group := sub.GroupName
+			if group == "" {
+				group = "字幕组名称未知"
+			}
+			ui.Text(c, group).Grow(1).MinWidth(0).FontSize(12).TextColor(colors(c).muted).MaxLines(1)
+			hint := ui.Text(c, "进入剧集库").FontSize(12).TextColor(colors(c).muted)
+			if tile.Hovered() {
+				hint.TextColor(colors(c).blue)
+			}
+		})
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+			if sub.NewCount > 0 {
+				quiet(c, "open-new-"+sub.ID, fmt.Sprintf("新资源 %d 条", sub.NewCount), func() {
+					s.viewSubscriptionResources(sub.ID)
+					s.OnlyNew = true
+				}).Label(fmt.Sprintf("新资源 %d 条 %s", sub.NewCount, sub.GroupName)).FontSize(11).FontWeight(600).TextColor(colors(c).amber).Background(colors(c).amberWash).Radius(4).Padding(3, 7).Disabled(s.Busy)
+			}
+			ui.Spacer(c)
+			if sub.Completed > 0 {
+				ui.Text(c, fmt.Sprintf("已下载 %d 个资源", sub.Completed)).FontSize(12).TextColor(colors(c).muted).SingleLine()
+			}
+		})
+	}).OnClick(func() { s.openLibrary(sub.ID) })
 }
 
 // libraryEpisodes lists the indices of one anime's downloads sorted by
@@ -1340,29 +1337,77 @@ func (s *State) library(c *ui.Context) {
 		return
 	}
 	a := s.anime(sub.AnimeID)
+	indices := s.libraryEpisodes(sub.AnimeID)
 	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
 		ui.Row(c).Padding(18, 28, 0).Gap(6).Children(func() {
 			iconButton(c, "back-following", "返回我的追番", "back", func() { s.enterPage("following") })
 			quiet(c, "back-following-list", "返回我的追番", func() { s.enterPage("following") }).FontSize(12).TextColor(colors(c).muted)
 		})
-		ui.Row(c).Padding(12, 28, 16).Gap(16).Children(func() {
-			cover(c, a, 52, 72)
-			ui.Column(c).Grow(1).Gap(7).Children(func() {
-				ui.Text(c, a.Title).FontSize(23).FontWeight(700).MaxLines(2)
-				caption(c, sub.GroupName+" · 文件夹："+sub.Folder)
+		ui.Row(c).Padding(12, 28, 16).Gap(20).AlignItems(ui.Start).Children(func() {
+			cover(c, a, 120, 168)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(8).Children(func() {
+				ui.Text(c, a.Title).FontSize(26).FontWeight(700).MaxLines(2)
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+					if sub.Paused {
+						badge(c, "已暂停", colors(c).muted, colors(c).canvas)
+					} else if sub.Active {
+						label := "下载中"
+						if sub.Progress > 0 {
+							label = fmt.Sprintf("下载中 %d%%", int(sub.Progress*100))
+						}
+						badge(c, label, colors(c).blue, colors(c).blueWash)
+					} else {
+						badge(c, "自动追番中", colors(c).green, colors(c).greenWash)
+					}
+					if sub.NewCount > 0 {
+						quiet(c, "library-new-"+sub.ID, fmt.Sprintf("新资源 %d 条", sub.NewCount), func() {
+							s.viewSubscriptionResources(sub.ID)
+							s.OnlyNew = true
+						}).Label(fmt.Sprintf("新资源 %d 条 %s", sub.NewCount, sub.GroupName)).FontSize(11).FontWeight(600).TextColor(colors(c).amber).Background(colors(c).amberWash).Radius(4).Padding(3, 7).Disabled(s.Busy)
+					}
+					ui.Text(c, fmt.Sprintf("已下载 %d 个资源", s.completedDownloads(sub.AnimeID))).FontSize(12).TextColor(colors(c).muted).SingleLine()
+				})
+				if sub.CheckFailed {
+					summary := sub.LastError
+					if summary == "" {
+						summary = "未知错误"
+					}
+					ui.Row(c).Gap(8).Padding(8, 12).Radius(6).Background(colors(c).amberWash).Children(func() {
+						ui.Text(c, "RSS 检查失败："+summary).FontSize(12).TextColor(colors(c).amber).Grow(1)
+						quiet(c, "retry-check-"+sub.ID, "重试检查", func() { s.check(sub.ID) }).Label("重试检查 " + sub.GroupName).FontSize(12).Disabled(sub.Paused || s.Busy)
+					})
+				}
 			})
-			secondary(c, "library-edit", "修改条件", func() { s.editSubscription(sub.ID) }).Label("修改条件 " + sub.GroupName).FontSize(12).Disabled(s.Busy)
-			secondary(c, "library-resources", "查看资源", func() { s.viewSubscriptionResources(sub.ID) }).Label("查看资源 " + sub.GroupName).FontSize(12).Disabled(s.Busy)
+			more := iconButton(c, "library-menu", "更多操作", "more", nil)
+			if more.Clicked() {
+				s.LibraryMenuOpen = !s.LibraryMenuOpen
+			}
+			ui.Popover(c, more, &s.LibraryMenuOpen, func() {
+				ui.Column(c).Width(210).Padding(6).Gap(2).Children(func() {
+					s.libraryMenuItem(c, "menu-view-resources", "查看资源", "查看资源 "+sub.GroupName, s.Busy, func() { s.viewSubscriptionResources(sub.ID) })
+					s.libraryMenuItem(c, "menu-edit", "修改条件", "修改条件 "+sub.GroupName, s.Busy, func() { s.editSubscription(sub.ID) })
+					pause := "暂停追番"
+					if sub.Paused {
+						pause = "恢复追番"
+					}
+					s.libraryMenuItem(c, "menu-pause", pause, pause+" "+sub.GroupName, s.Busy, func() { s.pauseSubscription(sub.ID) })
+					s.libraryMenuItem(c, "menu-check", "立即检查", "立即检查 "+sub.GroupName, sub.Paused || s.Busy, func() { s.check(sub.ID) })
+					if sub.Folder != "" && s.OpenFolder != nil {
+						folder := sub.Folder
+						s.libraryMenuItem(c, "menu-folder", "打开番剧文件夹", "打开番剧文件夹 "+sub.GroupName, s.Busy, func() { s.OpenFolder(folder) })
+					}
+					ui.Divider(c).Background(colors(c).line)
+					s.libraryMenuItem(c, "menu-cancel", "取消追番", "取消追番 "+sub.GroupName, s.Busy, func() { s.CancelID, s.CancelPrompt = sub.ID, true })
+				})
+			})
 		})
 		ui.Divider(c).Background(colors(c).line)
-		indices := s.libraryEpisodes(sub.AnimeID)
 		if len(indices) == 0 {
 			s.empty(c, "还没有已下载的剧集", "已开始的下载会出现在这里，下载完成后点开就能看。", "查看资源", func() { s.viewSubscriptionResources(sub.ID) })
 			return
 		}
 		ui.Scroll(c.Key("episode-list")).Grow(1).MinHeight(0).Padding(14, 28, 24).Children(func() {
 			ui.Column(c).Gap(12).Children(func() {
-				caption(c, fmt.Sprintf("已下载 %d 集", len(indices)))
 				for _, i := range indices {
 					idx := i
 					d := s.Downloads[idx]
@@ -1402,6 +1447,17 @@ func (s *State) library(c *ui.Context) {
 				}
 			})
 		})
+	})
+}
+
+func (s *State) libraryMenuItem(c *ui.Context, key, label, accessLabel string, disabled bool, action func()) {
+	b := ui.ButtonBase(c.Key(key)).Label(accessLabel).FillWidth().Padding(8, 12).Radius(6).Cursor(ui.CursorPointer).Disabled(disabled)
+	if b.Hovered() {
+		b.Background(colors(c).chrome)
+	}
+	tactile(b).Children(func() { ui.Text(c, label).FontSize(13).SingleLine() }).OnClick(func() {
+		s.LibraryMenuOpen = false
+		action()
 	})
 }
 

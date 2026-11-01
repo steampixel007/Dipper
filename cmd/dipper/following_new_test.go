@@ -20,6 +20,8 @@ func TestUIFollowedResourcesMarkNewReleases(t *testing.T) {
 	updates := make(chan func(), 4)
 	state.Update = func(update func()) { updates <- update }
 	tester := ui.NewTester(state.view, 1320, 860)
+	uiClick(t, tester, "打开追番 字幕组161")
+	uiClick(t, tester, "更多操作")
 	uiClick(t, tester, "查看资源 字幕组161")
 	deadline := time.NewTimer(10 * time.Second)
 	defer deadline.Stop()

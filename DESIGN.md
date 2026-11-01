@@ -154,7 +154,7 @@ typography:
   brand: { size: 22, weight: 600 }          # sidebar wordmark
   stat: { size: 20, weight: 600 }           # aggregate speeds
   section-heading: { size: 18, weight: 600 }# heading() helper
-  card-title: { size: 17, weight: 600 }     # follow-card title
+  card-title: { size: 14, weight: 600 }     # poster-grid titles: browse and my follows
   row-title: { size: 15, weight: 600 }      # download rows, guide steps
   body: { size: 14 }                        # default; weight 600 when emphasized
   control: { size: 13 }                     # compact controls and labels
@@ -168,7 +168,7 @@ rounded:
   chip: 5          # word chips
   field: 6         # inputs, inline notes; theme default
   card: 8          # cards, covers, nav items
-  panel: 10        # follow/settings cards, word popover
+  panel: 10        # settings cards, word popover
   dialog: 12       # dialog panels
   icon-button: 16  # 32×32 icon buttons (circle)
   button: 20       # all text buttons
@@ -291,7 +291,7 @@ preserves catalog filters and scroll position.
 | --- | --- |
 | Browse | Year and season heading, search, season and weekday controls, then poster grid. A short hint can be dismissed; the guide opens on request. |
 | Anime detail | Fansub group and editable conditions on the left; quick words, match count, reasons and release rows on the right; current-run summary and primary action below. |
-| My follows | Follow search with a matching count, saved rules, latest check result, pending-release summary and download marker, folder, pause/resume, edit and check-now actions. |
+| My follows | Follow search with a matching count, then a poster grid: cover, title, subtitle group, and an 进入剧集库 hint. Status stays minimal — a 检查失败/已暂停/下载中 badge on the poster, a 新资源 N 条 button, and a completed-download count. The whole tile opens the episode library; pause, edit, check-now, and folder actions live in the library's ··· menu. |
 | Downloads | Separate aggregate upload/download speeds; per-task progress and speed, with pause/resume/retry or seeding actions appropriate to state. |
 | Settings | Appearance, source line, download location, shared upload limit, seeding-duration target, and window/background behavior. |
 
@@ -331,8 +331,9 @@ exclude is `avoidInk` on `avoidWash` with `−`, unrestricted is `ink` on `paper
 
 Sidebar nav items are 44 DIP tall, radius 8; the active item lifts to `paper`
 with weight 600 and a 3 × 18 DIP `blue` marker (radius 2); hover is `line`.
-Cards are `paper` with a 1px `line` border — radius 10 for follow and settings
-cards, 8 for download, group, and poster cards; a selected group card switches
+Cards are `paper` with a 1px `line` border — radius 10 for settings cards,
+8 for download, group, and poster cards; follow tiles are borderless posters
+whose cover, title, and metadata sit directly on the canvas; a selected group card switches
 its border to `blue` and its fill to `blueWash`. Dialogs are 500–510 DIP wide,
 radius 12, padding 28, over `scrim`. The word-choice popover is 320 DIP wide,
 radius 10, over the single `popoverShadow`.
