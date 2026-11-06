@@ -36,11 +36,8 @@ func TestUIAnimeSummaryReadingPreservesDraft(t *testing.T) {
 					t.Fatal("reading action did not open the synopsis")
 				}
 				uiRequireText(t, tester, "简介来自蜜柑计划", anime.Summary)
-				footer, ok := tester.Find("简介来自蜜柑计划")
-				if !ok || footer.Y < 0 || footer.Y+footer.H > float32(size[1]) {
-					t.Fatal("long synopsis pushed the reading controls outside the window")
-				}
-				uiClick(t, tester, "关闭简介")
+				uiScrollTo(t, tester, "简介来自蜜柑计划")
+				uiClick(t, tester, "关闭")
 				if state.SummaryOpen || !reflect.DeepEqual(state.Checked, checked) || !reflect.DeepEqual(state.Rule, rule) || !reflect.DeepEqual(state.ResourceScroll, scroll) {
 					t.Fatal("reading the synopsis changed the release selection, filter or scroll position")
 				}

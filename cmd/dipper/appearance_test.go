@@ -138,11 +138,11 @@ func TestAppearanceBusySettingsIgnoreRadioClicks(t *testing.T) {
 
 func TestAppearanceRenderedPagesUseDarkSurfacesAndReadableText(t *testing.T) {
 	for _, page := range []struct{ id, heading, caption string }{
-		{"browse", "2025 年春季番剧", "找到喜欢的番剧，选好版本，后续更新交给 Dipper。"},
-		{"detail", "资源预览", "周一 · 来源：蜜柑计划"},
-		{"following", "喜欢的故事，不错过更新。", "点击海报，选一集开始观看。"},
-		{"downloads", "更新到了，安心等它下好。", "查看下载进度、传输速度与做种状态。"},
-		{"settings", "让 Dipper 按你的习惯工作。", appearanceText.detail},
+		{"browse", "2025 年春季番剧", "选好番剧和版本，新更新会自动下载。"},
+		{"detail", "可下载资源", "周一，来源：蜜柑计划"},
+		{"following", "我的追番", "添加追番"},
+		{"downloads", "下载", "保存在本机"},
+		{"settings", "设置", appearanceText.detail},
 	} {
 		t.Run(page.id, func(t *testing.T) {
 			s := uiFixture(t, page.id)
@@ -196,19 +196,29 @@ func TestAppearanceDarkDialogAndPopoverRemainReadable(t *testing.T) {
 	s.Appearance = appearanceDark
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiClick(t, tt, "筛选 1080p")
-	requireAppearanceText(t, tt, "怎么筛选「1080p」？", true)
-	requireAppearanceText(t, tt, "标题必须出现这个词", true)
-	requireAppearanceTextSurface(t, tt, "怎么筛选「1080p」？", true)
+	requireAppearanceText(t, tt, "筛选「1080p」", true)
+	requireAppearanceText(t, tt, "标题里必须有这个词", true)
+	requireAppearanceTextSurface(t, tt, "筛选「1080p」", true)
 	uiClick(t, tt, "只要含「1080p」的")
-	uiClick(t, tt, "下载并追番")
-	requireAppearanceText(t, tt, "确认开始追番", true)
-	requireAppearanceText(t, tt, "保持 Dipper 运行即可自动追番和下载；退出后停止后台活动。", true)
-	requireAppearanceTextSurface(t, tt, "确认开始追番", true)
+	s.Help = true
+	tt.Frame()
+	requireAppearanceText(t, tt, "怎么追番", true)
+	requireAppearanceText(t, tt, "以后发布的资源会自动下载。在「我的追番」点海报，从剧集库播放下载完成的剧集。", true)
+	requireAppearanceTextSurface(t, tt, "怎么追番", true)
 }
 
 func TestAppearanceDarkTextAndStatusColorsHaveReadableContrast(t *testing.T) {
+	requirePaletteContrast(t, true)
+}
+
+func TestAppearanceLightTextAndStatusColorsHaveReadableContrast(t *testing.T) {
+	requirePaletteContrast(t, false)
+}
+
+func requirePaletteContrast(t *testing.T, dark bool) {
+	t.Helper()
 	ui.NewTester(func(c *ui.Context) {
-		c.SetTheme(spectrumTheme(true))
+		c.SetTheme(spectrumTheme(dark))
 		p := colors(c)
 		for _, pair := range []struct {
 			name            string
@@ -219,6 +229,15 @@ func TestAppearanceDarkTextAndStatusColorsHaveReadableContrast(t *testing.T) {
 			{"sidebar caption", p.muted, p.chrome},
 			{"recessed caption", p.muted, p.canvas},
 			{"primary action", p.accentText, p.blue},
+			{"primary hover", p.accentText, p.blueHover},
+			{"primary pressed", p.accentText, p.bluePressed},
+			{"body chrome", p.ink, p.chrome},
+			{"body canvas", p.ink, p.canvas},
+			{"accent action", p.blue, p.paper},
+			{"accent chrome", p.blue, p.chrome},
+			{"success action", p.green, p.paper},
+			{"warning action", p.amber, p.paper},
+			{"warning chrome", p.amber, p.chrome},
 			{"include", p.blue, p.blueWash},
 			{"exclude", p.avoidInk, p.avoidWash},
 			{"success", p.green, p.greenWash},
@@ -228,8 +247,9 @@ func TestAppearanceDarkTextAndStatusColorsHaveReadableContrast(t *testing.T) {
 			a, b := appearanceColorLuminance(pair.ink), appearanceColorLuminance(pair.background)
 			contrast := (max(a, b) + .05) / (min(a, b) + .05)
 			if contrast < 4.5 {
-				t.Errorf("%s text contrast=%.2f:1, want at least 4.5:1", pair.name, contrast)
+				t.Errorf("%s text contrast=%.6f:1, want at least 4.5:1", pair.name, contrast)
 			}
+			t.Logf("%s contrast=%.6f:1", pair.name, contrast)
 		}
 	}, 20, 20)
 }

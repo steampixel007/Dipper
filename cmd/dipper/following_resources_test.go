@@ -88,7 +88,7 @@ func TestUIFollowingViewResourcesFixtureBackReturnsToFollowing(t *testing.T) {
 	uiClick(t, tester, "打开追番 "+sub.GroupName)
 	uiClick(t, tester, "更多操作")
 	uiClick(t, tester, "查看资源 "+sub.GroupName)
-	uiRequireText(t, tester, "我的追番 / 查看资源", "查看已追番资源", "返回我的追番", "已保存条件，仅用于筛选与确认，不修改。")
+	uiRequireText(t, tester, "我的追番 / 查看资源", "已追番资源", "返回我的追番")
 	uiClick(t, tester, "返回我的追番")
 	if state.Page != "following" {
 		t.Fatalf("back did not return to following: page=%q", state.Page)
@@ -138,7 +138,7 @@ func TestUIFollowingViewResourcesManualSelectionAndReturn(t *testing.T) {
 			t.Fatal("view mode auto-selected a resource")
 		}
 	}
-	uiRequireText(t, tester, "我的追番 / 查看资源", "查看已追番资源", "补下选中资源", "不会修改已保存的追番条件", "返回我的追番")
+	uiRequireText(t, tester, "我的追番 / 查看资源", "已追番资源", "下载选中资源", "不会修改追番条件", "返回我的追番")
 	uiClick(t, tester, "返回我的追番")
 	if state.Page != "following" {
 		t.Fatalf("back did not return to following: page=%q", state.Page)
@@ -187,11 +187,8 @@ func TestUIFollowingViewResourcesAllowsExplicitBackfillSelection(t *testing.T) {
 	if !state.Checked[first.ID] {
 		t.Fatal("manual selection did not apply")
 	}
-	uiClick(t, tester, "补下选中资源")
-	if !state.Confirm {
-		t.Fatal("selected backfill did not open confirmation")
-	}
-	uiRequireText(t, tester, "确认补下已有资源", "已保存条件，仅用于筛选与确认，不修改。")
+	uiClick(t, tester, "下载选中资源")
+	uiRequireText(t, tester, "本次下载 1 个资源", "勾选要下载的资源。筛选不会修改追番条件。")
 }
 
 func TestUIFollowedResourceViewKeepsSavedGroupAndRule(t *testing.T) {
@@ -215,7 +212,7 @@ func TestUIFollowedResourceViewKeepsSavedGroupAndRule(t *testing.T) {
 		t.Fatal("view mode still offers group switching")
 	}
 	groupIndex := s.Group
-	uiClick(t, tt, "重新选版本")
+	uiClick(t, tt, "重新选字幕组")
 	if s.EditID != "" || s.ViewResources || s.Group != -1 {
 		t.Fatalf("fresh selection did not reset view state: edit=%q view=%v group=%d", s.EditID, s.ViewResources, s.Group)
 	}

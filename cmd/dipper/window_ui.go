@@ -163,30 +163,31 @@ func (s *State) windowSettings(c *ui.Context) {
 				caption(c, windowText.unavailable)
 			}
 		}
-		secondary(c, "quit", windowText.quit, s.exitApp).AlignSelf(ui.Start).FontSize(12).Disabled(s.Busy)
+		secondary(c, "quit", windowText.quit, s.exitApp).AlignSelf(ui.Start).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
 	})
 }
 
 func (s *State) closeDialog(c *ui.Context) {
 	ui.DialogBase(c, &s.ClosePrompt, func(backdrop, panel ui.Element) {
 		backdrop.Background(colors(c).scrim).Transition(fadeTransition)
-		panel.Width(510).Padding(28).Gap(18).Radius(12).Background(colors(c).paper)
-		ui.Text(c, windowText.question).FontSize(23).FontWeight(700)
-		caption(c, windowText.backgroundDetail)
-		caption(c, windowText.quitDetail)
-		if !s.TrayAvailable {
-			ui.Text(c, windowText.unavailable).FontSize(12).TextColor(colors(c).amber).LineHeight(1.5)
-		} else if s.Platform == "windows" {
-			caption(c, windowText.overflow)
-		}
-		if s.SaveError != "" {
-			ui.Text(c, s.SaveError).FontSize(12).TextColor(colors(c).errorInk).LineHeight(1.5)
-		}
-		ui.Checkbox(c.Key("remember-close"), &s.RememberClose, windowText.remember).Disabled(s.Busy)
-		ui.Row(c).Justify(ui.End).Gap(8).Children(func() {
-			quiet(c, "cancel-close", windowText.cancel, func() { s.ClosePrompt = false })
-			secondary(c, "close-quit", windowText.quit, func() { s.finishClose(closeQuit, s.RememberClose) }).Disabled(s.Busy)
-			primary(c, "close-background", windowText.background, func() { s.finishClose(closeBackground, s.RememberClose) }).Disabled(s.Busy || !s.TrayAvailable)
+		dialogContent(c, panel, "close-content", 510, func() {
+			ui.Text(c, windowText.question).FontSize(textSize(c, textTitle)).FontWeight(700)
+			caption(c, windowText.backgroundDetail)
+			caption(c, windowText.quitDetail)
+			if !s.TrayAvailable {
+				ui.Text(c, windowText.unavailable).FontSize(textSize(c, textCaption)).TextColor(colors(c).amber).LineHeight(1.5)
+			} else if s.Platform == "windows" {
+				caption(c, windowText.overflow)
+			}
+			if s.SaveError != "" {
+				ui.Text(c, s.SaveError).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk).LineHeight(1.5)
+			}
+			ui.Checkbox(c.Key("remember-close"), &s.RememberClose, windowText.remember).Disabled(s.Busy)
+			ui.Row(c).Wrap().Justify(ui.End).Gap(controlGap).Children(func() {
+				quiet(c, "cancel-close", windowText.cancel, func() { s.ClosePrompt = false })
+				secondary(c, "close-quit", windowText.quit, func() { s.finishClose(closeQuit, s.RememberClose) }).Disabled(s.Busy)
+				primary(c, "close-background", windowText.background, func() { s.finishClose(closeBackground, s.RememberClose) }).Disabled(s.Busy || !s.TrayAvailable)
+			})
 		})
 	})
 }

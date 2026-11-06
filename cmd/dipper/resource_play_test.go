@@ -11,17 +11,29 @@ import (
 func TestUIResourceRowShowsDownloadState(t *testing.T) {
 	s := uiFixture(t, "detail")
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "下载中 43%", "已在下载库", "下载失败")
+	uiRequireText(t, tt, "下载中 43%", "已有任务", "失败")
+	failures := func() int {
+		count := 0
+		for _, text := range tt.Texts() {
+			if text == "失败" {
+				count++
+			}
+		}
+		return count
+	}
+	if got := failures(); got != 1 {
+		t.Fatalf("failed resource badges = %d, want 1", got)
+	}
 	s.Downloads[0].Progress = 1
 	s.Downloads[1].Failed = false
 	tt.Frame()
 	if tt.HasText("下载中 43%") {
 		t.Error("a completed download still shows its progress on the resource row")
 	}
-	if tt.HasText("下载失败") {
+	if got := failures(); got != 0 {
 		t.Error("a recovered download still shows failure on the resource row")
 	}
-	if !tt.HasText("已在下载库") {
+	if !tt.HasText("已有任务") {
 		t.Fatal("recovered downloads do not read as in the library")
 	}
 }

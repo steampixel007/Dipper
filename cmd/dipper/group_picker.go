@@ -17,8 +17,8 @@ func (s *State) groupPicker(c *ui.Context) {
 		}
 	}
 	if len(s.Groups) > 1 || s.GroupSearch != "" {
-		ui.TextInput(c.Key("group-search"), &s.GroupSearch).Label("搜索字幕组").Placeholder("输入字幕组名称").FillWidth().Height(34).Disabled(s.Busy)
-		ui.Row(c).Gap(6).Children(func() {
+		ui.TextInput(c.Key("group-search"), &s.GroupSearch).Label("搜索字幕组").Placeholder("输入字幕组名称").FillWidth().MinHeight(inputHeight(c)).Disabled(s.Busy)
+		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
 			if query == "" {
 				caption(c, fmt.Sprintf("%d 个字幕组", len(s.Groups)))
 			} else {
@@ -26,7 +26,7 @@ func (s *State) groupPicker(c *ui.Context) {
 			}
 			ui.Spacer(c)
 			if s.GroupSearch != "" {
-				quiet(c, "clear-group-search", "清除搜索", func() { s.GroupSearch = "" }).FontSize(12).Padding(3, 0).TextColor(colors(c).blue).Disabled(s.Busy)
+				quiet(c, "clear-group-search", "清除搜索", func() { s.GroupSearch = "" }).FontSize(textSize(c, textCaption)).Padding(3, 0).TextColor(colors(c).blue).Disabled(s.Busy)
 			}
 		})
 	}
@@ -53,7 +53,7 @@ func (s *State) groupPicker(c *ui.Context) {
 					if followed {
 						badge(c, "正在追", colors(c).green, colors(c).greenWash)
 					}
-					ui.Text(c, name).FontWeight(600).FontSize(13).Grow(1).MinWidth(0).MaxLines(2)
+					ui.Text(c, name).FontWeight(600).FontSize(textSize(c, textBody)).Grow(1).MinWidth(0)
 					if s.Group == index {
 						ui.Box(c).TextColor(colors(c).blue).Children(func() { icon(c, "check") })
 					}

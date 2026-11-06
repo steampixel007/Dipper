@@ -88,7 +88,7 @@ func TestSourceRouteFailureRollsBackAndKeepsChoice(t *testing.T) {
 	if s.SourceRoute != previousLabel || s.Source.Origin() != previousOrigin {
 		t.Fatalf("failed switch changed state: route = %q origin = %q", s.SourceRoute, s.Source.Origin())
 	}
-	if s.SourceRouteError != "这条线路返回 HTTP 503，换一条线路试试。" {
+	if s.SourceRouteError != "这条线路暂时不可用（503），换一条线路试试。" {
 		t.Fatalf("error = %q", s.SourceRouteError)
 	}
 }
