@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"dipper.local/dipper/internal/core"
@@ -19,7 +21,7 @@ type sourceRoute struct {
 	Origin string
 }
 
-var defaultSourceRoutes = []sourceRoute{{Label: "线路一 · mikanime.tv（默认）", Origin: "https://mikanime.tv"}, {Label: "线路二 · mikanani.me", Origin: "https://mikanani.me"}}
+var defaultSourceRoutes = []sourceRoute{{Label: "线路一（默认）：mikanime.tv", Origin: "https://mikanime.tv"}, {Label: "线路二：mikanani.me", Origin: "https://mikanani.me"}}
 
 func (s *State) routeLabels() []string {
 	labels := make([]string, len(s.SourceRoutes))
@@ -57,7 +59,7 @@ func newState(dir string) *State {
 	s.Update = func(fn func()) { fn() }
 	s.setCurrentSeason()
 	s.Root, s.SaveError = initialDownloadRoot()
-	s.Upload = "1 MB/s"
+	s.Upload = "1 MiB/s"
 	s.SourceRoute = defaultSourceRoutes[0].Label
 	return s
 }
@@ -123,7 +125,7 @@ func (s *State) refreshCatalog() {
 			}
 			s.SourceLoading = false
 			if err != nil {
-				s.SourceError = err.Error()
+				s.SourceError = sourceErrorMessage(err)
 				return
 			}
 			for _, a := range rows {
@@ -137,21 +139,172 @@ func (s *State) refreshCatalog() {
 	}()
 }
 
-func routeError(err error) string {
+type sourceFailureKind int
+
+const (
+	sourceFailureUnknown sourceFailureKind = iota
+	sourceFailureTimeout
+	sourceFailureConnection
+	sourceFailureChallenge
+	sourceFailureStructure
+	sourceFailureNotFound
+	sourceFailureTooLarge
+	sourceFailureIncomplete
+	sourceFailureRateLimited
+	sourceFailureStatus
+)
+
+type sourceFailure struct {
+	kind   sourceFailureKind
+	status int
+}
+
+var sourceStatusPattern = regexp.MustCompile(`(?i)(?:http(?: status)?|status(?: code)?)\s*[:=]?\s*(\d{3})`)
+
+func classifySourceErrorText(raw string) sourceFailure {
+	text := strings.ToLower(strings.TrimSpace(raw))
+	switch {
+	case text == "":
+		return sourceFailure{}
+	case strings.Contains(text, "deadline exceeded"), strings.Contains(text, "timeout"), strings.Contains(text, "timed out"), strings.Contains(text, "超时"):
+		return sourceFailure{kind: sourceFailureTimeout}
+	case strings.Contains(text, "access challenge"), strings.Contains(text, "人机验证"), strings.Contains(text, "验证码"):
+		return sourceFailure{kind: sourceFailureChallenge}
+	case strings.Contains(text, "response structure"), strings.Contains(text, "unrecognized"),
+		strings.Contains(text, "inconsistent response"), strings.Contains(text, "unexpected page structure"),
+		strings.Contains(text, "页面结构"), strings.Contains(text, "结构发生变化"):
+		return sourceFailure{kind: sourceFailureStructure}
+	case strings.Contains(text, "exceeds size limit"), strings.Contains(text, "response too large"),
+		strings.Contains(text, "body too large"), strings.Contains(text, "内容过大"):
+		return sourceFailure{kind: sourceFailureTooLarge}
+	case strings.Contains(text, "cannot confirm complete history"), strings.Contains(text, "incomplete history"),
+		strings.Contains(text, "未能完整"):
+		return sourceFailure{kind: sourceFailureIncomplete}
+	case strings.Contains(text, "not found"), strings.Contains(text, "没有找到"), strings.Contains(text, "未找到"):
+		return sourceFailure{kind: sourceFailureNotFound}
+	case strings.Contains(text, "connection refused"), strings.Contains(text, "connection reset"),
+		strings.Contains(text, "could not connect"), strings.Contains(text, "no connection could be made"),
+		strings.Contains(text, "no such host"), strings.Contains(text, "network is unreachable"),
+		strings.Contains(text, "dial tcp"), strings.Contains(text, "connectex"),
+		strings.Contains(text, "连接失败"), strings.Contains(text, "连接不上"), strings.Contains(text, "无法连接"):
+		return sourceFailure{kind: sourceFailureConnection}
+	}
+	if match := sourceStatusPattern.FindStringSubmatch(text); match != nil {
+		status, _ := strconv.Atoi(match[1])
+		return sourceFailure{kind: sourceFailureStatus, status: status}
+	}
+	return sourceFailure{}
+}
+
+func classifySourceError(err error) sourceFailure {
 	var httpErr *source.HTTPError
 	switch {
 	case errors.Is(err, source.ErrChallenge):
-		return "这条线路需要人机验证，稍后再试或换一条线路。"
+		return sourceFailure{kind: sourceFailureChallenge}
 	case errors.Is(err, source.ErrStructure):
-		return "这条线路返回的页面无法识别，换一条线路试试。"
+		return sourceFailure{kind: sourceFailureStructure}
+	case errors.Is(err, source.ErrNotFound):
+		return sourceFailure{kind: sourceFailureNotFound}
+	case errors.Is(err, source.ErrResponseTooLarge):
+		return sourceFailure{kind: sourceFailureTooLarge}
+	case errors.Is(err, source.ErrIncompleteHistory):
+		return sourceFailure{kind: sourceFailureIncomplete}
 	case errors.As(err, &httpErr):
-		return fmt.Sprintf("这条线路返回 HTTP %d，换一条线路试试。", httpErr.StatusCode)
-	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-		return "这条线路连接超时，换一条线路试试。"
+		return sourceFailure{kind: sourceFailureStatus, status: httpErr.StatusCode}
+	case errors.Is(err, context.DeadlineExceeded):
+		return sourceFailure{kind: sourceFailureTimeout}
+	case errors.Is(err, context.Canceled):
+		return sourceFailure{kind: sourceFailureConnection}
 	case err != nil:
-		return "这条线路暂时连不上，换一条线路试试。"
+		return classifySourceErrorText(err.Error())
 	}
-	return ""
+	return sourceFailure{}
+}
+
+func sourceFailureMessage(failure sourceFailure) string {
+	switch failure.kind {
+	case sourceFailureTimeout:
+		return "网络连接超时，请稍后再试。"
+	case sourceFailureConnection:
+		return "网络连接失败，请检查网络后重试。"
+	case sourceFailureChallenge:
+		return "来源网站要求人机验证，请稍后再试。"
+	case sourceFailureStructure:
+		return "来源页面的结构发生变化，请稍后再试。"
+	case sourceFailureNotFound:
+		return "没有找到这部番剧或字幕组，请返回后重试。"
+	case sourceFailureTooLarge:
+		return "来源网站返回的内容过大，请稍后再试。"
+	case sourceFailureIncomplete:
+		return "资源还没加载完整，请稍后再试。"
+	case sourceFailureRateLimited:
+		return "请求有些频繁，请稍后再试。"
+	case sourceFailureStatus:
+		switch failure.status {
+		case 404:
+			return "没有找到这部番剧或字幕组，请返回后重试。"
+		case 429:
+			return "请求有些频繁，请稍后再试。"
+		}
+		if failure.status >= 500 {
+			return fmt.Sprintf("来源网站暂时不可用（%d），请稍后再试。", failure.status)
+		}
+		return fmt.Sprintf("来源网站拒绝了请求（%d），请稍后再试。", failure.status)
+	}
+	return "暂时无法获取来源网站的信息，请稍后再试。"
+}
+
+func sourceRouteFailureMessage(failure sourceFailure) string {
+	switch failure.kind {
+	case sourceFailureTimeout:
+		return "这条线路连接超时，换一条线路试试。"
+	case sourceFailureConnection:
+		return "这条线路连接不上，换一条线路试试。"
+	case sourceFailureChallenge:
+		return "这条线路需要人机验证，稍后再试或换一条线路。"
+	case sourceFailureStructure:
+		return "这条线路返回的页面无法识别，换一条线路试试。"
+	case sourceFailureNotFound:
+		return "这条线路没有找到所需内容，换一条线路试试。"
+	case sourceFailureTooLarge:
+		return "这条线路返回的内容过大，换一条线路试试。"
+	case sourceFailureIncomplete:
+		return "这条线路没能完整加载资源，换一条线路试试。"
+	case sourceFailureRateLimited:
+		return "这条线路请求有些频繁，换一条线路试试。"
+	case sourceFailureStatus:
+		if failure.status == 404 {
+			return "这条线路没有找到所需内容，换一条线路试试。"
+		}
+		if failure.status == 429 {
+			return "这条线路请求有些频繁，换一条线路试试。"
+		}
+		if failure.status >= 500 {
+			return fmt.Sprintf("这条线路暂时不可用（%d），换一条线路试试。", failure.status)
+		}
+		return fmt.Sprintf("这条线路暂时无法响应（%d），换一条线路试试。", failure.status)
+	}
+	return "这条线路暂时连不上，换一条线路试试。"
+}
+
+func sourceErrorMessage(err error) string {
+	return sourceFailureMessage(classifySourceError(err))
+}
+
+func sourceLastErrorMessage(raw string) string {
+	raw = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), "检查更新失败："))
+	failure := classifySourceErrorText(raw)
+	if raw != "" && !strings.HasPrefix(raw, "mikan:") && failure.kind != sourceFailureTimeout && failure.kind != sourceFailureConnection {
+		return raw
+	}
+	return sourceFailureMessage(failure)
+}
+
+func routeError(err error) string {
+	if err == nil {
+		return ""
+	}
+	return sourceRouteFailureMessage(classifySourceError(err))
 }
 
 func (s *State) switchSourceRoute(label string) {
@@ -170,7 +323,7 @@ func (s *State) switchSourceRoute(label string) {
 			s.Update(func() {
 				s.SourceRoute = previousLabel
 				s.SourceTesting = false
-				s.SourceRouteError = "无法使用这条线路：" + err.Error()
+				s.SourceRouteError = sourceRouteFailureMessage(classifySourceError(err))
 			})
 			return
 		}
@@ -215,7 +368,7 @@ func (s *State) openAnime(id, from string) {
 	s.WordOpen = false
 	s.ShowAliases = false
 	s.UndoFilters, s.RedoFilters = nil, nil
-	s.Suggestions, s.Confirm = false, false
+	s.Suggestions = false
 	s.FilterFeedback = ""
 	s.AnyDraft = ""
 	s.ResourceScroll = ui.ScrollState{}
@@ -316,7 +469,7 @@ func (s *State) refreshDetail() {
 			}
 			s.DetailLoading = false
 			if err != nil {
-				s.DetailError = err.Error()
+				s.DetailError = sourceErrorMessage(err)
 				return
 			}
 			a := fromAnime(d.Anime)
@@ -408,12 +561,12 @@ func (s *State) refreshHistory() {
 			}
 			s.HistoryLoading = false
 			if err != nil {
-				s.HistoryError = err.Error()
+				s.HistoryError = sourceErrorMessage(err)
 				return
 			}
 			s.History = rows
 			for _, r := range rows {
-				s.ResourceList = append(s.ResourceList, Resource{ID: r.ID, Title: r.Title, Published: r.Published, Episode: core.ParseEpisode(r.Title), MB: int((r.Size + 999999) / 1000000), Tokens: core.ReleaseTags(r.Title)})
+				s.ResourceList = append(s.ResourceList, Resource{ID: r.ID, Title: r.Title, Published: r.Published, Episode: core.ParseEpisode(r.Title), Bytes: r.Size, MB: legacySizeMB(r.Size), Tokens: core.ReleaseTags(r.Title)})
 			}
 			s.initSelection()
 			s.Notice = fmt.Sprintf("已加载 %d 条历史资源", len(rows))

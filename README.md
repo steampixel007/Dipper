@@ -15,7 +15,7 @@ A native desktop app with automatic following and a built-in downloader.
 [![Go](https://img.shields.io/badge/Go-1.27.1-3b63fb?logo=go&logoColor=white)](go.mod)
 [![Native UI](https://img.shields.io/badge/UI-MyGo_Native-3b63fb)](https://github.com/egoist/mygo)
 
-**[Get started](#get-started)** &nbsp;·&nbsp; **[User guide](docs/usage.md)** &nbsp;·&nbsp; **[Development](docs/development.md)** &nbsp;·&nbsp; **[Feedback](https://github.com/steampixel007/Dipper/issues)**
+**[Download](https://github.com/steampixel007/Dipper/releases/latest)** &nbsp;·&nbsp; **[Get started](#get-started)** &nbsp;·&nbsp; **[User guide](docs/usage.md)** &nbsp;·&nbsp; **[Development](docs/development.md)** &nbsp;·&nbsp; **[Feedback](https://github.com/steampixel007/Dipper/issues)**
 
 <br>
 
@@ -27,6 +27,48 @@ A native desktop app with automatic following and a built-in downloader.
 
 </div>
 
+## Get started
+
+Download Dipper from this repository's **[Releases](https://github.com/steampixel007/Dipper/releases/latest)**.
+Expand **Assets** and choose the file for your computer. You do not need Git or
+Go. The filenames below are from `v0.1.2`, checked on November 6, 2026; later
+releases use their own version number.
+
+| Your computer | Download | Install and open |
+| --- | --- | --- |
+| Windows x64 (Intel or AMD) | `dipper_0.1.2_windows_amd64_setup.exe` | Open the installer, then launch Dipper from the Start menu. |
+| Mac with Apple silicon (M series) | `dipper_0.1.2_darwin_arm64.dmg` | Open the disk image, drag Dipper to Applications, then open it there. |
+| Mac with an Intel processor | `dipper_0.1.2_darwin_amd64.dmg` | Open the disk image, drag Dipper to Applications, then open it there. |
+| Debian / Ubuntu Linux x64 | `dipper_0.1.2_linux_amd64.deb` | Install with your package manager, then open Dipper from the applications menu. [Install command and archive alternatives](docs/usage.md#install). |
+
+On a Mac, **Apple menu → About This Mac** identifies the chip or processor
+([Apple's guide](https://support.apple.com/en-us/116943)).
+Choose an application download, rather than GitHub's **Source code** archives.
+
+Windows packages have no publisher certificate. macOS packages use ad-hoc
+signing without Apple notarization; the system may block the first launch.
+See the [installation notes](docs/usage.md#install) if that happens.
+Clean-machine installation and native macOS/Linux first launch have not been
+validated in this documentation update.
+
+Once Dipper opens (the interface is currently in Chinese):
+
+1. **Browse a series.** In **浏览番剧**, choose a season or weekday, or search
+   the selected season by title.
+2. **Choose a group and filter releases.** Open the series, choose a fansub
+   group, then use title words such as `1080p` to include or exclude releases.
+   Check the matching list before continuing.
+3. **Download and follow it.** Keep the existing releases you want selected,
+   then choose **下载并追番** (Download and follow). Dipper checks for matching
+   updates while running.
+4. **Watch an episode.** Open **我的追番**, click the series poster to enter its
+   episode library, and choose **播放** beside a completed download. Playback
+   opens your system's associated media player; install one if needed.
+
+Files go to `Dipper` under your system's Videos folder by default. Change the
+destination in Settings. See the [user guide](docs/usage.md) for file locations
+and follow management.
+
 ## From finding a show to following it
 
 Dipper keeps the whole journey in one window: the Mikan catalog, fansub
@@ -37,12 +79,12 @@ there is no feed URL to paste or regular expression to write.
   current season by title.
 - **Choose your version in plain words.** Pick a fansub group, then click words
   such as `1080p` or `HEVC` to include or exclude them. See matching releases
-  before confirming.
+  while choosing what to download.
 - **Let new episodes arrive.** While Dipper is running, it checks your follows
   every 15 minutes and downloads new matching releases. Check immediately
   whenever you like.
 - **Keep control of your files.** Pause or resume downloads, retry a failure,
-  open the destination folder, and stop seeding from the same app.
+  open the destination folder, and stop sharing from the same app.
 
 Built with Go and [MyGo Native UI](https://github.com/egoist/mygo). No browser,
 Node.js, or separate download client is needed to run it. The interface is
@@ -55,7 +97,7 @@ Click a title word and choose **只要** (include), **不要** (exclude), or
 choices, and undo lets you try another combination.
 
 <a href="docs/assets/ui/02-filter.png">
-  <img src="docs/assets/ui/02-filter.png" width="960" alt="Version selection with a 1080p include rule, matching release previews, and selected downloads before confirmation">
+  <img src="docs/assets/ui/02-filter.png" width="960" alt="Version selection with a 1080p include rule, matching release previews, and the downloads selected for this follow">
 </a>
 
 Existing matches are selected by default. Uncheck anything you do not want
@@ -64,8 +106,9 @@ Later, you can fetch older releases without changing the rule.
 
 ## Follow along, without losing track
 
-Your follows show what was checked and what needs attention. Downloads show
-progress and transfer speeds, with the next action beside each task.
+Open a poster in My Follows to see its episode library and play completed
+downloads. Use the library's **···** menu to view resources or manage the follow.
+Downloads show progress and transfer speeds, with the next action beside each task.
 
 <table>
   <tr>
@@ -74,7 +117,7 @@ progress and transfer speeds, with the next action beside each task.
   </tr>
   <tr>
     <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="Followed shows with fansub groups, saved rules, and last-check results"></a></td>
-    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="Download progress, upload and download speeds, retry, and seeding controls"></a></td>
+    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="Download progress, upload and download speeds, retry, and sharing controls"></a></td>
   </tr>
 </table>
 
@@ -82,9 +125,9 @@ On Windows and Linux, you can keep following and downloading in the tray when
 you close the window. On macOS, closing the window keeps Dipper running in the
 Dock. Quitting the app stops background activity.
 
-## Get started
+## Development
 
-Build from source with the Go version pinned in [go.mod](go.mod).
+To work on Dipper, build from source with the Go version pinned in [go.mod](go.mod).
 
 **Windows · PowerShell**
 
@@ -104,14 +147,8 @@ sh scripts/build.sh --test
 ./bin/dipper
 ```
 
-Windows builds are unsigned and may show a SmartScreen prompt. Native graphics
-and tray runtime dependencies are required on macOS and Linux; their native
-desktop acceptance is still pending. See the [development guide](docs/development.md)
-for build options and verification boundaries.
-
-Once open: **choose a show → pick a fansub group → select your version →
-confirm downloads and follow.** Files go to `Dipper` under your system's Videos
-folder by default; change the destination in Settings.
+See the [development guide](docs/development.md) for graphics and tray runtime
+dependencies, build options, and verification boundaries.
 
 ## A little bird, a rushing torrent
 

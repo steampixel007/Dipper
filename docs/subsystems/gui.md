@@ -88,6 +88,16 @@ older stopped tasks and completed tasks. `TestUIDownloadTransferActionChangesInt
 clicks the rendered controls and checks the selected command and refreshed state
 for stopped, paused, and running downloads without starting network activity.
 
+Download sizes are projected from the stored raw byte count; legacy MB fields
+are used only when that count is absent. A group total is called known only
+when every included task has a size, and a mixed group qualifies its total and
+reports the unknown count separately. Transfer speed uses binary units while
+file and resource sizes use decimal units. Stopped transfers have their own
+filter instead of sharing 已暂停, a failed transfer offers 重试 before any
+recovery action, and an empty search or filter keeps the toolbar, counts, and
+reset controls visible. `exact_sizes_test.go` and `downloads_filters_test.go`
+cover these distinctions.
+
 The detail page runs in one of two modes, distinguished by `Backfill`:
 - **Subscribe** — choose a group and a rule, preview which existing releases
   match, and confirm. Existing matches are selected by default.
@@ -160,7 +170,7 @@ disabled while the follow is paused or the window is busy.
 The following and downloads lists remember their scroll position across page
 switches; searching follows or switching the download filter jumps back to the
 top.
-When any follow failed its last check, the header offers 重试失败检查, which
+When any follow failed its last check, the header offers 重试检查, which
 re-checks every failed follow in one click and is hidden while all follows are
 healthy.
 The 我的追番 navigation entry counts failed checks while any follow is failing
@@ -177,7 +187,7 @@ when the last check failed) above the episode list, so the follow is
 recognizable before the rows. It lists that anime's downloads sorted by
 episode number, marks each transfer's state, and offers 播放 beside completed
 transfers, so watching does not go through the release list. Releases without
-a parsed episode number sort last, labeled 其他资源. The library is reached
+a parsed episode number sort last, labeled 未识别集数. The library is reached
 from the follow tile and stays per-run state: it follows one subscription ID,
 and rule editing or release picking stay on the resource view reached through
 查看资源.
@@ -188,7 +198,7 @@ subscription's latest pending RSS releases (the source of the card's
 identifiable without rereading titles. The mark follows the subscription's
 current pending list and disappears with it.
 
-Following management actions — 查看资源, 修改条件, 暂停/恢复追番, 立即检查,
+Following management actions — 查看资源, 修改条件, 暂停/恢复追番, 检查更新,
 打开番剧文件夹, and 取消追番 — collapse into the library hero's ··· popover,
 so the watch view stays the primary surface. 查看资源 opens the detail page. It
 locks the saved subscription's group and rule, opens as a view-only backfill
@@ -205,7 +215,7 @@ The resource preview renders rows in episode order: numeric ascending (so 第 10
 
 When several releases share an episode, each row shows a 本集匹配 N 条 badge that is also a button: clicking it narrows the preview to that episode, clicking the active episode's badge or the 清除 chip above the list clears the filter. The filter is per session — opening another anime or choosing another subtitle group resets it — and it only hides rows in the preview, never the stored list or what a subscription matches.
 
-Beside 只看匹配, a 只看已在下载库 checkbox hides preview rows that have
+Beside 只看匹配, a 只看已有任务 checkbox hides preview rows that have
 no download in the library, whatever the download state — including failed
 transfers. Opening another anime resets it, like the episode filter, and it
 only affects the preview rows, never the stored list. In the followed resource view, a 只看新资源

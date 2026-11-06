@@ -14,7 +14,7 @@ func TestUIPreviewEmptyFilterOffersClear(t *testing.T) {
 		t.Fatal("an unfiltered preview must not show the empty state")
 	}
 
-	uiClick(t, tt, "只看已在下载库")
+	uiClick(t, tt, "只看已有任务")
 	s.EpisodeFilter = "03"
 	tt.Frame()
 	uiRequireText(t, tt, "没有符合筛选的资源")

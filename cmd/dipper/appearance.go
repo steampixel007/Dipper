@@ -31,20 +31,20 @@ type colorPalette struct {
 }
 
 var lightPalette = colorPalette{
-	blue: ui.Hex("#3b63fb"), blueHover: ui.Hex("#274dea"), bluePressed: ui.Hex("#1d3ecf"), blueWash: ui.Hex("#f5f9ff"), accentText: ui.Hex("#ffffff"),
-	muted: ui.Hex("#505050"), ink: ui.Hex("#292929"), line: ui.Hex("#e9e9e9"), outline: ui.Hex("#c6c6c6"), hoverLine: ui.Hex("#b1b1b1"),
-	chrome: ui.Hex("#f3f3f3"), paper: ui.Hex("#ffffff"), canvas: ui.Hex("#f8f8f8"), brandWash: ui.Hex("#f5f9ff"),
-	green: ui.Hex("#12805c"), greenWash: ui.Hex("#e9f7ef"), amber: ui.Hex("#9c5700"), amberWash: ui.Hex("#fff4db"),
-	avoidInk: ui.Hex("#b1262b"), avoidWash: ui.Hex("#fff5f5"), errorInk: ui.Hex("#c9252d"), errorWash: ui.Hex("#fff0f0"),
+	blue: ui.Hex("#35664b"), blueHover: ui.Hex("#2b573f"), bluePressed: ui.Hex("#214631"), blueWash: ui.Hex("#edf3ed"), accentText: ui.Hex("#ffffff"),
+	muted: ui.Hex("#625e56"), ink: ui.Hex("#2e2c27"), line: ui.Hex("#e7e3db"), outline: ui.Hex("#bbb6ab"), hoverLine: ui.Hex("#918b7e"),
+	chrome: ui.Hex("#f2efe9"), paper: ui.Hex("#fffefa"), canvas: ui.Hex("#f8f6f0"), brandWash: ui.Hex("#f5f3ed"),
+	green: ui.Hex("#35664b"), greenWash: ui.Hex("#edf3ed"), amber: ui.Hex("#865a18"), amberWash: ui.Hex("#fbf1dc"),
+	avoidInk: ui.Hex("#6f6659"), avoidWash: ui.Hex("#f3efe7"), errorInk: ui.Hex("#a53d38"), errorWash: ui.Hex("#fcf0ec"),
 	scrim: ui.RGBA(0, 0, 0, .24), popoverShadow: ui.RGBA(0, 0, 0, .10),
 }
 
 var darkPalette = colorPalette{
-	blue: ui.Hex("#9bb3ff"), blueHover: ui.Hex("#b2c4ff"), bluePressed: ui.Hex("#87a3f5"), blueWash: ui.Hex("#283952"), accentText: ui.Hex("#14213a"),
-	muted: ui.Hex("#b3c0d1"), ink: ui.Hex("#e7edf5"), line: ui.Hex("#334353"), outline: ui.Hex("#718298"), hoverLine: ui.Hex("#91a2b7"),
-	chrome: ui.Hex("#18212b"), paper: ui.Hex("#202b37"), canvas: ui.Hex("#1b2530"), brandWash: ui.Hex("#f5f9ff"),
-	green: ui.Hex("#83d9b5"), greenWash: ui.Hex("#233e37"), amber: ui.Hex("#f0c27b"), amberWash: ui.Hex("#403625"),
-	avoidInk: ui.Hex("#f5a3a8"), avoidWash: ui.Hex("#422d38"), errorInk: ui.Hex("#ffafb4"), errorWash: ui.Hex("#452d38"),
+	blue: ui.Hex("#a8c7ac"), blueHover: ui.Hex("#bfd8c2"), bluePressed: ui.Hex("#92b797"), blueWash: ui.Hex("#2e3d31"), accentText: ui.Hex("#202b23"),
+	muted: ui.Hex("#c1bbae"), ink: ui.Hex("#eee9df"), line: ui.Hex("#47443d"), outline: ui.Hex("#827c6f"), hoverLine: ui.Hex("#aaa291"),
+	chrome: ui.Hex("#24231f"), paper: ui.Hex("#2c2a25"), canvas: ui.Hex("#272620"), brandWash: ui.Hex("#f5f3ed"),
+	green: ui.Hex("#a8c7ac"), greenWash: ui.Hex("#2e3d31"), amber: ui.Hex("#e4c58e"), amberWash: ui.Hex("#453b29"),
+	avoidInk: ui.Hex("#c9bfaf"), avoidWash: ui.Hex("#3a352d"), errorInk: ui.Hex("#efb0a5"), errorWash: ui.Hex("#48312d"),
 	scrim: ui.RGBA(0, 0, 0, .56), popoverShadow: ui.RGBA(0, 0, 0, .32),
 }
 
@@ -102,8 +102,8 @@ func spectrumTheme(dark bool) *ui.Theme {
 	t.Danger = p.errorInk
 	t.Selection = p.blue.Alpha(.3)
 	t.Font = "Segoe UI, Microsoft YaHei UI"
-	t.FontSize = 14
-	t.Radius = 6
+	t.FontSize = float32(textBody)
+	t.Radius = controlRadius
 	t.Spacing = 4
 	return t
 }
@@ -126,7 +126,7 @@ func (s *State) setAppearance(value string) {
 }
 
 func (s *State) appearanceSettings(c *ui.Context) {
-	ui.Text(c, appearanceText.title).FontSize(14)
+	ui.Text(c, appearanceText.title).FontSize(textSize(c, textBody))
 	selected := normalizeAppearance(s.Appearance)
 	ui.RadioGroup(c, func() {
 		ui.Row(c).Gap(20).Children(func() {

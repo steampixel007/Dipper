@@ -694,7 +694,7 @@ func TestDirectoriesAreFixedAndPreviewMatchesCommit(t *testing.T) {
 		t.Fatal("same title collision")
 	}
 	a := resource("a", 1, "1080p")
-	if err := c.DownloadExisting(context.Background(), sub.ID, []Resource{a}, []string{a.ID}); err != nil {
+	if _, err := c.DownloadExisting(context.Background(), sub.ID, []Resource{a}, []string{a.ID}); err != nil {
 		t.Fatal(err)
 	}
 	tasks, _ := c.ListTasks()
@@ -726,15 +726,18 @@ func TestManualDownloadOverridesOnlyExplicitHistoryItems(t *testing.T) {
 	c := openTest(t, filepath.Join(t.TempDir(), "state.db"), Options{Downloader: d})
 	rule := Rule{All: []string{"1080p"}}
 	sub := create(t, c, anime, group, rule, []Resource{a, b, x}, nil)
-	if err := c.DownloadExisting(context.Background(), sub.ID, []Resource{a, b, x}, []string{"unknown"}); err == nil {
+	if _, err := c.DownloadExisting(context.Background(), sub.ID, []Resource{a, b, x}, []string{"unknown"}); err == nil {
 		t.Fatal("unknown selection accepted")
 	}
 	if len(current(t, c, sub.ID).Items) != 3 || d.count() != 0 {
 		t.Fatal("invalid selection mutated state")
 	}
 	d.setFail(true)
-	if err := c.DownloadExisting(context.Background(), sub.ID, []Resource{a, b, x}, []string{a.ID, x.ID}); err == nil {
-		t.Fatal("expected failure")
+	if saved, err := c.DownloadExisting(context.Background(), sub.ID, []Resource{a, b, x}, []string{a.ID, x.ID}); err == nil || !saved {
+		t.Fatalf("delivery failure lost saved intents: saved=%v err=%v", saved, err)
+	}
+	if saved, err := c.DownloadExisting(context.Background(), sub.ID, []Resource{a, b, x}, []string{"unknown"}); err == nil || saved {
+		t.Fatalf("invalid selection reported saved: saved=%v err=%v", saved, err)
 	}
 	sub = current(t, c, sub.ID)
 	if sub.Items[a.ID].Read || sub.Items[x.ID].Read || sub.Items[b.ID].Status != ItemSkipped || !reflect.DeepEqual(sub.Rule, NormalizeRule(rule)) {
@@ -744,7 +747,7 @@ func TestManualDownloadOverridesOnlyExplicitHistoryItems(t *testing.T) {
 	if err := c.RetryPending(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.DownloadExisting(context.Background(), sub.ID, []Resource{a, b, x}, []string{a.ID, x.ID}); err != nil {
+	if _, err := c.DownloadExisting(context.Background(), sub.ID, []Resource{a, b, x}, []string{a.ID, x.ID}); err != nil {
 		t.Fatal(err)
 	}
 	if d.count() != 4 {

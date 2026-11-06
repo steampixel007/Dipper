@@ -17,7 +17,7 @@ func TestUIResourceRowsFilterByEpisode(t *testing.T) {
 	if tt.HasText("星海旅记 - 01") {
 		t.Fatal("episode filter left other episodes visible")
 	}
-	uiRequireText(t, tt, "星海旅记 - 02", "只看第 02 集")
+	uiRequireText(t, tt, "星海旅记 - 02", "只看第 2 集")
 
 	uiClick(t, tt, "清除")
 	uiRequireText(t, tt, "星海旅记 - 01")

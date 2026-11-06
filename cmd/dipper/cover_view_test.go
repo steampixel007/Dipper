@@ -94,30 +94,30 @@ func TestUICoverLoadingShowsNineBlocks(t *testing.T) {
 	}
 	frame := tt.Image()
 	region := image.Rect(int(r.X), int(r.Y), int(r.X+r.W), int(r.Y+r.H))
-	bluePixels := map[image.Point]bool{}
+	blockPixels := map[image.Point]bool{}
 	for y := region.Min.Y; y < region.Max.Y; y++ {
 		for x := region.Min.X; x < region.Max.X; x++ {
 			p := frame.RGBAAt(x, y)
-			if int(p.B) > int(p.R)+70 && int(p.B) > int(p.G)+50 {
-				bluePixels[image.Pt(x, y)] = true
+			if int(p.G) > int(p.R)+20 && int(p.G) > int(p.B)+5 {
+				blockPixels[image.Pt(x, y)] = true
 			}
 		}
 	}
 	components := 0
-	for start := range bluePixels {
-		if !bluePixels[start] {
+	for start := range blockPixels {
+		if !blockPixels[start] {
 			continue
 		}
 		components++
 		queue := []image.Point{start}
-		delete(bluePixels, start)
+		delete(blockPixels, start)
 		for len(queue) > 0 {
 			p := queue[0]
 			queue = queue[1:]
 			for _, step := range []image.Point{{X: 1}, {X: -1}, {Y: 1}, {Y: -1}} {
 				next := p.Add(step)
-				if bluePixels[next] {
-					delete(bluePixels, next)
+				if blockPixels[next] {
+					delete(blockPixels, next)
 					queue = append(queue, next)
 				}
 			}

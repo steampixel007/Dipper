@@ -156,7 +156,7 @@ Public actions:
 
 ```go
 CreateSubscription(ctx, anime, group, rule, completeHistory, selectedIDs) (Subscription, error)
-DownloadExisting(ctx, subscriptionID, history, selectedIDs) error
+DownloadExisting(ctx, subscriptionID, history, selectedIDs) (saved bool, err error)
 UpdateRule(ctx, subscriptionID, rule) error
 SetPaused(ctx, subscriptionID, paused) error
 RemoveSubscription(ctx, subscriptionID) error

@@ -169,10 +169,10 @@ func TestUIDeleteDrainsAdmissionBeforeRemovingTransfer(t *testing.T) {
 		t.Fatal("retry did not reach admission")
 	}
 	uiClick(t, tt, "删除")
-	uiClick(t, tt, "确认删除下载任务")
+	uiClick(t, tt, "确认删除任务和文件")
 	awaitRemovalAction(t, s, updates)
 	<-retry
-	if s.SaveError != "" || s.Notice != "已删除该下载任务" {
+	if s.SaveError != "" || s.Notice != "已删除任务" {
 		t.Fatalf("delete result: notice=%q error=%q", s.Notice, s.SaveError)
 	}
 	if snapshots := engine.Snapshot(); len(snapshots) != 0 {
@@ -203,7 +203,7 @@ func TestUIRemovalCommitBoundaryUpdatesCoreAndReportsErrors(t *testing.T) {
 				engine.commitErr = errors.New("cannot save task checkpoint")
 			}
 			uiClick(t, tt, "删除")
-			button := "确认删除下载任务"
+			button := "确认删除任务和文件"
 			if tc.redownload {
 				button = "确认删除并重新下载"
 			}

@@ -75,7 +75,7 @@ func uiRequireText(t *testing.T, tt *ui.Tester, texts ...string) {
 func TestUIViewPagesAndWindowSizes(t *testing.T) {
 	for _, size := range [][2]int{{1120, 760}, {1320, 860}, {1560, 980}} {
 		for _, page := range []struct{ id, text string }{
-			{"browse", "2025 年春季番剧"}, {"detail", "资源预览"}, {"following", "进入剧集库"}, {"downloads", "总下载速度"}, {"settings", "上传与分享"},
+			{"browse", "2025 年春季番剧"}, {"detail", "可下载资源"}, {"following", "进入剧集库"}, {"downloads", "总下载速度"}, {"settings", "上传与分享"},
 		} {
 			t.Run(fmt.Sprintf("%s/%dx%d", page.id, size[0], size[1]), func(t *testing.T) {
 				s := uiFixture(t, page.id)
@@ -161,12 +161,12 @@ func TestUIDynamicGroupsAndEmptyGroups(t *testing.T) {
 	tt.Frame()
 	uiRequireText(t, tt, "暂无字幕组")
 	uiClick(t, tt, "开启自动追番")
-	if s.Confirm {
-		t.Fatal("cannot follow with missing groups")
+	if s.Busy {
+		t.Fatal("missing groups started a follow submission")
 	}
 }
 
-func TestUIDetailUnavailableDisablesFollowAndConfirmation(t *testing.T) {
+func TestUIDetailUnavailableDisablesFollowAndSubmit(t *testing.T) {
 	for _, state := range []struct {
 		name, text string
 		configure  func(*State)
@@ -175,8 +175,8 @@ func TestUIDetailUnavailableDisablesFollowAndConfirmation(t *testing.T) {
 		{"detail-error", "字幕组请求失败", func(s *State) { s.DetailError = "字幕组请求失败" }},
 		{"history-loading", "正在加载发布记录", func(s *State) { s.HistoryLoading = true }},
 		{"history-error", "RSS 发布记录不可用", func(s *State) { s.HistoryError = "RSS 发布记录不可用" }},
-		{"stale-group", "先在左侧选择", func(s *State) { s.Group = 99 }},
-		{"missing-id", "先在左侧选择", func(s *State) { s.GroupIDs = nil }},
+		{"stale-group", "请先加载字幕组和资源", func(s *State) { s.Group = 99 }},
+		{"missing-id", "请先加载字幕组和资源", func(s *State) { s.GroupIDs = nil }},
 	} {
 		t.Run(state.name, func(t *testing.T) {
 			s := uiFixture(t, "detail")
@@ -187,15 +187,8 @@ func TestUIDetailUnavailableDisablesFollowAndConfirmation(t *testing.T) {
 				t.Fatal("unavailable detail must hide stale resource choices")
 			}
 			uiClick(t, tt, "开启自动追番")
-			if s.Confirm {
-				t.Fatal("unavailable detail opened a follow confirmation")
-			}
-			s.Confirm = true
-			tt.Frame()
-			uiRequireText(t, tt, "尚未就绪")
-			uiClick(t, tt, "确认开启自动追番")
-			if !s.Confirm || s.Busy {
-				t.Fatal("unavailable confirmation submitted an operation")
+			if s.Busy {
+				t.Fatal("unavailable detail submitted an operation")
 			}
 		})
 	}
@@ -203,6 +196,7 @@ func TestUIDetailUnavailableDisablesFollowAndConfirmation(t *testing.T) {
 
 func TestUIRawResourcesUnknownSizeAndFilterUndo(t *testing.T) {
 	s := uiFixture(t, "detail")
+	s.Downloads = nil
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, s.ResourceList[0].Title, s.ResourceList[0].Published, "已知大小 722 MB，另有 1 条大小未知")
 	uiClick(t, tt, "筛选 1080p")
@@ -212,10 +206,8 @@ func TestUIRawResourcesUnknownSizeAndFilterUndo(t *testing.T) {
 	uiRequireText(t, tt, "匹配 3 条")
 	uiClick(t, tt, "重做筛选")
 	uiClick(t, tt, "下载并追番")
-	uiRequireText(t, tt, "确认开始追番", "这次下载 2 条 · 已知大小 486 MB，另有 1 条大小未知")
-	uiClick(t, tt, "返回调整")
-	if s.Confirm {
-		t.Fatal("confirmation did not close")
+	if s.Busy || tt.HasText("确认开始追番") {
+		t.Fatal("direct submit opened a confirmation")
 	}
 }
 
@@ -235,6 +227,7 @@ func TestUISortedQuickWordsByFrequency(t *testing.T) {
 }
 func TestUIUnknownResourceSizeNeverInventsTotals(t *testing.T) {
 	s := uiFixture(t, "detail")
+	s.Downloads = nil
 	s.ResourceList = s.ResourceList[1:2]
 	s.ResourceList[0].MB = -1
 	s.ResourceList[0].Published = ""
@@ -246,32 +239,27 @@ func TestUIUnknownResourceSizeNeverInventsTotals(t *testing.T) {
 		}
 	}
 	uiClick(t, tt, "下载并追番")
-	uiRequireText(t, tt, "这次下载 1 条 · 1 条大小未知")
+	if s.Busy || tt.HasText("确认开始追番") {
+		t.Fatal("direct submit opened a confirmation")
+	}
 }
 
 func TestUIBusyBlocksSaveAndFollow(t *testing.T) {
 	for _, editing := range []bool{false, true} {
 		t.Run(fmt.Sprint(editing), func(t *testing.T) {
 			s := uiFixture(t, "detail")
+			s.Downloads = nil
 			s.Busy, s.Editing = true, editing
 			tt := ui.NewTester(s.view, 1320, 860)
-			label := "下载并追番"
 			if editing {
-				label = "保存追番条件"
-				uiClick(t, tt, "补下已有资源")
+				uiClick(t, tt, "下载已有资源")
 				if s.Backfill {
 					t.Fatal("busy edit entered backfill")
 				}
 			}
-			uiClick(t, tt, label)
-			if s.Confirm || s.SaveError != "" || s.Page != "detail" {
+			uiClick(t, tt, "正在提交…")
+			if !s.Busy || s.SaveError != "" || s.Page != "detail" {
 				t.Fatal("busy action changed state")
-			}
-			s.Confirm = true
-			tt.Frame()
-			uiClick(t, tt, "下载 3 条并追番")
-			if !s.Confirm || s.SaveError != "" {
-				t.Fatal("busy confirmation submitted")
 			}
 		})
 	}
@@ -279,13 +267,14 @@ func TestUIBusyBlocksSaveAndFollow(t *testing.T) {
 
 func TestUIBackfillEntryRequiresExplicitSelectionAndKeepsSavedRule(t *testing.T) {
 	s := uiFixture(t, "detail")
+	s.Downloads = nil
 	s.Editing = true
 	s.EditID = s.Subscriptions[0].ID
 	s.Rule = cloneRule(s.Subscriptions[0].Rule)
 	savedRule := cloneRule(s.Subscriptions[0].Rule)
 	editID := s.EditID
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiClick(t, tt, "补下已有资源")
+	uiClick(t, tt, "下载已有资源")
 	if !s.Backfill || s.Editing || s.EditID != editID {
 		t.Fatalf("wrong backfill state: backfill=%v editing=%v id=%q", s.Backfill, s.Editing, s.EditID)
 	}
@@ -294,28 +283,20 @@ func TestUIBackfillEntryRequiresExplicitSelectionAndKeepsSavedRule(t *testing.T)
 			t.Fatalf("backfill automatically selected %s", id)
 		}
 	}
-	uiRequireText(t, tt, "浏览番剧 / 补下已有资源", "请勾选需要补下的已有资源", "补下选中资源", "不会修改已保存的追番条件")
+	uiRequireText(t, tt, "浏览番剧 / 下载已有资源", "请选择要下载的已有资源", "下载选中资源", "不会修改追番条件")
 	if tt.HasText("开始追番") || tt.HasText("默认全选") {
 		t.Fatal("backfill must not present itself as a new subscription")
 	}
-	uiClick(t, tt, "补下选中资源")
-	if s.Confirm {
-		t.Fatal("empty backfill opened confirmation")
-	}
-	s.Confirm = true
-	tt.Frame()
-	uiRequireText(t, tt, "确认补下已有资源", "尚未选择需要补下的资源")
-	uiClick(t, tt, "确认补下选中资源")
-	if !s.Confirm || s.Busy {
+	uiClick(t, tt, "下载选中资源")
+	if s.Busy {
 		t.Fatal("empty backfill submitted")
 	}
-	uiClick(t, tt, "返回调整")
 	uiClick(t, tt, "选择 "+s.ResourceList[0].ID)
-	uiClick(t, tt, "补下选中资源")
-	if !s.Confirm {
-		t.Fatal("selected backfill did not open confirmation")
+	uiClick(t, tt, "下载选中资源")
+	if s.Busy {
+		t.Fatal("selected backfill opened a confirmation")
 	}
-	uiRequireText(t, tt, "这次补下 1 条 · 486 MB", "已保存的追番条件保持不变")
+	uiRequireText(t, tt, "本次下载 1 个资源", "勾选要下载的资源。筛选不会修改追番条件。")
 	if !reflect.DeepEqual(savedRule, s.Subscriptions[0].Rule) || !reflect.DeepEqual(savedRule, s.Rule) {
 		t.Fatal("entering backfill changed the saved rule")
 	}
@@ -362,7 +343,7 @@ func TestUIFollowingUsesSubscriptionIdentityAndRSSResult(t *testing.T) {
 	if s.Page != "episodes" || s.LibraryID != wantID {
 		t.Fatalf("wrong library opened: page=%q library=%q", s.Page, s.LibraryID)
 	}
-	uiRequireText(t, tt, "RSS 请求超时")
+	uiRequireText(t, tt, "检查更新失败：网络连接超时，请稍后再试。")
 	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "修改条件 "+s.Subscriptions[1].GroupName)
 	if s.EditID != wantID || !s.Editing || s.Page != "detail" {
@@ -403,7 +384,7 @@ func TestUIFollowingFailedCheckOffersInlineRetry(t *testing.T) {
 	s.project(snapshot, nil)
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiClick(t, tt, "打开追番 字幕组丙")
-	uiRequireText(t, tt, "RSS 检查失败：RSS 请求超时")
+	uiRequireText(t, tt, "检查更新失败：网络连接超时，请稍后再试。")
 	uiClick(t, tt, "重试检查 字幕组丙")
 	deadline := time.NewTimer(2 * time.Second)
 	defer deadline.Stop()
@@ -504,7 +485,7 @@ func TestUIFollowingCardClickOpensEpisodeLibrary(t *testing.T) {
 		t.Fatalf("card click state: page=%q library=%q", s.Page, s.LibraryID)
 	}
 	uiClick(t, tt, "更多操作")
-	uiRequireText(t, tt, "查看资源", "修改条件", "已下载 1 个资源")
+	uiRequireText(t, tt, "查看资源", "修改条件", "已完成 1 个下载")
 }
 
 func TestUIBrowseCardOpensFollowedResourceList(t *testing.T) {
@@ -522,7 +503,7 @@ func TestUIDetailFreshSelectionFromResourceView(t *testing.T) {
 	s := uiFixture(t, "following")
 	s.openFollowedResources(s.Subscriptions[0].AnimeID, "following")
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiClick(t, tt, "重新选版本")
+	uiClick(t, tt, "重新选字幕组")
 	if s.ViewResources || s.Backfill || s.EditID != "" || !s.ChoosingGroup {
 		t.Fatalf("fresh selection state: view=%v backfill=%v edit=%q choosing=%v", s.ViewResources, s.Backfill, s.EditID, s.ChoosingGroup)
 	}
@@ -536,7 +517,7 @@ func TestUIFollowingListScrollSurvivesNavigation(t *testing.T) {
 	tt := ui.NewTester(s.view, 1320, 480)
 	tt.Frame()
 	bounds := tt.Image().Bounds()
-	tt.Scroll(float32(bounds.Dx())*.5, float32(bounds.Dy())*.5, 0, 400)
+	tt.Scroll(float32(bounds.Dx())*.5, float32(bounds.Dy())-40, 0, 400)
 	tt.Advance(300 * time.Millisecond)
 	if s.FollowScroll.Y == 0 {
 		t.Fatal("following list scroll position was not tracked")
@@ -614,8 +595,8 @@ func TestUIFollowingRetryFailedChecksBatch(t *testing.T) {
 	}
 	s.project(snapshot, nil)
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "重试失败检查")
-	uiClick(t, tt, "重试失败检查")
+	uiRequireText(t, tt, "重试检查")
+	uiClick(t, tt, "重试检查")
 	deadline := time.NewTimer(4 * time.Second)
 	defer deadline.Stop()
 	for {
@@ -649,7 +630,7 @@ func TestUIFollowingHidesRetryWhenChecksHealthy(t *testing.T) {
 		s.Subscriptions[i].LastError = ""
 	}
 	tt := ui.NewTester(s.view, 1320, 860)
-	if tt.HasText("重试失败检查") {
+	if tt.HasText("重试检查") {
 		t.Fatal("healthy follows still offered the batch retry action")
 	}
 }
@@ -662,10 +643,10 @@ func TestSpeedTextFormatsTransferRates(t *testing.T) {
 	}{
 		{0, "↓ —", false},
 		{-1, "↓ —", false},
-		{0.08, "↓ 80 KB/s", false},
-		{0.999, "↑ 999 KB/s", true},
-		{1, "↓ 1.0 MB/s", false},
-		{2.7, "↓ 2.7 MB/s", false},
+		{0.08, "↓ 78 KiB/s", false},
+		{0.999, "↑ 976 KiB/s", true},
+		{1, "↓ 977 KiB/s", false},
+		{2.7, "↓ 2.6 MiB/s", false},
 	} {
 		if got := speedText(tc.mbps, tc.upload); got != tc.want {
 			t.Fatalf("speedText(%v, %v) = %q; want %q", tc.mbps, tc.upload, got, tc.want)
@@ -676,7 +657,7 @@ func TestSpeedTextFormatsTransferRates(t *testing.T) {
 func TestUIDownloadsShowDashForStoppedTransfers(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "↓ —", "↑ 120 KB/s")
+	uiRequireText(t, tt, "↓ —", "↑ 117 KiB/s")
 }
 
 func TestUINavigationCallsOutFailedChecks(t *testing.T) {
@@ -704,8 +685,8 @@ func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 		t.Fatalf("cancel prompt not armed: prompt=%v id=%q", s.CancelPrompt, s.CancelID)
 	}
 	uiRequireText(t, tt, "确认取消追番",
-		"取消后不再自动检查新资源；已下载的文件保留在 "+sub.Folder,
-		"它正在下载的 1 个资源会继续完成，不受取消影响。")
+		"取消后不再检查更新；已下载的文件保留在 "+sub.Folder,
+		"正在下载的 1 个任务会继续完成，不受影响。")
 	uiClick(t, tt, "保留追番")
 	if s.CancelPrompt {
 		t.Fatal("保留追番 did not close the dialog")
@@ -780,7 +761,7 @@ func TestUIDownloadsOfferPauseDeleteAndKeepTaskDismissal(t *testing.T) {
 		t.Fatal("UI changed download state without an engine")
 	}
 	uiClick(t, tt, "删除")
-	uiRequireText(t, tt, "确认删除下载", "保留任务", "删除并重新下载", "删除任务")
+	uiRequireText(t, tt, "删除任务和文件？", "保留任务", "删除并重新下载", "删除任务和文件")
 	uiClick(t, tt, "保留任务")
 	if s.RemovePrompt {
 		t.Fatal("keep must dismiss the dialog")
@@ -803,7 +784,7 @@ func TestUIDownloadsOfferOneTransferActionPerState(t *testing.T) {
 		{name: "paused", progress: .43, paused: true, action: "继续"},
 		{name: "stopped", progress: .43, stopped: true, action: "继续"},
 		{name: "failed", progress: .43, failed: true, action: "重试"},
-		{name: "seeding", progress: 1, action: "停止做种"},
+		{name: "seeding", progress: 1, action: "停止分享"},
 		{name: "seeding-paused", progress: 1, paused: true, action: "继续"},
 		{name: "completed", progress: 1, stopped: true},
 	} {
@@ -813,7 +794,7 @@ func TestUIDownloadsOfferOneTransferActionPerState(t *testing.T) {
 			d := &s.Downloads[0]
 			d.Progress, d.Paused, d.Stopped, d.Failed = tc.progress, tc.paused, tc.stopped, tc.failed
 			tt := ui.NewTester(s.view, 1320, 860)
-			for _, action := range []string{"暂停", "继续", "重试", "停止下载", "停止做种"} {
+			for _, action := range []string{"暂停", "继续", "重试", "停止下载", "停止分享"} {
 				_, visible := tt.Find(action)
 				if visible != (action == tc.action) {
 					t.Errorf("transfer action %q visible=%v; want only %q", action, visible, tc.action)
@@ -830,7 +811,7 @@ func TestUIRemoveDialogStopButtonAndLayout(t *testing.T) {
 	s.Downloads[0].Stopped = true
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, "已停止")
-	if tt.HasText("已完成 · 做种中") || tt.HasText("已完成 · 已停止做种") {
+	if tt.HasText("已完成，分享中") || tt.HasText("已完成，已停止分享") {
 		t.Fatal("a stopped mid-download task must not read as completed")
 	}
 	if _, ok := tt.Find("停止下载"); ok {
@@ -848,7 +829,7 @@ func TestUIRemoveDownloadForwardsDeleteAndRedownloadToCore(t *testing.T) {
 		notice string
 		want   core.ItemStatus
 	}{
-		{name: "delete", button: "确认删除下载任务", notice: "已删除该下载任务", want: core.ItemSkipped},
+		{name: "delete", button: "确认删除任务和文件", notice: "已删除任务", want: core.ItemSkipped},
 		{name: "redownload", button: "确认删除并重新下载", notice: "已删除任务，将重新下载", want: core.ItemPending},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -915,7 +896,8 @@ func TestUIActionsDelegateInsteadOfChangingFixtureState(t *testing.T) {
 	uiClick(t, tt, "暂停全部下载")
 	uiClick(t, tt, "暂停")
 	uiClick(t, tt, "重试")
-	uiClick(t, tt, "停止做种")
+	uiScrollTo(t, tt, "停止分享")
+	uiClick(t, tt, "停止分享")
 	if s.Downloads[0].Paused || !s.Downloads[1].Failed || s.Downloads[2].Stopped {
 		t.Fatal("UI changed download state without an engine")
 	}
@@ -925,8 +907,8 @@ func TestUIActionsDelegateInsteadOfChangingFixtureState(t *testing.T) {
 	uiClick(t, tt, "更多操作")
 	uiClick(t, tt, "暂停追番 "+s.Subscriptions[0].GroupName)
 	uiClick(t, tt, "更多操作")
-	uiClick(t, tt, "立即检查 "+s.Subscriptions[0].GroupName)
-	if s.Subscriptions[0].Paused || s.Subscriptions[0].LastCheck != "2025-04-14 22:01 · 新增 1 条" {
+	uiClick(t, tt, "检查更新 "+s.Subscriptions[0].GroupName)
+	if s.Subscriptions[0].Paused || s.Subscriptions[0].LastCheck != "2025-04-14 22:01，新增 1 条" {
 		t.Fatal("UI simulated a subscription operation without core")
 	}
 }
@@ -943,20 +925,24 @@ func TestUIDownloadsGroupByAnimeWithSummary(t *testing.T) {
 	if headers != 1 {
 		t.Errorf("anime header shown %d times; want one per group; texts=%q", headers, tt.Texts())
 	}
-	uiRequireText(t, tt, "3 个资源 · 1 下载中 · 1 已完成 · 1 失败", "444 MB / 722 MB")
+	uiRequireText(t, tt, "3 个下载任务，下载中 1，已完成 1，失败 1", "已下载 444.98 MB / 722 MB（另有 1 条大小未知）")
 }
 
 func TestUIDownloadsFilterHidesOtherStates(t *testing.T) {
 	s := uiFixture(t, "downloads")
+	s.Downloads = []Download{
+		{ID: "filter-running", AnimeID: s.AnimeID, Title: "下载中的资源", Progress: .5},
+		{ID: "filter-completed", AnimeID: s.AnimeID, Title: "已完成的资源", Progress: 1},
+		{ID: "filter-failed", AnimeID: s.AnimeID, Title: "失败的资源", Failed: true, Error: "连接超时，请重试"},
+	}
 	s.DownloadFilter = downloadsCompleted
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiScrollTo(t, tt, "停止做种")
-	uiRequireText(t, tt, "停止做种")
-	if tt.HasText("连接超时，请重试") {
-		t.Error("failed download visible under completed filter")
+	uiRequireText(t, tt, "已完成的资源")
+	if tt.HasText("下载中的资源") {
+		t.Error("downloading resource visible under completed filter")
 	}
-	if tt.HasText("208 MB / 486 MB") {
-		t.Error("downloading download visible under completed filter")
+	if tt.HasText("失败的资源") {
+		t.Error("failed resource visible under completed filter")
 	}
 }
 
@@ -964,12 +950,12 @@ func TestUIDownloadsEmptyFilterOffersReset(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.DownloadFilter = downloadsPaused
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "这个状态下没有下载", "查看全部下载")
+	uiRequireText(t, tt, "这个筛选下没有下载", "查看全部下载")
 	uiClick(t, tt, "查看全部下载")
 	if s.DownloadFilter != downloadsAll {
 		t.Fatalf("filter is %d; want downloadsAll", s.DownloadFilter)
 	}
-	uiRequireText(t, tt, "3 个资源 · 1 下载中 · 1 已完成 · 1 失败")
+	uiRequireText(t, tt, "3 个下载任务，下载中 1，已完成 1，失败 1")
 }
 
 func TestUIDownloadsUseMeasuredSpeedsErrorsAndOpenFolder(t *testing.T) {
@@ -979,7 +965,7 @@ func TestUIDownloadsUseMeasuredSpeedsErrorsAndOpenFolder(t *testing.T) {
 	opened := ""
 	s.OpenFolder = func(path string) { opened = path }
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "↓ 2.7 MB/s", "↑ 80 KB/s", "大小未知")
+	uiRequireText(t, tt, "↓ 2.6 MiB/s", "↑ 78 KiB/s", "大小未知")
 	if tt.HasText("4.2 MB/s") || tt.HasText("0 MB / 0 MB") {
 		t.Fatal("download shows fabricated speed or size")
 	}
@@ -995,7 +981,7 @@ func TestUIDownloadsUseMeasuredSpeedsErrorsAndOpenFolder(t *testing.T) {
 	s.Downloads[0].Error = ""
 	s.Downloads[0].Progress = 1
 	tt.Frame()
-	uiRequireText(t, tt, "分享比例未知", "停止做种")
+	uiRequireText(t, tt, "分享率未知", "停止分享")
 }
 
 type playTestEngine struct{ files []string }
@@ -1146,7 +1132,7 @@ func TestUIDownloadFilesDialogShowsEntriesAndActions(t *testing.T) {
 	updates := make(chan func(), 4)
 	s.Update = func(fn func()) { updates <- fn }
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiClick(t, tt, "文件列表")
+	uiClick(t, tt, "查看文件")
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
 	for len(s.Files) == 0 {
@@ -1175,8 +1161,8 @@ func TestUIDownloadFilesEntryHiddenBeforeFinish(t *testing.T) {
 	s.Engine = &filesTestEngine{}
 	s.CopyText = func(string) {}
 	tt := ui.NewTester(s.view, 1320, 860)
-	if _, ok := tt.Find("文件列表"); ok {
-		t.Fatal("a downloading task must not offer 文件列表")
+	if _, ok := tt.Find("查看文件"); ok {
+		t.Fatal("a downloading task must not offer 查看文件")
 	}
 }
 func TestUIDownloadOffersNoPlayButtonBeforeFinish(t *testing.T) {
@@ -1204,7 +1190,7 @@ func TestUICompletedPausedDownloadCanResume(t *testing.T) {
 	if _, ok := tt.Find("继续"); !ok {
 		t.Fatal("completed paused task must retain its resume action")
 	}
-	if _, ok := tt.Find("停止做种"); ok {
+	if _, ok := tt.Find("停止分享"); ok {
 		t.Fatal("stop seeding must not replace resume while paused")
 	}
 	uiClick(t, tt, "继续")
@@ -1213,7 +1199,7 @@ func TestUICompletedPausedDownloadCanResume(t *testing.T) {
 	}
 	s.Downloads[0].Paused = false
 	tt.Frame()
-	uiRequireText(t, tt, "已完成 · 做种中", "停止做种")
+	uiRequireText(t, tt, "已完成，分享中", "停止分享")
 	if _, ok := tt.Find("继续"); ok {
 		t.Fatal("resumed task still shows the paused action")
 	}
@@ -1270,9 +1256,9 @@ func TestUISettingsSeedDurationSavesAndUpdatesCopy(t *testing.T) {
 	s := uiFixture(t, "settings")
 	s.Seed = "1 小时"
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiScrollTo(t, tt, "做种时长选择")
-	uiRequireText(t, tt, "做种时长选择", "下载完成后按这个时长做种。")
-	tt.Click("做种时长选择")
+	uiScrollTo(t, tt, "完成后分享时长")
+	uiRequireText(t, tt, "分享时长", "下载完成后把文件继续提供给其他人；暂停或离线时不计时。")
+	tt.Click("完成后分享时长")
 	tt.Advance(300 * time.Millisecond)
 	if !tt.HasText("30 分钟") {
 		t.Fatalf("seed popup did not open; texts=%q", tt.Texts())
@@ -1282,28 +1268,28 @@ func TestUISettingsSeedDurationSavesAndUpdatesCopy(t *testing.T) {
 	if s.Seed != "30 分钟" {
 		t.Fatalf("seed choice = %q", s.Seed)
 	}
-	uiRequireText(t, tt, "分享比例 1:1或有效做种 30 分钟，满足任一即停止做种。")
+	uiRequireText(t, tt, "分享率达到 1:1 或分享满 30 分钟后停止分享。")
 	if s.SaveError != "" {
 		t.Fatalf("seed save failed: %q", s.SaveError)
 	}
 	s.Seed = "不限时长"
 	tt.Frame()
-	uiRequireText(t, tt, "分享比例 1:1即停止做种。")
+	uiRequireText(t, tt, "分享率达到 1:1 后停止分享。")
 	// The download page must reflect the same choice through seedStopRule.
 	s.Page = "downloads"
 	tt.Frame()
-	uiRequireText(t, tt, "分享比例 1:1即停止做种")
+	uiRequireText(t, tt, "分享率达到 1:1 后停止分享")
 }
 func TestUISeedStopRuleFollowsDownloadsPage(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads = s.Downloads[2:3]
 	s.Seed = "不限时长"
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "分享比例 1:1即停止做种")
+	uiRequireText(t, tt, "分享率达到 1:1 后停止分享")
 	s.Seed = "30 分钟"
 	s.SeedRatio = "2:1"
 	tt.Frame()
-	uiRequireText(t, tt, "分享比例 2:1或有效做种 30 分钟，满足任一即停止做种")
+	uiRequireText(t, tt, "分享率达到 2:1 或分享满 30 分钟后停止分享")
 }
 
 func TestUISeedStopRuleWithoutLimitsSaysSo(t *testing.T) {
@@ -1312,14 +1298,14 @@ func TestUISeedStopRuleWithoutLimitsSaysSo(t *testing.T) {
 	s.Seed = "不限时长"
 	s.SeedRatio = "不限"
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "下载完成后不会自动停止做种。")
+	uiRequireText(t, tt, "不会自动停止分享。")
 }
 
 func TestUISettingsShowSeedAdvancedOptions(t *testing.T) {
 	s := uiFixture(t, "settings")
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiScrollTo(t, tt, "停止分享比例")
-	uiRequireText(t, tt, "停止分享比例", "追加 Tracker", "1:1")
+	uiScrollTo(t, tt, "分享率上限")
+	uiRequireText(t, tt, "分享率上限", "追加 Tracker", "1:1")
 	if s.SeedRatio != "1:1" {
 		t.Fatalf("default seed ratio = %q, want 1:1", s.SeedRatio)
 	}
@@ -1441,7 +1427,7 @@ func TestUIResourcePreviewSortsByEpisode(t *testing.T) {
 		t.Fatalf("preview is missing %q", label)
 		return -1
 	}
-	labels := []string{"第 01 集", "第 02 集", "第 3.5 集", "第 10 集", "其他资源"}
+	labels := []string{"第 1 集", "第 2 集", "第 3.5 集", "第 10 集", "未识别集数"}
 	previous := -1
 	for _, label := range labels {
 		position := position(label)
@@ -1585,7 +1571,7 @@ func TestUIFilesDialogScopesResultsToTask(t *testing.T) {
 	updates := make(chan func(), 8)
 	s.Update = func(fn func()) { updates <- fn }
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiClick(t, tt, "文件列表")
+	uiClick(t, tt, "查看文件")
 	if got := <-engine.calls; got != "files-a" {
 		t.Fatalf("first open requested %q, want files-a", got)
 	}
@@ -1685,7 +1671,7 @@ func TestUIFilesDialogEmptyResultIsTerminal(t *testing.T) {
 	updates := make(chan func(), 4)
 	s.Update = func(fn func()) { updates <- fn }
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiClick(t, tt, "文件列表")
+	uiClick(t, tt, "查看文件")
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
 	select {
@@ -1695,17 +1681,17 @@ func TestUIFilesDialogEmptyResultIsTerminal(t *testing.T) {
 		t.Fatal("empty result never applied")
 	}
 	tt.Frame()
-	if tt.HasText("正在读取文件列表") {
+	if tt.HasText("正在读取文件") {
 		t.Fatal("an empty file list must not leave the dialog loading forever")
 	}
-	uiRequireText(t, tt, "文件可能已被移动或删除")
+	uiRequireText(t, tt, "没有找到文件，可能已被移动或删除。")
 }
 
 func TestUIResourceTagOpensFilterPopover(t *testing.T) {
 	s := uiFixture(t, "detail")
 	tt := ui.NewTester(func(c *ui.Context) { s.tagChip(c, "tag-render-resource-3-1", "CHS") }, 420, 320)
 	uiClick(t, tt, "筛选 CHS")
-	uiRequireText(t, tt, "怎么筛选「CHS」？", "只要含「CHS」的", "不要含「CHS」的")
+	uiRequireText(t, tt, "筛选「CHS」", "只要含「CHS」的", "不要含「CHS」的")
 	uiClick(t, tt, "只要含「CHS」的")
 	if !slices.Contains(s.Rule.All, "CHS") {
 		t.Fatalf("tag popover did not add the rule: %+v", s.Rule)

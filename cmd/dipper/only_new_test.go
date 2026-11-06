@@ -33,7 +33,7 @@ func TestUIResourceViewFiltersToNewReleases(t *testing.T) {
 	// Re-enable and leave the followed-resource view; the version-selection
 	// preview must not inherit the filter.
 	uiClick(t, tt, "只看新资源")
-	uiClick(t, tt, "重新选版本")
+	uiClick(t, tt, "重新选字幕组")
 	if s.OnlyNew || s.ViewResources || s.EditID != "" {
 		t.Fatalf("fresh selection must reset 只看新资源: onlyNew=%v view=%v edit=%q", s.OnlyNew, s.ViewResources, s.EditID)
 	}
