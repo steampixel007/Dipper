@@ -287,6 +287,11 @@ func (s *State) browse(c *ui.Context) {
 			})
 		})
 		if s.SourceError != "" {
+			ui.Row(c).Wrap().Gap(controlGap).Children(func() {
+				quiet(c, "catalog-error-previous", "上一季", func() { s.changeSeason(-1) })
+				quiet(c, "catalog-error-next", "下一季", func() { s.changeSeason(1) })
+				quiet(c, "catalog-error-current", "回到当季", s.currentSeason)
+			})
 			s.empty(c, "来源暂时无法连接", s.SourceError, "重试加载", s.refreshCatalog)
 			return
 		}

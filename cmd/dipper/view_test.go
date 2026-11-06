@@ -517,7 +517,7 @@ func TestUIFollowingListScrollSurvivesNavigation(t *testing.T) {
 	tt := ui.NewTester(s.view, 1320, 480)
 	tt.Frame()
 	bounds := tt.Image().Bounds()
-	tt.Scroll(float32(bounds.Dx())*.5, float32(bounds.Dy())*.5, 0, 400)
+	tt.Scroll(float32(bounds.Dx())*.5, float32(bounds.Dy())-40, 0, 400)
 	tt.Advance(300 * time.Millisecond)
 	if s.FollowScroll.Y == 0 {
 		t.Fatal("following list scroll position was not tracked")

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"dipper.local/dipper/internal/core"
 	"dipper.local/dipper/internal/source"
 	"github.com/egoist/mygo/ui"
 )
@@ -38,7 +39,7 @@ func TestLibraryHeroMapsSourceErrorsToLocalCopy(t *testing.T) {
 		{"not-found", "mikan: anime or subtitle group not found", "没有找到这部番剧或字幕组，请返回后重试。"},
 		{"too-large", "mikan: response exceeds size limit", "来源网站返回的内容过大，请稍后再试。"},
 		{"incomplete", "mikan: cannot confirm complete history", "资源还没加载完整，请稍后再试。"},
-		{"unknown", "rpc error: code = Unavailable", "暂时无法获取来源网站的信息，请稍后再试。"},
+		{"unknown", "mikan: unexpected EOF", "暂时无法获取来源网站的信息，请稍后再试。"},
 		{"prefix", "检查更新失败：RSS 请求超时", "网络连接超时，请稍后再试。"},
 	}
 	for _, test := range cases {
@@ -55,6 +56,97 @@ func TestLibraryHeroMapsSourceErrorsToLocalCopy(t *testing.T) {
 			requireNoSourceDetails(t, tester)
 		})
 	}
+}
+
+func TestLibraryHeroPreservesLocalCheckErrors(t *testing.T) {
+	for _, message := range []string{
+		"mkdir /downloads/anime: permission denied",
+		"open /downloads/anime: file not found",
+		"写入下载目录失败：磁盘空间不足",
+		"rpc error: code = Unavailable",
+	} {
+		t.Run(message, func(t *testing.T) {
+			state := uiFixture(t, "episodes")
+			sub := &state.Subscriptions[0]
+			state.LibraryID = sub.ID
+			sub.CheckFailed, sub.LastError = true, message
+			tester := ui.NewTester(state.view, 1320, 860)
+			uiRequireText(t, tester, "检查更新失败："+message, "重试检查 "+sub.GroupName)
+		})
+	}
+}
+
+func TestLibraryHeroPreservesDownloaderCheckFailure(t *testing.T) {
+	state, engine, _, _ := submissionFixture(t, false)
+	sub, err := state.Core.CreateSubscription(state.Ctx,
+		core.Anime{ID: state.AnimeID, Title: "下载错误测试"},
+		core.Group{ID: "check-group", Name: "字幕组"}, core.Rule{All: []string{"1080p"}}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine.reject = true
+	checkErr := state.Core.Check(state.Ctx, sub.ID)
+	if checkErr == nil || !strings.Contains(checkErr.Error(), "scripted disk failure") {
+		t.Fatalf("expected downloader failure after successful feed, got %v", checkErr)
+	}
+	snapshot, err := state.Core.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	state.project(snapshot, engine.Snapshot())
+	state.Page, state.LibraryID = "episodes", sub.ID
+	tester := ui.NewTester(state.view, 1320, 860)
+	uiRequireText(t, tester, "检查更新失败："+checkErr.Error(), "重试检查 字幕组")
+}
+
+func TestCatalogFailureAllowsSeasonRecovery(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("seasonStr") == "春" {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.Write([]byte(routeCatalogMarkup))
+	}))
+	defer server.Close()
+	state := uiFixture(t, "browse")
+	state.Source, state.Ctx = source.New(server.URL), t.Context()
+	state.Year, state.Season = "2026", "春"
+	updates := make(chan func(), 16)
+	state.Update = func(update func()) { updates <- update }
+	waitCatalog := func() {
+		t.Helper()
+		deadline := time.NewTimer(5 * time.Second)
+		defer deadline.Stop()
+		for state.SourceLoading {
+			select {
+			case update := <-updates:
+				update()
+			case <-deadline.C:
+				t.Fatal("catalog request did not finish")
+			}
+		}
+	}
+	state.refreshCatalog()
+	waitCatalog()
+	if state.SourceError == "" {
+		t.Fatal("spring request should fail")
+	}
+	tester := ui.NewTester(state.view, 1040, 720)
+	tester.SetPreferences(ui.Preferences{TextScale: 2})
+	uiRequireText(t, tester, "重试加载", "下一季")
+	for _, label := range []string{"重试加载", "上一季", "下一季", "回到当季"} {
+		element, ok := tester.Find(label)
+		if !ok || element.W <= 0 || element.H <= 0 || element.Y < 0 || element.Y+element.H > 720 {
+			t.Fatalf("recovery action %q is not reachable: %+v", label, element)
+		}
+	}
+	uiClick(t, tester, "下一季")
+	waitCatalog()
+	tester.Frame()
+	if state.Season != "夏" || state.SourceError != "" || len(state.Catalog) != 1 {
+		t.Fatalf("season recovery failed: season=%s error=%q catalog=%v", state.Season, state.SourceError, state.Catalog)
+	}
+	uiRequireText(t, tester, "节目")
 }
 
 func TestCatalogSourceErrorMapsToLocalCopy(t *testing.T) {

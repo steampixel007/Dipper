@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -12,11 +13,11 @@ func TestUXFilesDialogKeepsSavedLocationReachable(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads = s.Downloads[2:3]
 	download := &s.Downloads[0]
-	download.Folder = `C:\Downloads\Dipper\` + strings.Repeat(`很长的番剧目录名称\`, 12)
+	download.Folder = filepath.Join(t.TempDir(), strings.Repeat("很长的番剧目录名称"+string(filepath.Separator), 12))
 	s.Files = []downloader.DownloadedFile{
-		{Path: download.Folder + `\第 01 集.mkv`, Size: 1_250_001},
-		{Path: download.Folder + `\第 02 集.mkv`, Size: 2_250_001},
-		{Path: download.Folder + `\字幕\简体中文.ass`, Size: 8_001},
+		{Path: filepath.Join(download.Folder, "第 01 集.mkv"), Size: 1_250_001},
+		{Path: filepath.Join(download.Folder, "第 02 集.mkv"), Size: 2_250_001},
+		{Path: filepath.Join(download.Folder, "字幕", "简体中文.ass"), Size: 8_001},
 	}
 	s.FilesOpen, s.FilesID = true, download.ID
 
@@ -35,11 +36,11 @@ func TestUXFilesDialogCloseStaysReachableAtLargeText(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads = s.Downloads[2:3]
 	download := &s.Downloads[0]
-	download.Folder = `C:\Downloads\Dipper\` + strings.Repeat(`很长的番剧目录名称\`, 12)
+	download.Folder = filepath.Join(t.TempDir(), strings.Repeat("很长的番剧目录名称"+string(filepath.Separator), 12))
 	s.Files = []downloader.DownloadedFile{
-		{Path: download.Folder + `\第 01 集.mkv`, Size: 1_250_001},
-		{Path: download.Folder + `\第 02 集.mkv`, Size: 2_250_001},
-		{Path: download.Folder + `\字幕\简体中文.ass`, Size: 8_001},
+		{Path: filepath.Join(download.Folder, "第 01 集.mkv"), Size: 1_250_001},
+		{Path: filepath.Join(download.Folder, "第 02 集.mkv"), Size: 2_250_001},
+		{Path: filepath.Join(download.Folder, "字幕", "简体中文.ass"), Size: 8_001},
 	}
 	s.FilesOpen, s.FilesID = true, download.ID
 

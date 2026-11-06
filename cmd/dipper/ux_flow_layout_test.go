@@ -182,31 +182,32 @@ func TestUXDownloadsLargeTextCanReachFirstTransfer(t *testing.T) {
 	tt := ui.NewTester(s.view, 1040, 720)
 	tt.SetPreferences(ui.Preferences{TextScale: 2, ReduceMotion: true})
 
-	target := transfer.Title
-	for attempt := 0; attempt < 8; attempt++ {
-		bounds, ok := tt.Find(target)
-		if !ok {
-			t.Fatalf("missing transfer title %q; texts=%q", target, tt.Texts())
-		}
-		if bounds.Y >= 64 && bounds.Y+bounds.H <= 720 && bounds.W > 0 && bounds.H > 0 {
-			break
-		}
-		tt.Scroll(624, 468, 0, 260)
+	filters, ok := tt.Find("已停止")
+	if !ok || filters.H <= 0 {
+		t.Fatal("missing download filters")
 	}
-	bounds, ok := tt.Find(target)
-	if !ok {
-		t.Fatalf("missing transfer title %q after scrolling; texts=%q", target, tt.Texts())
+	footer, ok := tt.Find("全局上传上限 " + s.Upload + "；完成后" + s.seedStopRule() + "。")
+	if !ok || footer.H <= 0 {
+		t.Fatal("missing transfer policy footer")
 	}
-	if bounds.W <= 0 || bounds.H <= 0 || bounds.Y < 64 || bounds.Y+bounds.H > 720 {
-		t.Fatalf("transfer title remains outside the content viewport: %+v", bounds)
+	top, bottom := filters.Y+filters.H+18, footer.Y-18
+	if bottom <= top {
+		t.Fatalf("download list has no viewport: top=%v bottom=%v", top, bottom)
 	}
-	for _, action := range []string{"停止分享", "删除", "打开文件夹", "查看文件", "播放"} {
-		bounds, ok := tt.Find(action)
-		if !ok {
-			t.Fatalf("missing transfer action %q; texts=%q", action, tt.Texts())
+	for _, target := range []string{transfer.Title, "停止分享", "删除", "打开文件夹", "查看文件", "播放"} {
+		for attempt := 0; attempt < 8; attempt++ {
+			bounds, found := tt.Find(target)
+			if !found {
+				t.Fatalf("missing transfer content %q; texts=%q", target, tt.Texts())
+			}
+			if bounds.W > 0 && bounds.H > 0 && bounds.Y >= top && bounds.Y+bounds.H <= bottom {
+				break
+			}
+			tt.Scroll(624, (top+bottom)/2, 0, bounds.Y-(top+bottom-bounds.H)/2)
 		}
-		if bounds.W <= 0 || bounds.H <= 0 || bounds.Y < 64 || bounds.Y+bounds.H > 720 {
-			t.Fatalf("transfer action %q remains outside the content viewport: %+v", action, bounds)
+		bounds, found := tt.Find(target)
+		if !found || bounds.W <= 0 || bounds.H <= 0 || bounds.Y < top || bounds.Y+bounds.H > bottom {
+			t.Fatalf("transfer content %q remains outside the list viewport: %+v", target, bounds)
 		}
 	}
 }

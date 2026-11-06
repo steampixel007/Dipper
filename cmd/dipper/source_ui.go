@@ -292,7 +292,12 @@ func sourceErrorMessage(err error) string {
 }
 
 func sourceLastErrorMessage(raw string) string {
-	return sourceFailureMessage(classifySourceErrorText(raw))
+	raw = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), "检查更新失败："))
+	failure := classifySourceErrorText(raw)
+	if raw != "" && !strings.HasPrefix(raw, "mikan:") && failure.kind != sourceFailureTimeout && failure.kind != sourceFailureConnection {
+		return raw
+	}
+	return sourceFailureMessage(failure)
 }
 
 func routeError(err error) string {
