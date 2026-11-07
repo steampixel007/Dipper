@@ -1,6 +1,6 @@
 package main
 
-import "dipper.local/dipper/internal/proxy"
+import "github.com/steampixel007/Dipper/internal/proxy"
 
 func (s *State) describeAutoProxy() string {
 	address, source := proxy.Describe()

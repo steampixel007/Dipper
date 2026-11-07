@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"dipper.local/dipper/internal/source"
+	"github.com/steampixel007/Dipper/internal/source"
 )
 
 func TestRealSourceFeedResolvesTorrentIdentity(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"dipper.local/dipper/internal/proxy"
+	"github.com/steampixel007/Dipper/internal/proxy"
 )
 
 type Anime struct {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"dipper.local/dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/core"
 )
 
 type coreAdapter struct{ engine *Engine }

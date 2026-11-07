@@ -1,6 +1,6 @@
 package main
 
-import "dipper.local/dipper/internal/core"
+import "github.com/steampixel007/Dipper/internal/core"
 
 type submissionPlan struct {
 	Selected   []Resource

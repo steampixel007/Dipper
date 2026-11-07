@@ -1,4 +1,4 @@
-module dipper.local/dipper
+module github.com/steampixel007/Dipper
 
 go 1.27.3
 

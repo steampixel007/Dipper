@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"dipper.local/dipper/internal/core"
-	"dipper.local/dipper/internal/downloader"
 	"github.com/egoist/mygo/ui"
+	"github.com/steampixel007/Dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/downloader"
 )
 
 func TestUXBatchFailedChecksContinuesAndReportsPartialFailure(t *testing.T) {

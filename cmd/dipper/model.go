@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"dipper.local/dipper/internal/core"
-	"dipper.local/dipper/internal/downloader"
-	"dipper.local/dipper/internal/source"
 	"encoding/json"
 	"fmt"
+	"github.com/steampixel007/Dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/downloader"
+	"github.com/steampixel007/Dipper/internal/source"
 	"math"
 	"path/filepath"
 	"reflect"

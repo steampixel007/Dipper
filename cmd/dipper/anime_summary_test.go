@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"dipper.local/dipper/internal/core"
-	"dipper.local/dipper/internal/source"
 	"github.com/egoist/mygo/ui"
+	"github.com/steampixel007/Dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/source"
 )
 
 func TestUIAnimeSummaryReadingPreservesDraft(t *testing.T) {

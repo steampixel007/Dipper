@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"dipper.local/dipper/internal/source"
 	"github.com/egoist/mygo/ui"
+	"github.com/steampixel007/Dipper/internal/source"
 )
 
 func windowFixture(t *testing.T) (*State, *int, *int) {

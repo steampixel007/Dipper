@@ -12,7 +12,8 @@
 原生桌面应用，支持自动追番，内置下载器。
 
 [![检查状态](https://github.com/steampixel007/Dipper/actions/workflows/check.yml/badge.svg)](https://github.com/steampixel007/Dipper/actions/workflows/check.yml)
-[![Go](https://img.shields.io/badge/Go-1.27.1-3b63fb?logo=go&logoColor=white)](go.mod)
+[![Go](https://img.shields.io/badge/Go-1.27.3-3b63fb?logo=go&logoColor=white)](go.mod)
+[![开源许可：MIT](https://img.shields.io/badge/License-MIT-3b63fb.svg)](LICENSE)
 [![原生界面](https://img.shields.io/badge/UI-MyGo_Native-3b63fb)](https://github.com/egoist/mygo)
 
 **[下载 Dipper](https://github.com/steampixel007/Dipper/releases/latest)** &nbsp;·&nbsp; **[开始使用](#开始使用)** &nbsp;·&nbsp; **[使用指南（英文）](docs/usage.md)** &nbsp;·&nbsp; **[开发指南（英文）](docs/development.md)** &nbsp;·&nbsp; **[问题反馈](https://github.com/steampixel007/Dipper/issues)**
@@ -117,6 +118,14 @@ sh scripts/build.sh --test
 
 Dipper 得名于河乌（white-throated dipper）：一种会潜入湍急山溪、带回食物的小型鸣禽。在这里，torrent 带回的是你想看的番。
 
+## 开源许可
+
+Dipper 以 [MIT 许可证](LICENSE) 开源。你可以使用、修改和再分发，包括商业使用，只需随软件保留版权声明和许可证声明。
+
+第三方组件仍适用各自的许可证；见[第三方声明](THIRD-PARTY.md)。MIT 许可证不授予 “Dipper” 名称或标志的商标权。部分示例数据与封面图来自 Mikan，不在 MIT 许可范围内。
+
+贡献将以 MIT 许可证接受，并需在每次提交中签署 Developer Certificate of Origin；见[贡献指南（英文）](CONTRIBUTING.md)。
+
 ## 进一步了解 Dipper
 
 | 文档与入口 | 内容 |
@@ -126,4 +135,7 @@ Dipper 得名于河乌（white-throated dipper）：一种会潜入湍急山溪�
 | [设计系统（英文）](DESIGN.md) | 河乌、配色、控件与交互原则 |
 | [架构说明（英文）](docs/architecture.md) | 原生应用、数据源、核心逻辑和下载器如何协作 |
 | [子系统文档（英文）](docs/subsystems/README.md) | 实现约定与各项测试的验证范围 |
+| [开源许可](LICENSE) | Dipper 原创代码与文档的 MIT 许可证 |
+| [第三方声明](THIRD-PARTY.md) | 内置 Go 模块与示例图片的许可证 |
+| [贡献指南（英文）](CONTRIBUTING.md) | 如何提交改动与签署 DCO |
 | [问题反馈](https://github.com/steampixel007/Dipper/issues) | 缺陷、疑问与功能建议 |

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"dipper.local/dipper/internal/downloader"
 	"github.com/egoist/mygo/ui"
+	"github.com/steampixel007/Dipper/internal/downloader"
 )
 
 func TestUXFilesDialogKeepsSavedLocationReachable(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"dipper.local/dipper/internal/source"
+	"github.com/steampixel007/Dipper/internal/source"
 )
 
 func TestCatalogRefreshRetainsLoadedAnimeSummary(t *testing.T) {

@@ -16,7 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"dipper.local/dipper/internal/proxy"
+	"github.com/steampixel007/Dipper/internal/proxy"
 	_ "modernc.org/sqlite"
 )
 

@@ -11,15 +11,15 @@ import (
 	"path/filepath"
 	"time"
 
-	"dipper.local/dipper/internal/appdata"
-	"dipper.local/dipper/internal/core"
-	"dipper.local/dipper/internal/downloader"
-	"dipper.local/dipper/internal/instance"
-	"dipper.local/dipper/internal/proxy"
-	"dipper.local/dipper/internal/source"
-	"dipper.local/dipper/internal/trackers"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"github.com/steampixel007/Dipper/internal/appdata"
+	"github.com/steampixel007/Dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/downloader"
+	"github.com/steampixel007/Dipper/internal/instance"
+	"github.com/steampixel007/Dipper/internal/proxy"
+	"github.com/steampixel007/Dipper/internal/source"
+	"github.com/steampixel007/Dipper/internal/trackers"
 )
 
 var version = "0.1.0"
