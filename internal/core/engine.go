@@ -70,6 +70,10 @@ func (c *Core) CreateSubscription(ctx context.Context, anime Anime, group Group,
 	id := SubscriptionID(anime.ID, group.ID)
 	var creationCtx context.Context
 	var creationDone func()
+	release, err := c.acquireDelivery(ctx)
+	if err != nil {
+		return result, err
+	}
 	err = c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
 		if _, ok := s.Subscriptions[id]; ok {
 			return ErrExists
@@ -101,6 +105,7 @@ func (c *Core) CreateSubscription(ctx context.Context, anime Anime, group Group,
 		creationCtx, creationDone = c.registerLocked(ctx, id)
 		return nil
 	})
+	release()
 	if creationDone != nil {
 		defer creationDone()
 	}
@@ -136,7 +141,7 @@ func (c *Core) CreateSubscription(ctx context.Context, anime Anime, group Group,
 }
 
 func (c *Core) enqueue(ctx context.Context, tx *sql.Tx, s *diskState, sub *Subscription, item *Item) error {
-	if item.Hash == "" || c.removing[item.Hash] > 0 {
+	if item.Hash == "" {
 		return nil
 	}
 	record, err := taskByHash(ctx, tx, item.Hash)
@@ -180,6 +185,41 @@ func (c *Core) UpdateRule(ctx context.Context, id string, rule Rule) error {
 	return err
 }
 
+// acquireDelivery takes the delivery slot described on Core.delivery; the
+// returned function releases it.
+func (c *Core) acquireDelivery(ctx context.Context) (release func(), err error) {
+	select {
+	case c.delivery <- struct{}{}:
+		return func() { <-c.delivery }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// supersedeTombstone clears a removal a failed or interrupted delete left
+// behind, so an explicit new intent is not swept up when recovery finishes it.
+// The caller holds the delivery slot, so the tombstone cannot belong to a
+// removal still in flight.
+func (c *Core) supersedeTombstone(ctx context.Context, tx *sql.Tx, hash string) error {
+	if hash == "" {
+		return nil
+	}
+	record, err := taskByHash(ctx, tx, hash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	if !record.Removing {
+		return nil
+	}
+	record.Accepted, record.Independent = false, false
+	record.Removing, record.RemoveRedownload = false, false
+	record.Attempts, record.LastError, record.NextRetry = 0, "", time.Time{}
+	return saveTask(ctx, tx, record)
+}
+
 // DownloadExisting records explicit download intents and returns whether they
 // were saved, even when a later delivery attempt fails.
 func (c *Core) DownloadExisting(ctx context.Context, id string, history []Resource, selectedIDs []string) (bool, error) {
@@ -204,6 +244,10 @@ func (c *Core) DownloadExisting(ctx context.Context, id string, history []Resour
 			return false, fmt.Errorf("selected resource missing from history: %s", key)
 		}
 	}
+	release, err := c.acquireDelivery(ctx)
+	if err != nil {
+		return false, err
+	}
 	err = c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
 		sub, ok := s.Subscriptions[id]
 		if !ok {
@@ -221,6 +265,9 @@ func (c *Core) DownloadExisting(ctx context.Context, id string, history []Resour
 					r.Magnet = "magnet:?xt=urn:btih:" + hash
 				}
 			}
+			if err := c.supersedeTombstone(ctx, tx, hash); err != nil {
+				return err
+			}
 			item := Item{Resource: r, Hash: hash, Status: ItemPending, Reason: "主动补下载，等待提交", Explicit: true}
 			if err := c.enqueue(ctx, tx, s, &sub, &item); err != nil {
 				return err
@@ -230,6 +277,7 @@ func (c *Core) DownloadExisting(ctx context.Context, id string, history []Resour
 		s.Subscriptions[id] = sub
 		return nil
 	})
+	release()
 	if err != nil {
 		return false, err
 	}
@@ -331,15 +379,11 @@ func (c *Core) RemoveTask(ctx context.Context, hash string, redownload bool, rem
 		}
 		c.mu.Unlock()
 	}()
-	select {
-	case c.delivery <- struct{}{}:
-		defer func() { <-c.delivery }()
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	if err := ctx.Err(); err != nil {
+	release, err := c.acquireDelivery(ctx)
+	if err != nil {
 		return err
 	}
+	defer release()
 	if err := c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
 		record, err := taskByHash(ctx, tx, hash)
 		if err == nil {
@@ -457,35 +501,57 @@ func (c *Core) recoverRemovals(ctx context.Context, force bool) {
 		if err := ctx.Err(); err != nil {
 			return
 		}
-		if !force && !record.NextRetry.IsZero() && record.NextRetry.After(c.opts.Now()) {
-			continue
+		release, err := c.acquireDelivery(ctx)
+		if err != nil {
+			return
 		}
-		c.mu.Lock()
-		busy := c.removing[record.Task.Hash] > 0
-		c.mu.Unlock()
-		if busy {
-			continue
-		}
-		if c.opts.Downloader != nil {
-			if removeErr := c.opts.Downloader.Remove(record.Task.Hash); removeErr != nil {
-				_ = c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
-					latest, err := taskByHash(ctx, tx, record.Task.Hash)
-					if err != nil {
-						return err
-					}
-					latest.LastError = removeErr.Error()
-					latest.NextRetry = c.opts.Now().Add(c.backoff(latest.Attempts + 1))
-					return saveTask(ctx, tx, latest)
-				})
-				continue
-			}
-		}
-		status, reason, read := ItemSkipped, "已删除下载任务", true
-		if record.RemoveRedownload {
-			status, reason, read = ItemPending, "等待重新下载", false
-		}
-		_ = c.forgetTask(ctx, record.Task.Hash, status, reason, read)
+		c.recoverRemoval(ctx, record.Task.Hash, force)
+		release()
 	}
+}
+
+// recoverRemoval finishes one tombstone while holding the delivery slot, so a
+// re-download recorded in the meantime supersedes it instead of racing the
+// finalize. The record is re-read under the slot for the same reason.
+func (c *Core) recoverRemoval(ctx context.Context, hash string, force bool) {
+	var record TaskRecord
+	err := c.transaction(ctx, func(tx *sql.Tx, _ *diskState) error {
+		latest, err := taskByHash(ctx, tx, hash)
+		record = latest
+		return err
+	})
+	if err != nil || !record.Removing {
+		return
+	}
+	if !force && !record.NextRetry.IsZero() && record.NextRetry.After(c.opts.Now()) {
+		return
+	}
+	c.mu.Lock()
+	busy := c.removing[hash] > 0
+	c.mu.Unlock()
+	if busy {
+		return
+	}
+	if c.opts.Downloader != nil {
+		if removeErr := c.opts.Downloader.Remove(hash); removeErr != nil {
+			_ = c.transaction(ctx, func(tx *sql.Tx, _ *diskState) error {
+				latest, err := taskByHash(ctx, tx, hash)
+				if err != nil {
+					return err
+				}
+				latest.LastError = removeErr.Error()
+				latest.Attempts++
+				latest.NextRetry = c.opts.Now().Add(c.backoff(latest.Attempts))
+				return saveTask(ctx, tx, latest)
+			})
+			return
+		}
+	}
+	status, reason, read := ItemSkipped, "已删除下载任务", true
+	if record.RemoveRedownload {
+		status, reason, read = ItemPending, "等待重新下载", false
+	}
+	_ = c.forgetTask(ctx, hash, status, reason, read)
 }
 
 func (c *Core) getSubscription(ctx context.Context, id string) (Subscription, error) {
@@ -529,6 +595,10 @@ func (c *Core) check(ctx context.Context, id string) error {
 	resources, err := c.opts.Feed(ctx, sub.Anime.ID, sub.Group.ID)
 	if err != nil {
 		return c.finishCheck(ctx, id, sub.Revision, err)
+	}
+	release, err := c.acquireDelivery(ctx)
+	if err != nil {
+		return err
 	}
 	err = c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
 		current, ok := s.Subscriptions[id]
@@ -576,6 +646,7 @@ func (c *Core) check(ctx context.Context, id string) error {
 		s.Subscriptions[id] = current
 		return nil
 	})
+	release()
 	if err != nil {
 		return err
 	}
@@ -637,12 +708,11 @@ func (c *Core) RetryPending(ctx context.Context) error {
 }
 
 func (c *Core) flush(ctx context.Context, onlyID string, replay, force bool) error {
-	select {
-	case c.delivery <- struct{}{}:
-		defer func() { <-c.delivery }()
-	case <-ctx.Done():
-		return ctx.Err()
+	release, err := c.acquireDelivery(ctx)
+	if err != nil {
+		return err
 	}
+	defer release()
 	var errs []error
 	snap, err := c.Snapshot()
 	if err != nil {

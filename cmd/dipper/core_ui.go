@@ -641,12 +641,7 @@ func (s *State) retryFailedChecks() {
 	if s.Core == nil || s.Busy {
 		return
 	}
-	var pending []string
-	for _, sub := range s.Subscriptions {
-		if sub.CheckFailed && !sub.Paused {
-			pending = append(pending, sub.ID)
-		}
-	}
+	pending := s.retryableChecks()
 	if len(pending) == 0 {
 		return
 	}

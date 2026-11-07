@@ -1,4 +1,4 @@
-<!-- reviewed-through: ad40e8a (2026-10-29 00:13 +0800) -->
+<!-- reviewed-through: 3604636 (2026-11-08 02:28 +0800) -->
 # Lessons from merged work
 
 Each day the commits since the `reviewed-through` mark above are reviewed:
@@ -86,6 +86,37 @@ once it moves.
 - 36dde46 kept a 继续 label on stopped tasks, but pauseDownload only checked `Paused`, so the first click paused the stopped task and a second was needed. `TestUIDownloadsOfferOneTransferActionPerState` asserted visibility only and stayed green through the bug.
 - Fixed in the night-audit worktree: the condition resumes paused-or-stopped, and `TestUIDownloadTransferActionChangesIntentOnce` renders the card, clicks once against a scripted engine, and asserts the command and projected flags.
 - Seen 1× (2026-10-29).
+
+**A cleanup collects the directories a claim names, not the files that survived.**
+- 48389c8's `ownership.remove` walked a file's parent directories only after the file opened, so a payload the user had already deleted skipped its directories; deleting a non-shared task then left `season/Subs` behind, the folder removal failed with ENOTEMPTY after the claim was released, and the journal entry could never finish — every later `Ensure` answered `finish earlier removal`, across restarts.
+- Fixed in the night-audit worktree: the directory walk runs before the existence check; `TestNonSharedRemovalAfterDeletedPayloadLeavesNoJournal` fails on the old code (REAL RED: "removal after a deleted payload file = download task removed but cleanup failed ... The directory is not empty.").
+- Seen 1× (2026-11-08).
+
+**A batch action is offered only when the predicate that schedules its work matches.**
+- a12744f rendered 重试检查 for any `sub.CheckFailed` while `retryFailedChecks` schedules only failed follows that are not paused: with every failed follow paused the button was enabled and did nothing — no busy state, no notice, no error, and `core`'s `Check` returns nil for a paused follow anyway.
+- Fixed in the night-audit worktree: one `retryableChecks` helper feeds both the button and the batch; `TestUIFollowingHidesRetryWhenOnlyPausedFollowsFailed` fails on the old render (REAL RED: "batch retry offered for follows it would skip").
+- Done right: the per-follow inline action in `library_hero.go` already consulted `Paused` (`Disabled(sub.Paused || s.Busy)`).
+- Seen 1× (2026-11-08).
+
+**A removal's finalize and an intent serialize on one slot, and an intent is never dropped silently.**
+- 29f1207 coordinated removal with admissions, but a re-download recorded while `RemoveTask` was between its tombstone and its finalize was still swept: `enqueue` returned nil for any hash with `removing[hash] > 0`, so the intent vanished without an error, and the finalize then marked the item skipped with 已删除下载任务. A failed removal had the same window: recovery finished the tombstone after an explicit re-download had already been accepted.
+- Fixed in the night-audit worktree: every path that records or forgets a task holds the delivery slot across its transaction (`acquireDelivery`), the finalize re-reads its record under that slot (`recoverRemoval`), `supersedeTombstone` clears a stale failed tombstone when an explicit intent is recorded, and `enqueue`'s removing guard is gone. `TestRedownloadDuringRemovalKeepsIntent` fails on the old code (REAL RED: "the removal swept up the re-download: status = \"skipped\" reason = \"已删除下载任务\""); `TestRedownloadAfterFailedRemovalSupersedesTombstone` fails too (REAL RED: "the re-download was not submitted: ensures = 1").
+- Seen 1× (2026-11-08).
+
+**A retry that rewrites its own deadline at the base delay never escalates.**
+- f05547b's `recoverRemovals` stored `NextRetry = now + backoff(Attempts+1)` and never incremented `Attempts`, so a removal that kept failing (a locked folder) retried at the base interval forever and hammered the downloader instead of backing off.
+- Fixed in the night-audit worktree: the attempt count increments before the delay is computed. `TestRecoveryEscalatesRemovalBackoff` fails on the old code (REAL RED: "removal retry did not back off: first delay = 2m0s, second delay = 2m0s").
+- Seen 1× (2026-11-08).
+
+**A control that writes its bound value before OnChange must compare against live state, not the bound field.**
+- 720fd8a's settings selector wrote the picked label into `SourceRoute` before calling `switchSourceRoute`, whose first check was `label == s.SourceRoute`; the check was therefore always true and picking a route never switched anything. `TestSourceRouteSwitchTestsThenSaves` calls the handler directly with an older bound value, so it stayed green.
+- Fixed in the night-audit worktree: the no-op check compares the target origin with `s.Source.Origin()`, and the rollback label is derived from that origin. `TestUISettingsSelectSwitchesRoute` clicks both labels and fails on the old code (REAL RED: "choosing \"线路二 · 测试\" left the origin at ...").
+- Seen 1× (2026-11-08).
+
+**An alternative after an ASCII `\b` cannot match CJK; write the boundary the alphabet actually has.**
+- bb24820 put 简/繁/外挂/内嵌/内封 into `flagsPattern` under `\b`, but Go's `\b` is an ASCII word boundary, so those alternatives were dead; a flag standing alone ("[1080P][内封][MKV]", "[中日外挂]") lost its label even though the captured testdata contains both forms.
+- Fixed in the night-audit worktree: a separate pattern bounds CJK flags with `(?:^|[^一-鿿])`. `TestReleaseTagsRecognizeCommonLabels` fails on the old code (REAL RED: "\"[组] 剧名 [1080P][内封][MKV]\": got [1080p mkv], want [1080p mkv 内封]").
+- Seen 1× (2026-11-08).
 
 ## Moved to the code standards
 

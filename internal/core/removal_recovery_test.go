@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // A crash between the tombstone commit and the finalize leaves the same state
@@ -127,5 +128,49 @@ func TestRecoveryBacksOffFailingRemoval(t *testing.T) {
 	}
 	if len(tasks) != 1 || !tasks[0].Removing {
 		t.Fatalf("failed recovery lost the tombstone: %+v", tasks)
+	}
+}
+
+// Each failed removal attempt must defer the next one further out. A recovery
+// that rewrites NextRetry at the base delay forever hammers a downloader that
+// is still locked.
+func TestRecoveryEscalatesRemovalBackoff(t *testing.T) {
+	a := resource("a", 1, "1080p")
+	hash, _ := ResourceHash(a)
+	path := filepath.Join(t.TempDir(), "state.db")
+	clock := time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC)
+	d := &fakeDownloader{}
+	d.setRemoveHook(func(string) error { return errors.New("content folder is locked") })
+	c := openTest(t, path, Options{
+		Downloader: d,
+		Now:        func() time.Time { return clock },
+		RetryBase:  time.Minute,
+		RetryMax:   8 * time.Minute,
+	})
+	create(t, c, anime, group, Rule{}, []Resource{a}, []string{a.ID})
+	if err := c.RemoveTask(context.Background(), hash, false, func() (bool, error) {
+		return false, errors.New("crashed before the downloader ran")
+	}); err == nil {
+		t.Fatal("the failed removal must report an error")
+	}
+	nextRetry := func() time.Time {
+		t.Helper()
+		tasks, err := c.ListTasks()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(tasks) != 1 || !tasks[0].Removing || tasks[0].LastError == "" {
+			t.Fatalf("failed recovery lost the tombstone: %+v", tasks)
+		}
+		return tasks[0].NextRetry
+	}
+	c.recoverRemovals(context.Background(), false)
+	first := nextRetry().Sub(clock)
+	// Move past the first deadline so the next attempt is due.
+	clock = clock.Add(3 * time.Minute)
+	c.recoverRemovals(context.Background(), false)
+	second := nextRetry().Sub(clock)
+	if second <= first {
+		t.Fatalf("removal retry did not back off: first delay = %v, second delay = %v", first, second)
 	}
 }

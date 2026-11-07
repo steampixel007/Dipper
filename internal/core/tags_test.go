@@ -25,6 +25,11 @@ func TestReleaseTagsRecognizeCommonLabels(t *testing.T) {
 		{"[组] 剧名 [1080P][MP4/MKV]", []string{"1080p", "mp4", "mkv"}},
 		{"[组] 剧名 [1080P][繁体][MP4]", []string{"1080p", "mp4", "繁体"}},
 		{"[组] 剧名 [720P][简体MP4]", []string{"720p", "mp4", "简体"}},
+		// A flag standing on its own is a CJK literal, which the ASCII \b in
+		// flagsPattern cannot bound; it must still be recognized.
+		{"[组] 剧名 [1080P][内封][MKV]", []string{"1080p", "mkv", "内封"}},
+		{"[组] 剧名 [1080P][外挂][MKV]", []string{"1080p", "mkv", "外挂"}},
+		{"[组] 剧名 [中日外挂][1080P]", []string{"1080p", "中日外挂"}},
 	}
 	for _, tc := range cases {
 		got := ReleaseTags(tc.title)

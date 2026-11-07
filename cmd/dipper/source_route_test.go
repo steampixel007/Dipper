@@ -74,9 +74,12 @@ func TestSourceRouteSwitchTestsThenSaves(t *testing.T) {
 
 func TestSourceRouteFailureRollsBackAndKeepsChoice(t *testing.T) {
 	s, mu := routeFixture(t, "settings")
+	initial := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(routeCatalogMarkup)) }))
+	defer initial.Close()
 	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusServiceUnavailable) }))
 	defer bad.Close()
-	s.Source = source.New(bad.URL)
+	s.Source = source.New(initial.URL)
+	s.SourceRoutes[0].Origin = initial.URL
 	s.SourceRoutes[1].Origin = bad.URL
 	s.Ctx = t.Context()
 	previousLabel, previousOrigin := s.SourceRoute, s.Source.Origin()
@@ -129,6 +132,40 @@ func TestSourceRoutePreferenceRoundTrip(t *testing.T) {
 	}
 	if saved.SourceOrigin != "https://mikanani.me" {
 		t.Fatalf("saved origin = %q", saved.SourceOrigin)
+	}
+}
+
+func TestUISettingsSelectSwitchesRoute(t *testing.T) {
+	s, _ := routeFixture(t, "settings")
+	initial := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(routeCatalogMarkup)) }))
+	defer initial.Close()
+	good := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(routeCatalogMarkup)) }))
+	defer good.Close()
+	s.Source = source.New(initial.URL)
+	s.SourceRoutes[0].Origin = initial.URL
+	s.SourceRoutes[1].Origin = good.URL
+	s.Ctx = t.Context()
+	// The switch reports back from its goroutine through Update, which the
+	// real window marshals onto the goroutine that renders. Queue the callback
+	// instead of running it under a lock: the renderer reads State without
+	// that lock, so a callback running beside it would race the frame.
+	updates := make(chan func(), 4)
+	s.Update = func(fn func()) { updates <- fn }
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiScrollTo(t, tt, s.SourceRoutes[0].Label)
+	uiClick(t, tt, s.SourceRoutes[0].Label)
+	uiClick(t, tt, s.SourceRoutes[1].Label)
+	select {
+	case update := <-updates:
+		update()
+	case <-time.After(2 * time.Second):
+		t.Fatalf("choosing %q never reached the switch; origin = %q", s.SourceRoutes[1].Label, s.Source.Origin())
+	}
+	if s.Source.Origin() != good.URL {
+		t.Fatalf("choosing %q left the origin at %q", s.SourceRoutes[1].Label, s.Source.Origin())
+	}
+	if s.SourceRoute != s.SourceRoutes[1].Label || s.Notice != "已切换线路，现有追番不受影响。" {
+		t.Fatalf("route = %q notice = %q", s.SourceRoute, s.Notice)
 	}
 }
 

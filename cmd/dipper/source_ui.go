@@ -309,12 +309,17 @@ func routeError(err error) string {
 }
 
 func (s *State) switchSourceRoute(label string) {
-	if s.Source == nil || s.SourceTesting || label == s.SourceRoute {
+	if s.Source == nil || s.SourceTesting {
 		return
 	}
-	previousLabel := s.SourceRoute
 	previousOrigin := s.Source.Origin()
 	targetOrigin := s.sourceOrigin(label)
+	// The dropdown writes the picked label into SourceRoute before OnChange runs,
+	// so the route actually in effect is the engine's origin, not the label.
+	if targetOrigin == previousOrigin {
+		return
+	}
+	previousLabel := s.sourceLabel(previousOrigin)
 	s.SourceRoute = label
 	s.SourceTesting = true
 	s.SourceRouteError = ""
