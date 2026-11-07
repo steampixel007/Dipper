@@ -230,7 +230,7 @@ func TestUIDownloadGroupSizeLabels(t *testing.T) {
 		{"known rounding", []Download{{Bytes: 1_004_999, CompletedBytes: 500_001, Progress: .5}, {Bytes: 1_004_999, CompletedBytes: 500_002, Progress: .5}}, "1 MB / 2.01 MB"},
 		{"mixed", []Download{{Bytes: 1_000_001, CompletedBytes: 500_001, Progress: .5}, {}}, "已下载 500 KB / 1 MB（另有 1 条大小未知）"},
 		{"unknown", []Download{{}, {}}, "2 条大小未知"},
-		{"large", []Download{{Bytes: math.MaxInt64, Progress: 1, Stopped: true}}, "9.22 EB / 9.22 EB"},
+		{"large", []Download{{Bytes: math.MaxInt64, Progress: 1}}, "9.22 EB / 9.22 EB"},
 		{"overflow", []Download{{Bytes: math.MaxInt64, Progress: .5}, {Bytes: 1}}, "总大小超出可显示范围"},
 		{"zero completion", []Download{{Bytes: 10_000}}, "0 B / 10 KB"},
 		{"negative completion falls back", []Download{{Bytes: 10_000, CompletedBytes: -1, Progress: .25}}, "2.5 KB / 10 KB"},

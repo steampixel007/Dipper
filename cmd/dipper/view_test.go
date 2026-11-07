@@ -538,7 +538,7 @@ func TestUIDownloadListScrollResetsOnFilterChange(t *testing.T) {
 	tt.Frame()
 	s.DownloadScroll.Y = 260
 	tt.Frame()
-	uiClick(t, tt, "已完成")
+	uiClick(t, tt, "分享中")
 	if s.DownloadScroll.Y != 0 {
 		t.Fatalf("filter change did not reset the download scroll: %v", s.DownloadScroll.Y)
 	}
@@ -796,7 +796,11 @@ func TestUIDownloadsOfferOneTransferActionPerState(t *testing.T) {
 					t.Errorf("transfer action %q visible=%v; want only %q", action, visible, tc.action)
 				}
 			}
-			uiRequireText(t, tt, "删除", "打开文件夹")
+			if tc.name == "completed" {
+				uiRequireText(t, tt, "当前没有进行中的任务")
+			} else {
+				uiRequireText(t, tt, "删除", "打开文件夹")
+			}
 		})
 	}
 }
@@ -921,7 +925,7 @@ func TestUIDownloadsGroupByAnimeWithSummary(t *testing.T) {
 	if headers != 1 {
 		t.Errorf("anime header shown %d times; want one per group; texts=%q", headers, tt.Texts())
 	}
-	uiRequireText(t, tt, "3 个下载任务，下载中 1，已完成 1，失败 1", "已下载 444.98 MB / 722 MB（另有 1 条大小未知）")
+	uiRequireText(t, tt, "3 个下载任务，下载中 1，分享中 1，失败 1", "已下载 444.98 MB / 722 MB（另有 1 条大小未知）")
 }
 
 func TestUIDownloadsFilterHidesOtherStates(t *testing.T) {
@@ -931,7 +935,7 @@ func TestUIDownloadsFilterHidesOtherStates(t *testing.T) {
 		{ID: "filter-completed", AnimeID: s.AnimeID, Title: "已完成的资源", Progress: 1},
 		{ID: "filter-failed", AnimeID: s.AnimeID, Title: "失败的资源", Failed: true, Error: "连接超时，请重试"},
 	}
-	s.DownloadFilter = downloadsCompleted
+	s.DownloadFilter = downloadsSeeding
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, "已完成的资源")
 	if tt.HasText("下载中的资源") {
@@ -951,7 +955,7 @@ func TestUIDownloadsEmptyFilterOffersReset(t *testing.T) {
 	if s.DownloadFilter != downloadsAll {
 		t.Fatalf("filter is %d; want downloadsAll", s.DownloadFilter)
 	}
-	uiRequireText(t, tt, "3 个下载任务，下载中 1，已完成 1，失败 1")
+	uiRequireText(t, tt, "3 个下载任务，下载中 1，分享中 1，失败 1")
 }
 
 func TestUIDownloadsUseMeasuredSpeedsErrorsAndOpenFolder(t *testing.T) {
@@ -1026,7 +1030,7 @@ func TestUIDownloadPlayButtonOpensFirstVideo(t *testing.T) {
 	uiClick(t, tt, "播放")
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
-	for played == "" && s.SaveError == "" {
+	for s.Busy {
 		select {
 		case fn := <-updates:
 			fn()
@@ -1057,7 +1061,7 @@ func TestUIDownloadPlayRejectsNonMediaFiles(t *testing.T) {
 	uiClick(t, tt, "播放")
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
-	for s.SaveError == "" && played == "" {
+	for s.Busy {
 		select {
 		case fn := <-updates:
 			fn()
@@ -1141,7 +1145,7 @@ func TestUIDownloadFilesDialogShowsEntriesAndActions(t *testing.T) {
 	}
 	tt.Frame()
 	uiRequireText(t, tt, "video.mkv", "字幕.ass", "复制路径", "播放此文件")
-	uiClick(t, tt, "播放此文件")
+	uiClick(t, tt, `播放此文件 C:\Downloads\Dipper\release\video.mkv`)
 	if played != `C:\Downloads\Dipper\release\video.mkv` {
 		t.Fatalf("played %q, want the mkv file", played)
 	}
@@ -1491,6 +1495,7 @@ func (e *resumeAllTestEngine) Resume(id string) error {
 func TestUIDownloadsPauseAllIgnoresStoppedTransfers(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.Downloads[0].Stopped = true
+	s.Downloads = append(s.Downloads, Download{ID: "finished-paused", Progress: 1, Stopped: true, Paused: true})
 	engine := &resumeAllTestEngine{}
 	s.Engine = engine
 	updates := make(chan func(), 4)
