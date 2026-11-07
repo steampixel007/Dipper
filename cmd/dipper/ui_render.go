@@ -65,6 +65,9 @@ func renderScreens(dir string) error {
 		{name: "01-browse", page: "browse"},
 		{name: "02-filter", page: "detail", configure: func(s *State) { s.setWord("1080p", wordWant) }},
 		{name: "03-following", page: "following"},
+		{name: "14-following-check-failure", page: "following", configure: func(s *State) {
+			s.SaveError = "1 个追番检查失败，请打开对应剧集库查看原因并重试。"
+		}},
 		{name: "04-downloads", page: "downloads"},
 		{name: "05-settings", page: "settings"},
 		{name: "06-source-error", page: "browse", configure: func(s *State) { s.SourceError = "无法连接番剧来源，请检查网络后重试。" }},

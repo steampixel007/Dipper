@@ -612,28 +612,39 @@ func (s *State) removeSubscription(id string) {
 	s.runAction(func() error { return s.Core.RemoveSubscription(s.Ctx, id) }, "已取消追番《"+title+"》")
 }
 func (s *State) check(id string) {
-	if s.Core == nil {
+	if s.Core == nil || s.Busy {
 		return
 	}
 	if sub, ok := s.subscription(id); !ok || sub.Paused {
 		return
 	}
+	s.Busy = true
+	s.SaveError = ""
 	s.Notice = "正在检查更新…"
-	s.runAction(func() error { return s.Core.Check(s.Ctx, id) }, "检查更新完成")
+	go func() {
+		err := s.Core.Check(s.Ctx, id)
+		s.refreshState()
+		s.Update(func() {
+			s.Busy = false
+			s.Notice = ""
+			if err != nil {
+				s.SaveError = sourceLastErrorMessage(err.Error())
+			} else {
+				s.SaveError = ""
+				s.Notice = "检查更新完成"
+			}
+		})
+	}()
 }
 
 func (s *State) retryFailedChecks() {
 	if s.Core == nil || s.Busy {
 		return
 	}
-	type pendingCheck struct {
-		id    string
-		title string
-	}
-	var pending []pendingCheck
+	var pending []string
 	for _, sub := range s.Subscriptions {
 		if sub.CheckFailed && !sub.Paused {
-			pending = append(pending, pendingCheck{id: sub.ID, title: s.anime(sub.AnimeID).Title})
+			pending = append(pending, sub.ID)
 		}
 	}
 	if len(pending) == 0 {
@@ -643,11 +654,27 @@ func (s *State) retryFailedChecks() {
 	s.SaveError = ""
 	s.Notice = fmt.Sprintf("正在检查 %d 个追番的更新…", len(pending))
 	go func() {
-		var failures []string
+		failures := 0
 		succeeded := 0
-		for _, item := range pending {
-			if err := s.Core.Check(s.Ctx, item.id); err != nil {
-				failures = append(failures, "《"+item.title+"》"+err.Error())
+		unsavedError := ""
+		for _, id := range pending {
+			if err := s.Core.Check(s.Ctx, id); err != nil {
+				failures++
+				if unsavedError == "" {
+					snapshot, snapshotErr := s.Core.Snapshot()
+					saved := false
+					if snapshotErr == nil {
+						for _, sub := range snapshot.Subscriptions {
+							if sub.ID == id && sub.LastError == err.Error() {
+								saved = true
+								break
+							}
+						}
+					}
+					if !saved {
+						unsavedError = sourceLastErrorMessage(err.Error())
+					}
+				}
 			} else {
 				succeeded++
 			}
@@ -656,15 +683,18 @@ func (s *State) retryFailedChecks() {
 		s.Update(func() {
 			s.Busy = false
 			switch {
-			case len(failures) == 0:
+			case failures == 0:
 				s.SaveError = ""
 				s.Notice = fmt.Sprintf("已检查 %d 个追番的更新。", len(pending))
 			case succeeded == 0:
 				s.Notice = ""
-				s.SaveError = fmt.Sprintf("%d 个追番检查失败：%s", len(failures), strings.Join(failures, "；"))
+				s.SaveError = fmt.Sprintf("%d 个追番检查失败，请打开对应剧集库查看原因并重试。", failures)
 			default:
-				s.Notice = fmt.Sprintf("已检查 %d 个追番，%d 个仍需重试。", len(pending), len(failures))
-				s.SaveError = strings.Join(failures, "；")
+				s.Notice = fmt.Sprintf("已检查 %d 个追番，%d 个仍需重试。", len(pending), failures)
+				s.SaveError = fmt.Sprintf("%d 个追番检查失败，请打开对应剧集库查看原因并重试。", failures)
+			}
+			if unsavedError != "" {
+				s.SaveError += "首次错误：" + unsavedError
 			}
 		})
 	}()

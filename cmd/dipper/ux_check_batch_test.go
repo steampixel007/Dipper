@@ -93,7 +93,7 @@ func TestUXBatchFailedChecksContinuesAndReportsPartialFailure(t *testing.T) {
 	if gotCalls["batch-d"] != 0 {
 		t.Fatalf("paused follow was checked: %v", gotCalls)
 	}
-	if !strings.Contains(s.Notice, "已检查 3 个追番，2 个仍需重试") || !strings.Contains(s.SaveError, "追番甲") || !strings.Contains(s.SaveError, "追番丙") || strings.Contains(s.SaveError, "追番乙") {
+	if !strings.Contains(s.Notice, "已检查 3 个追番，2 个仍需重试") || s.SaveError != "2 个追番检查失败，请打开对应剧集库查看原因并重试。" {
 		t.Fatalf("partial result misreported: notice=%q error=%q", s.Notice, s.SaveError)
 	}
 	state, err = kernel.Snapshot()

@@ -386,16 +386,12 @@ func TestUIFollowingFailedCheckOffersInlineRetry(t *testing.T) {
 	uiClick(t, tt, "打开追番 字幕组丙")
 	uiRequireText(t, tt, "检查更新失败：网络连接超时，请稍后再试。")
 	uiClick(t, tt, "重试检查 字幕组丙")
-	deadline := time.NewTimer(2 * time.Second)
-	defer deadline.Stop()
-	for s.SaveError != "RSS 请求超时" {
-		select {
-		case fn := <-updates:
-			fn()
-		case <-deadline.C:
-			t.Fatalf("save error = %q; texts=%q", s.SaveError, tt.Texts())
-		}
+	finishSubmission(t, s, updates)
+	if s.SaveError != "网络连接超时，请稍后再试。" || s.Notice != "" {
+		t.Fatalf("check result: error=%q notice=%q", s.SaveError, s.Notice)
 	}
+	tt.Frame()
+	uiRequireText(t, tt, "检查更新失败：网络连接超时，请稍后再试。")
 }
 
 func TestUIFollowingActionsSurviveSearchFilter(t *testing.T) {

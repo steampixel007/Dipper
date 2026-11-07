@@ -188,6 +188,8 @@ func classifySourceErrorText(raw string) sourceFailure {
 		strings.Contains(text, "dial tcp"), strings.Contains(text, "connectex"),
 		strings.Contains(text, "连接失败"), strings.Contains(text, "连接不上"), strings.Contains(text, "无法连接"):
 		return sourceFailure{kind: sourceFailureConnection}
+	case strings.HasPrefix(text, "mikan:") && (strings.HasSuffix(text, ": eof") || strings.HasSuffix(text, "unexpected eof")):
+		return sourceFailure{kind: sourceFailureConnection}
 	}
 	if match := sourceStatusPattern.FindStringSubmatch(text); match != nil {
 		status, _ := strconv.Atoi(match[1])
@@ -293,11 +295,10 @@ func sourceErrorMessage(err error) string {
 
 func sourceLastErrorMessage(raw string) string {
 	raw = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), "检查更新失败："))
-	failure := classifySourceErrorText(raw)
-	if raw != "" && !strings.HasPrefix(raw, "mikan:") && failure.kind != sourceFailureTimeout && failure.kind != sourceFailureConnection {
+	if raw != "" && !strings.HasPrefix(raw, "mikan:") && raw != context.DeadlineExceeded.Error() && raw != "RSS 请求超时" {
 		return raw
 	}
-	return sourceFailureMessage(failure)
+	return sourceFailureMessage(classifySourceErrorText(raw))
 }
 
 func routeError(err error) string {
