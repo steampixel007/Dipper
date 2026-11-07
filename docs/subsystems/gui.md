@@ -111,6 +111,23 @@ older stopped tasks and completed tasks. `TestUIDownloadTransferActionChangesInt
 clicks the rendered controls and checks the selected command and refreshed state
 for stopped, paused, and running downloads without starting network activity.
 
+The downloads page is a transfer queue: waiting, downloading, paused, failed,
+incomplete stopped, and sharing tasks remain visible. Completed tasks disappear
+when sharing stops, whether stopped manually or by the sharing policy. A failed
+task stays visible even if complete and stopped so that recovery remains
+available. Queue filtering never removes the stored task or its files; the
+episode library retains playback and management through its episode overflow
+menu: file listing and individual file playback, deletion, and redownload use
+the existing handlers and confirmation dialog. Navigation counts, status
+counts, group totals, and search all use the same queue membership. The sharing
+filter excludes paused completed tasks, which belong under paused. A sharing
+task with zero current upload speed remains in the queue. When only finished
+tasks remain, the empty state leads to My Follows. Batch download controls
+appear only when there is a download to pause or a task to resume.
+`downloads_active_test.go` covers visibility, counts, search, live completion,
+and retained library playback, including a later file in a batch and confirmed
+deletion or redownload through the library.
+
 Download sizes are projected from the stored raw byte count; legacy MB fields
 are used only when that count is absent. A group total is called known only
 when every included task has a size, and a mixed group qualifies its total and

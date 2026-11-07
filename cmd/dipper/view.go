@@ -245,17 +245,21 @@ func (s *State) sidebar(c *ui.Context) {
 								ui.Textf(c, "%d", len(s.Subscriptions)).FontSize(textSize(c, textCaption))
 							}
 						}
-						if current.id == "downloads" && len(s.Downloads) > 0 {
-							failed := 0
+						if current.id == "downloads" {
+							count, failed := 0, 0
 							for _, d := range s.Downloads {
+								if !downloadInQueue(d) {
+									continue
+								}
+								count++
 								if d.Failed {
 									failed++
 								}
 							}
 							if failed > 0 {
 								ui.Textf(c, "%d 失败", failed).FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(colors(c).amber)
-							} else {
-								ui.Textf(c, "%d", len(s.Downloads)).FontSize(textSize(c, textCaption))
+							} else if count > 0 {
+								ui.Textf(c, "%d", count).FontSize(textSize(c, textCaption))
 							}
 						}
 					})
@@ -1447,6 +1451,14 @@ func (s *State) library(c *ui.Context) {
 									s.OpenFolder(d.Folder)
 								}
 							}).Label("打开文件夹 " + d.ID).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Disabled(s.Busy || s.OpenFolder == nil || d.Folder == "")
+							ui.PopoverMenuButton(c.Key("episode-menu-"+d.ID), "更多", func(menu *ui.Menu) {
+								if menu.Item("查看文件").Disabled(s.Busy).Chosen() {
+									s.openFiles(idx)
+								}
+								if menu.Item("删除或重新下载").Disabled(s.Busy).Chosen() {
+									s.RemovePrompt, s.RemoveID = true, d.ID
+								}
+							}).Label("剧集操作 " + d.ID).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
 						}
 					})
 				}
@@ -1497,15 +1509,19 @@ func downloadState(d Download) DownloadFilter {
 	switch {
 	case d.Failed:
 		return downloadsFailed
-	case d.Progress >= 1:
-		return downloadsCompleted
 	case d.Stopped:
 		return downloadsStopped
 	case d.Paused:
 		return downloadsPaused
+	case d.Progress >= 1:
+		return downloadsSeeding
 	default:
 		return downloadsDownloading
 	}
+}
+
+func downloadInQueue(d Download) bool {
+	return d.Failed || !(d.Progress >= 1 && d.Stopped)
 }
 
 // toggleDownloadGroup flips one anime's collapsed state on the downloads
@@ -1569,14 +1585,21 @@ func (s *State) clearDownloadSearch() {
 }
 
 func (s *State) downloadMatches(d Download) bool {
-	return s.DownloadFilter == downloadsAll || downloadState(d) == s.DownloadFilter
+	return downloadInQueue(d) && (s.DownloadFilter == downloadsAll || downloadState(d) == s.DownloadFilter)
 }
 
 func (s *State) downloads(c *ui.Context) {
-	active := 0
+	active, resumable, queued := 0, 0, 0
 	for _, d := range s.Downloads {
+		if !downloadInQueue(d) {
+			continue
+		}
+		queued++
 		if !d.Paused && !d.Stopped && !d.Failed && d.Progress < 1 {
 			active++
+		}
+		if !d.Failed && (d.Paused || d.Stopped && d.Progress < 1) {
+			resumable++
 		}
 	}
 	if s.DownloadFilterLast != s.DownloadFilter {
@@ -1608,12 +1631,15 @@ func (s *State) downloads(c *ui.Context) {
 		visible := make([]int, 0, len(s.Downloads))
 		stateCounts := map[DownloadFilter]int{}
 		for i, d := range s.Downloads {
+			if !downloadInQueue(d) {
+				continue
+			}
 			stateCounts[downloadState(d)]++
 			if s.downloadMatches(d) && s.downloadSearches(d) {
 				visible = append(visible, i)
 			}
 		}
-		if len(s.Downloads) > 0 {
+		if queued > 0 {
 			ui.Row(c).Children(func() {
 				caption(c, fmt.Sprintf("%d 个下载任务，按番剧分组", len(visible)))
 				ui.Spacer(c)
@@ -1621,14 +1647,16 @@ func (s *State) downloads(c *ui.Context) {
 				if active == 0 {
 					pauseLabel = "继续全部下载"
 				}
-				quiet(c, "pause-all", pauseLabel, func() { s.pauseAllDownloads(active > 0) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+				if active > 0 || resumable > 0 {
+					quiet(c, "pause-all", pauseLabel, func() { s.pauseAllDownloads(active > 0) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+				}
 			})
 			ui.Row(c.Key("download-filter")).Wrap().Gap(controlGap).Children(func() {
-				for filter, label := range []string{"全部", "下载中", "已完成", "已暂停", "失败", "已停止"} {
+				for filter, label := range []string{"全部", "下载中", "分享中", "已暂停", "失败", "已停止"} {
 					filter := DownloadFilter(filter)
 					count := stateCounts[filter]
 					if filter == downloadsAll {
-						count = len(s.Downloads)
+						count = queued
 					}
 					button := quiet(c, fmt.Sprintf("download-filter-%d", filter), fmt.Sprintf("%s %d", label, count), func() { s.DownloadFilter = filter }).Label(label).Shrink(0)
 					if filter == s.DownloadFilter {
@@ -1639,6 +1667,10 @@ func (s *State) downloads(c *ui.Context) {
 		}
 		if len(s.Downloads) == 0 {
 			s.empty(c, "还没有下载任务", "在番剧详情选择要下载的资源，任务会出现在这里。", "浏览番剧", func() { s.enterPage("browse") })
+			return
+		}
+		if queued == 0 {
+			s.empty(c, "当前没有进行中的任务", "下载和分享都已结束，已下载的剧集可在「我的追番」中查看和播放。", "我的追番", func() { s.enterPage("following") })
 			return
 		}
 		if len(visible) == 0 {
@@ -1696,7 +1728,7 @@ func (s *State) downloads(c *ui.Context) {
 			for _, segment := range []struct {
 				filter DownloadFilter
 				label  string
-			}{{downloadsDownloading, "下载中"}, {downloadsCompleted, "已完成"}, {downloadsPaused, "已暂停"}, {downloadsStopped, "已停止"}, {downloadsFailed, "失败"}} {
+			}{{downloadsDownloading, "下载中"}, {downloadsSeeding, "分享中"}, {downloadsPaused, "已暂停"}, {downloadsStopped, "已停止"}, {downloadsFailed, "失败"}} {
 				if counts[segment.filter] > 0 {
 					parts = append(parts, fmt.Sprintf("%s %d", segment.label, counts[segment.filter]))
 				}
@@ -1778,8 +1810,6 @@ func (s *State) downloads(c *ui.Context) {
 											status, col = "失败", colors(c).amber
 										case d.Stopped && d.Progress < 1:
 											status, col = "已停止", colors(c).muted
-										case d.Progress >= 1 && d.Stopped:
-											status, col = "已完成，已停止分享", colors(c).green
 										case d.Paused:
 											status, col = "已暂停", colors(c).muted
 										case d.Progress >= 1:
@@ -2013,7 +2043,7 @@ func (s *State) filesDialog(c *ui.Context) {
 							})
 							quiet(c, "copy-path-"+name, "复制路径", func() { s.copyPath(f.Path) }).FontSize(textSize(c, textCaption))
 							if isPlayableMedia(f.Path) {
-								quiet(c, "play-file-"+name, "播放此文件", func() { s.playFile(f.Path) }).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue)
+								quiet(c, "play-file-"+name, "播放此文件", func() { s.playFile(f.Path) }).Label("播放此文件 " + f.Path).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue)
 							}
 						})
 					}

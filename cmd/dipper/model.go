@@ -82,7 +82,7 @@ type DownloadFilter int
 const (
 	downloadsAll DownloadFilter = iota
 	downloadsDownloading
-	downloadsCompleted
+	downloadsSeeding
 	downloadsPaused
 	downloadsFailed
 	downloadsStopped

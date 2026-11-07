@@ -84,7 +84,13 @@ rule. Editing conditions affects future unread entries. Pausing a follow and
 pausing a download are separate operations.
 
 The Downloads page shows progress plus total and per-task transfer speeds,
-and supports pause, resume, retry, open folder, and stop sharing.
+and supports pause, resume, retry, open folder, and stop sharing. It lists
+waiting, downloading, paused, failed, incomplete stopped, and sharing tasks.
+Once a completed task stops sharing, automatically or manually, it disappears
+from this page. Its files and download record remain available in the episode
+library under My Follows. An episode's More menu opens its file list for
+individual playback, or the confirmation dialog for deletion and redownload.
+Failed tasks stay visible for retry.
 
 All tasks share one upload limit. The default is 1,048,576 bytes/s (1 MiB/s).
 The current interface labels it `1 MiB/s`. Transfer-speed displays use binary

@@ -16,7 +16,9 @@ func TestDownloadFiltersSeparateStoppedAndPaused(t *testing.T) {
 		{"paused", Download{Progress: .5, Paused: true}, downloadsPaused},
 		{"stopped", Download{Progress: .5, Stopped: true}, downloadsStopped},
 		{"paused and stopped", Download{Progress: .5, Paused: true, Stopped: true}, downloadsStopped},
-		{"completed stopped", Download{Progress: 1, Stopped: true}, downloadsCompleted},
+		{"sharing", Download{Progress: 1}, downloadsSeeding},
+		{"sharing paused", Download{Progress: 1, Paused: true}, downloadsPaused},
+		{"completed stopped", Download{Progress: 1, Stopped: true}, downloadsStopped},
 		{"failed paused", Download{Progress: .5, Paused: true, Failed: true}, downloadsFailed},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -28,7 +30,7 @@ func TestDownloadFiltersSeparateStoppedAndPaused(t *testing.T) {
 }
 
 func TestUIDownloadEmptyFiltersKeepNavigation(t *testing.T) {
-	for _, filter := range []DownloadFilter{downloadsDownloading, downloadsCompleted, downloadsPaused, downloadsFailed, downloadsStopped} {
+	for _, filter := range []DownloadFilter{downloadsDownloading, downloadsSeeding, downloadsPaused, downloadsFailed, downloadsStopped} {
 		t.Run(string(rune('0'+filter)), func(t *testing.T) {
 			s := uiFixture(t, "downloads")
 			s.Downloads = []Download{{ID: "paused", AnimeID: s.AnimeID, Title: "暂停资源", Paused: true}}
@@ -37,14 +39,14 @@ func TestUIDownloadEmptyFiltersKeepNavigation(t *testing.T) {
 			}
 			s.DownloadFilter = filter
 			tt := ui.NewTester(s.view, 1040, 720)
-			uiRequireText(t, tt, "这个筛选下没有下载", "全部", "下载中", "已完成", "已暂停", "失败", "已停止")
+			uiRequireText(t, tt, "这个筛选下没有下载", "全部", "下载中", "分享中", "已暂停", "失败", "已停止")
 			if _, ok := tt.Find("搜索下载"); !ok {
 				t.Fatal("empty filter hides search")
 			}
 			if filter == downloadsPaused {
-				uiRequireText(t, tt, "全部 1", "下载中 1", "已完成 0", "已暂停 0", "失败 0", "已停止 0")
+				uiRequireText(t, tt, "全部 1", "下载中 1", "分享中 0", "已暂停 0", "失败 0", "已停止 0")
 			} else {
-				uiRequireText(t, tt, "全部 1", "下载中 0", "已完成 0", "已暂停 1", "失败 0", "已停止 0")
+				uiRequireText(t, tt, "全部 1", "下载中 0", "分享中 0", "已暂停 1", "失败 0", "已停止 0")
 			}
 			s.DownloadScroll.Y = 200
 			uiClick(t, tt, "全部")
@@ -64,7 +66,7 @@ func TestUIDownloadEmptySearchRetainsFilterContext(t *testing.T) {
 	}
 	s.DownloadFilter, s.DownloadSearch = downloadsStopped, "找不到"
 	tt := ui.NewTester(s.view, 1040, 720)
-	uiRequireText(t, tt, "没有匹配的下载", "全部 2", "下载中 0", "已完成 0", "已暂停 1", "失败 0", "已停止 1")
+	uiRequireText(t, tt, "没有匹配的下载", "全部 2", "下载中 0", "分享中 0", "已暂停 1", "失败 0", "已停止 1")
 	uiClick(t, tt, "清除搜索")
 	if s.DownloadSearch != "" || s.DownloadFilter != downloadsStopped {
 		t.Fatalf("clear search changed context: search=%q filter=%d", s.DownloadSearch, s.DownloadFilter)
