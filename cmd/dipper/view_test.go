@@ -54,10 +54,10 @@ func uiScrollTo(t *testing.T, tt *ui.Tester, label string) {
 	}
 	bounds := tt.Image().Bounds()
 	height := float32(bounds.Dy())
-	if r.Y < 64 || r.Y+r.H > height {
+	if r.W <= 0 || r.H <= 0 || r.Y < 64 || r.Y+r.H > height {
 		tt.Scroll(float32(bounds.Dx())*.6, height/2, 0, r.Y-80)
 		r, ok = tt.Find(label)
-		if !ok || r.Y < 64 || r.Y+r.H > height {
+		if !ok || r.W <= 0 || r.H <= 0 || r.Y < 64 || r.Y+r.H > height {
 			t.Fatalf("scroll target %q remains outside content viewport: %+v", label, r)
 		}
 	}
