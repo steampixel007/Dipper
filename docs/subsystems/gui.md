@@ -222,10 +222,12 @@ disabled while the follow is paused or the window is busy.
 The following and downloads lists remember their scroll position across page
 switches; searching follows or switching the download filter jumps back to the
 top.
-When any follow failed its last check, the header offers 重试检查, which
-re-checks every failed follow in one click and is hidden while all follows are
-healthy. Its result banner reports the failed count and points to each
-episode library, so long titles and raw request URLs cannot expand the banner.
+When a follow failed its last check and is not paused, the header offers
+重试检查, which re-checks every failed follow that is not paused in one click. The
+action follows the rule its per-follow counterpart already uses, so it is hidden
+rather than offered as a no-op while every failed follow is paused. Its result
+banner reports the failed count and points to each episode library, so long
+titles and raw request URLs cannot expand the banner.
 It also preserves the first error that could not be saved in core state,
 so a transaction failure is not hidden behind an older library error.
 Single-follow checks and the library header map source failures, including EOF,

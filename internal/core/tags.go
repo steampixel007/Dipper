@@ -39,6 +39,9 @@ func ReleaseTags(title string) []string {
 	for _, m := range standaloneSubtitlePattern.FindAllStringSubmatch(title, -1) {
 		add(m[1])
 	}
+	for _, m := range cjkFlagsPattern.FindAllStringSubmatch(title, -1) {
+		add(m[1])
+	}
 	for _, m := range audioPattern.FindAllStringSubmatch(title, -1) {
 		add(m[1])
 	}
@@ -63,5 +66,11 @@ var streamingPattern = regexp.MustCompile("(?i)\\b(b-?global|bahamut|baha|at-?x|
 var hdrPattern = regexp.MustCompile("(?i)\\b(hdr10\\+|hdr10\\b|hdr\\b|dolby.?vision\\b|dovi\\b|dv\\b|hlg\\b)")
 var audioPattern = regexp.MustCompile("(?i)\\b(10bit|8bit|aac|flac|ac3|eac3|opus|dts)\\b")
 var standaloneSubtitlePattern = regexp.MustCompile("(\u7b80\u4f53|\u7e41\u4f53|\u7b80\u4e2d|\u7e41\u4e2d|\u7b80\u65e5|\u7e41\u65e5|\u7b80\u7e41)([^\u4e00-\u9fff]|$)")
-var flagsPattern = regexp.MustCompile("(?i)\\b(v\\d+|chs|cht|gb|big5|\u7b80|\u7e41|\u7b80\u7e41|\u5916\u6302|\u5185\u5d4c|\u5185\u5c01)\\b")
+
+// Go's \b matches an ASCII word boundary, so CJK alternatives in an
+// ASCII-bounded pattern can never match. A CJK flag that directly follows a
+// language character belongs to a compound that subtitlePattern already
+// returns whole; this pattern only adds the flag standing on its own.
+var cjkFlagsPattern = regexp.MustCompile("(?:^|[^\u4e00-\u9fff])(\u5916\u6302|\u5185\u5d4c|\u5185\u5c01)")
+var flagsPattern = regexp.MustCompile("(?i)\\b(v\\d+|chs|cht|gb|big5)\\b")
 var collectionPattern = regexp.MustCompile("((?:\u5168|\u5408)\u96c6)")

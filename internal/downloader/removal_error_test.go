@@ -1,13 +1,57 @@
 package downloader
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestNonSharedRemovalAfterDeletedPayloadLeavesNoJournal(t *testing.T) {
+	seed := layoutFixture(t, "season", map[string][]byte{
+		"season/a.mkv":      bytes.Repeat([]byte{7}, 32<<10),
+		"season/Subs/b.srt": []byte("subtitle"),
+	})
+	root := canonicalTempDir(t)
+	config := Config{DataDir: filepath.Join(root, "state")}
+	e := testEngine(t, config)
+	task := layoutTask(t, seed, filepath.Join(root, "content"))
+	task.Shared = false
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "non-shared fixture complete", 30*time.Second, func() bool { return one(t, e).Complete })
+	if err := e.Stop(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(task.Folder, "season", "Subs", "b.srt")); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Remove(task.ID); err != nil {
+		t.Fatalf("removal after a deleted payload file = %v", err)
+	}
+	if _, err := os.Stat(task.Folder); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("removal left the destination behind: %v", err)
+	}
+	body, err := os.ReadFile(filepath.Join(config.DataDir, "tasks.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saved checkpoint
+	if err := json.Unmarshal(body, &saved); err != nil {
+		t.Fatal(err)
+	}
+	if len(saved.Removing) != 0 {
+		t.Fatalf("successful removal kept its journal: %+v", saved.Removing)
+	}
+	if err := e.Ensure(task); err != nil {
+		t.Fatalf("readmission after removal: %v", err)
+	}
+}
 
 func TestRemoveCleanupErrorKeepsTaskForgotten(t *testing.T) {
 	root := t.TempDir()

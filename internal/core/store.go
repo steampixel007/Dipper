@@ -21,9 +21,13 @@ import (
 )
 
 type Core struct {
-	db        *sql.DB
-	opts      Options
-	mu        sync.Mutex
+	db   *sql.DB
+	opts Options
+	mu   sync.Mutex
+	// delivery is the single slot that serializes every admission and removal.
+	// A transaction that records or forgets a task holds it until the intent
+	// has been submitted, so a removal's finalize can never land between an
+	// intent's transaction and its delivery.
 	delivery  chan struct{}
 	ctx       context.Context
 	cancel    context.CancelFunc

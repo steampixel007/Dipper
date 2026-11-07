@@ -1228,6 +1228,17 @@ func joinWords(words []string) string {
 	return strings.Join(words, "、")
 }
 
+// retryableChecks names the follows the batch retry would actually check.
+func (s *State) retryableChecks() []string {
+	var pending []string
+	for _, sub := range s.Subscriptions {
+		if sub.CheckFailed && !sub.Paused {
+			pending = append(pending, sub.ID)
+		}
+	}
+	return pending
+}
+
 func (s *State) following(c *ui.Context) {
 	ui.Column(c).Grow(1).MinHeight(0).Padding(24, 28).Gap(20).Children(func() {
 		ui.Text(c, "我的追番").FontSize(textSize(c, textTitle)).FontWeight(600)
@@ -1235,11 +1246,8 @@ func (s *State) following(c *ui.Context) {
 			if ui.TextInput(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(240).MinHeight(inputHeight(c)).Radius(controlRadius).Background(colors(c).paper).Changed() {
 				s.FollowScroll = ui.ScrollState{}
 			}
-			for _, sub := range s.Subscriptions {
-				if sub.CheckFailed {
-					quiet(c, "retry-failed-checks", "重试检查", s.retryFailedChecks).TextColor(colors(c).amber).Disabled(s.Busy)
-					break
-				}
+			if len(s.retryableChecks()) > 0 {
+				quiet(c, "retry-failed-checks", "重试检查", s.retryFailedChecks).TextColor(colors(c).amber).Disabled(s.Busy)
 			}
 			secondary(c, "find-more", "添加追番", func() { s.enterPage("browse") })
 		})

@@ -96,9 +96,15 @@ failed submission use it.
 
 ## The outbox
 
-`flush` is the only path that hands a task to the downloader. It holds a
+`flush` is the only path that hands a task to the downloader. It holds the
 single-slot `delivery` channel for its whole run, so two flushes never run at
-once. For each pending item it:
+once. That slot is the ordering point for every admission and removal:
+`RemoveTask` and `recoverRemoval` keep it across their tombstone and finalize,
+and the transactions that record an explicit intent (`CreateSubscription`,
+`DownloadExisting`, `check`) hold it until the intent is committed and released
+before calling `flush`, which takes it again. The lock order is always delivery,
+then `c.mu`; `c.mu` is never held while waiting for the slot. For each pending
+item it:
 
 1. resolves the hash if it has none, recording a failure on the item if that
    fails;
@@ -232,13 +238,18 @@ replay would otherwise submit a dropped record again.
 
 The two stores cannot share one transaction, so the intent is made durable
 first and recovered: `RemoveTask` commits a tombstone (`TaskRecord.Removing`,
-with the redownload choice) before invoking the callback. A crash anywhere
+with the redownload choice) before invoking the callback, and holds the
+delivery slot from the tombstone through the finalize. A crash anywhere
 after that commit leaves a record that `recoverRemovals` completes at startup
 and on every scheduler cycle — it asks the downloader, through the
 `Downloader.Remove` the interface now carries, to finish its half (the method
 must tolerate a task it no longer holds), then finalizes the tombstone into
-the chosen end state. A failing downloader backs off through the record's
-`NextRetry`, and `flush` and the scheduler never submit tombstoned records.
+the chosen end state. Recovery re-reads the record under the same slot, so an
+intent recorded since the scan is never swept up. A failing downloader
+increments the record's `Attempts` before computing `NextRetry`, so the retry
+delay escalates, and `flush` and the scheduler never submit tombstoned
+records. An explicit intent recorded after a failed removal supersedes the
+stale tombstone instead of waiting for recovery to finish it.
 Deleted and reset items
 return to the state the user chose: `DeleteTask` marks them skipped so neither
 the scheduler nor a later check brings the download back, `ResetTask` marks them
@@ -299,7 +310,11 @@ Points a change is expected to prove:
   zero-valued subscription behind and re-creating the same ID works.
 - A crash after the removal tombstone commits is completed by startup
   recovery: the engine half is re-asked, the record finalizes, and a
-  failing downloader backs off without resubmitting the task.
+  failing downloader backs off without resubmitting the task, with each
+  failed attempt moving the next one further out.
+- A re-download that arrives while a removal is in flight, or after a failed
+  removal left its tombstone, survives: it is submitted and recovery does not
+  remove it.
 - Two subscriptions pointing at the same hash submit one task, and both items
   end up downloaded.
 - An item selected explicitly is downloaded even when an earlier item with the

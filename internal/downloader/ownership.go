@@ -289,6 +289,10 @@ func (o *ownership) remove(task Task) error {
 	dirs := make(map[string]bool)
 	var failures []error
 	for _, file := range claim.Files {
+		// A payload the user already deleted still leaves its directories behind.
+		for dir := filepath.Dir(file.Path); dir != "."; dir = filepath.Dir(dir) {
+			dirs[dir] = true
+		}
 		f, err := openPayload(root, file.Path, os.O_RDONLY)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
@@ -301,9 +305,6 @@ func (o *ownership) remove(task Task) error {
 		}
 		if err != nil {
 			failures = append(failures, err)
-		}
-		for dir := filepath.Dir(file.Path); dir != "."; dir = filepath.Dir(dir) {
-			dirs[dir] = true
 		}
 	}
 	names := make([]string, 0, len(dirs))

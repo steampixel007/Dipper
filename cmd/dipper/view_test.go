@@ -631,6 +631,18 @@ func TestUIFollowingHidesRetryWhenChecksHealthy(t *testing.T) {
 	}
 }
 
+func TestUIFollowingHidesRetryWhenOnlyPausedFollowsFailed(t *testing.T) {
+	s := uiFixture(t, "following")
+	for i := range s.Subscriptions {
+		s.Subscriptions[i].CheckFailed = true
+		s.Subscriptions[i].Paused = true
+	}
+	tt := ui.NewTester(s.view, 1320, 860)
+	if tt.HasText("重试检查") {
+		t.Fatal("batch retry offered for follows it would skip")
+	}
+}
+
 func TestSpeedTextFormatsTransferRates(t *testing.T) {
 	for _, tc := range []struct {
 		mbps   float64

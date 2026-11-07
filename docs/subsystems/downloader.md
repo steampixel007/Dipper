@@ -56,6 +56,9 @@ tasks and unclaimed files remain. A failure after that commit is reported as
 `ErrRemoveCleanup`; callers must still forget their delivery record. The file
 claim and journal entry survive incomplete cleanup so startup or a subsequent
 removal can retry it. Errors before the commit leave the task registered.
+Directories claimed by a task are cleaned even when their files are already
+gone, so a payload the user deleted does not leave a non-shared folder that
+blocks the removal behind a permanent cleanup error.
 Submitting the same hash again re-verifies what survived after cleanup. The piece
 completion database keeps the removed task's rows — the completion API exposes
 no way to delete a torrent's rows, and admission sets
