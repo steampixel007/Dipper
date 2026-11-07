@@ -28,7 +28,7 @@ import (
 
 func layoutFixture(t *testing.T, name string, files map[string][]byte) *fixture {
 	t.Helper()
-	dir := t.TempDir()
+	dir := canonicalTempDir(t)
 	single := len(files) == 1 && files[name] != nil
 	for path, data := range files {
 		full := filepath.Join(dir, filepath.FromSlash(path))
@@ -97,7 +97,7 @@ func TestSharedFolderCoreResetAndRestart(t *testing.T) {
 		"release/subs/empty.txt": {},
 	})
 	episode := layoutFixture(t, "[Fansub] 02.mkv", map[string][]byte{"[Fansub] 02.mkv": bytes.Repeat([]byte{42}, 32<<10)})
-	root := t.TempDir()
+	root := canonicalTempDir(t)
 	config := Config{DataDir: filepath.Join(root, "state")}
 	engine := testEngine(t, config)
 	openCore := func() *core.Core {
@@ -202,7 +202,7 @@ func TestSharedFolderCoreResetAndRestart(t *testing.T) {
 func TestSharedFolderCollisionsAndLateMetadata(t *testing.T) {
 	first := layoutFixture(t, "episode.mkv", map[string][]byte{"episode.mkv": []byte("first payload")})
 	second := layoutFixture(t, "episode.mkv", map[string][]byte{"episode.mkv": []byte("other payload")})
-	root := t.TempDir()
+	root := canonicalTempDir(t)
 	config := Config{DataDir: filepath.Join(root, "state")}
 	engine := testEngine(t, config)
 	task := layoutTask(t, first, filepath.Join(root, "Fansub"))
@@ -261,7 +261,7 @@ func TestSharedFolderCollisionsAndLateMetadata(t *testing.T) {
 func TestSharedFolderClaimsOutlivePolicyChanges(t *testing.T) {
 	seed := layoutFixture(t, "episode.mkv", map[string][]byte{"episode.mkv": []byte("owned")})
 	other := layoutFixture(t, "episode.mkv", map[string][]byte{"episode.mkv": []byte("other")})
-	root := t.TempDir()
+	root := canonicalTempDir(t)
 	engine := testEngine(t, Config{DataDir: filepath.Join(root, "state")})
 	folder := filepath.Join(root, "Fansub")
 	task := layoutTask(t, seed, folder)
@@ -317,11 +317,11 @@ func TestSharedFolderClaimsOutlivePolicyChanges(t *testing.T) {
 }
 
 func TestSharedFolderOwnershipConcurrency(t *testing.T) {
-	owners, err := openOwnership(t.TempDir())
+	owners, err := openOwnership(canonicalTempDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	folder := t.TempDir()
+	folder := canonicalTempDir(t)
 	const tasks = 12
 	start := make(chan struct{})
 	impls := make(chan storage.TorrentImpl, tasks)
@@ -374,11 +374,11 @@ func TestSharedFolderOwnershipConcurrency(t *testing.T) {
 }
 
 func TestSharedFolderConcurrentSamePathOneOwner(t *testing.T) {
-	owners, err := openOwnership(t.TempDir())
+	owners, err := openOwnership(canonicalTempDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	folder := t.TempDir()
+	folder := canonicalTempDir(t)
 	start := make(chan struct{})
 	results := make(chan error, 2)
 	for index := range 2 {
@@ -414,8 +414,8 @@ func TestSharedFolderManifestSafety(t *testing.T) {
 	}
 	for _, testcase := range cases {
 		t.Run(testcase.name, func(t *testing.T) {
-			folder := t.TempDir()
-			owners, err := openOwnership(t.TempDir())
+			folder := canonicalTempDir(t)
+			owners, err := openOwnership(canonicalTempDir(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -432,12 +432,12 @@ func TestSharedFolderManifestSafety(t *testing.T) {
 		})
 	}
 	t.Run("unowned", func(t *testing.T) {
-		folder := t.TempDir()
+		folder := canonicalTempDir(t)
 		existing := filepath.Join(folder, "episode.mkv")
 		if err := os.WriteFile(existing, []byte("mine"), 0644); err != nil {
 			t.Fatal(err)
 		}
-		owners, err := openOwnership(t.TempDir())
+		owners, err := openOwnership(canonicalTempDir(t))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -457,7 +457,7 @@ func TestSharedFolderManifestSafety(t *testing.T) {
 
 func TestSharedFolderRemovalJournalAndHardlink(t *testing.T) {
 	seed := layoutFixture(t, "episode.mkv", map[string][]byte{"episode.mkv": []byte("payload")})
-	root := t.TempDir()
+	root := canonicalTempDir(t)
 	config := Config{DataDir: filepath.Join(root, "state")}
 	engine := testEngine(t, config)
 	task := layoutTask(t, seed, filepath.Join(root, "Fansub"))
@@ -523,7 +523,7 @@ func TestSharedFolderRemovalJournalAndHardlink(t *testing.T) {
 
 func TestLegacyCheckpointFolderReplay(t *testing.T) {
 	seed := layoutFixture(t, "episode.mkv", map[string][]byte{"episode.mkv": []byte("legacy payload")})
-	root := t.TempDir()
+	root := canonicalTempDir(t)
 	config := Config{DataDir: filepath.Join(root, "state")}
 	engine := testEngine(t, config)
 	task := layoutTask(t, seed, filepath.Join(root, "Anime", strings.Repeat("a", 40)))
@@ -585,7 +585,7 @@ func TestLegacyCheckpointFolderReplay(t *testing.T) {
 }
 
 func TestSharedFolderAliasAndInnerReparse(t *testing.T) {
-	root := t.TempDir()
+	root := canonicalTempDir(t)
 	actual := filepath.Join(root, "actual")
 	if err := os.Mkdir(actual, 0755); err != nil {
 		t.Fatal(err)
