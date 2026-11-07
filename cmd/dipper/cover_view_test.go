@@ -98,7 +98,7 @@ func TestUICoverLoadingShowsNineBlocks(t *testing.T) {
 	for y := region.Min.Y; y < region.Max.Y; y++ {
 		for x := region.Min.X; x < region.Max.X; x++ {
 			p := frame.RGBAAt(x, y)
-			if int(p.G) > int(p.R)+20 && int(p.G) > int(p.B)+5 {
+			if int(p.B) > int(p.R)+20 && int(p.B) > int(p.G)+20 {
 				blockPixels[image.Pt(x, y)] = true
 			}
 		}

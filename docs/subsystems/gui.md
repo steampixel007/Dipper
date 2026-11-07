@@ -29,6 +29,31 @@ components, and interaction conventions are specified in
 | `ui_render.go` | Deterministic sample state for layout rendering |
 | `startup_error_windows.go`, `startup_error_other.go` | Reporting a failure before the window exists |
 
+## Visual system
+
+`appearance.go` owns both palettes, motion, radii and sizing; `view.go` composes
+them and must not introduce a second set of colors. The window canvas is a cool
+neutral (`canvas`) with two wide radial `glowBlue` / `glowViolet` decorations
+behind the content. These glows are the only gradients and carry no state.
+
+Glass is selective. The sidebar and the browse control band use MyGo's
+`glass.Glass` material with the `glass` token as its tint; the first-run hint
+uses that token directly as a translucent fill. Posters, dialogs, settings cards
+and text surfaces stay opaque. The 64 DIP top bar is different: it uses a hard
+`glass.ScrollEdge{Hard: true, Background: canvas}` so it reads as the canvas
+rather than a lighter gray slab, and it has no divider. Keeping that fixed
+64 DIP slot matters because `uiScrollTo` positions page content against it;
+content is clipped below the bar rather than drawn underneath it.
+
+The default motion tokens are a 220 ms feedback spring for press and cancel, a
+320 ms content spring, and a 130 ms color transition for hover. Page changes use
+a 240 ms ease with a 10 DIP enter and 6 DIP exit. Poster hover uses the content
+spring to move 5 DIP and scale to 1.01; pressing returns the pose and scales to
+0.985. `State.ReduceEffects` or the system reduce-motion preference removes the
+transitions without removing focus, borders or contrast. MyGo supplies an
+opaque fallback when the system requests reduced transparency, so text on glass
+does not depend on a blur shader being available.
+
 ## State and the update loop
 
 `State` embeds `Saved`, whose window preferences are persisted to
@@ -120,6 +145,9 @@ reading dialog. `anime_summary_test.go` checks the rendering and interaction.
 
 The browse page search matches the follow search: typing resets the catalog
 scroll to the top and a non-empty search offers 清除搜索 beside the input.
+Year, season, and search share one band above a text-only weekday row, so the
+poster grid keeps the visual weight; `browse_layout_test.go` pins that
+hierarchy and the 200% text-scale bounds.
 The following page searches saved follows by anime title, subtitle group, or a
 word the saved rule requires; the count line reports how many follow tiles match
 and offers a clear action, and an empty result offers a way to clear the search. Cards whose last RSS check failed

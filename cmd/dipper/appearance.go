@@ -27,25 +27,30 @@ type colorPalette struct {
 	chrome, paper, canvas, brandWash                   ui.Color
 	green, greenWash, amber, amberWash                 ui.Color
 	avoidInk, avoidWash, errorInk, errorWash           ui.Color
-	scrim, popoverShadow                               ui.Color
+	scrim, popoverShadow, cardShadow                   ui.Color
+	glass, sunken, glowBlue, glowViolet                ui.Color
 }
 
 var lightPalette = colorPalette{
-	blue: ui.Hex("#35664b"), blueHover: ui.Hex("#2b573f"), bluePressed: ui.Hex("#214631"), blueWash: ui.Hex("#edf3ed"), accentText: ui.Hex("#ffffff"),
-	muted: ui.Hex("#625e56"), ink: ui.Hex("#2e2c27"), line: ui.Hex("#e7e3db"), outline: ui.Hex("#bbb6ab"), hoverLine: ui.Hex("#918b7e"),
-	chrome: ui.Hex("#f2efe9"), paper: ui.Hex("#fffefa"), canvas: ui.Hex("#f8f6f0"), brandWash: ui.Hex("#f5f3ed"),
-	green: ui.Hex("#35664b"), greenWash: ui.Hex("#edf3ed"), amber: ui.Hex("#865a18"), amberWash: ui.Hex("#fbf1dc"),
-	avoidInk: ui.Hex("#6f6659"), avoidWash: ui.Hex("#f3efe7"), errorInk: ui.Hex("#a53d38"), errorWash: ui.Hex("#fcf0ec"),
-	scrim: ui.RGBA(0, 0, 0, .24), popoverShadow: ui.RGBA(0, 0, 0, .10),
+	blue: ui.Hex("#4661e8"), blueHover: ui.Hex("#3a52d0"), bluePressed: ui.Hex("#2f44b4"), blueWash: ui.Hex("#eef1ff"), accentText: ui.Hex("#ffffff"),
+	muted: ui.RGBA(35, 40, 56, .62), ink: ui.Hex("#171a22"), line: ui.RGBA(23, 26, 34, .07), outline: ui.RGBA(23, 26, 34, .16), hoverLine: ui.RGBA(23, 26, 34, .30),
+	chrome: ui.Hex("#fcfcff"), paper: ui.Hex("#ffffff"), canvas: ui.Hex("#f7f8fc"), brandWash: ui.Hex("#eef2ff"),
+	green: ui.Hex("#287958"), greenWash: ui.Hex("#e8f6f0"), amber: ui.Hex("#9c5a0a"), amberWash: ui.Hex("#fdf2e3"),
+	avoidInk: ui.Hex("#6b6257"), avoidWash: ui.Hex("#f4f1ec"), errorInk: ui.Hex("#c33a34"), errorWash: ui.Hex("#fdeeec"),
+	scrim: ui.RGBA(16, 18, 26, .32), popoverShadow: ui.RGBA(20, 24, 40, .12), cardShadow: ui.RGBA(20, 24, 40, .10),
+	glass: ui.RGBA(255, 255, 255, .58), sunken: ui.RGBA(23, 26, 34, .045),
+	glowBlue: ui.RGBA(122, 156, 255, .40), glowViolet: ui.RGBA(196, 168, 255, .32),
 }
 
 var darkPalette = colorPalette{
-	blue: ui.Hex("#a8c7ac"), blueHover: ui.Hex("#bfd8c2"), bluePressed: ui.Hex("#92b797"), blueWash: ui.Hex("#2e3d31"), accentText: ui.Hex("#202b23"),
-	muted: ui.Hex("#c1bbae"), ink: ui.Hex("#eee9df"), line: ui.Hex("#47443d"), outline: ui.Hex("#827c6f"), hoverLine: ui.Hex("#aaa291"),
-	chrome: ui.Hex("#24231f"), paper: ui.Hex("#2c2a25"), canvas: ui.Hex("#272620"), brandWash: ui.Hex("#f5f3ed"),
-	green: ui.Hex("#a8c7ac"), greenWash: ui.Hex("#2e3d31"), amber: ui.Hex("#e4c58e"), amberWash: ui.Hex("#453b29"),
-	avoidInk: ui.Hex("#c9bfaf"), avoidWash: ui.Hex("#3a352d"), errorInk: ui.Hex("#efb0a5"), errorWash: ui.Hex("#48312d"),
-	scrim: ui.RGBA(0, 0, 0, .56), popoverShadow: ui.RGBA(0, 0, 0, .32),
+	blue: ui.Hex("#9db4ff"), blueHover: ui.Hex("#b3c6ff"), bluePressed: ui.Hex("#8098e8"), blueWash: ui.Hex("#1d2540"), accentText: ui.Hex("#101526"),
+	muted: ui.RGBA(232, 236, 248, .78), ink: ui.Hex("#f2f4fa"), line: ui.RGBA(255, 255, 255, .08), outline: ui.RGBA(255, 255, 255, .18), hoverLine: ui.RGBA(255, 255, 255, .32),
+	chrome: ui.RGBA(19, 22, 30, .72), paper: ui.Hex("#161a24"), canvas: ui.Hex("#0f1117"), brandWash: ui.Hex("#edf2ff"),
+	green: ui.Hex("#6fd3ab"), greenWash: ui.Hex("#143229"), amber: ui.Hex("#f0bf7a"), amberWash: ui.Hex("#3a2c17"),
+	avoidInk: ui.Hex("#b9b3a7"), avoidWash: ui.Hex("#242219"), errorInk: ui.Hex("#ff9d95"), errorWash: ui.Hex("#3a2020"),
+	scrim: ui.RGBA(0, 0, 0, .60), popoverShadow: ui.RGBA(0, 0, 0, .45), cardShadow: ui.RGBA(0, 0, 0, .45),
+	glass: ui.RGBA(10, 13, 20, .42), sunken: ui.RGBA(255, 255, 255, .04),
+	glowBlue: ui.RGBA(78, 107, 255, .22), glowViolet: ui.RGBA(150, 110, 255, .16),
 }
 
 func colors(c *ui.Context) *colorPalette {
@@ -56,7 +61,7 @@ func colors(c *ui.Context) *colorPalette {
 }
 
 func windowBackground() string {
-	light, dark := lightPalette.chrome, darkPalette.chrome
+	light, dark := lightPalette.canvas, darkPalette.canvas
 	return fmt.Sprintf("light-dark(#%02x%02x%02x, #%02x%02x%02x)", light.R, light.G, light.B, dark.R, dark.G, dark.B)
 }
 
@@ -141,10 +146,10 @@ func (s *State) appearanceSettings(c *ui.Context) {
 }
 
 var spectrumEase = ui.CubicBezier(0, 0, .4, 1)
-var feedbackMotion = ui.Animation{Duration: 130 * time.Millisecond, Ease: spectrumEase}
-var contentMotion = ui.Animation{Duration: 190 * time.Millisecond, Ease: spectrumEase}
+var feedbackMotion = ui.Animation{Spring: ui.SpringOptions{Duration: 220 * time.Millisecond, Bounce: .18}}
+var contentMotion = ui.Animation{Spring: ui.SpringOptions{Duration: 320 * time.Millisecond, Bounce: .22}}
 var hoverTransition = ui.ElementTransition{Colors: true, Duration: 130 * time.Millisecond, Ease: spectrumEase}
-var pageTransition = ui.ElementTransition{Duration: 190 * time.Millisecond, Ease: spectrumEase, Position: true, Enter: &ui.Motion{Y: 6}, Exit: &ui.Motion{Y: -4}}
+var pageTransition = ui.ElementTransition{Duration: 240 * time.Millisecond, Ease: ui.CubicBezier(.22, 1, .36, 1), Position: true, Enter: &ui.Motion{Y: 10}, Exit: &ui.Motion{Y: -6}}
 var popupTransition = ui.ElementTransition{Duration: 160 * time.Millisecond, Ease: spectrumEase, Enter: &ui.Motion{Y: 4, Scale: .985}, Exit: &ui.Motion{Y: 2, Scale: .99}}
 var fadeTransition = ui.ElementTransition{Duration: 160 * time.Millisecond, Ease: spectrumEase, Colors: true, Enter: &ui.Motion{}, Exit: &ui.Motion{}}
 var rowTransition = ui.ElementTransition{Duration: 190 * time.Millisecond, Ease: spectrumEase, Position: true, Colors: true, Enter: &ui.Motion{Y: 4}, Exit: &ui.Motion{}}

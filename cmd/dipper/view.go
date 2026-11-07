@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/plugins/loading"
 	"github.com/egoist/mygo/ui"
 )
@@ -120,19 +121,48 @@ func badge(c *ui.Context, text string, col ui.Color, bg ui.Color) {
 func heading(c *ui.Context, text string) {
 	ui.Text(c, text).FontSize(textSize(c, textSection)).FontWeight(600).TextColor(colors(c).ink)
 }
+
+const (
+	coverRadius       = 8
+	browseCoverRadius = 14
+)
+
+const topbarHeight float32 = 64
+
+// ambientGlows paint the cool, low-saturation light behind the translucent
+// frame. They stay decorative: every page remains readable without them.
+func ambientGlows(c *ui.Context, pal *colorPalette) {
+	ui.Box(c.Key("ambient-blue")).Absolute().Top(-250).Left(-190).Size(680, 680).
+		RadialGradient(ui.RadialGradient{
+			Stops:  []ui.GradientStop{{Color: pal.glowBlue, At: 0}, {Color: ui.Transparent, At: 1}},
+			Center: ui.Point{X: .5, Y: .5},
+			Radius: 340,
+		}).PassThrough()
+	ui.Box(c.Key("ambient-violet")).Absolute().Right(-240).Bottom(-320).Size(760, 760).
+		RadialGradient(ui.RadialGradient{
+			Stops:  []ui.GradientStop{{Color: pal.glowViolet, At: 0}, {Color: ui.Transparent, At: 1}},
+			Center: ui.Point{X: .5, Y: .5},
+			Radius: 380,
+		}).PassThrough()
+}
+
 func cover(c *ui.Context, a Anime, w, h float32) {
+	coverWithRadius(c, a, w, h, coverRadius)
+}
+
+func coverWithRadius(c *ui.Context, a Anime, w, h, radius float32) {
 	coversMu.Lock()
 	b := covers[a.Cover]
 	coversMu.Unlock()
 	if b != nil {
-		ui.Image(c, b).Size(w, h).Fit(ui.Cover).Radius(8)
+		ui.Image(c, b).Size(w, h).Fit(ui.Cover).Radius(radius)
 	} else if a.Cover != "" {
-		ui.Box(c).Size(w, h).Radius(8).Clip().Background(colors(c).blueWash).Center().Children(func() {
+		ui.Box(c).Size(w, h).Radius(radius).Clip().Background(colors(c).blueWash).Center().Children(func() {
 			loading.Blocks(c, loading.Options{Size: 26, Color: colors(c).blue}).Label("正在加载封面")
 		})
 	} else {
 		size := min(w, h) * 0.62
-		ui.Box(c).Size(w, h).Radius(8).Clip().Background(colors(c).blueWash).Center().Children(func() { ui.Image(c, brandLogo).Size(size, size).Background(colors(c).brandWash).Radius(8) })
+		ui.Box(c).Size(w, h).Radius(radius).Clip().Background(colors(c).blueWash).Center().Children(func() { ui.Image(c, brandLogo).Size(size, size).Background(colors(c).brandWash).Radius(8) })
 	}
 }
 
@@ -141,10 +171,12 @@ func (s *State) view(c *ui.Context) {
 	if s.ReduceEffects || c.Preferences().ReduceMotion {
 		c.DisableAnimations()
 	}
+	pal := colors(c)
 	ui.Overlay(c, func() {})
-	ui.Row(c).Fill().Gap(0).Background(colors(c).chrome).Children(func() {
+	ui.Row(c).Fill().Gap(0).Background(pal.canvas).Children(func() {
+		ambientGlows(c, pal)
 		s.sidebar(c)
-		ui.Column(c).Grow(1).FillHeight().MinWidth(0).Background(colors(c).paper).Children(func() {
+		ui.Column(c).Grow(1).FillHeight().MinWidth(0).Children(func() {
 			s.topbar(c)
 			if s.SaveError != "" {
 				ui.Text(c, s.SaveError).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk).Background(colors(c).errorWash).Padding(8, 24)
@@ -187,7 +219,10 @@ func (s *State) view(c *ui.Context) {
 
 func (s *State) sidebar(c *ui.Context) {
 	_, height := c.Size()
-	ui.Scroll(c.Key("sidebar-scroll")).Width(204).FillHeight().Background(colors(c).chrome).Children(func() {
+	pal := colors(c)
+	ui.Scroll(c.Key("sidebar-scroll")).Width(204).FillHeight().
+		Material(glass.Glass{Clarity: .55, Tint: pal.glass}).
+		BorderWidth(0, 1, 0, 0).BorderColor(pal.line).Children(func() {
 		ui.Column(c).MinHeight(height).Padding(24, 14, 16).Gap(8).Children(func() {
 			ui.Row(c).Gap(10).Padding(0, 4, 20).Children(func() {
 				ui.Box(c).Size(40, 40).Radius(11).Background(colors(c).brandWash).Center().Children(func() { ui.Image(c, brandLogo).Size(32, 32) })
@@ -262,6 +297,7 @@ func (s *State) sidebar(c *ui.Context) {
 }
 
 func (s *State) topbar(c *ui.Context) {
+	pal := colors(c)
 	names := map[string]string{"browse": "浏览番剧", "detail": "浏览番剧 / 开始追番", "following": "我的追番", "downloads": "下载", "settings": "设置"}
 	names["episodes"] = "我的追番 / 剧集库"
 	if s.Backfill {
@@ -272,22 +308,23 @@ func (s *State) topbar(c *ui.Context) {
 		}
 	}
 	bar := c.TitleBar()
-	ui.Row(c).MinHeight(64).Shrink(0).Padding(12, bar.Right+24, 12, 28).Gap(12).Background(colors(c).chrome).DragWindow().Children(func() {
-		ui.Text(c, names[s.Page]).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(colors(c).ink).MinWidth(0).Grow(1)
+	ui.Row(c).MinHeight(topbarHeight).Shrink(0).Padding(12, bar.Right+24, 12, 28).Gap(12).
+		Material(glass.ScrollEdge{Hard: true, Background: pal.canvas}).
+		DragWindow().Children(func() {
+		ui.Text(c, names[s.Page]).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(pal.ink).MinWidth(0).Grow(1)
 		iconButton(c, "top-help", "打开追番指南", "help", func() { s.Help = true })
 	})
 }
 
 func (s *State) browse(c *ui.Context) {
-	ui.Column(c).Grow(1).MinHeight(0).Padding(26, 28, 0).Gap(18).Children(func() {
-		ui.Column(c).Gap(12).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Gap(7).Children(func() {
-				ui.Text(c, s.Year+" 年"+s.Season+"季番剧").FontSize(textSize(c, textTitle)).FontWeight(600).TextColor(colors(c).ink).ContentTransition(ui.ContentTransition{Animation: &contentMotion})
-				caption(c, "选好番剧和版本，新更新会自动下载。")
-			})
+	pal := colors(c)
+	ui.Column(c).Grow(1).MinHeight(0).Padding(30, 28, 0).Children(func() {
+		ui.Column(c).Gap(8).Margin(0, 0, 18, 0).Children(func() {
+			ui.Text(c, s.Year+" 年"+s.Season+"季番剧").FontSize(textSize(c, textTitle)).FontWeight(700).TextColor(pal.ink).LetterSpacing(-.3).ContentTransition(ui.ContentTransition{Animation: &contentMotion})
+			caption(c, "选好番剧和版本，新更新会自动下载。")
 		})
 		if s.SourceError != "" {
-			ui.Row(c).Wrap().Gap(controlGap).Children(func() {
+			ui.Row(c).Wrap().Gap(controlGap).Margin(0, 0, 14, 0).Children(func() {
 				quiet(c, "catalog-error-previous", "上一季", func() { s.changeSeason(-1) })
 				quiet(c, "catalog-error-next", "下一季", func() { s.changeSeason(1) })
 				quiet(c, "catalog-error-current", "回到当季", s.currentSeason)
@@ -295,57 +332,17 @@ func (s *State) browse(c *ui.Context) {
 			s.empty(c, "来源暂时无法连接", s.SourceError, "重试加载", s.refreshCatalog)
 			return
 		}
-		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
-			if ui.TextInput(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(260).MinHeight(inputHeight(c)).Background(colors(c).paper).Changed() {
-				s.CatalogScroll = ui.ScrollState{}
-			}
-			if strings.TrimSpace(s.Search) != "" {
-				quiet(c, "clear-browse-search", "清除搜索", func() { s.Search = "" }).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue)
-			}
-		})
-		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
-			iconButton(c, "prev-season", "上一季", "back", func() { s.changeSeason(-1) })
-			ui.Select(c.Key("year"), &s.Year, catalogYears(s.Year)).Label("年份").Width(max(96, textSize(c, textBody)*5)).MinHeight(inputHeight(c)).Background(colors(c).paper).OnChange(s.refreshCatalog)
-			ui.Row(c).Gap(4).Children(func() {
-				for _, season := range seasons {
-					q := season
-					b := quiet(c, "season-"+q, q+"季", func() { s.Season = q; s.CatalogScroll = ui.ScrollState{}; s.refreshCatalog() })
-					if s.Season == q {
-						b.Background(colors(c).blueWash).TextColor(colors(c).blue).FontWeight(600)
-					}
-				}
-			})
-			iconButton(c, "next-season", "下一季", "next", func() { s.changeSeason(1) })
-			ui.Spacer(c)
-			quiet(c, "current-season", "回到当季", s.currentSeason)
-		})
+		s.browseToolbar(c)
+		s.browseDays(c)
 		if !s.IntroHidden {
-			ui.Row(c.Key("beginner-hint")).Padding(10, 14).Gap(12).Radius(8).Background(colors(c).canvas).Transition(ui.ElementTransition{Duration: 190 * time.Millisecond, Ease: spectrumEase, Exit: &ui.Motion{Collapse: true}, Size: true}).Children(func() {
-				ui.Box(c).TextColor(colors(c).muted).Children(func() { icon(c, "spark") })
+			ui.Row(c.Key("beginner-hint")).Padding(10, 12).Gap(10).Radius(12).Background(pal.glass).Border(1, pal.line).Margin(0, 0, 14, 0).Transition(ui.ElementTransition{Duration: 190 * time.Millisecond, Ease: spectrumEase, Exit: &ui.Motion{Collapse: true}, Size: true}).Children(func() {
+				ui.Box(c).TextColor(pal.muted).Children(func() { icon(c, "spark") })
 				ui.Text(c, "第一次追番？").FontSize(textSize(c, textBody)).FontWeight(600)
-				ui.Text(c, "选字幕组，确认一次，后续自动更新。").FontSize(textSize(c, textCaption)).TextColor(colors(c).muted).Grow(1)
-				quiet(c, "intro-help", "了解怎么追", func() { s.Help = true }).TextColor(colors(c).ink).FontSize(textSize(c, textCaption))
+				ui.Text(c, "选字幕组，确认一次，后续自动更新。").FontSize(textSize(c, textCaption)).TextColor(pal.muted).Grow(1)
+				quiet(c, "intro-help", "了解怎么追", func() { s.Help = true }).TextColor(pal.ink).FontSize(textSize(c, textCaption))
 				iconButton(c, "dismiss-intro", "收起新手提示", "close", func() { s.IntroHidden = true; s.save() }).Disabled(s.Busy)
 			})
 		}
-		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
-			for i, label := range []string{"全部", "周一", "周二", "周三", "周四", "周五", "周六", "周日"} {
-				d := i - 1
-				if i == 7 {
-					d = 0
-				}
-				if i > 0 && i < 7 {
-					d = i
-				}
-				day := d
-				b := quiet(c, fmt.Sprintf("day-%d", i), label, func() { s.Day = day; s.CatalogScroll = ui.ScrollState{} }).FontSize(textSize(c, textBody))
-				if s.Day == day {
-					b.Background(colors(c).blueWash).TextColor(colors(c).blue).FontWeight(600)
-				}
-			}
-			ui.Spacer(c)
-			caption(c, "来源：蜜柑计划")
-		})
 		if s.SourceLoading {
 			pageLoading(c, "正在加载番剧目录…")
 		} else {
@@ -378,12 +375,78 @@ func (s *State) browse(c *ui.Context) {
 	})
 }
 
+func (s *State) browseToolbar(c *ui.Context) {
+	pal := colors(c)
+	ui.Box(c).FillWidth().Margin(0, 0, 10, 0).Padding(8, 10).Radius(16).
+		Material(glass.Glass{Clarity: .40, Tint: pal.glass}).
+		Border(1, pal.line).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(10).Children(func() {
+			iconButton(c, "prev-season", "上一季", "back", func() { s.changeSeason(-1) })
+			ui.Select(c.Key("year"), &s.Year, catalogYears(s.Year)).Label("年份").Width(max(88, textSize(c, textBody)*5)).MinHeight(34).Radius(controlRadius).Background(pal.sunken).OnChange(s.refreshCatalog)
+			ui.Row(c).Gap(2).Padding(3).Radius(10).Background(pal.sunken).Border(1, pal.line).Children(func() {
+				for _, season := range seasons {
+					q := season
+					active := s.Season == q
+					b := ui.ButtonBase(c.Key("season-"+q)).Label(q+"季").Padding(4, 12).Radius(8).Center().FontSize(textSize(c, textBody)).Cursor(ui.CursorPointer).TextColor(pal.muted)
+					if active {
+						b.Background(pal.paper).TextColor(pal.ink).FontWeight(600).Shadow(0, 2, 6, -2, pal.cardShadow)
+					} else if b.Hovered() {
+						b.TextColor(pal.ink)
+					}
+					tactile(b).Children(func() { ui.Text(c, q+"季") }).OnClick(func() { s.Season = q; s.CatalogScroll = ui.ScrollState{}; s.refreshCatalog() })
+				}
+			})
+			iconButton(c, "next-season", "下一季", "next", func() { s.changeSeason(1) })
+			ui.Spacer(c)
+			if ui.TextInput(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(max(220, textSize(c, textBody)*16)).MinHeight(inputHeight(c)).Radius(controlRadius).Background(pal.sunken).Changed() {
+				s.CatalogScroll = ui.ScrollState{}
+			}
+			if strings.TrimSpace(s.Search) != "" {
+				quiet(c, "clear-browse-search", "清除搜索", func() { s.Search = "" }).Padding(4, 8).FontSize(textSize(c, textCaption)).TextColor(pal.blue)
+			}
+		})
+	})
+}
+
+func (s *State) browseDays(c *ui.Context) {
+	pal := colors(c)
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(2).Margin(0, 0, 14, 0).Children(func() {
+		for i, label := range []string{"全部", "周一", "周二", "周三", "周四", "周五", "周六", "周日"} {
+			day := i
+			if i == 0 {
+				day = -1
+			}
+			if i == 7 {
+				day = 0
+			}
+			active := s.Day == day
+			b := ui.ButtonBase(c.Key(fmt.Sprintf("day-%d", i))).Label(label).Padding(6, 10).Radius(6).FontSize(textSize(c, textBody)).Cursor(ui.CursorPointer).TextColor(pal.muted)
+			if active {
+				b.TextColor(pal.ink).FontWeight(600)
+			} else if b.Hovered() {
+				b.TextColor(pal.ink)
+			}
+			b.Draw(func(painter *ui.Painter, r ui.Rect) {
+				if active {
+					painter.Fill(ui.Rect{X: r.X + 10, Y: r.Y + r.H - 2, W: r.W - 20, H: 2}, pal.blue, 1)
+				}
+			})
+			tactile(b).Children(func() { ui.Text(c, label) }).OnClick(func() { s.Day = day; s.CatalogScroll = ui.ScrollState{} })
+		}
+		ui.Spacer(c)
+		caption(c, "来源：蜜柑计划")
+		ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline).MarginX(2)
+		quiet(c, "current-season", "回到当季", s.currentSeason).Padding(4, 8).FontSize(textSize(c, textCaption)).TextColor(pal.ink)
+	})
+}
+
 func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
-	b := ui.ButtonBase(c.Key("anime-" + a.ID)).Label("查看 " + a.Title).Width(width).Column().Gap(9).Padding(0).AlignItems(ui.Stretch).Radius(8).Cursor(ui.CursorPointer)
+	pal := colors(c)
+	b := ui.ButtonBase(c.Key("anime-" + a.ID)).Label("查看 " + a.Title).Width(width).Column().Gap(10).Padding(0).AlignItems(ui.Stretch).Radius(browseCoverRadius).Cursor(ui.CursorPointer)
 	pose := ui.Pose{}
 	if b.Hovered() {
-		pose.Y = -3
-		pose.Scale = 1.008
+		pose.Y = -5
+		pose.Scale = 1.01
 	}
 	if b.Pressed() {
 		pose.Y = 0
@@ -391,32 +454,42 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
 	}
 	b.AnimatePose(pose, contentMotion)
 	b.Children(func() {
-		ui.Box(c).Children(func() {
-			cover(c, a, width, width*1.36)
+		shadowY, shadowBlur := float32(16), float32(36)
+		if b.Hovered() {
+			shadowY, shadowBlur = 24, 48
+		}
+		ui.Box(c).Radius(browseCoverRadius).
+			Shadow(0, 2, 8, -2, pal.cardShadow).
+			Shadow(0, shadowY, shadowBlur, -18, pal.cardShadow).Children(func() {
+			coverWithRadius(c, a, width, width*1.36, browseCoverRadius)
 			for _, sub := range s.Subscriptions {
 				if sub.AnimeID == a.ID {
-					ui.Text(c, "已追番").FontSize(textSize(c, textCaption)).TextColor(colors(c).accentText).Background(colors(c).blue).Radius(4).Padding(4, 7).Absolute().Top(8).Left(8)
+					ui.Text(c, "已追番").FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(pal.blue).Background(pal.paper).Border(1, pal.line).Radius(999).Padding(3, 8).Absolute().Top(9).Left(9)
 					break
 				}
 			}
 		})
-		ui.Text(c, a.Title).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(colors(c).ink)
-		ui.Row(c).Wrap().Gap(8).Children(func() {
-			ui.Text(c, dayName(a.Day)).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted)
-			label := "选择版本"
-			for _, sub := range s.Subscriptions {
-				if sub.AnimeID == a.ID {
-					label = "查看资源"
-					break
+		ui.Column(c).Gap(4).Children(func() {
+			ui.Text(c, a.Title).FontSize(textSize(c, textBody)).FontWeight(600).LineHeight(1.4).TextColor(pal.ink)
+			ui.Row(c).Wrap().Gap(6).Children(func() {
+				ui.Text(c, dayName(a.Day)).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
+				ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline)
+				label := "选择版本"
+				for _, sub := range s.Subscriptions {
+					if sub.AnimeID == a.ID {
+						label = "查看资源"
+						break
+					}
 				}
-			}
-			hint := ui.Text(c, label).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted)
-			if b.Hovered() {
-				hint.TextColor(colors(c).blue)
-			}
-			if n := s.completedDownloads(a.ID); n > 0 {
-				ui.Text(c, fmt.Sprintf("已完成 %d 个下载", n)).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted)
-			}
+				hint := ui.Text(c, label).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
+				if b.Hovered() {
+					hint.TextColor(pal.blue)
+				}
+				if n := s.completedDownloads(a.ID); n > 0 {
+					ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline)
+					ui.Textf(c, "已完成 %d 个下载", n).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
+				}
+			})
 		})
 	}).OnClick(func() { s.openFollowedResources(a.ID, "browse") })
 }
@@ -1183,7 +1256,7 @@ func (s *State) following(c *ui.Context) {
 	ui.Column(c).Grow(1).MinHeight(0).Padding(26, 28).Gap(20).Children(func() {
 		ui.Text(c, "我的追番").FontSize(textSize(c, textTitle)).FontWeight(700)
 		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
-			if ui.TextInput(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(240).MinHeight(textSize(c, textBody)*1.5 + 16).Background(colors(c).paper).Changed() {
+			if ui.TextInput(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(240).MinHeight(textSize(c, textBody)*1.5 + 16).Background(colors(c).sunken).Changed() {
 				s.FollowScroll = ui.ScrollState{}
 			}
 			for _, sub := range s.Subscriptions {
@@ -1261,11 +1334,12 @@ func gridColumns(width float32) (int, float32) {
 
 func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
 	a := s.anime(sub.AnimeID)
-	tile := ui.ButtonBase(c.Key("subscription-" + sub.ID)).Label("打开追番 " + sub.GroupName).Width(width).Column().Gap(8).Padding(0).AlignItems(ui.Stretch).Radius(8).Cursor(ui.CursorPointer)
+	pal := colors(c)
+	tile := ui.ButtonBase(c.Key("subscription-" + sub.ID)).Label("打开追番 " + sub.GroupName).Width(width).Column().Gap(10).Padding(0).AlignItems(ui.Stretch).Radius(browseCoverRadius).Cursor(ui.CursorPointer)
 	pose := ui.Pose{}
 	if tile.Hovered() {
-		pose.Y = -3
-		pose.Scale = 1.008
+		pose.Y = -5
+		pose.Scale = 1.01
 	}
 	if tile.Pressed() {
 		pose.Y = 0
@@ -1273,8 +1347,14 @@ func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
 	}
 	tile.AnimatePose(pose, contentMotion)
 	tile.Children(func() {
-		ui.Box(c).Children(func() {
-			cover(c, a, width, width*1.36)
+		shadowY, shadowBlur := float32(16), float32(36)
+		if tile.Hovered() {
+			shadowY, shadowBlur = 24, 48
+		}
+		ui.Box(c).Radius(browseCoverRadius).
+			Shadow(0, 2, 8, -2, pal.cardShadow).
+			Shadow(0, shadowY, shadowBlur, -18, pal.cardShadow).Children(func() {
+			coverWithRadius(c, a, width, width*1.36, browseCoverRadius)
 			ui.Column(c).Absolute().Top(8).Left(8).Right(8).Gap(4).AlignItems(ui.Start).Children(func() {
 				if sub.CheckFailed {
 					badge(c, "检查失败", colors(c).amber, colors(c).amberWash)
@@ -1295,7 +1375,7 @@ func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
 				}
 			})
 		})
-		ui.Text(c, a.Title).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(colors(c).ink)
+		ui.Text(c, a.Title).FontSize(textSize(c, textBody)).FontWeight(600).LineHeight(1.4).TextColor(pal.ink)
 		ui.Column(c).Gap(5).Children(func() {
 			group := sub.GroupName
 			if group == "" {
@@ -1556,7 +1636,7 @@ func (s *State) downloads(c *ui.Context) {
 			})
 		})
 		ui.Row(c).Wrap().Gap(12).Children(func() {
-			if ui.TextInput(c.Key("download-search"), &s.DownloadSearch).Label("搜索下载").Placeholder("搜索番剧或任务").Width(260).MinHeight(inputHeight(c)).Background(colors(c).paper).Changed() {
+			if ui.TextInput(c.Key("download-search"), &s.DownloadSearch).Label("搜索下载").Placeholder("搜索番剧或任务").Width(260).MinHeight(inputHeight(c)).Background(colors(c).sunken).Changed() {
 				s.DownloadScroll = ui.ScrollState{}
 			}
 			if strings.TrimSpace(s.DownloadSearch) != "" {

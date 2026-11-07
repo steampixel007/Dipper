@@ -89,67 +89,77 @@ page-specific colors.
 ```yaml
 colors:
   # Accent: primary actions, selected navigation, focus, include conditions
-  blue: "#3b63fb"
-  blueHover: "#274dea"
-  bluePressed: "#1d3ecf"
-  blueWash: "#f5f9ff"          # selected states, include chips, info panels
+  blue: "#4661e8"
+  blueHover: "#3a52d0"
+  bluePressed: "#2f44b4"
+  blueWash: "#eef1ff"          # selected states, include chips, info panels
   # Exclude direction: always with a minus sign and wording
-  avoidInk: "#b1262b"
-  avoidWash: "#fff5f5"
+  avoidInk: "#6b6257"
+  avoidWash: "#f4f1ec"
   # Status inks and washes
-  green: "#12805c"             # successful matches, seeding, saved notice
-  greenWash: "#e9f7ef"
-  amber: "#9c5700"             # states needing explanation, duplicates
-  amberWash: "#fff4db"
-  errorInk: "#c9252d"          # save-failure banner
-  errorWash: "#fff0f0"
+  green: "#287958"             # successful matches, seeding, saved notice
+  greenWash: "#e8f6f0"
+  amber: "#9c5a0a"             # states needing explanation, duplicates
+  amberWash: "#fdf2e3"
+  errorInk: "#c33a34"          # save-failure banner
+  errorWash: "#fdeeec"
   # Text
-  ink: "#292929"               # main content
-  muted: "#505050"             # supporting information
+  ink: "#171a22"               # main content
+  muted: "rgba(35,40,56,.62)"  # supporting information
   # Surfaces
-  chrome: "#f3f3f3"            # title bar, sidebar, hover surface
-  paper: "#ffffff"             # main reading area, cards, popovers
-  canvas: "#f8f8f8"            # recessed hints and low-emphasis sections
+  chrome: "#fcfcff"            # hover surface over the canvas
+  paper: "#ffffff"             # cards, popovers, raised controls
+  canvas: "#f7f8fc"            # window canvas
+  glass: "rgba(255,255,255,.58)"  # selective frosted panes
+  sunken: "rgba(23,26,34,.045)"   # inset fields and control wells
+  glowBlue: "rgba(122,156,255,.40)"   # ambient canvas light
+  glowViolet: "rgba(196,168,255,.32)" # ambient canvas light
   # Strokes
-  line: "#e9e9e9"              # dividers, hairline card borders
-  outline: "#c6c6c6"           # input and secondary-button borders
-  hoverLine: "#b1b1b1"         # hovered card border
+  line: "rgba(23,26,34,.07)"   # dividers, hairline card borders
+  outline: "rgba(23,26,34,.16)" # input and secondary-button borders
+  hoverLine: "rgba(23,26,34,.30)" # hovered card border
   accentText: "#ffffff"        # text and checked marks on the accent
-  brandWash: "#f5f9ff"         # fixed black-and-white bird artwork
+  brandWash: "#eef2ff"         # fixed black-and-white bird artwork
   # Alpha overlays
-  scrim: "rgba(0,0,0,.24)"     # dialog backdrop
-  popoverShadow: "rgba(0,0,0,.10)"  # the only shadow, word-choice popover
+  scrim: "rgba(16,18,26,.32)"  # dialog backdrop
+  popoverShadow: "rgba(20,24,40,.12)" # floating popover
+  cardShadow: "rgba(20,24,40,.10)"    # poster cards and raised chips
 
 night-colors:
-  blue: "#9bb3ff"
-  blueHover: "#b2c4ff"
-  bluePressed: "#87a3f5"
-  blueWash: "#283952"
-  accentText: "#14213a"
-  muted: "#b3c0d1"
-  ink: "#e7edf5"
-  line: "#334353"
-  outline: "#718298"
-  hoverLine: "#91a2b7"
-  chrome: "#18212b"
-  paper: "#202b37"
-  canvas: "#1b2530"
-  brandWash: "#f5f9ff"
-  green: "#83d9b5"
-  greenWash: "#233e37"
-  amber: "#f0c27b"
-  amberWash: "#403625"
-  avoidInk: "#f5a3a8"
-  avoidWash: "#422d38"
-  errorInk: "#ffafb4"
-  errorWash: "#452d38"
-  scrim: "rgba(0,0,0,.56)"
-  popoverShadow: "rgba(0,0,0,.32)"
+  blue: "#9db4ff"
+  blueHover: "#b3c6ff"
+  bluePressed: "#8098e8"
+  blueWash: "#1d2540"
+  accentText: "#101526"
+  muted: "rgba(232,236,248,.78)"
+  ink: "#f2f4fa"
+  line: "rgba(255,255,255,.08)"
+  outline: "rgba(255,255,255,.18)"
+  hoverLine: "rgba(255,255,255,.32)"
+  chrome: "rgba(19,22,30,.72)"
+  paper: "#161a24"
+  canvas: "#0f1117"
+  glass: "rgba(10,13,20,.42)"
+  sunken: "rgba(255,255,255,.04)"
+  glowBlue: "rgba(78,107,255,.22)"
+  glowViolet: "rgba(150,110,255,.16)"
+  brandWash: "#edf2ff"
+  green: "#6fd3ab"
+  greenWash: "#143229"
+  amber: "#f0bf7a"
+  amberWash: "#3a2c17"
+  avoidInk: "#b9b3a7"
+  avoidWash: "#242219"
+  errorInk: "#ff9d95"
+  errorWash: "#3a2020"
+  scrim: "rgba(0,0,0,.60)"
+  popoverShadow: "rgba(0,0,0,.45)"
+  cardShadow: "rgba(0,0,0,.45)"
 
 typography:
   family: "Segoe UI, Microsoft YaHei UI"
   page-headline: { size: 28, weight: 700 }  # following / downloads / settings openings
-  browse-heading: { size: 26, weight: 600 } # year-and-season heading
+  browse-heading: { size: 26, weight: 700 } # year-and-season heading
   detail-title: { size: 23, weight: 700 }   # anime title, dialog titles
   brand: { size: 22, weight: 600 }          # sidebar wordmark
   stat: { size: 20, weight: 600 }           # aggregate speeds
@@ -179,9 +189,11 @@ spacing:
 
 motion:
   ease: "cubic-bezier(0, 0, .4, 1)"
-  feedback: 130ms  # press scale .97, hover color
+  page-ease: "cubic-bezier(.22, 1, .36, 1)"
+  feedback: 220ms spring, bounce .18  # press scale .97, hover color
   popover: 160ms   # popovers and dialog fades
-  content: 190ms   # pages, rows, poster lift
+  content: 320ms spring, bounce .22  # pages, rows, poster lift
+  page: 240ms      # enter +10 DIP, exit -6 DIP
   progress: 400ms  # progress-fill value changes
 ```
 
@@ -206,9 +218,13 @@ Treat colors as semantic roles; reuse the variables rather than picking values.
 
 | Role | Token(s) | Use |
 | --- | --- | --- |
-| Window chrome | `chrome` | Title bar, sidebar, hover surface. |
-| Primary surface | `paper` | Main reading area, cards, popovers. |
-| Recessed surface | `canvas` | Hints and low-emphasis sections. |
+| Window canvas | `canvas` | The window floor behind every page. |
+| Selective glass | `glass` | Sidebar, browse control band, beginner hint. |
+| Top bar | `canvas` + `glass.ScrollEdge` | Fixed 64 DIP bar; no divider, no brighter slab. |
+| Primary surface | `paper` | Cards, popovers, raised controls. |
+| Recessed surface | `sunken` | Inputs, segmented-control wells, inset fields. |
+| Hover surface | `chrome` | Control and navigation hover fill. |
+| Ambient light | `glowBlue` / `glowViolet` | Decorative radial gradients only; never a data cue. |
 | Divider / border | `line` / `outline` / `hoverLine` | Section separation / control borders / hovered card border. |
 | Text / muted text | `ink` / `muted` | Main content / supporting information. |
 | Accent | `blue` (+ hover, pressed, wash) | Primary actions, selected navigation, include conditions. |
@@ -216,7 +232,8 @@ Treat colors as semantic roles; reuse the variables rather than picking values.
 | Success | `green` / `greenWash` | Successful matches and status. |
 | Caution | `amber` / `amberWash` | States needing explanation, duplicate releases. |
 | Failure | `errorInk` / `errorWash` | Save-failure banner. |
-| Overlay | `scrim` / `popoverShadow` | Dialog backdrop / the single popover shadow. |
+| Overlay | `scrim` / `popoverShadow` | Dialog backdrop / floating popover. |
+| Elevation | `cardShadow` | Poster cards and the selected segment chip. |
 
 A status is never conveyed by color alone. The selected sidebar entry also has
 text weight and an accent marker; word chips use `＋` or `−` plus wording.
@@ -246,29 +263,39 @@ two lines.
 
 ### Depth and elevation
 
-Depth comes from the surface ladder and borders, not from stacked shadows.
+Depth comes from the surface ladder, borders, and restrained shadows.
 
 | Layer | Treatment | Examples |
 | --- | --- | --- |
-| Recessed | `canvas` on `paper` | Hint strips, confirm-summary block. |
-| Base | `paper` inside the `chrome` frame | Content column, cards. |
-| Raised | `paper` + 1px `line`/`outline` border | Cards, inputs, chips, group cards. |
+| Recessed | `sunken` on the canvas or a glass band | Inputs, segmented-control wells. |
+| Base | `canvas` with ambient light | Page background. |
+| Glass | `glass` + `glass.Glass` material | Sidebar, browse control band. |
+| Top edge | `canvas` + hard `glass.ScrollEdge` | The 64 DIP top bar. |
+| Raised | `paper` + 1px `line`/`outline` border | Cards, popovers, group cards. |
+| Poster | cover art + two `cardShadow` layers | `0, 2, 8, -2` for contact and `0, 16, 36, -18` for lift; hover deepens the second layer. |
+| Selected chip | `cardShadow` | `0, 2, 6, -2`. |
 | Overlay | `paper` + border, over `scrim` | Dialogs — no panel shadow. |
-| Popover | `paper` + border + the single shadow | Word-choice popover: `Shadow(0, 6, 20, 0, popoverShadow)`. |
+| Popover | `paper` + border + `popoverShadow` | Word-choice popover: `Shadow(0, 6, 20, 0, popoverShadow)`. |
 
-The word-choice popover is the only element that casts a shadow; dialogs rely
-on the scrim alone. No gradients, and no additional shadows — the poster hover
-lift is motion, not elevation.
+Only three things cast: the word-choice popover, poster art in the catalog and
+follow grids, and the selected segment chip. Dialogs rely on the scrim alone.
+The only gradients are the two ambient radial glows behind the canvas; no
+component paints a decorative gradient. A poster's hover lift is motion on top
+of that resting shadow, not a second elevation.
 
 ### Motion
 
-The easing curve is `cubic-bezier(0, 0, .4, 1)`. Button feedback uses 130 ms,
-local popovers and dialog fades 160 ms, and page and content changes 190 ms;
-the progress fill animates its value over 400 ms. Buttons press to 0.97 scale;
-poster hover lifts 3 DIP and scales to 1.008. Motion explains a change without
-delaying the next action. When the in-app reduce-effects option or system
-reduce-motion preference is active, the UI disables animations. These values
-are defined in `appearance.go` and `view.go`.
+Press and cancel use a 220 ms spring with 0.18 bounce; hover colors use a 130 ms
+color transition; page and content changes use a 320 ms spring with 0.22 bounce.
+Local popovers and dialog fades use the 160 ms `cubic-bezier(0, 0, .4, 1)`
+curve, and page transitions use the 240 ms `cubic-bezier(.22, 1, .36, 1)` curve
+with a 10 DIP enter and 6 DIP exit. The progress fill animates its value over
+400 ms. Buttons press to 0.97 scale; posters hover 5 DIP up at 1.01 scale.
+Motion explains a change without delaying the next action. When the in-app
+reduce-effects option or system reduce-motion preference is active, the UI
+disables animations; static depth, borders, and contrast remain. MyGo's glass
+falls back to an opaque surface when the system asks for reduced transparency.
+These values are defined in `appearance.go` and `view.go`.
 
 ### Icons and imagery
 
@@ -332,15 +359,17 @@ exclude is `avoidInk` on `avoidWash` with `−`, unrestricted is `ink` on `paper
 Sidebar nav items are 44 DIP tall, radius 8; the active item lifts to `paper`
 with weight 600 and a 3 × 18 DIP `blue` marker (radius 2); hover is `line`.
 Cards are `paper` with a 1px `line` border — radius 10 for settings cards,
-8 for download, group, and poster cards; follow tiles are borderless posters
-whose cover, title, and metadata sit directly on the canvas; a selected group card switches
-its border to `blue` and its fill to `blueWash`. Dialogs are 500–510 DIP wide,
+8 for download and group cards; catalog and follow posters use a 14 DIP cover
+radius, with cover, title, and metadata sitting directly on the canvas. A
+selected group card switches its border to `blue` and its fill to `blueWash`.
+Both poster grids carry `cardShadow`. Dialogs are 500–510 DIP wide,
 radius 12, padding 28, over `scrim`. The word-choice popover is 320 DIP wide,
-radius 10, over the single `popoverShadow`.
+radius 10, over `popoverShadow`.
 
 Every interactive control goes through `tactile`: pressed scales to 0.97 with
-the 130 ms feedback motion, hover colors transition in 130 ms. Disabled states
-keep the label and drop the action; they never hide what is disabled.
+the 220 ms feedback spring, and hover colors use the same feedback motion.
+Disabled states keep the label and drop the action; they never hide what is
+disabled.
 
 ## Controls and interaction patterns
 
@@ -459,8 +488,10 @@ a page's scroll position as a side effect of clicking a control.
 
 ### Don't
 
-- Don't add page-specific palettes, raw hex values outside the token layer, or gradients.
-- Don't add shadows; the word popover's single shadow is the only exception.
+- Don't add page-specific palettes or raw hex values outside the token layer.
+- Don't add gradients beyond the two ambient canvas glows.
+- Don't add shadows beyond `popoverShadow` on the word popover and
+  `cardShadow` on catalog/follow posters and the selected segment chip.
 - Don't mark state with a colored left-border stripe; use a dot or a swatch.
 - Don't render a source failure as an empty catalog, or a failed save as
   success.
