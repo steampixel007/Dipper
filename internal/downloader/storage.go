@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/anacrolix/generics"
@@ -21,6 +22,8 @@ type diskStorage struct {
 	folder     string
 	completion storage.PieceCompletion
 	failure    *atomic.Pointer[taskFailure]
+	task       Task
+	ownership  *ownership
 }
 
 type diskFile struct {
@@ -46,10 +49,33 @@ func (s *diskStorage) OpenTorrent(_ context.Context, info *metainfo.Info, hash m
 }
 
 func (s *diskStorage) open(info *metainfo.Info, hash metainfo.Hash) (_ *diskTorrent, err error) {
-	if err = safeComponent(info.BestName()); err != nil {
+	files, err := torrentFiles(info)
+	if err != nil {
 		return nil, err
 	}
-	root, err := os.OpenRoot(s.folder)
+	var local sync.Mutex
+	lock := &local
+	if s.ownership != nil {
+		lock = &s.ownership.mu
+	}
+	lock.Lock()
+	defer lock.Unlock()
+	if s.ownership == nil {
+		canonical, err := canonicalPath(s.folder)
+		if err != nil {
+			return nil, err
+		}
+		s.folder = canonical
+	}
+	fresh := false
+	if s.ownership != nil {
+		_, exists := s.ownership.claims[s.task.ID]
+		fresh = !exists
+		if err := s.ownership.reserve(s.task, hash.HexString(), files); err != nil {
+			return nil, err
+		}
+	}
+	root, err := checkedRoot(s.folder)
 	if err != nil {
 		return nil, err
 	}
@@ -59,27 +85,21 @@ func (s *diskStorage) open(info *metainfo.Info, hash metainfo.Hash) (_ *diskTorr
 		}
 	}()
 	d := &diskTorrent{root: root, completion: s.completion, hash: hash, failure: s.failure}
-	names := make(map[string]bool)
-	for _, file := range info.UpvertedFiles() {
-		parts := append([]string{info.BestName()}, file.BestPath()...)
-		for _, part := range parts {
-			if err = safeComponent(part); err != nil {
-				return nil, err
-			}
-		}
-		name := filepath.Join(parts...)
-		key := strings.ToLower(name)
-		if names[key] {
-			return nil, fmt.Errorf("torrent contains colliding file path %q", name)
-		}
-		names[key] = true
-		if file.Length < 0 || file.TorrentOffset < 0 {
-			return nil, errors.New("torrent contains a negative file extent")
+	for _, file := range files {
+		name := file.name
+		if err = checkPath(root, name); err != nil {
+			return nil, err
 		}
 		if err = root.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 			return nil, err
 		}
-		f, openErr := root.OpenFile(name, os.O_RDWR|os.O_CREATE, 0o644)
+		f, openErr := root.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+		if errors.Is(openErr, os.ErrExist) {
+			if fresh && s.task.Shared {
+				return nil, fmt.Errorf("file appeared during admission: %s", name)
+			}
+			f, openErr = openPayload(root, name, os.O_RDWR)
+		}
 		if openErr != nil {
 			return nil, openErr
 		}
@@ -91,10 +111,10 @@ func (s *diskStorage) open(info *metainfo.Info, hash metainfo.Hash) (_ *diskTorr
 		if closeErr != nil {
 			return nil, closeErr
 		}
-		if !stat.Mode().IsRegular() || stat.Size() > file.Length {
+		if !stat.Mode().IsRegular() || stat.Size() > file.length {
 			return nil, fmt.Errorf("existing file has incompatible type or size: %s", name)
 		}
-		d.files = append(d.files, diskFile{name, file.TorrentOffset, file.Length})
+		d.files = append(d.files, file)
 	}
 	return d, nil
 }
@@ -156,7 +176,7 @@ func (p *diskPiece) transfer(b []byte, off int64, write bool) (int, error) {
 		if write {
 			flags = os.O_RDWR
 		}
-		f, err := p.root.OpenFile(file.name, flags, 0)
+		f, err := openPayload(p.root, file.name, flags)
 		if err != nil {
 			return n, err
 		}
@@ -199,7 +219,7 @@ func (p *diskPiece) MarkComplete() (result error) {
 		if file.offset >= end || file.offset+file.length <= start {
 			continue
 		}
-		f, err := p.root.OpenFile(file.name, os.O_RDWR, 0)
+		f, err := openPayload(p.root, file.name, os.O_RDWR)
 		if err != nil {
 			return err
 		}

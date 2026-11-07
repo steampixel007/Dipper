@@ -465,7 +465,7 @@ func (s *State) isNewRelease(title string) bool {
 }
 
 // groupFolder returns the anime's download directory. A transfer's folder is
-// its own hash directory under the anime directory, so the group header opens
+// its saved task directory under the anime directory, so the group header opens
 // the parent and reaches every release even while the group is collapsed.
 func (s *State) groupFolder(animeID string) string {
 	for _, d := range s.Downloads {

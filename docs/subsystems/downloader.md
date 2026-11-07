@@ -19,6 +19,8 @@ done its job. It implements `core.Downloader`, whose contract is in
 | --- | --- |
 | `engine.go` | The engine, task registration, the client's configuration, progress sampling, pause and resume, manual stop, removal; file listing and playback candidates resolve through the task root (`os.Root`), never following reparse points out of it |
 | `storage.go` | `diskStorage`, `diskTorrent`, `diskPiece`: path safety and piece-to-file mapping |
+| `ownership.go` | Durable per-task file claims, shared-folder collision checks and per-file cleanup |
+| `safety_windows.go`, `safety_other.go` | Reparse-point and hard-link checks for payload files |
 | `policy.go` | `policyState`: byte counters, seeding time, and the stop decision |
 | `trackers.go` | The public tracker list appended to every admitted task |
 | `../../internal/trackers` | Fetching, validating and caching the remote public tracker list |
@@ -47,14 +49,14 @@ allowed on a task that has not finished: it detaches the torrent, halts the
 payload, and keeps the verified pieces, so a later `Resume` continues instead of
 starting over. `Resume` clears both the pause and the manual stop.
 
-`Remove` forgets a task: it drops the torrent, rewrites the checkpoint without
-the task, then deletes the content folder and the saved metadata. The checkpoint
-goes first, so a crash mid-removal cannot resurrect a task whose folder is
-already gone. Files that could not be deleted stay as orphans and the error is
-reported as `ErrRemoveCleanup`; the task is already absent from the durable
-checkpoint, so callers must still forget their delivery record. Errors before
-that commit leave the task registered. Submitting the same hash again re-verifies
-what survived. The piece
+`Remove` forgets a task: it drops the torrent and atomically moves it from the
+active checkpoint into a removal journal before deleting its claimed files and
+saved metadata. Cleanup never recursively deletes a shared folder; sibling
+tasks and unclaimed files remain. A failure after that commit is reported as
+`ErrRemoveCleanup`; callers must still forget their delivery record. The file
+claim and journal entry survive incomplete cleanup so startup or a subsequent
+removal can retry it. Errors before the commit leave the task registered.
+Submitting the same hash again re-verifies what survived after cleanup. The piece
 completion database keeps the removed task's rows — the completion API exposes
 no way to delete a torrent's rows, and admission sets
 `IgnoreUnverifiedPieceCompletion`, so a re-added task re-verifies those pieces
@@ -107,9 +109,12 @@ torrent is refused with an error.
 
 ## Persistence
 
-`Config.DataDir` holds three things: `tasks.json`, replaced atomically; one
-`.torrent` per task, named by the SHA-256 of the task ID; and a piece completion
-database under `pieces/`.
+`Config.DataDir` holds `tasks.json`, replaced atomically; `files.json`, the
+durable file claims; one `.torrent` per task, named by the SHA-256 of the task
+ID; and a piece completion database under `pieces/`. The version 2 checkpoint
+contains active tasks and pending removals. Version 1 checkpoints still load;
+their saved task folders remain unchanged, and saved torrent metadata supplies
+the legacy file manifest.
 
 The engine samples every 500 ms and persists on a sample, and also on pause,
 stop and a clean exit. A crash can lose the payload and time counters of the most
@@ -118,23 +123,36 @@ trusting the checkpoint. Pause, manual stop and auto-stop survive a restart. A
 clean `Close` does not change the user's intent, and resuming a running task does
 not count the down time or double-count.
 
-The state directory and any content folder must not contain one another, and two
-tasks' folders must not overlap. Both are checked when a task is admitted.
+The state directory and any content folder must not contain one another.
+Nested task folders are refused. Two tasks may use the exact same folder only
+when both explicitly carry the shared-folder flag; legacy tasks retain exclusive
+folders. These checks run when a task is admitted.
 
 ## Storage
 
-Every task gets a folder named by its info hash. The engine hands the torrent
-library a `diskStorage` rooted there.
+New core tasks use `anime-title/fansub-group/`; older tasks retain their saved
+destinations. The engine hands the torrent library a `diskStorage` rooted at
+the supplied destination. Torrent file names and internal directories remain
+unchanged, including a multi-file release's own root and subtitle tree.
+
+Before creating payload files, storage atomically persists an ownership claim
+for the task's metadata paths and lengths. Claims stay reserved while paused or
+stopped and across restarts. A different task cannot claim the same file or a
+file/directory prefix, even with different casing. Shared admission also refuses
+an existing unclaimed payload instead of silently adopting it. Replaying the
+same task requires its manifest to agree with its claim.
 
 Path safety is enforced per component, not per path:
 
 - `safeComponent` rejects an empty component, `.`, `..`, anything containing
   `/ \ : \x00 < > " | ? *`, a name with a trailing dot or space, and the Windows
-  reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`).
+  reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM0`–`COM9`, `LPT0`–`LPT9`).
 - The root is an `os.Root`, opened once per torrent. Every file operation goes
   through it, so a symlink or a crafted path cannot escape the task folder.
 - Two files whose paths differ only by case are rejected as colliding, because
   they would be one file on Windows and macOS.
+- Payload access refuses reparse points and multiply linked files, including
+  aliases that would otherwise remain inside the shared root.
 
 An existing file is accepted only if it is a regular file no larger than the
 torrent says. A bigger or non-regular file is an error, not a truncation — the
@@ -295,12 +313,13 @@ Points a change is expected to prove:
   is known.
 - A mid-download manual stop halts the payload and keeps the verified pieces;
   a resume finishes the download.
-- Removing a task leaves it out of the checkpoint and deletes its content folder
-  and metadata; the same hash can be submitted again and re-verifies.
+- Removing a task leaves it out of the active checkpoint and deletes only its
+  claimed files and metadata; cleanup survives a restart and the same hash can
+  be submitted again and re-verifies.
 - The upload limit is shared across two concurrent tasks.
 - A v2-only torrent is refused.
-- Two tasks whose folders overlap are refused, as is a content folder inside the
-  state directory.
+- Nested task folders and a content folder inside the state directory are
+  refused; exact shared folders still require disjoint file claims.
 
 ## Invariants a change must preserve
 

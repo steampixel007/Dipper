@@ -25,7 +25,7 @@ func TestResetAfterUnsubscribeRedownloadsIndependently(t *testing.T) {
 	if len(tasks) != 1 || tasks[0].Accepted || !tasks[0].Independent {
 		t.Fatalf("reset did not keep an independent intent: %+v", tasks)
 	}
-	if tasks[0].Task.Directory != filepath.Join(sub.Directory, hash) {
+	if tasks[0].Task.Directory != filepath.Join(sub.Directory, group.Name) {
 		t.Fatalf("independent intent lost its folder: %+v", tasks[0].Task)
 	}
 	if err := c.RetryPending(context.Background()); err != nil {
@@ -69,7 +69,7 @@ func TestIndependentIntentSurvivesRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tasks) != 1 || !tasks[0].Accepted || tasks[0].Task.Directory != filepath.Join(sub.Directory, hash) {
+	if len(tasks) != 1 || !tasks[0].Accepted || tasks[0].Task.Directory != filepath.Join(sub.Directory, group.Name) {
 		t.Fatalf("restart replay of the independent intent: %+v", tasks)
 	}
 }

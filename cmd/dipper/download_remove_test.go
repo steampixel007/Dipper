@@ -247,6 +247,11 @@ func TestUIRemovalCommitBoundaryUpdatesCoreAndReportsErrors(t *testing.T) {
 func TestUIRedownloadAfterUnsubscribeKeepsOriginalDestination(t *testing.T) {
 	engine := &removalTestEngine{}
 	s, tt, sub, hash, updates := removalFixture(t, engine)
+	tasks, err := s.Core.ListTasks()
+	if err != nil || len(tasks) != 1 {
+		t.Fatalf("original task: %+v, %v", tasks, err)
+	}
+	original := tasks[0].Task
 	if err := s.Core.RemoveSubscription(context.Background(), sub.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +268,7 @@ func TestUIRedownloadAfterUnsubscribeKeepsOriginalDestination(t *testing.T) {
 	task, exists := engine.tasks[hash]
 	calls := engine.calls
 	engine.mu.Unlock()
-	if !exists || calls != 2 || task.Directory != filepath.Join(sub.Directory, hash) {
+	if !exists || calls != 2 || task.Directory != original.Directory || task.SharedDirectory != original.SharedDirectory {
 		t.Fatalf("redownload after unsubscribe: exists=%v calls=%d task=%+v", exists, calls, task)
 	}
 }

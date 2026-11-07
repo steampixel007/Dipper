@@ -20,6 +20,15 @@ func TestRemoveCleanupErrorKeepsTaskForgotten(t *testing.T) {
 	if err := e.Stop(task.ID); err != nil {
 		t.Fatal(err)
 	}
+	e.mu.Lock()
+	owned := e.tasks[task.ID].Task
+	e.mu.Unlock()
+	e.ownership.mu.Lock()
+	err := e.ownership.reserve(owned, strings.Repeat("ab", 20), nil)
+	e.ownership.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 	metadata := e.metadataPath(task.ID)
 	if err := os.MkdirAll(metadata, 0700); err != nil {
 		t.Fatal(err)
@@ -80,5 +89,112 @@ func TestRemoveCheckpointFailurePreservesTask(t *testing.T) {
 	}
 	if tasks := e.Snapshot(); len(tasks) != 1 || tasks[0].ID != task.ID {
 		t.Fatalf("uncommitted removal lost task: %+v", tasks)
+	}
+}
+
+func TestLegacyFolderCleanupErrorKeepsRemovalJournal(t *testing.T) {
+	root := t.TempDir()
+	config := Config{DataDir: filepath.Join(root, "state")}
+	e := testEngine(t, config)
+	task := Task{ID: strings.Repeat("ef", 20), Magnet: "magnet:?xt=urn:btih:" + strings.Repeat("ef", 20), Folder: filepath.Join(root, "content")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Stop(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	keep := filepath.Join(task.Folder, "keep.txt")
+	if err := os.WriteFile(keep, []byte("not owned by the task"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Remove(task.ID); !errors.Is(err, ErrRemoveCleanup) {
+		t.Fatalf("legacy folder cleanup error = %v; unowned files must not be hidden", err)
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Fatalf("unowned file was removed: %v", err)
+	}
+	body, err := os.ReadFile(filepath.Join(config.DataDir, "tasks.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saved checkpoint
+	if err := json.Unmarshal(body, &saved); err != nil {
+		t.Fatal(err)
+	}
+	if len(saved.Tasks) != 0 || len(saved.Removing) != 1 {
+		t.Fatalf("cleanup failure was not journaled: %+v", saved)
+	}
+}
+
+func TestLegacyUnreadableMetadataDoesNotBlockStartup(t *testing.T) {
+	root := t.TempDir()
+	config := Config{DataDir: filepath.Join(root, "state")}
+	e := testEngine(t, config)
+	task := Task{ID: strings.Repeat("12", 20), Magnet: "magnet:?xt=urn:btih:" + strings.Repeat("12", 20), Folder: filepath.Join(root, "content")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Stop(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	metadata := e.metadataPath(task.ID)
+	if err := os.MkdirAll(metadata, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(metadata, "held"), []byte("unreadable metadata"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened := testEngine(t, config)
+	tasks := reopened.Snapshot()
+	if len(tasks) != 1 || tasks[0].ID != task.ID {
+		t.Fatalf("legacy task was lost on unreadable metadata: %+v", tasks)
+	}
+}
+
+func TestLegacyUnreadableMetadataAllowsEmptyFolderRemoval(t *testing.T) {
+	root := t.TempDir()
+	e := testEngine(t, Config{DataDir: filepath.Join(root, "state")})
+	task := Task{ID: strings.Repeat("34", 20), Magnet: "magnet:?xt=urn:btih:" + strings.Repeat("34", 20), Folder: filepath.Join(root, "content")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Stop(task.ID); err != nil {
+		t.Fatal(err)
+	}
+	metadata := e.metadataPath(task.ID)
+	if err := os.MkdirAll(metadata, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Remove(task.ID); err != nil {
+		t.Fatalf("empty legacy folder removal = %v", err)
+	}
+	if tasks := e.Snapshot(); len(tasks) != 0 {
+		t.Fatalf("removed task survived: %+v", tasks)
+	}
+	if _, err := os.Stat(task.Folder); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("empty legacy folder survived removal: %v", err)
+	}
+}
+
+func TestLegacyInvalidMetadataStillBlocksStartup(t *testing.T) {
+	root := t.TempDir()
+	config := Config{DataDir: filepath.Join(root, "state")}
+	e := testEngine(t, config)
+	task := Task{ID: strings.Repeat("56", 20), Magnet: "magnet:?xt=urn:btih:" + strings.Repeat("56", 20), Folder: filepath.Join(root, "content")}
+	if err := e.Ensure(task); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(e.metadataPath(task.ID), []byte("not torrent metadata"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if reopened, err := newEngine(config, localConfig); err == nil {
+		_ = reopened.Close()
+		t.Fatal("structurally invalid legacy metadata was ignored")
 	}
 }

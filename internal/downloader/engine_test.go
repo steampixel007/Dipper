@@ -723,9 +723,24 @@ func TestPlayableFilesRequireWholeFiles(t *testing.T) {
 		t.Fatal("partial write unexpectedly completed the piece")
 	}
 	e := testEngine(t, Config{DataDir: filepath.Join(t.TempDir(), "state")})
+	canonical, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := torrentFiles(&info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	task := Task{ID: "partial", Folder: canonical}
+	e.ownership.mu.Lock()
+	err = e.ownership.reserve(task, f.mi.HashInfoBytes().HexString(), manifest)
+	e.ownership.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 	e.mu.Lock()
 	attached, _ := e.client.AddTorrentInfoHashWithStorage(f.mi.HashInfoBytes(), data)
-	e.tasks["partial"] = &entry{savedTask: savedTask{Task: Task{ID: "partial", Folder: dir}, Complete: true}, torrent: attached}
+	e.tasks["partial"] = &entry{savedTask: savedTask{Task: task, Complete: true}, torrent: attached}
 	e.mu.Unlock()
 	files, err := e.PlayableFiles("partial")
 	if err != nil {
@@ -756,7 +771,7 @@ func TestCorruptCheckpointFails(t *testing.T) {
 }
 
 func ExampleEngine_Ensure() {
-	// Hash is core's stable BT identity; Directory is its isolated resource folder.
+	// Hash is core's stable BT identity; Folder is its saved destination.
 	_ = Task{ID: "bt-content-hash", Magnet: "magnet:?xt=urn:btih:...", Folder: "isolated-resource-folder", Context: context.Background()}
 	fmt.Println("map core Hash, Resource, Directory and Context into downloader.Task")
 	// Output: map core Hash, Resource, Directory and Context into downloader.Task

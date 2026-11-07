@@ -182,9 +182,11 @@ transfers have known sizes and measured speeds: the leftover bytes of every
 running transfer divided by their combined speed, reusing the row-level
 estimate's wording.
 Each group header also offers 打开番剧文件夹 for the anime's download directory, so a
-collapsed group still reaches its files. A transfer's folder is its own hash
-directory under the anime directory, so the header opens the parent and is
-hidden when no transfer folder is known.
+collapsed group still reaches its files. New transfers share a fansub folder
+under the anime directory; legacy transfers keep their saved hash directory.
+In both layouts the header opens the parent and is hidden when no transfer
+folder is known. The core adapter carries the task's shared-directory flag
+unchanged into the downloader.
 Resource rows match downloads by identity, not by title: the core-resolved
 info hash first, then the resource ID recorded on the task, so two releases
 with the same title never show each other's progress or playback. A completed row offers 打开文件夹 for that

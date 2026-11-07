@@ -132,4 +132,8 @@ Default application directories (where `$XDG_*_HOME` is set to an absolute path 
 
 - Default video directory: the `Dipper` folder under the system user's "视频" (Videos) directory (Windows uses the video path actually configured in the system, macOS uses `~/Movies/Dipper`, Linux follows `XDG_VIDEOS_DIR`), changeable in Settings. The old default `Downloads/Dipper` is updated to the new default after a restart; custom paths and the fixed directories of subscribed anime are kept.
 
-The same anime keeps the directory created on its first fansub group across groups; changing the global root affects only new anime. Different anime with the same name use different directories. Each BT release gets its own hash subdirectory that preserves the original file names and directory structure inside the torrent.
+The same anime keeps the directory created on its first fansub group across groups; changing the global root affects only new anime. Different anime with the same name use different directories.
+
+New downloads use `download-root/anime-title/fansub-group/`. Episodes from the same group share that folder. A single-file torrent puts its original file directly there; a multi-file torrent keeps its original release folder and subtitle tree. Names that would collide use readable suffixes such as `Group [2]`. The saved group directory stays fixed across restarts and later name changes.
+
+Existing tasks keep their saved destinations, including older hash subdirectories. Retrying or deleting and downloading those tasks again uses the same saved path; this change does not move existing files. Deleting one download removes only its recorded files and leaves other episodes and unrelated files in the shared folder. A new release that conflicts with an existing file is reported as an error rather than overwriting that file.
