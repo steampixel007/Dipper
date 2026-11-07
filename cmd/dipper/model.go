@@ -193,6 +193,8 @@ type State struct {
 	ResourceScroll           ui.ScrollState
 	FollowScroll             ui.ScrollState
 	DownloadScroll           ui.ScrollState
+	DownloadHistory          bool
+	DownloadHistoryScroll    ui.ScrollState
 	DownloadFilterLast       DownloadFilter
 	DownloadSearch           string
 	// CollapsedDownloads hides one anime's download rows on the downloads

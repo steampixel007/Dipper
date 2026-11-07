@@ -491,6 +491,9 @@ func pageLoading(c *ui.Context, text string) {
 
 // enterPage switches pages and reloads covers the switch may have evicted.
 func (s *State) enterPage(page string) {
+	if page == "downloads" {
+		s.DownloadHistory = false
+	}
 	if s.Page == page {
 		return
 	}
@@ -1589,9 +1592,15 @@ func (s *State) downloadMatches(d Download) bool {
 }
 
 func (s *State) downloads(c *ui.Context) {
+	if s.DownloadHistory {
+		s.downloadHistory(c)
+		return
+	}
 	active, resumable, queued := 0, 0, 0
+	finished := 0
 	for _, d := range s.Downloads {
 		if !downloadInQueue(d) {
+			finished++
 			continue
 		}
 		queued++
@@ -1610,6 +1619,14 @@ func (s *State) downloads(c *ui.Context) {
 		ui.Row(c).Gap(24).Children(func() {
 			ui.Column(c).Grow(1).Gap(6).Children(func() {
 				ui.Text(c, "下载").FontSize(textSize(c, textTitle)).FontWeight(600)
+				if finished > 0 {
+					ui.Row(c).Wrap().Gap(controlGap).Children(func() {
+						quiet(c, "download-history", fmt.Sprintf("下载记录 %d", finished), func() {
+							s.DownloadHistory = true
+							s.DownloadHistoryScroll = ui.ScrollState{}
+						}).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue)
+					})
+				}
 			})
 			ui.Column(c).Gap(5).Children(func() {
 				caption(c, "总下载速度")
@@ -1670,7 +1687,7 @@ func (s *State) downloads(c *ui.Context) {
 			return
 		}
 		if queued == 0 {
-			s.empty(c, "当前没有进行中的任务", "下载和分享都已结束，已下载的剧集可在「我的追番」中查看和播放。", "我的追番", func() { s.enterPage("following") })
+			s.empty(c, "当前没有进行中的任务", "下载和分享都已结束。已结束的任务可在上方「下载记录」中管理文件。", "我的追番", func() { s.enterPage("following") })
 			return
 		}
 		if len(visible) == 0 {
@@ -1898,6 +1915,70 @@ func (s *State) downloads(c *ui.Context) {
 			})
 		})
 		caption(c, "全局上传上限 "+s.Upload+"；完成后"+s.seedStopRule()+"。")
+	})
+}
+
+func (s *State) downloadHistory(c *ui.Context) {
+	var hidden []int
+	for i, d := range s.Downloads {
+		if !downloadInQueue(d) {
+			hidden = append(hidden, i)
+		}
+	}
+	ui.Column(c).Grow(1).MinHeight(0).Padding(24, 28).Gap(20).Children(func() {
+		ui.Row(c).Gap(20).Children(func() {
+			ui.Column(c).Grow(1).Gap(6).Children(func() {
+				ui.Text(c, "下载记录").FontSize(textSize(c, textTitle)).FontWeight(600)
+				caption(c, "分享已结束的任务，仍可查看文件、播放或删除。")
+			})
+			quiet(c, "download-history-back", "返回当前下载", func() {
+				s.DownloadHistory = false
+			}).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue)
+		})
+		if len(hidden) == 0 {
+			s.empty(c, "还没有下载记录", "分享结束的任务会出现在这里，不依赖是否仍在追番。", "返回当前下载", func() {
+				s.DownloadHistory = false
+			})
+			return
+		}
+		ui.Scroll(c.Key("download-history-list")).TrackScroll(&s.DownloadHistoryScroll).Grow(1).MinHeight(0).Children(func() {
+			ui.Column(c).Gap(12).Children(func() {
+				for _, i := range hidden {
+					idx := i
+					d := s.Downloads[idx]
+					title := s.anime(d.AnimeID).Title
+					if title == "" {
+						title = d.Title
+					}
+					ui.Column(c.Key("download-history-"+d.ID)).Padding(16, 18).Gap(9).Background(colors(c).paper).Radius(8).Border(1, colors(c).line).Children(func() {
+						ui.Row(c).Wrap().Gap(12).Children(func() {
+							ui.Text(c, title).FontSize(textSize(c, textSection)).FontWeight(700)
+							if d.Episode != "" {
+								badge(c, episodeLabel(d.Episode), colors(c).muted, colors(c).canvas)
+							}
+							ui.Spacer(c)
+							ui.PopoverMenuButton(c.Key("download-history-menu-"+d.ID), "管理", func(menu *ui.Menu) {
+								if menu.Item("查看文件").Disabled(s.Busy).Chosen() {
+									s.openFiles(idx)
+								}
+								if menu.Item("播放").Disabled(s.Busy).Chosen() {
+									s.playDownload(idx)
+								}
+								if menu.Item("打开文件夹").Disabled(s.Busy || s.OpenFolder == nil || d.Folder == "").Chosen() {
+									s.OpenFolder(d.Folder)
+								}
+								if menu.Item("删除或重新下载").Disabled(s.Busy).Chosen() {
+									s.RemovePrompt, s.RemoveID = true, d.ID
+								}
+							}).Label("下载记录操作 " + d.ID).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+						})
+						ui.Text(c, d.Title).FontSize(textSize(c, textBody)).TextColor(colors(c).muted)
+						caption(c, fmt.Sprintf("已完成 %s，分享已结束", byteSizeText(sizeBytes(d.Bytes, d.MB))))
+						caption(c, "保存位置："+d.Folder)
+					})
+				}
+			})
+		})
 	})
 }
 

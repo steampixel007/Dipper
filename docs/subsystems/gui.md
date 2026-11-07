@@ -122,11 +122,18 @@ the existing handlers and confirmation dialog. Navigation counts, status
 counts, group totals, and search all use the same queue membership. The sharing
 filter excludes paused completed tasks, which belong under paused. A sharing
 task with zero current upload speed remains in the queue. When only finished
-tasks remain, the empty state leads to My Follows. Batch download controls
+tasks remain, the empty state points to 下载记录, a secondary history view on
+the downloads page. It lists every hidden finished task regardless of whether
+its subscription still exists and keeps its own scroll position; management
+uses the same file, playback, deletion, and redownload handlers as the queue and
+episode library. The back action restores the current queue, while entering the
+downloads page from navigation always returns to it. Batch download controls
 appear only when there is a download to pause or a task to resume.
 `downloads_active_test.go` covers visibility, counts, search, live completion,
 and retained library playback, including a later file in a batch and confirmed
-deletion or redownload through the library.
+deletion or redownload through the library. `download_history_test.go` covers
+management after unsubscribing, cancellation, retained destinations on
+redownload, and selecting a later file without a follow.
 
 Download sizes are projected from the stored raw byte count; legacy MB fields
 are used only when that count is absent. A group total is called known only

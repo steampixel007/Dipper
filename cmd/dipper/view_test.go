@@ -1030,7 +1030,7 @@ func TestUIDownloadPlayButtonOpensFirstVideo(t *testing.T) {
 	uiClick(t, tt, "播放")
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
-	for played == "" && s.SaveError == "" {
+	for s.Busy {
 		select {
 		case fn := <-updates:
 			fn()
@@ -1061,7 +1061,7 @@ func TestUIDownloadPlayRejectsNonMediaFiles(t *testing.T) {
 	uiClick(t, tt, "播放")
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
-	for s.SaveError == "" && played == "" {
+	for s.Busy {
 		select {
 		case fn := <-updates:
 			fn()
