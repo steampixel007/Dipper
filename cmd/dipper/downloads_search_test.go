@@ -27,14 +27,22 @@ func TestUIDownloadsSearchFiltersGroups(t *testing.T) {
 	uiRequireText(t, tt, "雨后的星期天")
 
 	uiClick(t, tt, "搜索下载")
+	tt.Key(ui.Cmd, ui.KeyA)
 	tt.Type("不存在的番剧名")
 	tt.Frame()
+	if s.DownloadSearch != "不存在的番剧名" {
+		t.Fatalf("search replacement = %q, want %q", s.DownloadSearch, "不存在的番剧名")
+	}
 	uiRequireText(t, tt, "没有匹配的下载")
 
 	// The release title also matches the search.
 	uiClick(t, tt, "搜索下载")
+	tt.Key(ui.Cmd, ui.KeyA)
 	tt.Type("回归测试组乙")
 	tt.Frame()
+	if s.DownloadSearch != "回归测试组乙" {
+		t.Fatalf("release-title search = %q, want %q", s.DownloadSearch, "回归测试组乙")
+	}
 	if tt.HasText("星海旅记") {
 		t.Fatalf("release-title search must hide the non-matching anime group; texts=%q", tt.Texts())
 	}
