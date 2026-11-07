@@ -12,7 +12,7 @@ import (
 type coreAdapter struct{ engine *Engine }
 
 func (a coreAdapter) Ensure(task core.DownloadTask) error {
-	return a.engine.Ensure(Task{ID: task.Hash, Magnet: task.Resource.Magnet, TorrentURL: task.Resource.TorrentURL, Folder: task.Directory, Context: task.Context})
+	return a.engine.Ensure(Task{ID: task.Hash, Magnet: task.Resource.Magnet, TorrentURL: task.Resource.TorrentURL, Folder: task.Directory, Shared: task.SharedDirectory, Context: task.Context})
 }
 
 func (a coreAdapter) Remove(hash string) error { return a.engine.Remove(hash) }

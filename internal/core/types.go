@@ -48,12 +48,13 @@ type Downloader interface {
 }
 
 type DownloadTask struct {
-	Hash           string
-	AnimeID        string
-	SubscriptionID string
-	Resource       Resource
-	Directory      string
-	Context        context.Context `json:"-"`
+	Hash            string
+	AnimeID         string
+	SubscriptionID  string
+	Resource        Resource
+	Directory       string
+	SharedDirectory bool            `json:",omitempty"`
+	Context         context.Context `json:"-"`
 }
 
 type Settings struct {
@@ -144,6 +145,7 @@ type State struct {
 }
 
 type AnimeRecord struct {
-	Anime     Anime
-	Directory string
+	Anime            Anime
+	Directory        string
+	GroupDirectories map[string]string `json:",omitempty"`
 }

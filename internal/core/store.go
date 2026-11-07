@@ -335,7 +335,7 @@ func safeName(title string) string {
 		name = "番剧"
 	}
 	stem := strings.ToUpper(strings.Split(name, ".")[0])
-	if stem == "CON" || stem == "PRN" || stem == "AUX" || stem == "NUL" || (len(stem) == 4 && (strings.HasPrefix(stem, "COM") || strings.HasPrefix(stem, "LPT")) && stem[3] >= '1' && stem[3] <= '9') {
+	if stem == "CON" || stem == "PRN" || stem == "AUX" || stem == "NUL" || (len(stem) == 4 && (strings.HasPrefix(stem, "COM") || strings.HasPrefix(stem, "LPT")) && stem[3] >= '0' && stem[3] <= '9') {
 		name = "_" + name
 	}
 	if len(name) > 160 {
@@ -344,7 +344,7 @@ func safeName(title string) string {
 			name = name[:len(name)-1]
 		}
 	}
-	return name
+	return strings.TrimRight(name, " .")
 }
 
 func animeDirectory(s *diskState, a Anime) string {
@@ -362,6 +362,39 @@ func animeDirectory(s *diskState, a Anime) string {
 	}
 	s.Anime[a.ID] = AnimeRecord{Anime: a, Directory: dir}
 	return dir
+}
+
+func groupDirectory(ctx context.Context, tx *sql.Tx, s *diskState, sub *Subscription) (string, error) {
+	anime := s.Anime[sub.Anime.ID]
+	if dir := anime.GroupDirectories[sub.Group.ID]; dir != "" {
+		return dir, nil
+	}
+	tasks, err := readTasks(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	used := make(map[string]bool)
+	for _, dir := range anime.GroupDirectories {
+		used[strings.ToLower(dir)] = true
+	}
+	for _, task := range tasks {
+		used[strings.ToLower(task.Task.Directory)] = true
+	}
+	title := sub.Group.Name
+	if strings.Trim(title, " .") == "" {
+		title = "字幕组"
+	}
+	name := safeName(title)
+	dir := filepath.Join(sub.Directory, name)
+	for suffix := 2; used[strings.ToLower(dir)]; suffix++ {
+		dir = filepath.Join(sub.Directory, fmt.Sprintf("%s [%d]", name, suffix))
+	}
+	if anime.GroupDirectories == nil {
+		anime.GroupDirectories = make(map[string]string)
+	}
+	anime.GroupDirectories[sub.Group.ID] = dir
+	s.Anime[sub.Anime.ID] = anime
+	return dir, nil
 }
 
 func (c *Core) signal() {

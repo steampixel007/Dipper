@@ -474,7 +474,7 @@ func TestRestartReplaysAcceptedTransfersOfPausedSubscriptions(t *testing.T) {
 		t.Fatal("restoration changed subscription pause")
 	}
 	tasks, _ := c.ListTasks()
-	if len(tasks) != 1 || tasks[0].Task.Directory != filepath.Join(sub.Directory, tasks[0].Task.Hash) {
+	if len(tasks) != 1 || tasks[0].Task.Directory != filepath.Join(sub.Directory, group.Name) {
 		t.Fatal(tasks)
 	}
 }
@@ -698,7 +698,7 @@ func TestDirectoriesAreFixedAndPreviewMatchesCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	tasks, _ := c.ListTasks()
-	if len(tasks) != 1 || !strings.HasPrefix(tasks[0].Task.Directory, rootA) || filepath.Base(tasks[0].Task.Directory) != tasks[0].Task.Hash {
+	if len(tasks) != 1 || !strings.HasPrefix(tasks[0].Task.Directory, rootA) || filepath.Base(tasks[0].Task.Directory) != group.Name || !tasks[0].Task.SharedDirectory {
 		t.Fatal(tasks)
 	}
 	if err := c.Close(); err != nil {

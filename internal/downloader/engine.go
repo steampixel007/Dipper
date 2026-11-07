@@ -23,6 +23,7 @@ import (
 
 	"dipper.local/dipper/internal/proxy"
 	"github.com/anacrolix/torrent"
+	"github.com/anacrolix/torrent/bencode"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
 	"golang.org/x/time/rate"
@@ -52,6 +53,7 @@ type Task struct {
 	Magnet     string          `json:"magnet,omitempty"`
 	TorrentURL string          `json:"torrent_url,omitempty"`
 	Folder     string          `json:"folder"`
+	Shared     bool            `json:"shared,omitempty"`
 	Context    context.Context `json:"-"`
 }
 
@@ -111,8 +113,9 @@ type savedTask struct {
 }
 
 type checkpoint struct {
-	Version int         `json:"version"`
-	Tasks   []savedTask `json:"tasks"`
+	Version  int         `json:"version"`
+	Tasks    []savedTask `json:"tasks"`
+	Removing []savedTask `json:"removing,omitempty"`
 }
 
 type entry struct {
@@ -152,6 +155,8 @@ type Engine struct {
 	extraTrackers  []string
 	remoteTrackers []string
 	checkpointErr  error
+	ownership      *ownership
+	removals       map[string]*entry
 }
 
 func New(config Config) (*Engine, error) {
@@ -176,7 +181,7 @@ func newEngine(config Config, configure func(*torrent.ClientConfig)) (_ *Engine,
 	if ratio != seedRatioUnlimited && ratio <= 0 {
 		ratio = 1
 	}
-	e := &Engine{dir: dir, tasks: make(map[string]*entry), done: make(chan struct{}), now: time.Now, awake: awakeTime, online: networkAvailable, seedTarget: config.SeedTarget, ratioTarget: ratio, extraTrackers: normalizeTrackers(config.ExtraTrackers), remoteTrackers: normalizeTrackers(config.RemoteTrackers)}
+	e := &Engine{dir: dir, tasks: make(map[string]*entry), removals: make(map[string]*entry), done: make(chan struct{}), now: time.Now, awake: awakeTime, online: networkAvailable, seedTarget: config.SeedTarget, ratioTarget: ratio, extraTrackers: normalizeTrackers(config.ExtraTrackers), remoteTrackers: normalizeTrackers(config.RemoteTrackers)}
 	e.ctx, e.cancel = context.WithCancel(context.Background())
 	defer func() {
 		if err != nil {
@@ -198,8 +203,30 @@ func newEngine(config Config, configure func(*torrent.ClientConfig)) (_ *Engine,
 		return nil, fmt.Errorf("open piece checkpoint: %w", err)
 	}
 	e.completion = completion
+	e.ownership, err = openOwnership(dir)
+	if err != nil {
+		return nil, err
+	}
 	if err = e.load(); err != nil {
 		return nil, err
+	}
+	for _, task := range e.tasks {
+		if err := e.restoreClaim(task); err != nil && !ignorableRestoreClaim(task, err) {
+			return nil, err
+		}
+	}
+	for id, claim := range e.ownership.claims {
+		if e.tasks[id] == nil && e.removals[id] == nil {
+			e.removals[id] = &entry{savedTask: savedTask{Task: Task{ID: id, Folder: claim.Folder, Shared: true}}}
+		}
+	}
+	if len(e.removals) > 0 {
+		if err := e.saveLocked(); err != nil {
+			return nil, err
+		}
+	}
+	for _, task := range e.removals {
+		_ = e.cleanupLocked(task)
 	}
 	limit := config.UploadLimit
 	if limit == 0 {
@@ -243,7 +270,7 @@ func (e *Engine) Ensure(task Task) error {
 		return err
 	}
 	if strings.TrimSpace(task.ID) == "" || strings.TrimSpace(task.Folder) == "" {
-		return errors.New("task ID and isolated folder are required")
+		return errors.New("task ID and content folder are required")
 	}
 	if task.Magnet != "" {
 		spec, err := sourceSpec(ctx, Task{Magnet: task.Magnet})
@@ -258,16 +285,20 @@ func (e *Engine) Ensure(task Task) error {
 	if err != nil {
 		return err
 	}
-	if canonical, canonicalErr := filepath.EvalSymlinks(folder); canonicalErr == nil {
+	if canonical, canonicalErr := canonicalPath(folder); canonicalErr == nil {
 		folder = canonical
-	} else if !errors.Is(canonicalErr, os.ErrNotExist) {
-		return canonicalErr
 	}
 	task.Folder, task.Context = filepath.Clean(folder), nil
 	e.mu.Lock()
 	if e.closed {
 		e.mu.Unlock()
 		return ErrClosed
+	}
+	if removal := e.removals[task.ID]; removal != nil {
+		if err := e.cleanupLocked(removal); err != nil {
+			e.mu.Unlock()
+			return fmt.Errorf("finish earlier removal: %w", err)
+		}
 	}
 	// Fast path: a confirmed replay keeps its intent without resolving the
 	// source again. A mismatch may just be an unresolved alias of the stored
@@ -300,21 +331,28 @@ func (e *Engine) Ensure(task Task) error {
 	// folder resolved, while a racing or restarted replay may still carry the
 	// unresolved alias, and sameTask compares path strings.
 	if err = os.MkdirAll(task.Folder, 0o755); err != nil {
-		return err
+		return fmt.Errorf("create content folder: %w", err)
 	}
-	if task.Folder, err = filepath.EvalSymlinks(task.Folder); err != nil {
-		return err
+	canonical, err := canonicalPath(task.Folder)
+	if err != nil {
+		return fmt.Errorf("resolve content folder %q: %w", task.Folder, err)
 	}
+	task.Folder = canonical
 	if existing := e.tasks[task.ID]; existing != nil {
 		return sameTask(existing.Task, task)
 	}
 	for _, other := range e.tasks {
-		if overlappingFolders(other.Folder, task.Folder) {
+		if foldersConflict(other.Task, task) {
 			return fmt.Errorf("folder overlaps task %q", other.ID)
 		}
 	}
 	if overlappingFolders(e.dir, task.Folder) {
 		return errors.New("content folder must be isolated from engine state")
+	}
+	for _, removal := range e.removals {
+		if foldersConflict(removal.Task, task) {
+			return errors.New("content folder has unfinished cleanup")
+		}
 	}
 	j := &entry{savedTask: savedTask{Task: task}}
 	if err = e.addLocked(j, spec); err != nil {
@@ -335,7 +373,7 @@ func (e *Engine) Ensure(task Task) error {
 }
 
 func sameTask(a, b Task) error {
-	if !samePath(a.Folder, b.Folder) {
+	if !samePath(a.Folder, b.Folder) || a.Shared != b.Shared {
 		return errors.New("task ID already belongs to a different folder")
 	}
 	return nil
@@ -427,6 +465,9 @@ func (e *Engine) metadataPath(id string) string {
 }
 
 func (e *Engine) startLocked(j *entry, ctx context.Context) error {
+	if err := checkSavedFolder(j.Folder); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(j.Folder, 0o755); err != nil {
 		return err
 	}
@@ -474,7 +515,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 	}
 	j.failure.Store(nil)
 	epoch := j.generation.Add(1)
-	spec.Storage = &diskStorage{folder: j.Folder, completion: e.completion, failure: &j.failure}
+	spec.Storage = &diskStorage{folder: j.Folder, completion: e.completion, failure: &j.failure, task: j.Task, ownership: e.ownership}
 	spec.DisallowDataDownload, spec.DisallowDataUpload = true, true
 	spec.IgnoreUnverifiedPieceCompletion = true
 	t, added, err := e.client.AddTorrentSpec(spec)
@@ -614,7 +655,7 @@ func (e *Engine) detachLocked(j *entry) error {
 }
 
 // Remove forgets a task: the torrent is dropped, the task leaves the durable
-// checkpoint, and its content folder and saved metadata are deleted. The
+// checkpoint, and its owned files and saved metadata are deleted. The
 // checkpoint is rewritten before the files go, so a crash mid-removal cannot
 // resurrect a task whose folder is already gone. A failure deleting the files
 // leaves them on disk as orphans and is reported; submitting the same hash
@@ -627,22 +668,100 @@ func (e *Engine) Remove(id string) error {
 	}
 	j := e.tasks[id]
 	if j == nil {
+		if removal := e.removals[id]; removal != nil {
+			if err := e.cleanupLocked(removal); err != nil {
+				return errors.Join(ErrRemoveCleanup, err)
+			}
+			return nil
+		}
 		return ErrNotFound
 	}
 	detachErr := e.detachLocked(j)
+	if err := e.restoreClaim(j); err != nil && !ignorableRestoreClaim(j, err) {
+		return errors.Join(detachErr, err)
+	}
 	delete(e.tasks, id)
+	e.removals[id] = j
 	if err := e.saveLocked(); err != nil {
+		delete(e.removals, id)
 		e.tasks[id] = j
 		return errors.Join(detachErr, err)
 	}
-	var metaErr error
-	if err := os.Remove(e.metadataPath(id)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		metaErr = err
-	}
-	if err := errors.Join(detachErr, os.RemoveAll(j.Folder), metaErr); err != nil {
+	if err := errors.Join(detachErr, e.cleanupLocked(j)); err != nil {
 		return errors.Join(ErrRemoveCleanup, err)
 	}
 	return nil
+}
+
+func (e *Engine) cleanupLocked(j *entry) error {
+	if err := e.ownership.remove(j.Task); err != nil {
+		return err
+	}
+	if err := os.Remove(e.metadataPath(j.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := e.ownership.release(j.ID); err != nil {
+		return err
+	}
+	if !j.Shared {
+		if err := os.Remove(j.Folder); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	delete(e.removals, j.ID)
+	if err := e.saveLocked(); err != nil {
+		e.removals[j.ID] = j
+		return err
+	}
+	return nil
+}
+
+func (e *Engine) restoreClaim(j *entry) error {
+	if _, err := e.ownership.files(j.Task); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	b, err := os.ReadFile(e.metadataPath(j.ID))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		if !j.Shared {
+			return fmt.Errorf("%w: %v", errLegacyMetadataUnreadable, err)
+		}
+		return err
+	}
+	spec, err := decodeSpec(b)
+	if err != nil {
+		return err
+	}
+	if err := validateIdentity(j.ID, spec); err != nil {
+		return err
+	}
+	if j.Shared {
+		return errors.New("shared task metadata has no durable file ownership")
+	}
+	var info metainfo.Info
+	if err := bencode.Unmarshal(spec.InfoBytes, &info); err != nil {
+		return err
+	}
+	files, err := torrentFiles(&info)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(j.Folder, 0o755); err != nil {
+		return err
+	}
+	e.ownership.mu.Lock()
+	defer e.ownership.mu.Unlock()
+	return e.ownership.reserve(j.Task, spec.InfoHash.HexString(), files)
+}
+
+var errLegacyMetadataUnreadable = errors.New("legacy task metadata is unreadable")
+
+func ignorableRestoreClaim(j *entry, err error) bool {
+	return j != nil && !j.Shared && errors.Is(err, errLegacyMetadataUnreadable)
 }
 
 func uploadRate(bytes int64) rate.Limit {
@@ -855,47 +974,22 @@ func (e *Engine) downloadFiles(id string) ([]DownloadedFile, error) {
 	if !j.Complete {
 		return nil, nil
 	}
-	if j.torrent == nil || j.torrent.Info() == nil {
-		return e.downloadFilesFromMetadataLocked(j)
-	}
-	files := j.torrent.Files()
-	result := make([]DownloadedFile, 0, len(files))
-	for _, f := range files {
-		if f.BytesCompleted() < f.Length() {
-			continue
-		}
-		if path, size, ok := existingFileWithSize(j.Folder, f.Path()); ok {
-			result = append(result, DownloadedFile{Path: path, Size: size})
-		}
-	}
-	sortDownloadedFiles(result)
-	return result, nil
-}
-
-// A stopped or restarted task has no attached torrent. Its saved metadata still
-// names the files, and a complete task has every piece, so the metadata is the
-// durable source for playback.
-func (e *Engine) downloadFilesFromMetadataLocked(j *entry) ([]DownloadedFile, error) {
-	b, err := os.ReadFile(e.metadataPath(j.ID))
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
+	files, err := e.ownership.files(j.Task)
 	if err != nil {
 		return nil, err
 	}
-	mi, err := metainfo.Load(bytes.NewReader(b))
-	if err != nil {
-		return nil, fmt.Errorf("read saved torrent metadata: %w", err)
-	}
-	info, err := mi.UnmarshalInfo()
-	if err != nil {
-		return nil, fmt.Errorf("parse saved torrent metadata: %w", err)
-	}
-	files := info.UpvertedFiles()
 	result := make([]DownloadedFile, 0, len(files))
+	verified := make(map[string]bool)
+	if j.torrent != nil && j.torrent.Info() != nil {
+		for _, file := range j.torrent.Files() {
+			verified[filepath.Clean(filepath.FromSlash(file.Path()))] = file.BytesCompleted() >= file.Length()
+		}
+	}
 	for _, f := range files {
-		parts := append([]string{info.BestName()}, f.BestPath()...)
-		if path, size, ok := existingFileWithSize(j.Folder, strings.Join(parts, "/")); ok {
+		if j.torrent != nil && !verified[f.Path] {
+			continue
+		}
+		if path, size, ok := existingFileWithSize(j.Folder, f.Path); ok && size == f.Length {
 			result = append(result, DownloadedFile{Path: path, Size: size})
 		}
 	}
@@ -909,15 +1003,26 @@ func existingFileWithSize(folder, torrentPath string) (string, int64, bool) {
 			return "", 0, false
 		}
 	}
-	root, err := os.OpenRoot(folder)
+	root, err := checkedRoot(folder)
 	if err != nil {
 		return "", 0, false
 	}
 	defer root.Close()
+	torrentPath = filepath.FromSlash(torrentPath)
+	if err := checkPath(root, torrentPath); err != nil {
+		return "", 0, false
+	}
 	// Stat, not Open: opening a FIFO on unix would block while the engine
 	// lock is held, and the contents are never read here.
 	stat, err := root.Stat(torrentPath)
 	if err != nil || !stat.Mode().IsRegular() {
+		return "", 0, false
+	}
+	file, err := openPayload(root, torrentPath, os.O_RDONLY)
+	if err != nil {
+		return "", 0, false
+	}
+	if err := file.Close(); err != nil {
 		return "", 0, false
 	}
 	return filepath.Join(folder, filepath.FromSlash(torrentPath)), stat.Size(), true
@@ -1004,18 +1109,26 @@ func (e *Engine) load() error {
 	if err = json.Unmarshal(b, &state); err != nil {
 		return fmt.Errorf("corrupt download checkpoint: %w", err)
 	}
-	if state.Version != 1 {
+	if state.Version != 1 && state.Version != 2 {
 		return fmt.Errorf("unsupported download checkpoint version %d", state.Version)
 	}
 	for _, saved := range state.Tasks {
 		if saved.ID == "" || !filepath.IsAbs(saved.Folder) || saved.Policy.UploadedBytes < 0 || saved.Policy.DownloadedBytes < 0 || saved.Policy.SeedingTime < 0 || e.tasks[saved.ID] != nil {
 			return errors.New("invalid task in download checkpoint")
 		}
+		if canonical, err := canonicalPath(saved.Folder); err == nil {
+			if saved.Shared && !samePath(canonical, saved.Folder) {
+				return errors.New("shared content folder changed since admission")
+			}
+			saved.Folder = canonical
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 		if overlappingFolders(e.dir, saved.Folder) {
 			return errors.New("checkpoint content folder overlaps state directory")
 		}
 		for _, other := range e.tasks {
-			if overlappingFolders(other.Folder, saved.Folder) {
+			if foldersConflict(other.Task, saved.Task) {
 				return errors.New("checkpoint task folders overlap")
 			}
 		}
@@ -1024,11 +1137,27 @@ func (e *Engine) load() error {
 		j.appliedRemote = saved.AppliedRemote
 		e.tasks[saved.ID] = j
 	}
+	for _, saved := range state.Removing {
+		if saved.ID == "" || !filepath.IsAbs(saved.Folder) || e.tasks[saved.ID] != nil || e.removals[saved.ID] != nil || overlappingFolders(e.dir, saved.Folder) {
+			return errors.New("invalid removal in download checkpoint")
+		}
+		for _, task := range e.tasks {
+			if foldersConflict(task.Task, saved.Task) {
+				return errors.New("removal folder overlaps a checkpoint task")
+			}
+		}
+		for _, other := range e.removals {
+			if foldersConflict(other.Task, saved.Task) {
+				return errors.New("checkpoint removal folders overlap")
+			}
+		}
+		e.removals[saved.ID] = &entry{savedTask: saved}
+	}
 	return nil
 }
 
 func (e *Engine) saveLocked() error {
-	state := checkpoint{Version: 1, Tasks: make([]savedTask, 0, len(e.tasks))}
+	state := checkpoint{Version: 2, Tasks: make([]savedTask, 0, len(e.tasks))}
 	for _, j := range e.tasks {
 		saved := j.savedTask
 		saved.AppliedExtra = j.appliedExtra
@@ -1036,6 +1165,10 @@ func (e *Engine) saveLocked() error {
 		state.Tasks = append(state.Tasks, saved)
 	}
 	sort.Slice(state.Tasks, func(i, j int) bool { return state.Tasks[i].ID < state.Tasks[j].ID })
+	for _, j := range e.removals {
+		state.Removing = append(state.Removing, j.savedTask)
+	}
+	sort.Slice(state.Removing, func(i, j int) bool { return state.Removing[i].ID < state.Removing[j].ID })
 	b, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		return err
@@ -1067,10 +1200,29 @@ func samePath(a, b string) bool {
 	return filepath.Clean(a) == filepath.Clean(b)
 }
 
-func overlappingFolders(a, b string) bool {
-	if runtime.GOOS == "windows" {
-		a, b = strings.ToLower(a), strings.ToLower(b)
+// canonicalPath resolves the longest existing prefix. Windows can report a
+// junction's newly created child as missing even though EvalSymlinks resolves
+// the junction itself, so resolving one component at a time keeps configured
+// aliases usable without accepting the alias as the payload location.
+func canonicalPath(path string) (string, error) {
+	path = filepath.Clean(path)
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved, nil
 	}
+	parent := filepath.Dir(path)
+	if parent == path {
+		return "", err
+	}
+	resolved, parentErr := canonicalPath(parent)
+	if parentErr != nil {
+		return "", parentErr
+	}
+	return filepath.Join(resolved, filepath.Base(path)), nil
+}
+
+func overlappingFolders(a, b string) bool {
+	a, b = strings.ToLower(a), strings.ToLower(b)
 	for _, pair := range [][2]string{{a, b}, {b, a}} {
 		rel, err := filepath.Rel(pair[0], pair[1])
 		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
@@ -1078,6 +1230,24 @@ func overlappingFolders(a, b string) bool {
 		}
 	}
 	return false
+}
+
+func foldersConflict(a, b Task) bool {
+	return overlappingFolders(a.Folder, b.Folder) && !(a.Shared && b.Shared && a.Folder == b.Folder)
+}
+
+func checkSavedFolder(folder string) error {
+	canonical, err := canonicalPath(folder)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !samePath(canonical, folder) {
+		return errors.New("content folder changed since admission")
+	}
+	return checkFolder(folder)
 }
 
 type noStorage struct{}

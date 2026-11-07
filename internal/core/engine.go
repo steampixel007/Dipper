@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -156,7 +155,11 @@ func (c *Core) enqueue(ctx context.Context, tx *sql.Tx, s *diskState, sub *Subsc
 	if hash, hashErr := ResourceHash(resource); hashErr != nil || hash != item.Hash {
 		resource.Magnet = "magnet:?xt=urn:btih:" + item.Hash
 	}
-	return saveTask(ctx, tx, TaskRecord{Task: DownloadTask{Hash: item.Hash, AnimeID: sub.Anime.ID, SubscriptionID: sub.ID, Resource: resource, Directory: filepath.Join(sub.Directory, item.Hash)}})
+	directory, err := groupDirectory(ctx, tx, s, sub)
+	if err != nil {
+		return err
+	}
+	return saveTask(ctx, tx, TaskRecord{Task: DownloadTask{Hash: item.Hash, AnimeID: sub.Anime.ID, SubscriptionID: sub.ID, Resource: resource, Directory: directory, SharedDirectory: true}})
 }
 
 func (c *Core) UpdateRule(ctx context.Context, id string, rule Rule) error {

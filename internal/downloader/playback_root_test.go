@@ -14,8 +14,8 @@ import (
 // without symlink privilege fall back to a directory junction, which is the
 // same reparse-point escape and needs no elevation.
 func TestExistingFileWithSizeRejectsSymlinkEscape(t *testing.T) {
-	folder := t.TempDir()
-	outside := filepath.Join(t.TempDir(), "escape")
+	folder := canonicalTempDir(t)
+	outside := filepath.Join(canonicalTempDir(t), "escape")
 	if err := os.MkdirAll(outside, 0755); err != nil {
 		t.Fatal(err)
 	}

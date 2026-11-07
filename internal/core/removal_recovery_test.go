@@ -81,7 +81,7 @@ func TestRecoveryCompletesInterruptedRedownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tasks) != 1 || !tasks[0].Accepted || tasks[0].Removing || tasks[0].Task.Directory != filepath.Join(sub.Directory, hash) {
+	if len(tasks) != 1 || !tasks[0].Accepted || tasks[0].Removing || tasks[0].Task.Directory != filepath.Join(sub.Directory, group.Name) {
 		t.Fatalf("recovered redownload: %+v", tasks)
 	}
 }

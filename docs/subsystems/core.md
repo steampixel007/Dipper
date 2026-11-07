@@ -267,10 +267,18 @@ immediately. The scheduler never fetches complete history to backfill RSS gaps.
 `PreviewDirectory` uses the same allocator as creation without persisting
 anything. Subscriptions to the same anime share the first saved directory across
 group, title and root changes. Different anime whose names collide get distinct
-directories. Each BT task gets a hash subdirectory, so the torrent's own file
-names stay isolated. A settings change or another creation between preview and
-commit can change a new anime's allocation, so use the returned subscription's
+directories. A settings change or another creation between preview and commit
+can change a new anime's allocation, so use the returned subscription's
 directory after commit.
+
+New tasks use a readable fansub directory below the anime directory and carry
+`DownloadTask.SharedDirectory`. `AnimeRecord.GroupDirectories` saves the first
+destination per group ID in the same transaction as the outbox insertion.
+Sanitization and case-insensitive collisions get readable numeric suffixes;
+saved task directories are reserved too, including legacy hash directories.
+Hash identity still deduplicates the outbox across subscriptions. Replay,
+retry and independent reset retain a task's saved folder and shared flag;
+existing records are not migrated or moved.
 
 ## Tests
 
@@ -298,6 +306,11 @@ Points a change is expected to prove:
   same hash was excluded.
 - A subscription's directory is fixed when the subscription is created and does
   not move when the global root changes.
+- Episodes in one group share a readable directory, distinct groups and anime
+  stay separate, and renaming a group or recreating its subscription does not
+  reallocate the saved path.
+- Legacy task destinations survive replay and independent reset while new
+  tasks use the group layout without colliding with saved legacy directories.
 
 ## Invariants a change must preserve
 

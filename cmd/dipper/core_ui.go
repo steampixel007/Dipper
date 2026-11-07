@@ -22,7 +22,7 @@ import (
 type engineAdapter struct{ engine *downloader.Engine }
 
 func (a engineAdapter) Ensure(t core.DownloadTask) error {
-	return a.engine.Ensure(downloader.Task{ID: t.Hash, Magnet: t.Resource.Magnet, TorrentURL: t.Resource.TorrentURL, Folder: t.Directory, Context: t.Context})
+	return a.engine.Ensure(downloader.Task{ID: t.Hash, Magnet: t.Resource.Magnet, TorrentURL: t.Resource.TorrentURL, Folder: t.Directory, Shared: t.SharedDirectory, Context: t.Context})
 }
 
 // Remove reports a task the engine no longer holds as removed, so recovery of
