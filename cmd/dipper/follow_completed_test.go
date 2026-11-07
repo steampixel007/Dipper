@@ -27,5 +27,5 @@ func TestUIFollowingCardShowsCompletedCount(t *testing.T) {
 		t.Fatalf("only the finished download counts as completed, got %d", s.Subscriptions[0].Completed)
 	}
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "已下载 1 个资源")
+	uiRequireText(t, tt, "已完成 1 个下载")
 }

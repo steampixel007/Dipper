@@ -39,13 +39,13 @@ func uiRenderFixture() *State {
 	s.initSelection()
 	folder := filepath.Join(s.Root, s.Catalog[0].Title)
 	s.Subscriptions = []Subscription{
-		{ID: "render-sub-1", AnimeID: s.AnimeID, GroupID: s.GroupIDs[0], GroupName: s.Groups[0], Folder: folder, Rule: Rule{All: []string{"1080p"}}, LastCheck: "2025-04-14 22:01 · 新增 1 条"},
+		{ID: "render-sub-1", AnimeID: s.AnimeID, GroupID: s.GroupIDs[0], GroupName: s.Groups[0], Folder: folder, Rule: Rule{All: []string{"1080p"}}, LastCheck: "2025-04-14 22:01，新增 1 条"},
 		{ID: "render-sub-2", AnimeID: s.AnimeID, GroupID: s.GroupIDs[1], GroupName: s.Groups[1], Folder: folder, LastCheck: "2025-04-14 22:02", LastError: "RSS 请求超时", CheckFailed: true},
 	}
 	s.Downloads = []Download{
-		{ID: "render-download-1", AnimeID: s.AnimeID, ResourceID: s.ResourceList[0].ID, Title: s.ResourceList[0].Title, Folder: folder, MB: 486, Progress: .43, DownSpeed: 2.7, UpSpeed: .08},
-		{ID: "render-download-2", AnimeID: s.AnimeID, ResourceID: s.ResourceList[1].ID, Title: s.ResourceList[1].Title, Folder: folder, Progress: .12, Failed: true, Error: "连接超时，请重试"},
-		{ID: "render-download-3", AnimeID: s.AnimeID, ResourceID: s.ResourceList[2].ID, Title: s.ResourceList[2].Title, Folder: folder, MB: 236, Progress: 1, UploadedMB: 84, UpSpeed: .12, SeedSeconds: 720},
+		{ID: "render-download-1", AnimeID: s.AnimeID, ResourceID: s.ResourceList[0].ID, Title: s.ResourceList[0].Title, Episode: s.ResourceList[0].Episode, Folder: folder, MB: 486, Progress: .43, DownSpeed: 2.7, UpSpeed: .08},
+		{ID: "render-download-2", AnimeID: s.AnimeID, ResourceID: s.ResourceList[1].ID, Title: s.ResourceList[1].Title, Episode: s.ResourceList[1].Episode, Folder: folder, Progress: .12, Failed: true, Error: "连接超时，请重试"},
+		{ID: "render-download-3", AnimeID: s.AnimeID, ResourceID: s.ResourceList[2].ID, Title: s.ResourceList[2].Title, Episode: s.ResourceList[2].Episode, Folder: folder, MB: 236, Progress: 1, UploadedMB: 84, UpSpeed: .12, SeedSeconds: 720},
 	}
 	s.OpenFolder = func(string) {}
 	s.PlayFile = func(string) error { return nil }
@@ -84,8 +84,10 @@ func renderScreens(dir string) error {
 		}},
 		{name: "13-episode-library", page: "episodes", configure: func(s *State) {
 			s.LibraryID = s.Subscriptions[0].ID
-			s.Downloads[0].Episode = "02"
-			s.Downloads[2].Episode = "05"
+			s.Downloads = append(s.Downloads, Download{
+				ID: "render-download-4", AnimeID: s.AnimeID, Title: "[回归测试组甲] 星海旅记 [1080p][特典].mkv",
+				Folder: s.Downloads[0].Folder, MB: 120, Progress: 1,
+			})
 		}},
 		{name: "08-close-window", page: "browse", configure: func(s *State) {
 			s.Platform = "windows"

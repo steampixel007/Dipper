@@ -20,17 +20,17 @@ func TestUIEpisodeLibraryListsAndPlaysEpisodes(t *testing.T) {
 	updates := make(chan func(), 4)
 	s.Update = func(fn func()) { updates <- fn }
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "第 02 集", "第 05 集", "可播放", "下载失败")
+	uiRequireText(t, tt, "第 2 集", "第 5 集", "已完成", "失败")
 	if tt.HasText("播放 " + s.Downloads[1].ID) {
 		t.Fatal("a failed download offers play")
 	}
-	episode02, ok := tt.Find("第 02 集")
+	episode02, ok := tt.Find("第 2 集")
 	if !ok {
-		t.Fatal("missing the 第 02 集 row")
+		t.Fatal("missing the 第 2 集 row")
 	}
-	episode05, ok := tt.Find("第 05 集")
+	episode05, ok := tt.Find("第 5 集")
 	if !ok {
-		t.Fatal("missing the 第 05 集 row")
+		t.Fatal("missing the 第 5 集 row")
 	}
 	if episode05.Y < episode02.Y {
 		t.Fatalf("episodes are not ordered by number: 02 at %.0f, 05 at %.0f", episode02.Y, episode05.Y)
@@ -61,7 +61,7 @@ func TestUIEpisodeLibraryEmptyOffersTheResourceView(t *testing.T) {
 	s.LibraryID = s.Subscriptions[0].ID
 	s.Downloads = nil
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "还没有已下载的剧集")
+	uiRequireText(t, tt, "还没有下载完成的剧集")
 	uiClick(t, tt, "查看资源")
 	if s.Page != "detail" || !s.ViewResources || !s.Backfill {
 		t.Fatalf("empty library state: page=%q view=%v backfill=%v", s.Page, s.ViewResources, s.Backfill)

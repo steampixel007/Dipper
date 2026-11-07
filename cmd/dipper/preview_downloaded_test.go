@@ -16,12 +16,12 @@ func TestUIPreviewFiltersToDownloaded(t *testing.T) {
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, "星海旅记 - 03")
 
-	uiClick(t, tt, "只看已在下载库")
+	uiClick(t, tt, "只看已有任务")
 	if tt.HasText("星海旅记 - 03") {
 		t.Fatal("the download filter left an undownloaded row visible")
 	}
 	uiRequireText(t, tt, "星海旅记 - 01", "星海旅记 - 02")
 
-	uiClick(t, tt, "只看已在下载库")
+	uiClick(t, tt, "只看已有任务")
 	uiRequireText(t, tt, "星海旅记 - 03")
 }

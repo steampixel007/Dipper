@@ -7,6 +7,7 @@ import (
 	"dipper.local/dipper/internal/source"
 	"encoding/json"
 	"fmt"
+	"math"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -35,6 +36,7 @@ type FilterEdit struct {
 }
 type Resource struct {
 	ID, Title, Episode, Published string
+	Bytes                         int64
 	MB                            int
 	Tokens                        []string
 }
@@ -64,12 +66,13 @@ type Download struct {
 	ID, AnimeID, Title, Episode, Folder string
 	// ResourceID is the source resource the task was created from; titles
 	// are not unique across releases.
-	ResourceID              string
-	MB                      int
-	Progress                float64
-	Paused, Failed, Stopped bool
-	SeedSeconds             int
-	UploadedMB              float64
+	ResourceID                                            string
+	Bytes, CompletedBytes, DownloadedBytes, UploadedBytes int64
+	MB                                                    int
+	Progress                                              float64
+	Paused, Failed, Stopped                               bool
+	SeedSeconds                                           int
+	UploadedMB                                            float64
 }
 
 // DownloadFilter narrows the downloads page to one transfer state; the value
@@ -82,6 +85,7 @@ const (
 	downloadsCompleted
 	downloadsPaused
 	downloadsFailed
+	downloadsStopped
 )
 
 type Saved struct {
@@ -147,50 +151,50 @@ type State struct {
 	catalogCancel, detailCancel, historyCancel         context.CancelFunc
 
 	Saved
-	Catalog                    []Anime
-	Page                       string
-	Year                       string
-	Season                     string
-	Day                        int
-	Search                     string
-	FollowSearch               string
-	AnimeID                    string
-	Group                      int
-	ChoosingGroup              bool
-	GroupSearch                string
-	SummaryOpen                bool
-	Rule                       Rule
-	Checked                    map[string]bool
-	Editing                    bool
-	Keyword, AnyDraft          string
-	WordOpen, ShowAliases      bool
-	WordAnchor                 string
-	UndoFilters, RedoFilters   []FilterEdit
-	UndoSaved                  *Subscription
-	FilterFeedback             string
-	Confirm, Help, Suggestions bool
-	CancelPrompt               bool
-	CancelID                   string
-	RemovePrompt               bool
-	RemoveID                   string
-	DownloadFilter             DownloadFilter
-	SuggestedResource          Resource
-	OnlyMatches                bool
-	OnlyDownloaded             bool
-	OnlyNew                    bool
-	EpisodeFilter              string
-	EpisodeFilterScroll        float32
-	Notice, SaveError          string
-	SourceTesting              bool
-	SourceRouteError           string
-	SourceRoutes               []sourceRoute
-	SourceFailed               bool
-	CatalogScroll              ui.ScrollState
-	ResourceScroll             ui.ScrollState
-	FollowScroll               ui.ScrollState
-	DownloadScroll             ui.ScrollState
-	DownloadFilterLast         DownloadFilter
-	DownloadSearch             string
+	Catalog                  []Anime
+	Page                     string
+	Year                     string
+	Season                   string
+	Day                      int
+	Search                   string
+	FollowSearch             string
+	AnimeID                  string
+	Group                    int
+	ChoosingGroup            bool
+	GroupSearch              string
+	SummaryOpen              bool
+	Rule                     Rule
+	Checked                  map[string]bool
+	Editing                  bool
+	Keyword, AnyDraft        string
+	WordOpen, ShowAliases    bool
+	WordAnchor               string
+	UndoFilters, RedoFilters []FilterEdit
+	UndoSaved                *Subscription
+	FilterFeedback           string
+	Help, Suggestions        bool
+	CancelPrompt             bool
+	CancelID                 string
+	RemovePrompt             bool
+	RemoveID                 string
+	DownloadFilter           DownloadFilter
+	SuggestedResource        Resource
+	OnlyMatches              bool
+	OnlyDownloaded           bool
+	OnlyNew                  bool
+	EpisodeFilter            string
+	EpisodeFilterScroll      float32
+	Notice, SaveError        string
+	SourceTesting            bool
+	SourceRouteError         string
+	SourceRoutes             []sourceRoute
+	SourceFailed             bool
+	CatalogScroll            ui.ScrollState
+	ResourceScroll           ui.ScrollState
+	FollowScroll             ui.ScrollState
+	DownloadScroll           ui.ScrollState
+	DownloadFilterLast       DownloadFilter
+	DownloadSearch           string
 	// CollapsedDownloads hides one anime's download rows on the downloads
 	// page; the choice is per-session.
 	CollapsedDownloads         map[string]bool
@@ -351,7 +355,7 @@ func (s *State) undoFilter() {
 		s.RedoFilters = append(s.RedoFilters, FilterEdit{Rule: cloneRule(s.Rule), Action: edit.Action})
 		s.Rule = cloneRule(edit.Rule)
 		s.initSelection()
-		s.FilterFeedback = fmt.Sprintf("已撤销%s · 匹配 %d 条", edit.Action, s.countRuleMatches(s.Rule))
+		s.FilterFeedback = fmt.Sprintf("已撤销%s，匹配 %d 条", edit.Action, s.countRuleMatches(s.Rule))
 		s.WordOpen = false
 	}
 }
@@ -365,7 +369,7 @@ func (s *State) redoFilter() {
 	s.UndoFilters = append(s.UndoFilters, FilterEdit{Rule: cloneRule(s.Rule), Action: edit.Action})
 	s.Rule = cloneRule(edit.Rule)
 	s.initSelection()
-	s.FilterFeedback = fmt.Sprintf("已重做%s · 匹配 %d 条", edit.Action, s.countRuleMatches(s.Rule))
+	s.FilterFeedback = fmt.Sprintf("已重做%s，匹配 %d 条", edit.Action, s.countRuleMatches(s.Rule))
 	s.WordOpen = false
 }
 
@@ -406,16 +410,12 @@ func (s *State) quickWords() []string {
 	return words
 }
 func (s *State) selected() ([]Resource, int) {
-	var out []Resource
+	plan := s.planSubmission()
 	total := 0
-	for _, r := range s.resources() {
-		ok, _ := decide(r.Title, s.Rule)
-		if ok && s.Checked[r.ID] {
-			out = append(out, r)
-			total += r.MB
-		}
+	for _, resource := range plan.Selected {
+		total += resource.MB
 	}
-	return out, total
+	return plan.Selected, total
 }
 func (s *State) matchSummary() (int, int, int) {
 	n, total := 0, 0
@@ -490,20 +490,25 @@ func (s *State) duplicates(ep string) int {
 	return n
 }
 
-// speedText formats a transfer speed measured in MB/s: speeds below 1 MB/s
-// show as KB/s and a stopped transfer shows a dash instead of "0.0 MB/s".
+// speedText formats a transfer speed measured in decimal MB/s with binary
+// byte units, matching the value the engine actually applies. A stopped or
+// invalid transfer shows a dash instead of "0 KiB/s".
 // downloadETA estimates the remaining download time from the current speed.
 // An empty string means no meaningful estimate: the transfer is not actively
 // downloading, or its size or speed is unknown.
 func downloadETA(d Download) string {
-	if d.MB <= 0 || d.Progress >= 1 || d.DownSpeed <= 0 || d.Paused || d.Stopped || d.Failed {
+	bytes := sizeBytes(d.Bytes, d.MB)
+	if bytes <= 0 || math.IsNaN(d.Progress) || d.Progress >= 1 || d.DownSpeed <= 0 || d.Paused || d.Stopped || d.Failed {
 		return ""
 	}
-	return etaText((1 - d.Progress) * float64(d.MB) / d.DownSpeed)
+	return etaText(float64(bytes-downloadDoneBytes(d)) / 1e6 / d.DownSpeed)
 }
 
 // etaText renders a remaining duration in seconds as a coarse human estimate.
 func etaText(seconds float64) string {
+	if seconds <= 0 || math.IsNaN(seconds) || math.IsInf(seconds, 0) {
+		return ""
+	}
 	minutes := int(seconds / 60)
 	switch {
 	case minutes < 1:
@@ -524,19 +529,114 @@ func (s *State) downloadGroupETA(indices []int) string {
 	remaining, speed := 0.0, 0.0
 	for _, i := range indices {
 		d := s.Downloads[i]
+		if math.IsNaN(d.Progress) {
+			return ""
+		}
 		if d.Paused || d.Stopped || d.Failed || d.Progress >= 1 {
 			continue
 		}
-		if d.MB <= 0 {
+		bytes := sizeBytes(d.Bytes, d.MB)
+		if bytes <= 0 {
 			return ""
 		}
-		remaining += (1 - d.Progress) * float64(d.MB)
+		remaining += float64(bytes - downloadDoneBytes(d))
 		speed += d.DownSpeed
 	}
 	if remaining <= 0 || speed <= 0 {
 		return ""
 	}
-	return etaText(remaining / speed)
+	return etaText(remaining / 1e6 / speed)
+}
+
+func sizeBytes(bytes int64, mb int) int64 {
+	if bytes < 0 {
+		return 0
+	}
+	if bytes > 0 {
+		return bytes
+	}
+	if mb <= 0 || uint64(mb) > uint64(math.MaxInt64/1_000_000) {
+		return 0
+	}
+	return int64(mb) * 1e6
+}
+
+func legacySizeMB(bytes int64) int {
+	if bytes <= 0 {
+		return 0
+	}
+	mb := bytes / 1e6
+	if bytes%1e6 != 0 {
+		mb++
+	}
+	if uint64(mb) > uint64(^uint(0)>>1) {
+		return 0
+	}
+	return int(mb)
+}
+
+func byteSizeText(bytes int64) string {
+	if bytes <= 0 {
+		return "大小未知"
+	}
+	return exactByteText(bytes)
+}
+
+// exactByteText formats a known byte count. Zero is a real file size here, not
+// an unknown value, so empty files must not be labelled "大小未知".
+func exactByteText(bytes int64) string {
+	if bytes < 0 {
+		return "大小未知"
+	}
+	if bytes == 0 {
+		return "0 B"
+	}
+	units := []string{"B", "KB", "MB", "GB", "TB", "PB", "EB"}
+	value, unit := float64(bytes), 0
+	for value >= 1000 && unit < len(units)-1 {
+		value /= 1000
+		unit++
+	}
+	for unit < len(units)-1 && math.Round(value*100) >= 100_000 {
+		value /= 1000
+		unit++
+	}
+	text := strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", value), "0"), ".")
+	return text + " " + units[unit]
+}
+
+func downloadDoneBytes(d Download) int64 {
+	bytes := sizeBytes(d.Bytes, d.MB)
+	if bytes <= 0 {
+		return 0
+	}
+	if d.CompletedBytes > 0 {
+		return min(bytes, d.CompletedBytes)
+	}
+	if math.IsNaN(d.Progress) || d.Progress <= 0 {
+		return 0
+	}
+	if d.Progress >= 1 || float64(bytes)*d.Progress >= float64(bytes) {
+		return bytes
+	}
+	return int64(float64(bytes) * d.Progress)
+}
+
+func (s *State) downloadGroupSizes(indices []int) (total, done int64, unknown int, overflow bool) {
+	for _, index := range indices {
+		d := s.Downloads[index]
+		bytes := sizeBytes(d.Bytes, d.MB)
+		if bytes == 0 {
+			unknown++
+			continue
+		}
+		if total > math.MaxInt64-bytes {
+			return 0, 0, unknown, true
+		}
+		total += bytes
+		done += downloadDoneBytes(d)
+	}
+	return
 }
 
 func speedText(mbPerSecond float64, upload bool) string {
@@ -544,22 +644,30 @@ func speedText(mbPerSecond float64, upload bool) string {
 	if upload {
 		arrow = "↑"
 	}
+	bytesPerSecond := mbPerSecond * 1e6
 	switch {
-	case mbPerSecond <= 0:
+	case bytesPerSecond <= 0 || math.IsNaN(bytesPerSecond) || math.IsInf(bytesPerSecond, 0):
 		return arrow + " —"
-	case mbPerSecond < 1:
-		return fmt.Sprintf("%s %.0f KB/s", arrow, mbPerSecond*1000)
-	default:
-		return fmt.Sprintf("%s %.1f MB/s", arrow, mbPerSecond)
+	case bytesPerSecond < 1024:
+		return arrow + " 不到 1 KiB/s"
+	case bytesPerSecond < 1024*1024:
+		return fmt.Sprintf("%s %.0f KiB/s", arrow, bytesPerSecond/1024)
+	case bytesPerSecond < 1024*1024*1024:
+		return fmt.Sprintf("%s %.1f MiB/s", arrow, bytesPerSecond/(1024*1024))
 	}
+	return fmt.Sprintf("%s %.1f GiB/s", arrow, bytesPerSecond/(1024*1024*1024))
 }
 
-func sizeText(mb int) string {
-	if mb >= 1000 {
-		return fmt.Sprintf("%.2f GB", float64(mb)/1000)
+func seedTimeText(seconds int) string {
+	if seconds <= 0 {
+		return "分享时间 0 分钟"
 	}
-	return fmt.Sprintf("%d MB", mb)
+	if seconds < 60 {
+		return "分享时间不足 1 分钟"
+	}
+	return fmt.Sprintf("分享时间 %d 分钟", seconds/60)
 }
+
 func isPlayableMedia(path string) bool {
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".mkv", ".mp4", ".avi", ".ts", ".webm", ".mov":

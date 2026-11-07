@@ -181,8 +181,10 @@ the current value, which is what the torrent library does after a restart.
 ## The shared upload limit
 
 All tasks share one upload limit, set from `Settings.UploadLimitBytes` and
-defaulted to 1 MiB/s. The UI labels it MB/s. The limit is shared rather than
-per-task, so starting a second task does not double the total upload.
+defaulted to 1 MiB/s. The UI labels it `MiB/s`; transfer speeds use binary
+units, while file and resource sizes use decimal units. The limit is shared
+rather than per-task, so starting a second task does not double the total
+upload.
 
 HTTP trackers, webseeds and torrent metadata fetches go through the proxy
 chosen in settings (`internal/proxy`); peer connections stay direct.

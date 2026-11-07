@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"dipper.local/dipper/internal/core"
@@ -67,25 +69,67 @@ func proxyModeIndex(mode string) int {
 
 func uploadLimit(label string) int64 {
 	switch label {
-	case "256 KB/s":
+	case "256 KiB/s", "256 KB/s":
 		return 256 * 1024
-	case "512 KB/s":
+	case "512 KiB/s", "512 KB/s":
 		return 512 * 1024
-	case "2 MB/s":
+	case "1 MiB/s", "1 MB/s":
+		return 1024 * 1024
+	case "2 MiB/s", "2 MB/s":
 		return 2 * 1024 * 1024
+	}
+	if rate, ok := parseByteRate(label); ok {
+		return rate
 	}
 	return 1024 * 1024
 }
-func uploadLabel(limit int64) string {
-	switch limit {
-	case 256 * 1024:
-		return "256 KB/s"
-	case 512 * 1024:
-		return "512 KB/s"
-	case 2 * 1024 * 1024:
-		return "2 MB/s"
+
+func parseByteRate(label string) (int64, bool) {
+	var value float64
+	var unit string
+	if _, err := fmt.Sscanf(strings.TrimSpace(label), "%f %s", &value, &unit); err != nil || value <= 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+		return 0, false
 	}
-	return "1 MB/s"
+	multiplier := int64(0)
+	switch unit {
+	case "B/s":
+		multiplier = 1
+	case "KiB/s", "KB/s":
+		multiplier = 1024
+	case "MiB/s", "MB/s":
+		multiplier = 1024 * 1024
+	case "GiB/s", "GB/s":
+		multiplier = 1024 * 1024 * 1024
+	}
+	if multiplier == 0 || value > float64(math.MaxInt64)/float64(multiplier) {
+		return 0, false
+	}
+	rate := math.Round(value * float64(multiplier))
+	if rate <= 0 || rate > float64(math.MaxInt64) {
+		return 0, false
+	}
+	return int64(rate), true
+}
+
+func uploadLabel(limit int64) string {
+	if limit <= 0 {
+		return ""
+	}
+	if limit%(1024*1024) == 0 {
+		return fmt.Sprintf("%d MiB/s", limit/(1024*1024))
+	}
+	if limit%1024 == 0 {
+		return fmt.Sprintf("%d KiB/s", limit/1024)
+	}
+	return fmt.Sprintf("%d B/s", limit)
+}
+
+func uploadChoices(current string) []string {
+	choices := []string{"256 KiB/s", "512 KiB/s", "1 MiB/s", "2 MiB/s"}
+	if current == "" || slices.Contains(choices, current) {
+		return choices
+	}
+	return append(choices, current)
 }
 
 var seedOptions = []string{"30 分钟", "1 小时", "2 小时", "不限时长"}
@@ -330,17 +374,23 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 	for _, record := range state.Tasks {
 		task := record.Task
 		r := task.Resource
-		d := Download{ID: task.Hash, AnimeID: task.AnimeID, ResourceID: r.ID, Title: r.Title, Episode: core.ParseEpisode(r.Title), Folder: task.Directory, MB: int((r.Size + 999999) / 1000000), Error: record.LastError, Failed: record.LastError != ""}
+		d := Download{ID: task.Hash, AnimeID: task.AnimeID, ResourceID: r.ID, Title: r.Title, Episode: core.ParseEpisode(r.Title), Folder: task.Directory, Bytes: r.Size, MB: legacySizeMB(r.Size), Error: record.LastError, Failed: record.LastError != ""}
 		if snap, ok := byID[task.Hash]; ok {
 			d.Progress = snap.Progress
 			d.Paused = snap.Paused
 			d.Stopped = snap.ManuallyStopped || snap.AutoStopped
 			d.SeedSeconds = int(snap.SeedingSeconds)
+			d.UploadedBytes = snap.UploadedBytes
+			d.DownloadedBytes = snap.DownloadedBytes
 			d.UploadedMB = float64(snap.UploadedBytes) / 1e6
 			d.DownSpeed = float64(snap.DownloadSpeed) / 1e6
 			d.UpSpeed = float64(snap.UploadSpeed) / 1e6
 			if snap.TotalBytes > 0 {
-				d.MB = int((snap.TotalBytes + 999999) / 1000000)
+				d.Bytes = snap.TotalBytes
+				d.MB = legacySizeMB(snap.TotalBytes)
+				d.CompletedBytes = snap.CompletedBytes
+			} else if snap.TotalBytes < 0 {
+				d.Bytes, d.MB = -1, 0
 			}
 			if snap.Error != "" {
 				d.Error = snap.Error
@@ -357,9 +407,9 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 			w = &followProgress{}
 			weights[d.AnimeID] = w
 		}
-		if d.MB > 0 {
-			w.known += float64(d.MB)
-			w.done += float64(d.MB) * d.Progress
+		if bytes := sizeBytes(d.Bytes, d.MB); bytes > 0 {
+			w.known += float64(bytes)
+			w.done += float64(downloadDoneBytes(d))
 		}
 	}
 	completed := map[string]int{}
@@ -418,10 +468,17 @@ func (s *State) targetFolder() string {
 }
 
 func (s *State) commit() {
-	if s.Core == nil || s.Busy || s.Group < 0 || s.Group >= len(s.GroupIDs) || s.DetailLoading || s.DetailError != "" || s.HistoryLoading || s.HistoryError != "" {
+	if s.Core == nil || s.Busy || !s.detailReady() {
+		return
+	}
+	plan := s.planSubmission()
+	if s.Backfill && len(plan.IDs) == 0 {
 		return
 	}
 	s.Busy = true
+	s.WordOpen, s.Suggestions = false, false
+	s.SaveError = ""
+	s.Notice = "正在提交，请稍候。"
 	s.UndoSaved = nil
 	editID := s.EditID
 	backfill := s.Backfill
@@ -430,25 +487,24 @@ func (s *State) commit() {
 	anime := core.Anime{ID: a.ID, Title: a.Title, Cover: a.Cover, Day: strconv.Itoa(a.Day)}
 	group := core.Group{ID: s.GroupIDs[s.Group], Name: s.Groups[s.Group]}
 	history := coreResources(s.History)
-	selected, _ := s.selected()
-	var ids []string
-	for _, r := range selected {
-		ids = append(ids, r.ID)
-	}
+	ids := plan.IDs
 	var previous *Subscription
+	backfillPaused := false
 	for _, sub := range s.Subscriptions {
 		if sub.ID == editID {
 			v := sub
 			v.Rule = cloneRule(sub.Rule)
 			previous = &v
+			backfillPaused = sub.Paused
 		}
 	}
 	go func() {
 		var err error
+		var deliveryErr error
 		saved := false
 		if backfill {
-			err = s.Core.DownloadExisting(s.Ctx, editID, history, ids)
-			saved = err == nil
+			saved, err = s.Core.DownloadExisting(s.Ctx, editID, history, ids)
+			deliveryErr = err
 		} else if editID != "" {
 			err = s.Core.UpdateRule(s.Ctx, editID, rule)
 			saved = err == nil
@@ -462,24 +518,40 @@ func (s *State) commit() {
 			s.Busy = false
 			if err != nil && !saved {
 				s.SaveError = "追番保存失败：" + err.Error()
+				if backfill {
+					s.SaveError = "下载提交失败：" + err.Error()
+				}
+				s.Notice = ""
 				return
 			}
-			s.Confirm = false
 			s.enterPage("following")
 			if !backfill {
 				s.UndoSaved = previous
 			}
-			s.Notice = "已保存追番，后续每 15 分钟自动检查更新。"
+			s.Notice = "已保存追番，之后会自动检查更新。"
 			if editID != "" {
-				s.Notice = "已保存条件，仅对未来未读资源生效。"
+				s.Notice = "已保存，只自动下载以后发布的资源。"
 			}
 			if backfill {
-				s.Notice = "已提交选中的历史资源，追番条件保持原样。"
+				if backfillPaused {
+					s.Notice = fmt.Sprintf("已排队 %d 个下载任务，恢复追番后自动开始。", len(ids))
+				} else {
+					s.Notice = fmt.Sprintf("已开始下载 %d 个资源，追番条件没有改变。", len(ids))
+					if deliveryErr != nil {
+						s.Notice = fmt.Sprintf("已记录 %d 个下载任务，追番条件没有改变。", len(ids))
+					}
+				}
 				s.enterPage("downloads")
 				s.Backfill = false
 			}
-			if err != nil {
-				s.SaveError = "追番已保存，部分下载提交失败，将自动重试：" + err.Error()
+			if backfill && deliveryErr != nil {
+				if backfillPaused {
+					s.SaveError = fmt.Sprintf("下载已排队，恢复追番后开始：%v", deliveryErr)
+				} else {
+					s.SaveError = fmt.Sprintf("已记录 %d 个下载任务，部分还没开始，将自动重试：%v", len(ids), deliveryErr)
+				}
+			} else if err != nil {
+				s.SaveError = "追番已保存，部分下载没有开始，将自动重试：" + err.Error()
 			} else {
 				s.SaveError = ""
 			}
@@ -497,7 +569,6 @@ func (s *State) beginBackfill() {
 	for _, r := range s.resources() {
 		s.Checked[r.ID] = false
 	}
-	s.Notice = "勾选需要补下的已有资源。本次勾选不修改保存的追番条件。"
 }
 
 func (s *State) undoSave() {
@@ -547,25 +618,68 @@ func (s *State) check(id string) {
 	if sub, ok := s.subscription(id); !ok || sub.Paused {
 		return
 	}
-	s.Notice = "正在检查 RSS…"
-	s.runAction(func() error { return s.Core.Check(s.Ctx, id) }, "RSS 检查完成")
+	s.Notice = "正在检查更新…"
+	s.runAction(func() error { return s.Core.Check(s.Ctx, id) }, "检查更新完成")
 }
 
-// retryFailedChecks re-checks every follow whose last RSS check failed; the
-// per-subscription guard skips paused follows.
 func (s *State) retryFailedChecks() {
+	if s.Core == nil || s.Busy {
+		return
+	}
+	type pendingCheck struct {
+		id    string
+		title string
+	}
+	var pending []pendingCheck
 	for _, sub := range s.Subscriptions {
-		if sub.CheckFailed {
-			s.check(sub.ID)
+		if sub.CheckFailed && !sub.Paused {
+			pending = append(pending, pendingCheck{id: sub.ID, title: s.anime(sub.AnimeID).Title})
 		}
 	}
+	if len(pending) == 0 {
+		return
+	}
+	s.Busy = true
+	s.SaveError = ""
+	s.Notice = fmt.Sprintf("正在检查 %d 个追番的更新…", len(pending))
+	go func() {
+		var failures []string
+		succeeded := 0
+		for _, item := range pending {
+			if err := s.Core.Check(s.Ctx, item.id); err != nil {
+				failures = append(failures, "《"+item.title+"》"+err.Error())
+			} else {
+				succeeded++
+			}
+		}
+		s.refreshState()
+		s.Update(func() {
+			s.Busy = false
+			switch {
+			case len(failures) == 0:
+				s.SaveError = ""
+				s.Notice = fmt.Sprintf("已检查 %d 个追番的更新。", len(pending))
+			case succeeded == 0:
+				s.Notice = ""
+				s.SaveError = fmt.Sprintf("%d 个追番检查失败：%s", len(failures), strings.Join(failures, "；"))
+			default:
+				s.Notice = fmt.Sprintf("已检查 %d 个追番，%d 个仍需重试。", len(pending), len(failures))
+				s.SaveError = strings.Join(failures, "；")
+			}
+		})
+	}()
 }
 
 func (s *State) runAction(action func() error, message string) {
+	if s.Busy {
+		return
+	}
+	s.Busy = true
 	go func() {
 		err := action()
 		s.refreshState()
 		s.Update(func() {
+			s.Busy = false
 			if err != nil {
 				s.SaveError = err.Error()
 			} else {
@@ -647,7 +761,7 @@ func (s *State) stopDownload(index int) {
 		return
 	}
 	id := s.Downloads[index].ID
-	s.runAction(func() error { return s.Engine.Stop(id) }, "已停止该资源的下载和做种")
+	s.runAction(func() error { return s.Engine.Stop(id) }, "已停止分享")
 }
 
 // removeDownload drops a task for good: the engine deletes the transfer and
@@ -662,7 +776,7 @@ func (s *State) removeDownload(id string, redownload bool) {
 	if index < 0 {
 		return
 	}
-	message := "已删除该下载任务"
+	message := "已删除任务"
 	if redownload {
 		message = "已删除任务，将重新下载"
 	}

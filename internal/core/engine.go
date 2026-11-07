@@ -177,26 +177,28 @@ func (c *Core) UpdateRule(ctx context.Context, id string, rule Rule) error {
 	return err
 }
 
-func (c *Core) DownloadExisting(ctx context.Context, id string, history []Resource, selectedIDs []string) error {
+// DownloadExisting records explicit download intents and returns whether they
+// were saved, even when a later delivery attempt fails.
+func (c *Core) DownloadExisting(ctx context.Context, id string, history []Resource, selectedIDs []string) (bool, error) {
 	ctx, done, err := c.operation(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer done()
 	resources := map[string]Resource{}
 	for _, r := range history {
 		key := resourceKey(r)
 		if key == "" {
-			return errors.New("history resource has no identity")
+			return false, errors.New("history resource has no identity")
 		}
 		if _, exists := resources[key]; exists {
-			return fmt.Errorf("duplicate history resource: %s", key)
+			return false, fmt.Errorf("duplicate history resource: %s", key)
 		}
 		resources[key] = r
 	}
 	for _, key := range selectedIDs {
 		if _, ok := resources[key]; !ok {
-			return fmt.Errorf("selected resource missing from history: %s", key)
+			return false, fmt.Errorf("selected resource missing from history: %s", key)
 		}
 	}
 	err = c.transaction(ctx, func(tx *sql.Tx, s *diskState) error {
@@ -226,11 +228,11 @@ func (c *Core) DownloadExisting(ctx context.Context, id string, history []Resour
 		return nil
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
 	err = c.flush(ctx, id, false, true)
 	c.signal()
-	return err
+	return true, err
 }
 
 func (c *Core) SetPaused(ctx context.Context, id string, paused bool) error {

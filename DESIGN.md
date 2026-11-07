@@ -374,8 +374,8 @@ remain unknown; the original title still works for textual filtering.
 
 Title rules decide which *future* releases match. Checkboxes decide which
 *existing* matching releases to submit now. Existing matches start checked;
-unchecking one changes no rule. Choosing 照这条选版本 (Choose version from this
-release) switches the left column to candidate words from that title while the
+unchecking one changes no rule. Choosing 按此资源筛选 (Use this release as a
+filter) switches the left column to candidate words from that title while the
 right-hand preview stays usable. Editing saved rules affects future unread
 items; existing releases require an explicit backfill selection.
 
