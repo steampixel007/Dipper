@@ -47,7 +47,9 @@ try {
     switch ($goos) {
         windows {
             Compress-Archive -LiteralPath "$package/Dipper.exe" -DestinationPath "$dist/$stem.zip" -Force
-            Copy-Item -LiteralPath "$package/Dipper Setup $Version $goarch.exe" -Destination "$dist/${stem}_setup.exe"
+            $installer = @(Get-ChildItem -LiteralPath $package -Filter '*.exe' | Where-Object Name -ne 'Dipper.exe')
+            if ($installer.Count -ne 1) { throw 'Expected exactly one Windows installer' }
+            Copy-Item -LiteralPath $installer[0].FullName -Destination "$dist/${stem}_setup.exe"
         }
         linux {
             tar -czf "$dist/$stem.tar.gz" -C $package dipper
@@ -59,7 +61,9 @@ try {
         darwin {
             tar -czf "$dist/$stem.tar.gz" -C $package Dipper.app
             if ($LASTEXITCODE) { throw 'macOS archive failed' }
-            Copy-Item -LiteralPath "$package/Dipper $Version $goarch.dmg" -Destination "$dist/$stem.dmg"
+            $dmg = @(Get-ChildItem -LiteralPath $package -Filter '*.dmg')
+            if ($dmg.Count -ne 1) { throw 'Expected exactly one macOS disk image' }
+            Copy-Item -LiteralPath $dmg[0].FullName -Destination "$dist/$stem.dmg"
         }
     }
     Get-ChildItem -LiteralPath $dist | Where-Object Name -Like "$stem*" | Select-Object Name, Length
