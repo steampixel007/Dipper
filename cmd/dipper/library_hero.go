@@ -13,7 +13,7 @@ func (s *State) libraryHero(c *ui.Context, sub Subscription) {
 		cover(c, anime, 120, 168)
 		ui.Scroll(c.Key("library-hero")).Grow(1).MinWidth(0).MaxHeight(height * .4).Children(func() {
 			ui.Column(c).Gap(8).Children(func() {
-				ui.Text(c, anime.Title).FontSize(textSize(c, textTitle)).FontWeight(700)
+				ui.Text(c, anime.Title).FontSize(textSize(c, textTitle)).FontWeight(600)
 				if sub.GroupName != "" {
 					caption(c, sub.GroupName)
 				}

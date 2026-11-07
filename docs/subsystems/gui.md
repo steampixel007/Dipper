@@ -29,6 +29,29 @@ components, and interaction conventions are specified in
 | `ui_render.go` | Deterministic sample state for layout rendering |
 | `startup_error_windows.go`, `startup_error_other.go` | Reporting a failure before the window exists |
 
+## Visual system
+
+`appearance.go` owns both palettes and motion; `typography.go` owns type sizes
+and control geometry. `view.go` composes them without introducing another color
+system. Opaque neutral canvas, sidebar and paper surfaces surround the artwork.
+Blue marks actions and focus; semantic colors mark actual status. There are no
+ambient gradients or translucent materials.
+
+The top bar occupies a fixed 64 DIP slot with an opaque canvas background and
+no divider. Page content is clipped below it; `uiScrollTo` relies on that slot.
+Browse filters sit directly on the page, with weekdays below. Poster radii
+share the 8 DIP cover token and use one quiet shadow. Navigation counts share
+the label row at normal text size and move below the label when text is enlarged.
+`visual_system_test.go` verifies rendered neutral chrome, count alignment and
+clickable navigation at normal and doubled text size.
+
+Feedback uses a 130 ms easing curve; content uses 160 ms without spring bounce.
+Pages fade without translation. Posters lift 2 DIP on hover, return on press,
+and do not scale. Ordinary buttons press to 0.99 scale. Popovers move at most
+2 DIP over 140 ms, and rows use a 160 ms transition. `State.ReduceEffects` or
+the system reduce-motion preference removes the transitions while preserving
+focus, borders and contrast.
+
 ## State and the update loop
 
 `State` embeds `Saved`, whose window preferences are persisted to
@@ -120,6 +143,9 @@ reading dialog. `anime_summary_test.go` checks the rendering and interaction.
 
 The browse page search matches the follow search: typing resets the catalog
 scroll to the top and a non-empty search offers 清除搜索 beside the input.
+Year, season, and search share one band above a text-only weekday row, so the
+poster grid keeps the visual weight; `browse_layout_test.go` pins that
+hierarchy and the 200% text-scale bounds.
 The following page searches saved follows by anime title, subtitle group, or a
 word the saved rule requires; the count line reports how many follow tiles match
 and offers a clear action, and an empty result offers a way to clear the search. Cards whose last RSS check failed

@@ -1,492 +1,266 @@
 # Dipper design system
 
-This is the design system for Dipper's desktop interface. Use it when changing
-pages, controls, visual tokens, copy, or interaction states. The implementation
-is the native MyGo UI in `cmd/dipper/view.go` and `appearance.go`; keep this
-specification and those files in sync. [Architecture](docs/architecture.md)
-explains the UI stack, [README](README.md) describes the current user workflow,
-and the [GUI subsystem](docs/subsystems/gui.md) records implementation rules.
-The [core subsystem](docs/subsystems/core.md) defines matching, persistence,
-and download decisions; this page specifies how people see and control them.
+Native desktop software for finding anime, following a release group, and
+watching downloaded episodes.
 
-## Name and brand
+## Direction
 
-Dipper is the white-throated dipper (河乌), the songbird that dives into rushing
-mountain torrents to feed. The name is the product: the app dives into torrents
-of the BitTorrent kind and comes back with anime.
+The artwork supplies the color. The application supplies a calm, legible frame:
+neutral surfaces, a single blue accent, compact navigation, consistent controls,
+and generous space between groups of information. A screen should read in this
+order: its title, its main content, its next useful action.
 
-The logo is the bird itself: a chubby dipper crouched over rushing water —
-white throat-and-breast bib flush against the front edge, tail cocked, eye
-with a pupil, bill tucked deep into the head. The species rules hold in every
-drawing: the bib stays clearly visible (it is how the bird is recognized), and
-the water reads as a rushing torrent with uneven strokes, never a calm line.
-The palette is tokens only: ink bird, paper bib, `blue` water, `blueWash` tile
-behind the app icon.
+This specification replaces the glass treatment. Do not add ambient gradients,
+violet lighting, translucent navigation, oversized shadows, decorative sparkles,
+or bouncing cards. Visual polish comes from alignment, typography and useful
+content rather than additional effects.
 
-Masters live in `build/icon/`: `dipper.svg` (symbol), `dipper-small.svg`
-(tray sizes), `dipper-tile.svg` (app icon), `lockup-horizontal.svg` (wordmark
-lockup; the wordmark stays Segoe UI Semibold, the shipped brand type). The
-generator `build/icon/gen.go` embeds the same geometry with zero dependencies
-and regenerates every platform asset — tray cuts light and dark, the tile
-icon, and `dipper.ico`:
+The design-taste-frontend skill informs the neutral palette, equal edges, plain
+copy, coherent components and restrained feedback. Dipper renders with Go/MyGo.
+Its working screens are the product, so website hero sections, browser
+breakpoints, marketing copy, shader scenes and HTML starter assets do not apply.
+Poster titles and release metadata are essential navigation labels.
 
-```sh
-go run build/icon/gen.go all build/icon/dist
-```
+## Product contract
 
-The app consumes the mark: the window icon and the tray come from the PNG
-copies in `cmd/dipper/assets/` (`dipper-icon.png`, `dipper-tray.png`,
-`dipper-tray-dark.png`), and the sidebar chip and the cover fallback render
-`assets/dipper.svg` (a copy of `dipper-small.svg`). The sidebar chip is a
-40 DIP `blueWash` tile carrying the bird at 32 DIP, so the mark reads at
-least as large as the 18 DIP nav icons beside the 22 DIP wordmark. The tray
-follows the taskbar's appearance: the ink cut on a light bar, the dark cut
-on a dark one.
-Refresh the copies with the same generator:
+- Browse posters, choose a release group, preview the matching resources, then
+  confirm the follow. New matching releases download automatically.
+- My Follows is a poster library. The whole tile opens that follow's episode
+  library. A completed episode offers playback; an unfinished one shows progress.
+- Resource selection, rule changes, pause, cancellation and folder access belong
+  in secondary management actions. Do not place a redundant first-episode play
+  button on every poster.
+- First use explains the next step in Chinese. RSS, BT, regular expressions and
+  source URLs are advanced implementation details, not prerequisites.
+- A preview writes nothing. Choosing existing resources and setting rules for
+  future resources are separate choices.
 
-```sh
-go run build/icon/gen.go app 256 cmd/dipper/assets/dipper-icon.png
-go run build/icon/gen.go tray 32 cmd/dipper/assets/dipper-tray.png
-go run build/icon/gen.go tray -dark 32 cmd/dipper/assets/dipper-tray-dark.png
-go run build/icon/gen.go syso amd64 cmd/dipper/dipper_windows_amd64.syso
-go run build/icon/gen.go syso arm64 cmd/dipper/dipper_windows_arm64.syso
-```
+## Foundations
 
-The `.syso` files embed the tile icon in the Windows executable's resources,
-which the taskbar and Explorer read before any window exists.
+All dimensions are DIP. MyGo text scaling applies to every text role. Color
+values live in `cmd/dipper/appearance.go`; sizing and type roles live in
+`cmd/dipper/typography.go`. Components use these roles rather than introducing
+page-specific themes.
 
-## Design principles
+### Color
 
-Anime details keep a short synopsis above the subtitle groups. Full text opens
-in a reading dialog so the release preview and its selection keep their place.
-Group choices include a local name search, result counts and known release
-counts, retaining the source order. Names wrap to two lines within each row.
+Keep roughly 90–95% of application chrome neutral, excluding poster artwork.
+Blue identifies selection, focus and primary actions. Green means success or
+active following, amber means attention, and red means error or destructive
+action. Include a readable label with every status color.
 
-- **Browse before configuring.** Open on the anime catalog. Finding an anime,
-  choosing a fansub group, and reading real release titles precede any rule.
-  First use must not demand an RSS URL, BT configuration, or regular expressions.
-- **Show the choice beside its effect.** Keep editable conditions and the release
-  preview visible together. A change updates counts, reasons, and the current
-  selection immediately. The original release title remains readable.
-- **Make intent explicit.** The directions are 只要 (Only), 不要 (Don't), and 不限
-  (Any). Text and symbols carry the meaning; color reinforces it. Opening a
-  choice panel alone never applies a rule.
-- **Make experimentation recoverable.** A draft supports repeated undo and redo.
-  Saving an edit gives inline feedback and a session-only undo for that save.
-  Reserve confirmation for starting a new follow with its selected downloads.
-- **Explain exceptions in place.** A failed source is a failure with retry, not
-  an empty catalog. Zero matches, repeated episode releases, unknown labels,
-  and failed saves need specific text near the affected content.
+| Token | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `canvas` | `#FAFAF9` | `#141618` | Window and page ground |
+| `chrome` | `#F0F1EF` | `#1B1D20` | Opaque navigation rail |
+| `paper` | `#FFFFFF` | `#202326` | Inputs, selected segments, panels and dialogs |
+| `sunken` | `#EBEDEA` | `#191C1F` | Quiet segmented-control well |
+| `ink` | `#222725` | `#ECEFED` | Body text and titles |
+| `muted` | `#626963` | `#B4BBB5` | Secondary text |
+| `blue` | `#285EA8` | `#9EC3F5` | Primary action, focus and links |
+| `blueHover` | `#204F91` | `#B6D2F8` | Primary hover |
+| `bluePressed` | `#194177` | `#87ADE1` | Primary press |
+| `blueWash` | `#EAF1FA` | `#233247` | Selection and inclusion |
+| `accentText` | `#FFFFFF` | `#162331` | Text on primary buttons |
+| `green` / `greenWash` | `#287250` / `#EBF5EF` | `#8BCDA8` / `#20372A` | Following and success |
+| `amber` / `amberWash` | `#8B590E` / `#FBF2E1` | `#E7BD7C` / `#3B301F` | Retry and attention |
+| `avoidInk` / `avoidWash` | `#685E55` / `#F1EEEA` | `#C5BAB0` / `#322D28` | Excluded title words |
+| `errorInk` / `errorWash` | `#B73731` / `#FCEDEB` | `#F5A6A0` / `#3D2727` | Failure and deletion |
 
-## Tokens
+`line`, `outline` and `hoverLine` are neutral separators, control outlines and
+hover outlines, respectively. Use stronger outlines and persistent focus rings
+under the high-contrast preference. Text must meet 4.5:1 contrast against its
+actual surface in both themes.
 
-Color token names below are fields of `colorPalette` in `appearance.go`; sizes
-are DIP. `colors(c)` chooses the palette from the current UI context, so separate
-windows and offline renders do not share mutable appearance state. Every UI color
-comes from this token layer. Keep the values and this block in sync; do not add
-page-specific colors.
-
-```yaml
-colors:
-  # Accent: primary actions, selected navigation, focus, include conditions
-  blue: "#3b63fb"
-  blueHover: "#274dea"
-  bluePressed: "#1d3ecf"
-  blueWash: "#f5f9ff"          # selected states, include chips, info panels
-  # Exclude direction: always with a minus sign and wording
-  avoidInk: "#b1262b"
-  avoidWash: "#fff5f5"
-  # Status inks and washes
-  green: "#12805c"             # successful matches, seeding, saved notice
-  greenWash: "#e9f7ef"
-  amber: "#9c5700"             # states needing explanation, duplicates
-  amberWash: "#fff4db"
-  errorInk: "#c9252d"          # save-failure banner
-  errorWash: "#fff0f0"
-  # Text
-  ink: "#292929"               # main content
-  muted: "#505050"             # supporting information
-  # Surfaces
-  chrome: "#f3f3f3"            # title bar, sidebar, hover surface
-  paper: "#ffffff"             # main reading area, cards, popovers
-  canvas: "#f8f8f8"            # recessed hints and low-emphasis sections
-  # Strokes
-  line: "#e9e9e9"              # dividers, hairline card borders
-  outline: "#c6c6c6"           # input and secondary-button borders
-  hoverLine: "#b1b1b1"         # hovered card border
-  accentText: "#ffffff"        # text and checked marks on the accent
-  brandWash: "#f5f9ff"         # fixed black-and-white bird artwork
-  # Alpha overlays
-  scrim: "rgba(0,0,0,.24)"     # dialog backdrop
-  popoverShadow: "rgba(0,0,0,.10)"  # the only shadow, word-choice popover
-
-night-colors:
-  blue: "#9bb3ff"
-  blueHover: "#b2c4ff"
-  bluePressed: "#87a3f5"
-  blueWash: "#283952"
-  accentText: "#14213a"
-  muted: "#b3c0d1"
-  ink: "#e7edf5"
-  line: "#334353"
-  outline: "#718298"
-  hoverLine: "#91a2b7"
-  chrome: "#18212b"
-  paper: "#202b37"
-  canvas: "#1b2530"
-  brandWash: "#f5f9ff"
-  green: "#83d9b5"
-  greenWash: "#233e37"
-  amber: "#f0c27b"
-  amberWash: "#403625"
-  avoidInk: "#f5a3a8"
-  avoidWash: "#422d38"
-  errorInk: "#ffafb4"
-  errorWash: "#452d38"
-  scrim: "rgba(0,0,0,.56)"
-  popoverShadow: "rgba(0,0,0,.32)"
-
-typography:
-  family: "Segoe UI, Microsoft YaHei UI"
-  page-headline: { size: 28, weight: 700 }  # following / downloads / settings openings
-  browse-heading: { size: 26, weight: 600 } # year-and-season heading
-  detail-title: { size: 23, weight: 700 }   # anime title, dialog titles
-  brand: { size: 22, weight: 600 }          # sidebar wordmark
-  stat: { size: 20, weight: 600 }           # aggregate speeds
-  section-heading: { size: 18, weight: 600 }# heading() helper
-  card-title: { size: 14, weight: 600 }     # poster-grid titles: browse and my follows
-  row-title: { size: 15, weight: 600 }      # download rows, guide steps
-  body: { size: 14 }                        # default; weight 600 when emphasized
-  control: { size: 13 }                     # compact controls and labels
-  caption: { size: 12, lineHeight: 1.5 }    # caption() helper; release titles use 1.6
-  badge: { size: 11, weight: 600 }          # badge() helper, match reasons
-
-rounded:
-  marker: 2        # sidebar active bar
-  dot: 3           # status dot, progress fill
-  badge: 4         # badges
-  chip: 5          # word chips
-  field: 6         # inputs, inline notes; theme default
-  card: 8          # cards, covers, nav items
-  panel: 10        # settings cards, word popover
-  dialog: 12       # dialog panels
-  icon-button: 16  # 32×32 icon buttons (circle)
-  button: 20       # all text buttons
-
-spacing:
-  base: 4
-  common-gaps: [4, 6, 8, 12, 14, 16, 18, 24]
-
-motion:
-  ease: "cubic-bezier(0, 0, .4, 1)"
-  feedback: 130ms  # press scale .97, hover color
-  popover: 160ms   # popovers and dialog fades
-  content: 190ms   # pages, rows, poster lift
-  progress: 400ms  # progress-fill value changes
-```
-
-### Appearance
-
-The appearance card offers 浅色, 夜间, and 跟随系统. Light remains the default
-for existing preferences and missing or unknown values. A choice takes effect
-immediately after a successful preferences write and survives restart. A write
-failure keeps the previous selection and reports the error. Follow system tracks
-the desktop application appearance. The native frame and clear background follow
-the same choice; the tray follows its taskbar independently.
-
-Night mode keeps the same typography, spacing, content, and hierarchy, using blue
-slate surfaces and lighter semantic inks. `accentText` is distinct from `paper`:
-a button's text and the followed badge need contrast on the accent, not a surface
-color. The fixed black-and-white bird stays on `brandWash` in either appearance,
-including a small tile inside the no-cover frame in night mode.
-
-### Color roles
-
-Treat colors as semantic roles; reuse the variables rather than picking values.
-
-| Role | Token(s) | Use |
-| --- | --- | --- |
-| Window chrome | `chrome` | Title bar, sidebar, hover surface. |
-| Primary surface | `paper` | Main reading area, cards, popovers. |
-| Recessed surface | `canvas` | Hints and low-emphasis sections. |
-| Divider / border | `line` / `outline` / `hoverLine` | Section separation / control borders / hovered card border. |
-| Text / muted text | `ink` / `muted` | Main content / supporting information. |
-| Accent | `blue` (+ hover, pressed, wash) | Primary actions, selected navigation, include conditions. |
-| Exclude | `avoidInk` / `avoidWash` | Exclude conditions, always with a minus sign and text. |
-| Success | `green` / `greenWash` | Successful matches and status. |
-| Caution | `amber` / `amberWash` | States needing explanation, duplicate releases. |
-| Failure | `errorInk` / `errorWash` | Save-failure banner. |
-| Overlay | `scrim` / `popoverShadow` | Dialog backdrop / the single popover shadow. |
-
-A status is never conveyed by color alone. The selected sidebar entry also has
-text weight and an accent marker; word chips use `＋` or `−` plus wording.
+The logo keeps its existing assets and a pale neutral `brandWash`. Do not
+recolor artwork to match the accent. Missing covers use the existing logo;
+loading covers use the existing loading treatment.
 
 ### Typography
 
-The Windows font stack is Segoe UI, Microsoft YaHei UI. Size and weight
-establish the hierarchy: 28/26/23 DIP titles for pages and detail, 18 DIP
-section headings, 14 DIP body, 12 DIP supporting text at 1.5 line height, and
-11 DIP badges. Compact controls and labels step down to 13 DIP. Keep long
-original titles selectable and accessible even if a surrounding card truncates
-its own label; release titles render at 12 DIP with 1.6 line height.
+Use the existing native stack, `Segoe UI, Microsoft YaHei UI`, with platform
+fallbacks. Keep Chinese text legible rather than introducing a display face.
 
-### Layout and spacing
+| Role | Base size | Weight | Use |
+| --- | --- | --- | --- |
+| Caption | 12 | 400; 600 for status | Metadata and helper copy |
+| Body | 14 | 400; 600 for emphasis | Controls, list rows and poster titles |
+| Section | 18 | 600 | Panel and dialog headings |
+| Title | 26 | 600 | Page and anime titles |
 
-Spacing uses a 4 DIP base with gaps stepping by 2 (4, 6, 8 … 24); page padding
-is 26–28 DIP and card padding 10–22 DIP. Compact 12–13 DIP text may pair with
-odd paddings (5, 7, 9) for optical alignment within a row.
+Titles wrap. Group names, file paths and resource titles wrap or scroll within
+their allotted region; no arbitrary line limit may hide the distinguishing
+part of a release. Do not solve large text by shrinking it.
 
-The initial window is 1320 × 900 DIP, the minimum is 1040 × 720 DIP; the top
-bar is 64 DIP and sidebar 204 DIP. Detail conditions occupy a 306 DIP column
-beside the release preview, with separate scrolling. The primary action stays
-visible below both. The poster grid adapts from three to six columns —
-`(width − 260) / 180` clamped to that range — with 18 DIP horizontal and 24 DIP
-vertical gaps; posters keep a 1 : 1.36 ratio and card titles wrap to at most
-two lines.
+### Geometry
 
-### Depth and elevation
+Use a 4 DIP spacing base: 4, 8, 12, 16, 20, 24, 28, 32.
 
-Depth comes from the surface ladder and borders, not from stacked shadows.
-
-| Layer | Treatment | Examples |
-| --- | --- | --- |
-| Recessed | `canvas` on `paper` | Hint strips, confirm-summary block. |
-| Base | `paper` inside the `chrome` frame | Content column, cards. |
-| Raised | `paper` + 1px `line`/`outline` border | Cards, inputs, chips, group cards. |
-| Overlay | `paper` + border, over `scrim` | Dialogs — no panel shadow. |
-| Popover | `paper` + border + the single shadow | Word-choice popover: `Shadow(0, 6, 20, 0, popoverShadow)`. |
-
-The word-choice popover is the only element that casts a shadow; dialogs rely
-on the scrim alone. No gradients, and no additional shadows — the poster hover
-lift is motion, not elevation.
-
-### Motion
-
-The easing curve is `cubic-bezier(0, 0, .4, 1)`. Button feedback uses 130 ms,
-local popovers and dialog fades 160 ms, and page and content changes 190 ms;
-the progress fill animates its value over 400 ms. Buttons press to 0.97 scale;
-poster hover lifts 3 DIP and scales to 1.008. Motion explains a change without
-delaying the next action. When the in-app reduce-effects option or system
-reduce-motion preference is active, the UI disables animations. These values
-are defined in `appearance.go` and `view.go`.
-
-### Icons and imagery
-
-Line icons are supplementary to labels and tooltips. Posters lead the browsing
-layout; each card pairs its image with a title, weekday, and version entry.
-Loaded covers fill their frame — scaled uniformly, centered, and cropped to
-the frame — so no filler shows beside a poster. The fallback
-cover keeps the same dimensions and shape as a loaded image.
-Followed anime have a visible text marker. The poster grid and title hierarchy
-are illustrated in the [browse screen](docs/assets/ui/01-browse.png).
-
-## Navigation and page patterns
-
-The persistent sidebar contains 浏览番剧 (Browse anime), 我的追番 (My follows), and
-下载 (Downloads); Settings and the follow guide sit at its bottom. Anime detail
-is part of browsing, not another top-level destination. Returning from detail
-preserves catalog filters and scroll position.
-
-| Surface | Layout and action hierarchy |
+| Element | Rule |
 | --- | --- |
-| Browse | Year and season heading, search, season and weekday controls, then poster grid. A short hint can be dismissed; the guide opens on request. |
-| Anime detail | Fansub group and editable conditions on the left; quick words, match count, reasons and release rows on the right; current-run summary and primary action below. |
-| My follows | Follow search with a matching count, then a poster grid: cover, title, subtitle group, and an 进入剧集库 hint. Status stays minimal — a 检查失败/已暂停/下载中 badge on the poster, a 新资源 N 条 button, and a completed-download count. The whole tile opens the episode library; pause, edit, check-now, and folder actions live in the library's ··· menu. |
-| Downloads | Separate aggregate upload/download speeds; per-task progress and speed, with pause/resume/retry or seeding actions appropriate to state. |
-| Settings | Appearance, source line, download location, shared upload limit, seeding-duration target, and window/background behavior. |
+| Main content | Equal 28 DIP left and right insets |
+| Page header | 24 DIP top inset; 20 DIP between major groups |
+| Navigation | 204 DIP wide; 14 DIP rail insets |
+| Top bar | Fixed 64 DIP slot, opaque canvas, content clipped beneath |
+| Controls | 8 DIP radius; 8 × 12 DIP normal padding |
+| Icon buttons | 36 × 36 DIP; meaningful accessible label and tooltip |
+| Posters | 8 DIP radius; width-to-height ratio 1:1.36 |
+| Grid | 18 DIP horizontal gap; 24 DIP vertical gap |
+| Dialogs | 12 DIP radius; shared scroll and footer helpers |
+| Status badges | 4 DIP radius; 3 × 7 DIP padding |
 
-Each download offers one transfer action for its current state: 暂停 while
-downloading, 继续 while paused or stopped before completion, 重试 on failure,
-and 停止做种 after completion while seeding. A completed, stopped task has no
-transfer action. 暂停 preserves progress for a later 继续; there is no separate
-停止下载 action. 删除 and 打开文件夹 remain separate task and file actions.
+The window starts at 1320 × 900 and supports 1040 × 720. The reference fixture
+uses 1320 × 860. The grid uses 3–6 columns according to available window width;
+its outer edges align with the title and toolbar. Preserve poster aspect ratio.
 
-Seeding stops when the transfer reaches the ratio target or the chosen
-seeding-duration target, whichever comes first. The transfer settings offer
-30 minutes, one hour, two hours, and seeding without a time limit (ratio-only).
-
-A page must provide distinct loading, empty, failure, and content states. Source
-failure offers retry without clearing saved follows or downloads. Empty search
-offers a way to clear filters. Failure to save must never look like success.
+Use borders for boundaries, whitespace for grouping, and small shadows only
+for elevation. Resting posters have one subtle shadow. Popovers and dialogs may
+use a stronger shadow; toolbar groups do not float.
 
 ## Components
 
-Pages are built from the helpers in `view.go`; extend a helper instead of
-restyling a page separately.
+### Navigation and top bar
 
-| Helper | Shape | Notes |
+The rail is an opaque neutral surface with one quiet divider. Brand, page links
+and bottom utilities share aligned edges. Active navigation has a neutral
+selected surface and a small blue dot; never use a colored left stripe.
+
+At normal text size, a navigation label and its count share a row. Failure
+counts remain visible and amber. At enlarged text sizes the metadata moves
+below the label to keep the target readable. The rail scrolls when necessary.
+The bottom utilities contain settings and the guide, without a decorative
+local-storage note or status dot.
+
+The top bar is a quiet location cue and window-drag region, with the guide at
+the right. Its geometry must not depend on the page below. Respect native
+window-control insets.
+
+### Buttons, inputs and tabs
+
+| Kind | Appearance | Use |
 | --- | --- | --- |
-| `primary` | Radius 20, padding 9/20, weight 600 | One per view (start, confirm); disabled keeps its label. |
-| `secondary` | Radius 20, padding 7/16, 1px `outline` border | Cancels, retries, secondary actions. |
-| `quiet` | Radius 20, padding 7/12; hover `chrome` | Inline actions drop to 12 DIP; may take `blue` or `muted` text. |
-| `iconButton` | 32 × 32, radius 16 (circle), hover `line`; 18 DIP icon | Label doubles as tooltip. |
-| `heading` | 18 DIP, weight 600 | Section titles. |
-| `caption` | 12 DIP `muted`, line-height 1.5 | Supporting text. |
-| `badge` | 11 DIP weight 600, padding 3/7, radius 4 | Ink + wash pair: `blue/blueWash`, `green/greenWash`, `amber/amberWash`, `muted/canvas`. |
-| `cover` | Radius 8 | The image fills the frame, centered and cropped without stretching. Same `blueWash` box for every non-image state: when a cover URL exists but its bitmap is unavailable, a blue `Blocks` indicator (`mygo/plugins/loading`), including after a failed load; without a cover URL, the bird mark at 0.62 of the short side. |
+| Primary | Solid blue, contrasting label | Confirm a follow or another main commit |
+| Secondary | Paper surface, neutral outline | Add, open, retry or cancel |
+| Quiet | Text with hover feedback | Navigation and secondary management |
+| Input | Paper surface, neutral outline | Search and editable values |
+| Segmented choice | Neutral well, paper selected segment | Mutually exclusive seasons |
+| Text tab | Muted text; ink and blue underline when selected | Weekday filter |
 
-Word chips are a `quiet` variant: radius 5, padding 5/8, 1px `line` border,
-12 DIP. Direction gives the pair — include is `blue` on `blueWash` with `＋`,
-exclude is `avoidInk` on `avoidWash` with `−`, unrestricted is `ink` on `paper`.
+Use the shared button helpers. Disabled and busy actions remain recognizable
+but cannot start work twice. Focus stays visible without hover or animation.
+Color alone never communicates an action's meaning.
 
-Sidebar nav items are 44 DIP tall, radius 8; the active item lifts to `paper`
-with weight 600 and a 3 × 18 DIP `blue` marker (radius 2); hover is `line`.
-Cards are `paper` with a 1px `line` border — radius 10 for settings cards,
-8 for download, group, and poster cards; follow tiles are borderless posters
-whose cover, title, and metadata sit directly on the canvas; a selected group card switches
-its border to `blue` and its fill to `blueWash`. Dialogs are 500–510 DIP wide,
-radius 12, padding 28, over `scrim`. The word-choice popover is 320 DIP wide,
-radius 10, over the single `popoverShadow`.
+The browse toolbar is one wrapping band directly on the page ground, without
+an enclosing glass card. Previous, year, seasons and next form one group.
+Search occupies the other end at normal size and wraps at enlarged text sizes.
+Weekdays sit directly below. Inputs and buttons share a visual height.
 
-Every interactive control goes through `tactile`: pressed scales to 0.97 with
-the 130 ms feedback motion, hover colors transition in 130 ms. Disabled states
-keep the label and drop the action; they never hide what is disabled.
+### Posters
 
-## Controls and interaction patterns
+The entire poster tile is clickable, including its title and metadata. Browse
+opens group selection or existing resources; My Follows opens the episode
+library. Keep artwork large and metadata subordinate. Use the same radius,
+aspect ratio and hover behavior in both grids.
 
-### Rule chips and word choice
+Browse uses one quiet followed badge. My Follows shows actionable failures,
+paused/download status and new-resource counts. Automatic-follow status remains
+available on hover. Avoid heavy shadows or multiple ornamental overlays.
 
-A candidate word is a chip, not an immediate filter. Clicking it opens a
-popover next to the word with 只要含这个词的 (Only with this word) and
-不要含这个词的 (Without this word). Show the remaining release count for **each**
-choice before applying it. The current restriction can be removed with
-不再限制这个词 (No longer restrict this word). Clicking outside or pressing Esc
-closes the popover without changing the draft.
+### Panels, dialogs and feedback
 
-Include uses blue and `＋`; exclude uses red and `−`. A word cannot be required
-and excluded at once. Custom text needs an explicit direction; alternate
-spellings form one any-of group instead of a silent synonym rule. Parsing
-resolution, codec, source, container, audio, subtitle and version labels into
-recognized words helps reading and suggesting words but never adds a
-restriction without the user's choice. Recognized labels render as quiet tags
-on each release row, and the quick-filter row lists words by how often they
-appear across the current releases. The
-[filter screen](docs/assets/ui/02-filter.png) illustrates the two-column
-arrangement.
+Settings use opaque paper panels on the neutral canvas. Resource rows use a
+single separator and a compact status label. Avoid nested cards for each text
+fragment.
 
-### Preview and release selection
+Dialogs share the same width constraints, scrolling and padding. Long content
+must be reachable at 1040 × 720 and 200% text. Confirmation dialogs keep their
+action footer outside the scroll region with `dialogContentWithFooter`.
+Keyboard Escape and the dialog's close/cancel action retain their existing
+semantics.
 
-Keep unmatched releases visible with reasons by default; allow 只看匹配 (Only
-matching). Show original titles, recognized episode information, size, and
-match reason. If an episode has several releases, display the count and allow
-people to choose each release separately. Unknown episode or subtitle labels
-remain unknown; the original title still works for textual filtering.
+Treat loading, empty, error and content as distinct states. Loading describes
+what is happening. Empty states explain the next useful step. Source failures
+offer retry or source settings. Failed downloads keep their title and retry
+action. Avoid a blank content pane or permanent spinner after a failure.
 
-Title rules decide which *future* releases match. Checkboxes decide which
-*existing* matching releases to submit now. Existing matches start checked;
-unchecking one changes no rule. Choosing 按此资源筛选 (Use this release as a
-filter) switches the left column to candidate words from that title while the
-right-hand preview stays usable. Editing saved rules affects future unread
-items; existing releases require an explicit backfill selection.
+## Motion
 
-Starting a new follow summarizes the fansub group, rules, selected release
-count, estimated size, and folder before confirmation. Cancelling keeps the
-draft. Editing an existing follow saves directly with inline feedback and
-never silently resubmits earlier releases.
+Motion explains an interaction and stops promptly. Do not animate decoration.
 
-### Feedback, undo, and errors
-
-Show the match count and reason near the preview as a rule changes. Zero
-matches is an adjustable state with a suggestion to remove or check a word;
-do not block the user with a dialog. Draft changes support repeated undo/redo;
-a new change after undo ends the previous redo branch. On Windows Ctrl+Z
-undoes, and Ctrl+Y or Ctrl+Shift+Z redoes. Text-input undo takes precedence
-while the input is active. Switching groups starts fresh draft history.
-
-An undo for a saved edit restores only the prior group and rules; it does not
-reverse later pause changes, checks, or downloads. It is available in the
-current session, not as a persistent version history. Pausing a follow and
-pausing a download are separate actions and must have distinct labels.
-
-| Situation | Visible response |
+| Interaction | Behavior |
 | --- | --- |
-| Source unavailable | Name the failure and offer retry; do not show an empty catalog. |
-| No search results or no matches | Explain the current scope and offer a way to adjust filters. |
-| Several versions of an episode | Show the count; keep separate releases. |
-| Download failure | Show the reason and retry action without suggesting progress was lost. |
-| State write failure | Show the save error; do not show a success notice. |
+| Color / hover | 130 ms ease |
+| Button press | 130 ms ease; scale 0.99 |
+| Poster hover | 160 ms ease; lift 2 DIP, no zoom |
+| Poster press | Return to rest position; no shrink |
+| Page change | 160 ms fade, no page translation |
+| Popover | 140 ms; at most 2 DIP translation, no scaling |
+| Row changes | 160 ms; at most 2 DIP entry |
 
-### Window close and background work
+No spring bounce or overshoot. Both the system reduce-motion preference and
+the saved reduced-effects setting disable motion while retaining focus,
+selection, contrast and all actions. Theme changes must not reset text scale.
 
-On Windows and Linux, the first close asks `关闭 Dipper？`, explaining that
-`收起到托盘` keeps following and downloading, while `退出 Dipper` stops
-background work. Include `取消` and an initially unchecked `记住我的选择`.
-Cancel, Escape, and clicking outside dismiss without taking an action or
-saving a preference. Remembering is optional; settings always allows
-`每次询问`, `收起到托盘`, or `退出应用` to replace the choice. A separate
-`退出 Dipper` button is an action, not a preference.
-The [close-window preview](docs/assets/ui/08-close-window.png) shows the dialog
-with deterministic local sample state.
+## Page recipes
 
-If the tray is unavailable, keep the window open, explain why, and disable
-the hide action while retaining cancel and explicit quit. Check availability
-again immediately before hiding. On Windows explain the hidden-icons overflow
-and allow a single click on the tray icon to restore the window. Never change
-the user's Windows taskbar visibility preference.
+1. **Browse:** season title and one-line purpose, compact filters, weekday tabs,
+   dismissible first-use guidance, poster grid. Guidance uses a quiet neutral
+   strip without a decorative icon. Search and filters remain visible while
+   posters scroll; changing a filter follows the existing scroll contract.
+2. **Choose and follow:** anime header, release-group choice, understandable
+   title-word filters, resource preview, confirmation. Inclusion says “只要”;
+   exclusion says “不要”. Undo and redo preserve their existing behavior.
+   Matching counts and selected download counts stay distinguishable.
+3. **My Follows:** title, search and add action, follow count, poster grid.
+   Check failures sort first and remain actionable. The main click watches;
+   management remains secondary.
+4. **Episode library:** anime identity, group/status, management menu, episode
+   list sorted by episode number. Completed files offer playback; incomplete
+   downloads show progress. Unknown episode numbers sort last.
+5. **Downloads:** stable rows, filename, progress and transfer information,
+   failure reason and appropriate actions. Stop, remove-task and delete-files
+   have distinct behavior and copy.
+6. **Settings:** readable sections for folders, appearance, network and window
+   behavior. Saved light/dark/system preferences apply immediately. Advanced
+   options explain their effect in plain Chinese.
 
-On macOS, closing the window keeps the application running, Dock activation
-reopens it, and the application menu's Quit or Command-Q stops it. Explain this
-native behavior in settings rather than presenting the Windows close choices.
-The menu bar icon is supplementary to the Dock.
+Close-window behavior keeps the existing ask/background/quit preference.
+Background operation depends on a working tray registration; platform-specific
+close and activation behavior is not a visual redesign decision.
 
-Preserve the window and report a failed save before hiding or quitting.
+## Interaction and accessibility
 
-## Accessibility
+- Preserve keyboard navigation, visible focus, tooltips and accessible labels.
+- Preserve selection, undo/redo, preview isolation, stale-result cancellation
+  and persistence behavior.
+- An action must not unexpectedly move its scroll position. State updates must
+  not replace keyed scroll containers or reset their state.
+- At 200% text, allow controls to wrap and long content to scroll. Every primary
+  action must remain reachable at the minimum window size in both themes.
+- Use the existing logo assets. Brand masters under `build/icon` and embedded
+  platform assets must stay synchronized if changed separately.
 
-Every action needs a text label or accessibility name; icon-only actions also
-have tooltips. Keep keyboard focus visible and preserve native control
-behavior. Esc closes the local choice before leaving the current workflow.
-Maintain access to the primary action at the minimum window size; do not move
-a page's scroll position as a side effect of clicking a control.
+## Acceptance and evidence
 
-## Do's and Don'ts
+Render deterministic fixtures using `--render`, covering browse, filtering,
+following, episode library, downloads, settings, errors and dialogs in both
+themes. Compare the actual images, not just token values. Also exercise minimum
+window size and 200% text with `ui.Tester`, including navigation and playback
+entry, and verify text contrast.
 
-### Do
+New behavioral regressions require an assertion failure against the previous
+implementation using `cmd/redcheck`, then a pass against the new one. Run the
+repository build/tests/vet and Linux/macOS cross-builds. Refresh reference images
+under `docs/assets/ui` when they depict changed screens.
 
-- Take every color from the token variables and start every control from a
-  helper (`primary`, `secondary`, `quiet`, `iconButton`, `heading`, `caption`,
-  `badge`, `cover`).
-- Pair color with wording and symbols: `＋`/`−` on chips, text weight plus the
-  marker on selected navigation.
-- Keep original release titles readable and selectable.
-- Give every page distinct loading, empty, failure, and content states, with
-  the failure named and retryable.
-- Put counts and reasons next to the content they describe, and show the
-  remaining count for each choice before it is applied.
-- Keep user-visible strings Chinese; they are product copy.
-- Let Esc close the innermost layer first, and keep the primary action
-  reachable at 1040 × 720.
+Fixture screenshots prove deterministic layout and rendered appearance. They
+do not prove live source availability, real downloads, native Windows DPI,
+screen-reader behavior, or runtime behavior on macOS/Linux. Report those
+boundaries with the validation results.
 
-### Don't
-
-- Don't add page-specific palettes, raw hex values outside the token layer, or gradients.
-- Don't add shadows; the word popover's single shadow is the only exception.
-- Don't mark state with a colored left-border stripe; use a dot or a swatch.
-- Don't render a source failure as an empty catalog, or a failed save as
-  success.
-- Don't open a dialog for zero matches; keep it an inline adjustable state.
-- Don't turn opening a panel into applying a rule; a restriction needs an
-  explicit choice, and a word cannot be both required and excluded.
-- Don't translate Chinese product copy or literals read from the source site.
-- Don't move a page's scroll position as a side effect of a click, and don't
-  restyle one page around the shared helpers.
-
-## Reference screens and maintenance
-
-The eight [UI reference states](docs/assets/ui/) cover browse, filtering,
-following, downloads, settings, source failure, backfill, and window closing.
-They come from `cmd/dipper/ui_render.go` fixtures; `--render ./docs/assets/ui`
-regenerates both light screens and matching `-dark.png` screens. These images show the native view layout with sample data, not a live
-source, running transfer, or operating-system window. When a design change
-alters a reference state, update the render and review the image along with
-the code. [README verification boundaries](README.md#verification-and-boundaries)
-describes the remaining real-platform checks.
-
-The visual direction draws on [Adobe Spectrum color tokens](https://opensource.adobe.com/spectrum-design-data/tokens/color-palette/)
-and [motion guidance](https://spectrum.adobe.com/page/motion/) and on the
-[Apple HIG interaction guidance](https://developer.apple.com/design/human-interface-guidelines/).
-These are reference principles; the shipped interface is a native Go theme,
-not Adobe components or Apple platform components. Where this system has a
-gap — dense data lists such as the download page, or Chinese typography
-guidance — supplement it with the relevant Ant Design chapter rather than
-switching systems.
+Reference renders: [Browse, light](docs/assets/ui/01-browse.png),
+[Browse, dark](docs/assets/ui/01-browse-dark.png),
+[My Follows](docs/assets/ui/03-following.png),
+[Episode library](docs/assets/ui/13-episode-library-dark.png),
+[Downloads](docs/assets/ui/04-downloads-dark.png), and
+[Settings](docs/assets/ui/05-settings.png).
