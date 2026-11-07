@@ -51,6 +51,11 @@ multiply the request rate either.
 request therefore lands at least 1.5 s after the previous one started, across all
 callers.
 
+An EOF while receiving headers or reading the body gets one retry. Both attempts
+share the gate, the 30-second operation timeout and the rate limit; an incomplete
+body is closed and discarded before retrying. Cancellation stops the operation.
+HTTP statuses, challenges and parsing failures do not trigger this retry.
+
 Redirects are followed at most five times, and every redirect target must still
 be an absolute `http`/`https` URL with no userinfo. This is what stops a
 redirect into `file:` or into a URL carrying credentials.

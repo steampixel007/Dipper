@@ -39,7 +39,9 @@ func TestLibraryHeroMapsSourceErrorsToLocalCopy(t *testing.T) {
 		{"not-found", "mikan: anime or subtitle group not found", "没有找到这部番剧或字幕组，请返回后重试。"},
 		{"too-large", "mikan: response exceeds size limit", "来源网站返回的内容过大，请稍后再试。"},
 		{"incomplete", "mikan: cannot confirm complete history", "资源还没加载完整，请稍后再试。"},
-		{"unknown", "mikan: unexpected EOF", "暂时无法获取来源网站的信息，请稍后再试。"},
+		{"eof", `mikan: GET https://mikanime.tv/RSS/Bangumi: Get "https://mikanani.me/rss/bangumi": EOF`, "网络连接失败，请检查网络后重试。"},
+		{"unexpected-eof", "mikan: read response: unexpected EOF", "网络连接失败，请检查网络后重试。"},
+		{"unknown", "mikan: unknown response failure", "暂时无法获取来源网站的信息，请稍后再试。"},
 		{"prefix", "检查更新失败：RSS 请求超时", "网络连接超时，请稍后再试。"},
 	}
 	for _, test := range cases {
@@ -64,6 +66,9 @@ func TestLibraryHeroPreservesLocalCheckErrors(t *testing.T) {
 		"open /downloads/anime: file not found",
 		"写入下载目录失败：磁盘空间不足",
 		"rpc error: code = Unavailable",
+		"open /downloads/anime.torrent: unexpected EOF",
+		"create content folder: mkdir /downloads/timeout/anime: permission denied",
+		"open /downloads/connection refused/anime.torrent: access denied",
 	} {
 		t.Run(message, func(t *testing.T) {
 			state := uiFixture(t, "episodes")
@@ -77,7 +82,7 @@ func TestLibraryHeroPreservesLocalCheckErrors(t *testing.T) {
 }
 
 func TestLibraryHeroPreservesDownloaderCheckFailure(t *testing.T) {
-	state, engine, _, _ := submissionFixture(t, false)
+	state, engine, updates, _ := submissionFixture(t, false)
 	sub, err := state.Core.CreateSubscription(state.Ctx,
 		core.Anime{ID: state.AnimeID, Title: "下载错误测试"},
 		core.Group{ID: "check-group", Name: "字幕组"}, core.Rule{All: []string{"1080p"}}, nil, nil)
@@ -97,6 +102,11 @@ func TestLibraryHeroPreservesDownloaderCheckFailure(t *testing.T) {
 	state.Page, state.LibraryID = "episodes", sub.ID
 	tester := ui.NewTester(state.view, 1320, 860)
 	uiRequireText(t, tester, "检查更新失败："+checkErr.Error(), "重试检查 字幕组")
+	uiClick(t, tester, "重试检查 字幕组")
+	finishSubmission(t, state, updates)
+	if !strings.Contains(state.SaveError, "scripted disk failure") || state.Notice != "" {
+		t.Fatalf("single check lost its actionable download error: error=%q notice=%q", state.SaveError, state.Notice)
+	}
 }
 
 func TestCatalogFailureAllowsSeasonRecovery(t *testing.T) {

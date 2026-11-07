@@ -167,6 +167,14 @@ func (c *Client) get(ctx context.Context, rawURL string, limit int64) ([]byte, *
 	case <-ctx.Done():
 		return nil, nil, ctx.Err()
 	}
+	body, finalURL, err := c.getOnce(ctx, rawURL, limit)
+	if ctx.Err() == nil && (errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)) {
+		return c.getOnce(ctx, rawURL, limit)
+	}
+	return body, finalURL, err
+}
+
+func (c *Client) getOnce(ctx context.Context, rawURL string, limit int64) ([]byte, *url.URL, error) {
 	if delay := time.Until(c.nextRequest); delay > 0 {
 		timer := time.NewTimer(delay)
 		defer timer.Stop()

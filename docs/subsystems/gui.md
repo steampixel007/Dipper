@@ -200,7 +200,15 @@ switches; searching follows or switching the download filter jumps back to the
 top.
 When any follow failed its last check, the header offers 重试检查, which
 re-checks every failed follow in one click and is hidden while all follows are
-healthy.
+healthy. Its result banner reports the failed count and points to each
+episode library, so long titles and raw request URLs cannot expand the banner.
+It also preserves the first error that could not be saved in core state,
+so a transaction failure is not hidden behind an older library error.
+Single-follow checks and the library header map source failures, including EOF,
+to Chinese guidance; actionable local download errors remain visible, including
+paths containing network-related words. The raw
+last-check error stays in core state for diagnosis. A finished single-follow
+check clears its checking notice even when it fails.
 The 我的追番 navigation entry counts failed checks while any follow is failing
 and falls back to the follow count when all are healthy. The 下载 navigation entry does the same for failed downloads, counting
 entries whose last transfer failed and falling back to the item count when
