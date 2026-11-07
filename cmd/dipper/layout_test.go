@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -50,6 +52,7 @@ func TestTypographyPagesReflowWithinMinimumWindow(t *testing.T) {
 			}
 			t.Run(tc.name+"/"+mode, func(t *testing.T) {
 				state := layoutFixture(t, tc.page)
+				state.Appearance = mode
 				if tc.prepare != nil {
 					tc.prepare(state)
 				}
@@ -69,6 +72,14 @@ func TestTypographyPagesReflowWithinMinimumWindow(t *testing.T) {
 				title := requireLayoutBound(t, tester, tc.title, 1040, 720)
 				if tc.name != "settings" && title.H <= 40 {
 					t.Fatalf("scaled title did not grow: %+v", title)
+				}
+				if output := os.Getenv("DIPPER_VISUAL_EVIDENCE"); output != "" {
+					if err := os.MkdirAll(output, 0755); err != nil {
+						t.Fatal(err)
+					}
+					if err := writeUIScreen(filepath.Join(output, tc.name+"-"+mode+"-text200-1040x720.png"), tester); err != nil {
+						t.Fatal(err)
+					}
 				}
 			})
 		}
@@ -111,18 +122,13 @@ func TestTypographyDialogsRemainScrollableAtMinimumWindow(t *testing.T) {
 	}
 }
 
-func TestUXSidebarDropsDecorativeLocalNoteAtLargeText(t *testing.T) {
+func TestUXSidebarOmitsDecorativeLocalNote(t *testing.T) {
 	state := layoutFixture(t, "browse")
-
-	normal := ui.NewTester(state.view, 1040, 720)
-	normal.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
-	if _, found := normal.Find("保存在本机"); !found {
-		t.Fatal("the local-storage note should remain visible at normal text size")
-	}
-
-	large := ui.NewTester(state.view, 1040, 720)
-	large.SetPreferences(ui.Preferences{TextScale: 2, ReduceMotion: true})
-	if _, found := large.Find("保存在本机"); found {
-		t.Fatal("the decorative local-storage note should not fragment the sidebar at 200% text")
+	for _, scale := range []float32{1, 2} {
+		tester := ui.NewTester(state.view, 1040, 720)
+		tester.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
+		if _, found := tester.Find("保存在本机"); found {
+			t.Errorf("the sidebar still shows the decorative local-storage note at text scale %v", scale)
+		}
 	}
 }

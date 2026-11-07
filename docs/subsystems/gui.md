@@ -31,28 +31,26 @@ components, and interaction conventions are specified in
 
 ## Visual system
 
-`appearance.go` owns both palettes, motion, radii and sizing; `view.go` composes
-them and must not introduce a second set of colors. The window canvas is a cool
-neutral (`canvas`) with two wide radial `glowBlue` / `glowViolet` decorations
-behind the content. These glows are the only gradients and carry no state.
+`appearance.go` owns both palettes and motion; `typography.go` owns type sizes
+and control geometry. `view.go` composes them without introducing another color
+system. Opaque neutral canvas, sidebar and paper surfaces surround the artwork.
+Blue marks actions and focus; semantic colors mark actual status. There are no
+ambient gradients or translucent materials.
 
-Glass is selective. The sidebar and the browse control band use MyGo's
-`glass.Glass` material with the `glass` token as its tint; the first-run hint
-uses that token directly as a translucent fill. Posters, dialogs, settings cards
-and text surfaces stay opaque. The 64 DIP top bar is different: it uses a hard
-`glass.ScrollEdge{Hard: true, Background: canvas}` so it reads as the canvas
-rather than a lighter gray slab, and it has no divider. Keeping that fixed
-64 DIP slot matters because `uiScrollTo` positions page content against it;
-content is clipped below the bar rather than drawn underneath it.
+The top bar occupies a fixed 64 DIP slot with an opaque canvas background and
+no divider. Page content is clipped below it; `uiScrollTo` relies on that slot.
+Browse filters sit directly on the page, with weekdays below. Poster radii
+share the 8 DIP cover token and use one quiet shadow. Navigation counts share
+the label row at normal text size and move below the label when text is enlarged.
+`visual_system_test.go` verifies rendered neutral chrome, count alignment and
+clickable navigation at normal and doubled text size.
 
-The default motion tokens are a 220 ms feedback spring for press and cancel, a
-320 ms content spring, and a 130 ms color transition for hover. Page changes use
-a 240 ms ease with a 10 DIP enter and 6 DIP exit. Poster hover uses the content
-spring to move 5 DIP and scale to 1.01; pressing returns the pose and scales to
-0.985. `State.ReduceEffects` or the system reduce-motion preference removes the
-transitions without removing focus, borders or contrast. MyGo supplies an
-opaque fallback when the system requests reduced transparency, so text on glass
-does not depend on a blur shader being available.
+Feedback uses a 130 ms easing curve; content uses 160 ms without spring bounce.
+Pages fade without translation. Posters lift 2 DIP on hover, return on press,
+and do not scale. Ordinary buttons press to 0.99 scale. Popovers move at most
+2 DIP over 140 ms, and rows use a 160 ms transition. `State.ReduceEffects` or
+the system reduce-motion preference removes the transitions while preserving
+focus, borders and contrast.
 
 ## State and the update loop
 

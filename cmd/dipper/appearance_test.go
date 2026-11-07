@@ -141,7 +141,7 @@ func TestAppearanceRenderedPagesUseDarkSurfacesAndReadableText(t *testing.T) {
 		{"browse", "2025 年春季番剧", "选好番剧和版本，新更新会自动下载。"},
 		{"detail", "可下载资源", "周一，来源：蜜柑计划"},
 		{"following", "我的追番", "添加追番"},
-		{"downloads", "下载", "保存在本机"},
+		{"downloads", "下载", "总下载速度"},
 		{"settings", "设置", appearanceText.detail},
 	} {
 		t.Run(page.id, func(t *testing.T) {
