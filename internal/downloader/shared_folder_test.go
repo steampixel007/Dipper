@@ -19,11 +19,11 @@ import (
 	"testing"
 	"time"
 
-	"dipper.local/dipper/internal/core"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/bencode"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
+	"github.com/steampixel007/Dipper/internal/core"
 )
 
 func layoutFixture(t *testing.T, name string, files map[string][]byte) *fixture {

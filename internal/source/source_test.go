@@ -19,7 +19,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 
-	"dipper.local/dipper/internal/proxy"
+	"github.com/steampixel007/Dipper/internal/proxy"
 )
 
 func fixture(t *testing.T, name string) []byte {

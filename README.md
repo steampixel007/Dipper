@@ -12,7 +12,8 @@ Browse the season, choose the version you like, and bring new episodes home.<br>
 A native desktop app with automatic following and a built-in downloader.
 
 [![Checks](https://github.com/steampixel007/Dipper/actions/workflows/check.yml/badge.svg)](https://github.com/steampixel007/Dipper/actions/workflows/check.yml)
-[![Go](https://img.shields.io/badge/Go-1.27.1-3b63fb?logo=go&logoColor=white)](go.mod)
+[![Go](https://img.shields.io/badge/Go-1.27.3-3b63fb?logo=go&logoColor=white)](go.mod)
+[![License: MIT](https://img.shields.io/badge/License-MIT-3b63fb.svg)](LICENSE)
 [![Native UI](https://img.shields.io/badge/UI-MyGo_Native-3b63fb)](https://github.com/egoist/mygo)
 
 **[Download](https://github.com/steampixel007/Dipper/releases/latest)** &nbsp;·&nbsp; **[Get started](#get-started)** &nbsp;·&nbsp; **[User guide](docs/usage.md)** &nbsp;·&nbsp; **[Development](docs/development.md)** &nbsp;·&nbsp; **[Feedback](https://github.com/steampixel007/Dipper/issues)**
@@ -156,6 +157,20 @@ Dipper is named after the white-throated dipper (河乌), a small songbird that
 dives into rushing mountain streams and returns with what it came for.
 Here, the torrents bring back anime.
 
+## License
+
+Dipper is released under the [MIT License](LICENSE). You may use, modify, and
+redistribute it, including commercially, as long as the copyright and license
+notice are included with the software.
+
+Third-party components keep their own licenses; see the
+[third-party notices](THIRD-PARTY.md). The MIT License does not grant trademark
+rights in the Dipper name or logo. Some sample data and artwork come from Mikan
+and are not covered by the MIT License.
+
+Contributions are accepted under the MIT License with a Developer Certificate
+of Origin sign-off; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## More about Dipper
 
 | | |
@@ -165,4 +180,7 @@ Here, the torrents bring back anime.
 | [Design system](DESIGN.md) | The bird, colors, controls, and interaction principles |
 | [Architecture](docs/architecture.md) | How the native app, source, core, and downloader fit together |
 | [Subsystems](docs/subsystems/README.md) | Implementation contracts and what their tests prove |
+| [License](LICENSE) | MIT license for Dipper's original code and documentation |
+| [Third-party notices](THIRD-PARTY.md) | Licenses of bundled Go modules and sample artwork |
+| [Contributing](CONTRIBUTING.md) | How to submit a change and sign off |
 | [Report an issue](https://github.com/steampixel007/Dipper/issues) | Bugs, questions, and feature ideas |

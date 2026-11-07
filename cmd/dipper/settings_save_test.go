@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"dipper.local/dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/core"
 )
 
 func TestUISettingsSaveTranslatesTrackerError(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"dipper.local/dipper/internal/proxy"
+	"github.com/steampixel007/Dipper/internal/proxy"
 )
 
 func canonicalHash(s string) (string, error) {

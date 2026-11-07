@@ -14,7 +14,7 @@ func TestJudgeRealRed(t *testing.T) {
 --- FAIL: TestFoo (0.00s)
 FAIL
 exit status 1
-FAIL	dipper.local/dipper/internal/core	0.012s
+FAIL	github.com/steampixel007/Dipper/internal/core	0.012s
 `
 	v, reason, detail := judge(out)
 	if v != verdictRealRed {
@@ -31,7 +31,7 @@ func TestJudgeRealRedWithoutVerbose(t *testing.T) {
 	out := `--- FAIL: TestRealFail (0.00s)
     probe_test.go:8: got 10, want 73
 FAIL
-FAIL	dipper.local/dipper/internal/core	0.455s
+FAIL	github.com/steampixel007/Dipper/internal/core	0.455s
 `
 	v, reason, detail := judge(out)
 	if v != verdictRealRed {
@@ -59,7 +59,7 @@ FAIL
 }
 
 func TestJudgeNotRed(t *testing.T) {
-	out := `ok  	dipper.local/dipper/internal/core	0.012s
+	out := `ok  	github.com/steampixel007/Dipper/internal/core	0.012s
 `
 	v, reason, _ := judge(out)
 	if v != verdictNotRed {
@@ -68,9 +68,9 @@ func TestJudgeNotRed(t *testing.T) {
 }
 
 func TestJudgeCompileErrorIsNotRed(t *testing.T) {
-	out := `# dipper.local/dipper/internal/core [dipper.local/dipper/internal/core.test]
+	out := `# github.com/steampixel007/Dipper/internal/core [github.com/steampixel007/Dipper/internal/core.test]
 internal/core/foo.go:10:2: undefined: bar
-FAIL	dipper.local/dipper/internal/core [build failed]
+FAIL	github.com/steampixel007/Dipper/internal/core [build failed]
 FAIL
 `
 	v, reason, _ := judge(out)
@@ -82,9 +82,9 @@ FAIL
 func TestJudgeCompileErrorWinsOverOtherPackagesFail(t *testing.T) {
 	// One package does not compile while another really fails: the compile
 	// error must be judged first, or the run is miscalled a real red.
-	out := `# dipper.local/dipper/internal/source [dipper.local/dipper/internal/source.test]
+	out := `# github.com/steampixel007/Dipper/internal/source [github.com/steampixel007/Dipper/internal/source.test]
 internal/source/html.go:5:1: syntax error: unexpected EOF
-FAIL	dipper.local/dipper/internal/source [build failed]
+FAIL	github.com/steampixel007/Dipper/internal/source [build failed]
     core_test.go:88: boom
 --- FAIL: TestOther (0.00s)
 FAIL
@@ -100,7 +100,7 @@ func TestJudgeSkipIsNotRed(t *testing.T) {
     foo_test.go:12: skipping: needs network
 --- SKIP: TestFoo (0.00s)
 PASS
-ok  	dipper.local/dipper/internal/core	0.010s
+ok  	github.com/steampixel007/Dipper/internal/core	0.010s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
@@ -112,7 +112,7 @@ func TestJudgePanicIsNotRed(t *testing.T) {
 	out := `=== RUN   TestFoo
 --- FAIL: TestFoo (0.01s)
 panic: runtime error: index out of range [recovered]
-FAIL	dipper.local/dipper/internal/core	0.020s
+FAIL	github.com/steampixel007/Dipper/internal/core	0.020s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
@@ -125,7 +125,7 @@ func TestJudgeDataRaceIsNotRed(t *testing.T) {
 ==================
 WARNING: DATA RACE
 Write at 0x00c000 by goroutine 7:
-FAIL	dipper.local/dipper/internal/core	0.030s
+FAIL	github.com/steampixel007/Dipper/internal/core	0.030s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
@@ -136,7 +136,7 @@ FAIL	dipper.local/dipper/internal/core	0.030s
 func TestJudgeTimeoutIsNotRed(t *testing.T) {
 	out := `panic: test timed out after 10m0s
 testing: timed out after 10m0s
-FAIL	dipper.local/dipper/internal/core	600.010s
+FAIL	github.com/steampixel007/Dipper/internal/core	600.010s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
@@ -147,7 +147,7 @@ FAIL	dipper.local/dipper/internal/core	600.010s
 func TestJudgeNoTestsToRunIsNotRed(t *testing.T) {
 	out := `testing: warning: no tests to run
 PASS
-ok  	dipper.local/dipper/internal/core	0.010s
+ok  	github.com/steampixel007/Dipper/internal/core	0.010s
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
@@ -158,12 +158,12 @@ ok  	dipper.local/dipper/internal/core	0.010s
 func TestJudgeRealRedWithUnmatchedPackages(t *testing.T) {
 	// A narrow -run pattern with ./... prints "[no tests to run]" for every
 	// package the pattern misses. That noise must not bury a real red.
-	out := `ok  	dipper.local/dipper/cmd/dipper	0.098s [no tests to run]
-ok  	dipper.local/dipper/internal/appdata	0.028s [no tests to run]
+	out := `ok  	github.com/steampixel007/Dipper/cmd/dipper	0.098s [no tests to run]
+ok  	github.com/steampixel007/Dipper/internal/appdata	0.028s [no tests to run]
 --- FAIL: TestStopHalts (0.54s)
     engine_test.go:279: download is not complete
 FAIL
-FAIL	dipper.local/dipper/internal/downloader	0.571s
+FAIL	github.com/steampixel007/Dipper/internal/downloader	0.571s
 `
 	v, reason, _ := judge(out)
 	if v != verdictRealRed {
@@ -172,9 +172,9 @@ FAIL	dipper.local/dipper/internal/downloader	0.571s
 }
 
 func TestJudgePatternMatchedNothingIsFalseRed(t *testing.T) {
-	out := `ok  	dipper.local/dipper/cmd/dipper	0.098s [no tests to run]
-ok  	dipper.local/dipper/internal/appdata	0.028s [no tests to run]
-ok  	dipper.local/dipper/internal/core	0.052s [no tests to run]
+	out := `ok  	github.com/steampixel007/Dipper/cmd/dipper	0.098s [no tests to run]
+ok  	github.com/steampixel007/Dipper/internal/appdata	0.028s [no tests to run]
+ok  	github.com/steampixel007/Dipper/internal/core	0.052s [no tests to run]
 `
 	v, reason, _ := judge(out)
 	if v != verdictFalseRed {
@@ -186,7 +186,7 @@ ok  	dipper.local/dipper/internal/core	0.052s [no tests to run]
 }
 
 func TestJudgePassingRunIsNotRed(t *testing.T) {
-	out := `ok  	dipper.local/dipper/internal/downloader	0.571s
+	out := `ok  	github.com/steampixel007/Dipper/internal/downloader	0.571s
 `
 	v, reason, _ := judge(out)
 	if v != verdictNotRed {
@@ -197,7 +197,7 @@ func TestJudgePassingRunIsNotRed(t *testing.T) {
 func TestReportPassRejectsRunWithNoTests(t *testing.T) {
 	// go test exits 0 even when the pattern matched nothing, so -expect pass
 	// must not call that a pass.
-	out := `ok  	dipper.local/dipper/cmd/dipper	0.098s [no tests to run]
+	out := `ok  	github.com/steampixel007/Dipper/cmd/dipper	0.098s [no tests to run]
 `
 	if code := reportPass(out, nil, "^TestMissing$", false); code != exitFalseRed {
 		t.Fatalf("reportPass exit = %d, want %d", code, exitFalseRed)
@@ -210,11 +210,11 @@ func TestRanTestsShapes(t *testing.T) {
 		out  string
 		want bool
 	}{
-		{"package ran", "ok  dipper.local/dipper/internal/core	0.05s\n", true},
-		{"package failed", "FAIL	dipper.local/dipper/internal/core	0.05s\n", true},
-		{"nothing matched", "ok  dipper.local/dipper/internal/core	0.05s [no tests to run]\n", false},
-		{"legacy warning", "testing: warning: no tests to run\nPASS\nok  	dipper.local/dipper/internal/core	0.01s\n", false},
-		{"no package lines", "?   dipper.local/dipper/build/icon	[no test files]\n", false},
+		{"package ran", "ok  github.com/steampixel007/Dipper/internal/core	0.05s\n", true},
+		{"package failed", "FAIL	github.com/steampixel007/Dipper/internal/core	0.05s\n", true},
+		{"nothing matched", "ok  github.com/steampixel007/Dipper/internal/core	0.05s [no tests to run]\n", false},
+		{"legacy warning", "testing: warning: no tests to run\nPASS\nok  	github.com/steampixel007/Dipper/internal/core	0.01s\n", false},
+		{"no package lines", "?   github.com/steampixel007/Dipper/build/icon	[no test files]\n", false},
 	}
 	for _, tc := range cases {
 		if got := ranTests(tc.out); got != tc.want {
@@ -259,7 +259,7 @@ func TestAssertionDoesNotLeakIntoNextTest(t *testing.T) {
 	out := `--- FAIL: TestBare (0.00s)
 --- FAIL: TestReal (0.00s)
     real_test.go:9: got 1, want 2
-FAIL	dipper.local/dipper/internal/core	0.010s
+FAIL	github.com/steampixel007/Dipper/internal/core	0.010s
 `
 	if got, ok := assertionFor(out, "TestBare"); ok {
 		t.Fatalf("counted another test's error for TestBare: %q", got)

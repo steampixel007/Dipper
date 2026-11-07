@@ -21,11 +21,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"dipper.local/dipper/internal/proxy"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/bencode"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
+	"github.com/steampixel007/Dipper/internal/proxy"
 	"golang.org/x/time/rate"
 )
 

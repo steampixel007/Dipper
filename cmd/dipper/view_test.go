@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"dipper.local/dipper/internal/core"
-	"dipper.local/dipper/internal/downloader"
 	"github.com/egoist/mygo/ui"
+	"github.com/steampixel007/Dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/downloader"
 )
 
 var uiTestImages sync.Once

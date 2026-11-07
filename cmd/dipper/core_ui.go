@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"dipper.local/dipper/internal/core"
-	"dipper.local/dipper/internal/downloader"
-	"dipper.local/dipper/internal/proxy"
-	"dipper.local/dipper/internal/source"
+	"github.com/steampixel007/Dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/downloader"
+	"github.com/steampixel007/Dipper/internal/proxy"
+	"github.com/steampixel007/Dipper/internal/source"
 )
 
 type engineAdapter struct{ engine *downloader.Engine }

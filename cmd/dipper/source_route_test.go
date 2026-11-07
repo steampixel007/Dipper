@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"dipper.local/dipper/internal/source"
 	"github.com/egoist/mygo/ui"
+	"github.com/steampixel007/Dipper/internal/source"
 )
 
 const routeCatalogMarkup = `<div class="sk-bangumi" data-dayofweek="1"><ul class="an-ul"><li><span data-bangumiid="1" data-src="/cover.png"></span><a class="an-text" href="/Home/Bangumi/1">节目</a></li></ul></div>`
