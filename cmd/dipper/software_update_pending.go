@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/steampixel007/Dipper/internal/update"
@@ -29,12 +30,23 @@ func (s *State) softwarePortable(offer update.Offer) bool {
 	return s.Platform == "windows" && offer.Portable && !offer.Development && !update.Development(version)
 }
 
-func (s *State) softwareUpdateRoot() (string, error) {
-	config, err := filepath.Abs(s.ConfigDir)
+func softwareCanonicalPath(path string) (string, error) {
+	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return "", err
 	}
-	config, err = filepath.EvalSymlinks(config)
+	return filepath.EvalSymlinks(absolute)
+}
+
+func softwarePathEqual(left, right string) bool {
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
+	}
+	return filepath.Clean(left) == filepath.Clean(right)
+}
+
+func (s *State) softwareUpdateRoot() (string, error) {
+	config, err := softwareCanonicalPath(s.ConfigDir)
 	if err != nil {
 		return "", err
 	}
@@ -46,12 +58,12 @@ func (s *State) softwarePendingDirectory(pending *softwarePending) bool {
 	if err != nil {
 		return false
 	}
-	directory := pending.Download.Directory
-	if filepath.Dir(directory) != root || !strings.HasPrefix(filepath.Base(directory), "dipper-update-download-") {
+	directory, err := softwareCanonicalPath(pending.Download.Directory)
+	if err != nil {
 		return false
 	}
-	resolved, err := filepath.EvalSymlinks(directory)
-	return err == nil && strings.EqualFold(resolved, directory)
+	return softwarePathEqual(filepath.Dir(directory), root) &&
+		strings.HasPrefix(filepath.Base(directory), "dipper-update-download-")
 }
 
 func (s *State) validateSoftwarePending(pending *softwarePending) error {
@@ -60,8 +72,24 @@ func (s *State) validateSoftwarePending(pending *softwarePending) error {
 		return fmt.Errorf("pending update is not a newer portable release")
 	}
 	download := pending.Download
-	if !s.softwarePendingDirectory(pending) || filepath.Dir(download.Package) != download.Directory ||
-		download.Executable != filepath.Join(download.Directory, "Dipper.exe") || download.Package == download.Executable {
+	if !s.softwarePendingDirectory(pending) {
+		return fmt.Errorf("pending update is outside the managed download directory")
+	}
+	directory, err := softwareCanonicalPath(download.Directory)
+	if err != nil {
+		return err
+	}
+	packagePath, err := softwareCanonicalPath(download.Package)
+	if err != nil {
+		return err
+	}
+	executablePath, err := softwareCanonicalPath(download.Executable)
+	if err != nil {
+		return err
+	}
+	if !softwarePathEqual(filepath.Dir(packagePath), directory) ||
+		!softwarePathEqual(executablePath, filepath.Join(directory, "Dipper.exe")) ||
+		softwarePathEqual(packagePath, executablePath) {
 		return fmt.Errorf("pending update is outside the managed download directory")
 	}
 	return update.VerifyPortableDownload(download)
@@ -71,6 +99,16 @@ func (s *State) removeSoftwarePending(pending *softwarePending) {
 	if s.softwarePendingDirectory(pending) {
 		os.RemoveAll(pending.Download.Directory)
 	}
+}
+
+func (s *State) discardInvalidSoftwarePending(pending *softwarePending) {
+	s.SoftwarePending = nil
+	s.SoftwareUpdate.Downloaded = update.Download{}
+	if err := s.savePreferences(); err != nil {
+		s.SaveError = softwareText.downloadPreferenceError + err.Error()
+		return
+	}
+	s.removeSoftwarePending(pending)
 }
 
 func (s *State) restoreSoftwarePending() {

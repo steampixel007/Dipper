@@ -391,6 +391,7 @@ func (s *State) installSoftware() {
 		s.SoftwareUpdate.Installing = true
 		s.setSoftwareStatus(softwareText.preparing)
 		downloaded := s.SoftwareUpdate.Downloaded
+		pending := s.SoftwarePending
 		prepare := s.PrepareSoftware
 		if prepare == nil {
 			prepare = func(ctx context.Context, target string, downloaded update.Download, args []string) (softwareInstaller, error) {
@@ -400,6 +401,10 @@ func (s *State) installSoftware() {
 		args := append([]string(nil), os.Args[1:]...)
 		go func() {
 			installer, err := prepare(ctx, executable, downloaded, args)
+			invalidPending := false
+			if err != nil && ctx.Err() == nil && pending != nil && downloaded.Executable != "" {
+				invalidPending = update.VerifyPortableDownload(downloaded) != nil
+			}
 			if installer != nil {
 				context.AfterFunc(s.Ctx, installer.Abort)
 			}
@@ -423,6 +428,9 @@ func (s *State) installSoftware() {
 				if err != nil {
 					s.SoftwareUpdate.Installing = false
 					s.setSoftwareError(softwareText.installError + err.Error() + softwareText.unchanged)
+					if invalidPending {
+						s.discardInvalidSoftwarePending(pending)
+					}
 					return
 				}
 				s.SoftwareUpdate.Installer = installer

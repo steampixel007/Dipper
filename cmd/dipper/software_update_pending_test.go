@@ -97,7 +97,11 @@ func TestSoftwareAutoDownloadPortableAndNoticeRestart(t *testing.T) {
 		},
 		download: func(ctx context.Context, offer update.Offer, root string, progress func(int64, int64)) (update.Download, error) {
 			downloads.Add(1)
-			if root != filepath.Join(s.ConfigDir, "updates") {
+			config, err := softwareCanonicalPath(s.ConfigDir)
+			if err != nil {
+				return update.Download{}, err
+			}
+			if root != filepath.Join(config, "updates") {
 				return update.Download{}, fmt.Errorf("download is not in persistent storage: %s", root)
 			}
 			return softwareVerifiedDownload(ctx, offer, root, progress)
@@ -316,6 +320,10 @@ func TestSoftwarePendingRejectsInvalidDownloads(t *testing.T) {
 			} else if err := os.MkdirAll(root, 0700); err != nil {
 				t.Fatal(err)
 			}
+			root, err := softwareCanonicalPath(root)
+			if err != nil {
+				t.Fatal(err)
+			}
 			download, err := softwareVerifiedDownload(s.Ctx, softwareOffer(), root, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -496,4 +504,93 @@ func TestSoftwarePendingQuitVetoKeepsRetryableNotice(t *testing.T) {
 	if quits != 1 || installer.commits.Load() != 2 {
 		t.Fatal("notice could not retry the existing installation after a quit veto")
 	}
+}
+
+func TestSoftwareInstallFailureDiscardsInvalidDownloadAndRecovers(t *testing.T) {
+	s, tt, queue := softwareAutoFixture(t)
+	s.SoftwareClient = softwareClientFixture{
+		check:    func(context.Context) (update.Offer, error) { return softwareOffer(), nil },
+		download: softwareVerifiedDownload,
+	}
+	softwareStartAutoDownload(t, s, tt, queue)
+	invalid := s.SoftwarePending
+	if invalid == nil {
+		t.Fatal("automatic download did not persist a pending update")
+	}
+	if err := os.WriteFile(invalid.Download.Executable, []byte("tampered executable"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	var prepares atomic.Int32
+	s.PrepareSoftware = func(context.Context, string, update.Download, []string) (softwareInstaller, error) {
+		prepares.Add(1)
+		return nil, errors.New("fixture helper rejected the tampered executable")
+	}
+	message := "新版本 v9.0.0 已下载，点击重启更新"
+	uiClick(t, tt, message)
+	softwareApply(t, tt, queue)
+	if prepares.Load() != 1 || s.SoftwareUpdate.Error == "" || s.SoftwareUpdate.Installing {
+		t.Fatalf("invalid download failure was not reported: %+v", s.SoftwareUpdate)
+	}
+	if s.SoftwarePending != nil || s.SoftwareUpdate.Downloaded.Executable != "" {
+		t.Fatalf("invalid pending download stayed installable: %+v", s.SoftwareUpdate)
+	}
+	pref, err := readPreferences(s.ConfigDir)
+	if err != nil || pref.SoftwarePending != nil {
+		t.Fatalf("invalid pending download stayed persisted: %+v %v", pref, err)
+	}
+	if _, err := os.Stat(invalid.Download.Directory); !os.IsNotExist(err) {
+		t.Fatalf("invalid pending download was not reclaimed: %v", err)
+	}
+	var checks, downloads atomic.Int32
+	s.SoftwareClient = softwareClientFixture{
+		check: func(context.Context) (update.Offer, error) {
+			checks.Add(1)
+			return softwareOffer(), nil
+		},
+		download: func(ctx context.Context, offer update.Offer, root string, progress func(int64, int64)) (update.Download, error) {
+			downloads.Add(1)
+			return softwareVerifiedDownload(ctx, offer, root, progress)
+		},
+	}
+	s.SoftwareCheckedAt = time.Time{}
+	s.startAutomaticSoftwareCheck()
+	if !s.SoftwareUpdate.Busy {
+		t.Fatal("recovery did not start a fresh release check")
+	}
+	softwareApply(t, tt, queue)
+	softwareApply(t, tt, queue)
+	if checks.Load() != 1 || downloads.Load() != 1 || s.SoftwarePending == nil ||
+		s.SoftwareUpdate.Downloaded.Executable == "" || s.SoftwareUpdate.Dialog {
+		t.Fatalf("discarded download could not be checked and downloaded again: checks=%d downloads=%d state=%+v", checks.Load(), downloads.Load(), s.SoftwareUpdate)
+	}
+}
+
+func TestSoftwareTransientInstallFailureKeepsVerifiedDownload(t *testing.T) {
+	s, tt, queue := softwareAutoFixture(t)
+	s.SoftwareClient = softwareClientFixture{
+		check:    func(context.Context) (update.Offer, error) { return softwareOffer(), nil },
+		download: softwareVerifiedDownload,
+	}
+	softwareStartAutoDownload(t, s, tt, queue)
+	pending := s.SoftwarePending
+	if pending == nil {
+		t.Fatal("automatic download did not persist a pending update")
+	}
+	s.PrepareSoftware = func(context.Context, string, update.Download, []string) (softwareInstaller, error) {
+		return nil, errors.New("fixture folder temporarily unwritable")
+	}
+	message := "新版本 v9.0.0 已下载，点击重启更新"
+	uiClick(t, tt, message)
+	softwareApply(t, tt, queue)
+	if s.SoftwarePending != pending || update.VerifyPortableDownload(s.SoftwareUpdate.Downloaded) != nil {
+		t.Fatal("transient preparation failure discarded a still-verified download")
+	}
+	if _, err := os.Stat(pending.Download.Directory); err != nil {
+		t.Fatalf("transient preparation failure removed the managed download: %v", err)
+	}
+	pref, err := readPreferences(s.ConfigDir)
+	if err != nil || pref.SoftwarePending == nil {
+		t.Fatalf("transient preparation failure erased the pending record: %+v %v", pref, err)
+	}
+	uiRequireText(t, tt, message)
 }
