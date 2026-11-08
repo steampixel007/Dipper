@@ -94,6 +94,7 @@ write the same database and BT state. The [instance page](subsystems/instance.md
 describes the lock and its recovery behavior.
 
 The current user workflow is in the [README](../README.md), and the visual
-baseline and interaction conventions in [DESIGN.md](../DESIGN.md). Installer packaging, signing
-and updates have not been implemented; their current limits are in the
-[README verification boundaries](../README.md#verification-and-boundaries).
+baseline and interaction conventions in [DESIGN.md](../DESIGN.md). Packaging,
+the GitHub Release workflow and in-app update checks exist; code signing, Apple
+notarization and platform acceptance still do not. Their current limits are in
+the [development boundaries](development.md#verification-and-boundaries).
