@@ -300,6 +300,10 @@ func (s *State) cancelSoftwareDownload() {
 	if !s.SoftwareUpdate.Busy {
 		return
 	}
+	if s.SoftwareUpdate.Installing {
+		s.abortSoftwareUpdate()
+		return
+	}
 	s.discardSoftwareDownload()
 	s.SoftwareUpdate.Busy = false
 	s.setSoftwareStatus(softwareText.cancelled)

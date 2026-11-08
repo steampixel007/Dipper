@@ -297,6 +297,71 @@ func TestSoftwareCancelDropsStaleCheckAndDownload(t *testing.T) {
 	}
 }
 
+func TestSoftwareCancelDuringPreparationLeavesRetryableState(t *testing.T) {
+	s, tt, queue := softwareFixture(t)
+	first, second := &softwareInstallerFixture{}, &softwareInstallerFixture{}
+	preparing := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	s.PrepareSoftware = func(context.Context, string, update.Download, []string) (softwareInstaller, error) {
+		if calls.Add(1) == 1 {
+			close(preparing)
+			<-release
+			return first, nil
+		}
+		return second, nil
+	}
+	dir := filepath.Join(s.Dir, "staged")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	executable := filepath.Join(dir, "Dipper.exe")
+	if err := os.WriteFile(executable, []byte("fixture executable"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	s.SoftwareUpdate = softwareUpdate{
+		Available: true,
+		Offer:     softwareOffer(),
+		Downloaded: update.Download{
+			Directory:  dir,
+			Executable: executable,
+			Package:    filepath.Join(dir, "update.zip"),
+		},
+	}
+	tt.Frame()
+	uiClick(t, tt, softwareText.install)
+	select {
+	case <-preparing:
+	case <-time.After(5 * time.Second):
+		t.Fatal("installation preparation did not start")
+	}
+	if !s.SoftwareUpdate.Busy || !s.SoftwareUpdate.Installing {
+		t.Fatal("installation preparation did not expose its pending state")
+	}
+	tt.Frame()
+	uiClick(t, tt, softwareText.cancel)
+	close(release)
+	softwareApply(t, tt, queue)
+	if s.SoftwareUpdate.Busy || s.SoftwareUpdate.Installing || s.SoftwareUpdate.Installer != nil {
+		t.Fatalf("cancelling preparation left installation stuck: busy=%v installing=%v installer=%v", s.SoftwareUpdate.Busy, s.SoftwareUpdate.Installing, s.SoftwareUpdate.Installer)
+	}
+	if first.aborts.Load() != 1 || s.SoftwareUpdate.Status != softwareText.cancelled {
+		t.Fatalf("cancelling preparation did not abort the helper: abort=%d status=%q", first.aborts.Load(), s.SoftwareUpdate.Status)
+	}
+	if s.SoftwareUpdate.Downloaded.Executable != executable {
+		t.Fatal("cancelling preparation discarded the verified download")
+	}
+	if _, err := os.Stat(executable); err != nil {
+		t.Fatalf("cancelling preparation removed downloaded bytes: %v", err)
+	}
+	uiRequireText(t, tt, softwareText.install)
+	uiClick(t, tt, softwareText.install)
+	softwareApply(t, tt, queue)
+	if calls.Load() != 2 || s.SoftwareUpdate.Installer != second || !s.SoftwareUpdate.Installing {
+		t.Fatalf("cancelled preparation was not retryable: calls=%d installer=%v installing=%v", calls.Load(), s.SoftwareUpdate.Installer, s.SoftwareUpdate.Installing)
+	}
+}
+
 func TestSoftwareInstallClickAndQuitVeto(t *testing.T) {
 	for _, scenario := range []string{"success", "save", "busy", "commit", "prepare", "ordinary"} {
 		t.Run(scenario, func(t *testing.T) {
