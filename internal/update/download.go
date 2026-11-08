@@ -24,6 +24,13 @@ func VerifyDownload(downloaded Download) error {
 	return hashMatches(downloaded.Package, downloaded.PackageSHA256)
 }
 
+func VerifyPortableDownload(downloaded Download) error {
+	if err := VerifyDownload(downloaded); err != nil {
+		return err
+	}
+	return hashMatches(downloaded.Executable, downloaded.SHA256)
+}
+
 func Checksum(body []byte, name string) (string, error) {
 	scanner := bufio.NewScanner(strings.NewReader(string(body)))
 	var expected string

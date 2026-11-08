@@ -65,10 +65,22 @@ retry. Development builds show a development version and do not check
 automatically, but a manual check can offer the latest stable release.
 
 Opening the notice shows the release notes and the official package selected
-for the current platform and architecture. Nothing is installed until you
-choose **下载更新** (Download update) and then confirm the installation action.
+for the current platform and architecture. By default, choose **下载更新**
+(Download update) to download it, then confirm the installation action.
 Downloads show progress and can be cancelled or retried. Dipper verifies the
 package against the release's `SHA256SUMS` before offering installation.
+
+**自动下载更新** (Download updates automatically), beside the startup-check
+switch, is off by default. For a Windows portable copy, enabling it lets an
+automatic check download and verify a new stable version in the background
+without opening a dialog. The top of every page then shows **新版本 vX 已下载，
+点击重启更新** (Version vX downloaded; click to restart and update). Clicking
+that notice starts the existing save, prepare-helper, quit, and replacement
+flow. It never restarts on its own. A completed portable download is retained
+across an ordinary quit; the next launch verifies it again and restores the
+notice, even if either automatic switch has since been turned off. A manual
+check still opens the update dialog. Installed Windows copies, macOS, Linux,
+and development builds keep their explicit download and installation behavior.
 
 On Windows, a portable ZIP copy uses the in-app Windows ZIP replacement. After
 confirmation, Dipper saves settings and core state, stops downloads and the

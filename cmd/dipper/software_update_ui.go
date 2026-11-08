@@ -50,6 +50,7 @@ var softwareText = struct {
 	development, unavailable, preferenceError, networkAdvice, downloadError           string
 	openError, installError, unchanged, noNotes, portableDetail, startupError         string
 	preparing, startBlocked, handshakeRejected, manualWindows, manualMac, manualLinux string
+	autoDownload, autoDownloadDetail, downloadedRestart, downloadPreferenceError      string
 }{
 	title: "软件更新", current: "当前版本", automatic: "启动后自动检查",
 	automaticDetail: "每天最多检查一次，只使用稳定版本；自动检查失败不会打扰你。",
@@ -64,16 +65,20 @@ var softwareText = struct {
 	development:  "开发版", unavailable: "更新检查暂不可用。",
 	preferenceError: "自动检查设置保存失败：", networkAdvice: "。请检查网络和代理设置后重试。",
 	downloadError: "下载或校验失败：", openError: "无法打开安装包：", installError: "无法开始安装：",
-	unchanged:         "。请检查目录写入权限或关闭占用程序后重试，旧版本未被改动。",
-	noNotes:           "此版本没有附加说明。",
-	portableDetail:    "确认后会退出并重启，只替换 Dipper.exe；追番、下载和设置保留。启动失败时可能保留旧程序备份，但不会回退用户数据。请先阅读版本说明。",
-	startupError:      "软件更新启动确认失败，请保留旧程序备份并检查日志。",
-	preparing:         "正在准备更新助手…",
-	startBlocked:      "软件更新仍在进行，请稍后重新打开 Dipper：",
-	handshakeRejected: "软件更新交接验证失败：",
-	manualWindows:     "请保存工作并退出 Dipper，再按官方安装包提示完成安装。不会自动运行安装器。",
-	manualMac:         "请退出 Dipper，打开磁盘映像或解压归档，将 Dipper.app 放到应用程序目录后重新打开。",
-	manualLinux:       "请退出 Dipper，使用系统包管理器安装 DEB，或解压归档替换应用程序，再重新打开。",
+	unchanged:               "。请检查目录写入权限或关闭占用程序后重试，旧版本未被改动。",
+	noNotes:                 "此版本没有附加说明。",
+	portableDetail:          "确认后会退出并重启，只替换 Dipper.exe；追番、下载和设置保留。启动失败时可能保留旧程序备份，但不会回退用户数据。请先阅读版本说明。",
+	startupError:            "软件更新启动确认失败，请保留旧程序备份并检查日志。",
+	preparing:               "正在准备更新助手…",
+	startBlocked:            "软件更新仍在进行，请稍后重新打开 Dipper：",
+	handshakeRejected:       "软件更新交接验证失败：",
+	manualWindows:           "请保存工作并退出 Dipper，再按官方安装包提示完成安装。不会自动运行安装器。",
+	manualMac:               "请退出 Dipper，打开磁盘映像或解压归档，将 Dipper.app 放到应用程序目录后重新打开。",
+	manualLinux:             "请退出 Dipper，使用系统包管理器安装 DEB，或解压归档替换应用程序，再重新打开。",
+	autoDownload:            "自动下载更新",
+	autoDownloadDetail:      "仅 Windows 便携版：发现新版本后后台下载并校验，完成后提示重启。",
+	downloadedRestart:       "新版本 %s 已下载，点击重启更新",
+	downloadPreferenceError: "自动下载设置保存失败：",
 }
 
 func updateVersionLabel(value string) string {
@@ -99,7 +104,17 @@ func (s *State) setSoftwareAutomatic(value bool) {
 }
 
 func (s *State) startAutomaticSoftwareCheck() {
-	if !s.softwareAutomatic() || update.Development(version) || s.SoftwareUpdate.Busy || s.SoftwareClient == nil {
+	if s.SoftwareUpdate.Busy {
+		return
+	}
+	if s.SoftwareUpdate.Downloaded.Executable != "" {
+		return
+	}
+	if s.SoftwarePending != nil {
+		s.restoreSoftwarePending()
+		return
+	}
+	if !s.softwareAutomatic() || update.Development(version) || s.SoftwareClient == nil {
 		return
 	}
 	now := time.Now()
@@ -120,6 +135,12 @@ func (s *State) startAutomaticSoftwareCheck() {
 
 func (s *State) checkSoftware(manual bool) {
 	if s.SoftwareUpdate.Busy {
+		return
+	}
+	if s.SoftwareUpdate.Downloaded.Executable != "" && s.SoftwarePending != nil {
+		if manual {
+			s.SoftwareUpdate.Dialog = true
+		}
 		return
 	}
 	if s.SoftwareClient == nil {
@@ -177,6 +198,9 @@ func (s *State) checkSoftware(manual bool) {
 			default:
 				s.setSoftwareStatus("")
 			}
+			if !manual && s.SoftwareAutoDownload && s.softwarePortable(offer) && offer.Available {
+				s.startSoftwareDownload(false)
+			}
 		})
 	}()
 }
@@ -203,14 +227,19 @@ func (s *State) softwareCheckFailed(manual bool, err error) {
 }
 
 func (s *State) downloadSoftware() {
-	if !s.SoftwareUpdate.Available || s.SoftwareUpdate.Busy || s.SoftwareClient == nil {
+	s.startSoftwareDownload(true)
+}
+
+func (s *State) startSoftwareDownload(manual bool) {
+	if !s.SoftwareUpdate.Available || s.SoftwareUpdate.Busy || s.SoftwareClient == nil ||
+		(s.SoftwarePending != nil && s.SoftwareUpdate.Downloaded.Executable != "") {
 		return
 	}
 	offer := s.SoftwareUpdate.Offer
 	s.discardSoftwareDownload()
 	ctx, cancel := context.WithTimeout(s.Ctx, 45*time.Minute)
 	s.SoftwareUpdate.Busy = true
-	s.SoftwareUpdate.Manual = true
+	s.SoftwareUpdate.Manual = manual
 	s.SoftwareUpdate.cancel = cancel
 	s.setSoftwareStatus(softwareText.downloading)
 	s.SoftwareUpdate.Progress = 0
@@ -218,9 +247,22 @@ func (s *State) downloadSoftware() {
 	s.SoftwareUpdate.revision++
 	revision := s.SoftwareUpdate.revision
 	client := s.SoftwareClient
+	persistent := s.softwarePortable(offer)
 	go func() {
-		directory := os.TempDir()
 		lastReport := time.Time{}
+		directory := os.TempDir()
+		if persistent {
+			var err error
+			directory, err = s.softwareUpdateRoot()
+			if err != nil {
+				s.Update(func() { s.softwareDownloadFailed(revision, err) })
+				return
+			}
+		}
+		if err := os.MkdirAll(directory, 0700); err != nil {
+			s.Update(func() { s.softwareDownloadFailed(revision, err) })
+			return
+		}
 		download, err := client.Download(ctx, offer, directory, func(done, total int64) {
 			if time.Since(lastReport) < 200*time.Millisecond {
 				return
@@ -233,7 +275,14 @@ func (s *State) downloadSoftware() {
 				s.SoftwareUpdate.Progress, s.SoftwareUpdate.Total = done, total
 			})
 		})
-		if download.Directory != "" {
+		if err == nil && persistent {
+			err = s.validateSoftwarePending(&softwarePending{Offer: offer, Download: download})
+		}
+		if err != nil && persistent {
+			s.removeSoftwarePending(&softwarePending{Download: download})
+			download = update.Download{}
+		}
+		if !persistent && download.Directory != "" {
 			context.AfterFunc(s.Ctx, func() { os.RemoveAll(download.Directory) })
 		}
 		if ctx.Err() != nil {
@@ -253,6 +302,16 @@ func (s *State) downloadSoftware() {
 				s.softwareDownloadFailed(revision, err)
 				return
 			}
+			if persistent {
+				pending := &softwarePending{Offer: offer, Download: download}
+				s.SoftwarePending = pending
+				if err := s.savePreferences(); err != nil {
+					s.SoftwarePending = nil
+					s.removeSoftwarePending(pending)
+					s.softwareDownloadFailed(revision, err)
+					return
+				}
+			}
 			s.SoftwareUpdate.Downloaded = download
 			s.setSoftwareStatus(softwareText.ready)
 			s.SoftwareUpdate.Progress, s.SoftwareUpdate.Total = offer.Package.Size, offer.Package.Size
@@ -261,7 +320,7 @@ func (s *State) downloadSoftware() {
 }
 
 func (s *State) softwareDownloadFailed(revision uint64, err error) {
-	if revision != s.SoftwareUpdate.revision {
+	if revision != s.SoftwareUpdate.revision || s.Ctx.Err() != nil {
 		return
 	}
 	s.SoftwareUpdate.Busy = false
@@ -432,6 +491,17 @@ func (s *State) softwareNotice(c *ui.Context) {
 	if message == "" {
 		return
 	}
+	if s.SoftwarePending != nil && s.SoftwareUpdate.Downloaded.Executable != "" {
+		ui.Row(c).Wrap().Gap(12).Padding(8, 24).Background(colors(c).blueWash).Children(func() {
+			quiet(c, "restart-software-update", fmt.Sprintf(softwareText.downloadedRestart, s.SoftwareUpdate.Offer.Release.Tag), s.installSoftware).
+				Disabled(s.Busy || s.SoftwareUpdate.Busy || s.SoftwareUpdate.Installing)
+			quiet(c, "open-software-update", softwareText.notes, func() {
+				s.Page = "settings"
+				s.SoftwareUpdate.Dialog = true
+			})
+		})
+		return
+	}
 	ui.Row(c).Wrap().Gap(12).Padding(8, 24).Background(colors(c).blueWash).Children(func() {
 		ui.Text(c, message).FontSize(textSize(c, textCaption)).TextColor(colors(c).ink).Grow(1).MinWidth(0)
 		quiet(c, "open-software-update", softwareText.notes, func() {
@@ -453,7 +523,12 @@ func (s *State) softwareUpdateSettings(c *ui.Context) {
 			ui.Checkbox(c.Key("software-auto"), &automatic, softwareText.automatic).OnChange(func() {
 				s.setSoftwareAutomatic(automatic)
 			}).Disabled(s.Busy || s.SoftwareUpdate.Busy)
+			autoDownload := s.SoftwareAutoDownload
+			ui.Checkbox(c.Key("software-auto-download"), &autoDownload, softwareText.autoDownload).OnChange(func() {
+				s.setSoftwareAutoDownload(autoDownload)
+			}).Disabled(s.Busy || s.SoftwareUpdate.Busy)
 		})
+		caption(c, softwareText.autoDownloadDetail)
 		if update.Development(version) {
 			caption(c, softwareText.disabled)
 		}
