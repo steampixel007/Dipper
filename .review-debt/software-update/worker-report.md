@@ -49,7 +49,10 @@ unauthorized. No real installation was updated and no installer was executed.
   normal graceful quit. Core and downloader close before parent process exit.
   A quit veto aborts preparation, restores the visible UI and retains the
   verified download for retry.
-- A per-executable gate serializes updates and concurrent launches. Restart
+- A per-executable gate serializes updates and concurrent launches. On systems
+  with numeric user ids the lock directory is scoped to that user, so one
+  user's private `0700` directory in a shared temporary root cannot deny other
+  users a launch. Restart
   preserves arguments and working directory, including relative `--data` and
   download-root context, and reacquires the existing data-directory instance
   lock before opening application state.
@@ -103,6 +106,7 @@ Tracked existing files:
 | `cmd/dipper/window_ui_test.go` | Scroll settings controls into view after the added section |
 | `docs/subsystems/README.md` | Index update subsystem |
 | `docs/subsystems/gui.md` | Describe software-update state and UI bridge |
+| `docs/subsystems/update.md` | Document launch-lock scoping and helper flow |
 | `docs/usage.md` | Explain checks, downloads, confirmation, recovery and platform limits |
 
 New implementation and test files:
@@ -198,6 +202,8 @@ building. Commands use `go run ./cmd/redcheck -pkg <package> -test '^<name>$'
 | `t12z` | `TestSystemTempAliasKeepsUpdatePathsSafe`: remove temporary-root normalization from path equality | `the OS temporary alias does not identify the same directory` |
 | `t131` | `TestSystemTempAliasKeepsUpdatePathsSafe`: resolve the target before normalizing an absent launch-gate path | `aliases selected different launch gates while target absent` |
 | `t130` | `TestUpdateRejectsDirectoryRedirects`: restore `filepath.EvalSymlinks`, which does not resolve Windows junctions | `did not reject redirected extraction directory before writing` |
+| local | `TestLaunchLockDirectoryIsUserScoped`: restore one shared lock directory for all users | `distinct users share a launch-lock directory` |
+| local | `TestSoftwareCancelDuringPreparationLeavesRetryableState`: drop the preparation-cancel branch | `cancelling preparation left installation stuck: busy=false installing=true installer=<nil>` |
 
 Redcheck returned exit 0 and `REAL RED` for each entry. Restored green evidence
 includes `t11v`/`t11w`, the full restored source runs `t127`/`t128`/`t12j`, and
@@ -224,14 +230,16 @@ an untagged local build.
 
 | Output | Bytes | Modified UTC | SHA-256 |
 | --- | ---: | --- | --- |
-| `bin/dipper.exe` | 50,946,048 | 2026-11-08T08:12:55Z | `45D47A1FED763A484B0626ECA2BFCE8B12C0445C1DDD68B54A13FF14E41BD91C` |
-| `bin/dipper-linux-amd64` | 50,032,657 | 2026-11-08T08:13:01Z | `98D4540DAFB84AB4E6E4DB5DFE89CF030FA0F04760071EDB856F52ADB12D19D1` |
-| `bin/dipper-darwin-arm64` | 48,150,914 | 2026-11-08T08:13:05Z | `ED0732FD120C02DA18B6DB7518AABB600FDF616C2855F848EB2A0A4798743D29` |
-| `bin/dipper-darwin-amd64` | 51,043,968 | 2026-11-08T08:13:09Z | `6EDC1B6FE2C8F5E8C34BFCB118C1FBB3E26041D8D426309E77CAA81A05FEE70F` |
+| `bin/dipper.exe` | 50,947,584 | 2026-11-08T08:43:18Z | `3A791E0D0009048567CFB03CC9DDA5CA3DC3C9D260A370736A474569BB3F5E99` |
+| `bin/dipper-linux-amd64` | 50,032,309 | 2026-11-08T08:43:22Z | `CBA41DBA94DBFDC3018D72CAE143FCE7C4AA976888D543BAC384AD12B8B89C62` |
+| `bin/dipper-darwin-arm64` | 48,151,010 | 2026-11-08T08:43:25Z | `099C10086B969668D35FC5217AE00C03D5CEA9BF5DE9BF9196D05A2965D72261` |
+| `bin/dipper-darwin-amd64` | 51,044,064 | 2026-11-08T08:43:28Z | `3971DC220E3B2D107B7A9312E378BE06EADC0AEFCC084DE257D22210A0D0FC5B` |
 
 ## Limits and outstanding validation
 
-- No outstanding implementation or permission blocker was observed.
+- No outstanding implementation blocker was observed. Herdr's control pipe
+  returned `Access is denied` for this session, so the final verification ran
+  in the existing worker terminal rather than new background `hc` terminals.
 - Merge is authorized. This report was updated before the final commit; the
   pull request head and merged `main` are verified separately after CI passes.
 - A full native Dipper GUI startup/update smoke was not run. Rendered-control
@@ -240,6 +248,10 @@ an untagged local build.
 - macOS/Linux binaries were cross-built, not executed on native hosts. Their
   platform launch gates and package-open commands have no native runtime proof
   from this worker.
+- The Linux multi-user lock scenario was not executed with two real UIDs
+  because WSL is not installed on this machine. The unit test proves distinct
+  numeric user ids receive distinct lock directories and the gate uses that
+  same directory; native Linux CI provides the remaining check.
 - No live GitHub download smoke, real release ZIP installation, setup execution,
   or package publication was performed.
 - No Windows ARM64 or Linux ARM64 build/runtime claim is made.
