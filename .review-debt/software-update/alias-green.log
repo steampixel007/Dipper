@@ -1,3 +1,0 @@
-$ go test -count=1 -timeout 10m -run ^TestSystemTempAliasKeepsUpdatePathsSafe$ ./internal/update
-
-ok  	github.com/steampixel007/Dipper/internal/update	0.816s

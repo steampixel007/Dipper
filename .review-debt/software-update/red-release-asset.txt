@@ -1,7 +1,0 @@
-$ go test -count=1 -timeout 10m -run ^TestReleaseSelection$ ./internal/update
-
---- FAIL: TestReleaseSelection (0.01s)
-    release_test.go:112: invented an unavailable Linux ARM64 asset
-FAIL
-FAIL	github.com/steampixel007/Dipper/internal/update	0.752s
-FAIL

@@ -1,8 +1,0 @@
-$ go test -count=1 -timeout 10m -run TestDownloadVerificationAndCancellation ./internal/update
-
---- FAIL: TestDownloadVerificationAndCancellation (0.04s)
-    --- FAIL: TestDownloadVerificationAndCancellation/checksum (0.01s)
-        download_test.go:86: unsafe/incomplete download accepted: {Directory:C:\Users\nathan\AppData\Local\Temp\TestDownloadVerificationAndCancellationchecksum2523693283\001\dipper-update-download-3003927137 Package:C:\Users\nathan\AppData\Local\Temp\TestDownloadVerificationAndCancellationchecksum2523693283\001\dipper-update-download-3003927137\dipper_0.1.3_windows_amd64.zip Executable:C:\Users\nathan\AppData\Local\Temp\TestDownloadVerificationAndCancellationchecksum2523693283\001\dipper-update-download-3003927137\Dipper.exe SHA256:9bec404980a9aaf5034e11f4d306812d6236abab9ac53f4625eb548b18145c54 PackageSHA256:0000000000000000000000000000000000000000000000000000000000000000} <nil>
-FAIL
-FAIL	github.com/steampixel007/Dipper/internal/update	0.079s
-FAIL

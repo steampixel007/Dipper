@@ -1,7 +1,0 @@
-$ go test -count=1 -timeout 10m -run ^TestLaunchLockDirectoryIsUserScoped$ ./internal/update
-
---- FAIL: TestLaunchLockDirectoryIsUserScoped (0.00s)
-    paths_test.go:121: distinct users share a launch-lock directory: "C:\\Users\\nathan\\AppData\\Local\\Temp\\TestLaunchLockDirectoryIsUserScoped3515093974\\001\\Dipper-update-locks"
-FAIL
-FAIL	github.com/steampixel007/Dipper/internal/update	0.741s
-FAIL

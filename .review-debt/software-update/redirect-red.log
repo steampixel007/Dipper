@@ -1,7 +1,0 @@
-$ go test -count=1 -timeout 10m -run ^TestUpdateRejectsDirectoryRedirects$ ./internal/update
-
---- FAIL: TestUpdateRejectsDirectoryRedirects (0.04s)
-    paths_test.go:103: did not reject redirected extraction directory before writing: open C:\Users\nathan\AppData\Local\Temp\TestUpdateRejectsDirectoryRedirects1654046821\001\redirect\Dipper.exe: The file exists.
-FAIL
-FAIL	github.com/steampixel007/Dipper/internal/update	0.874s
-FAIL
