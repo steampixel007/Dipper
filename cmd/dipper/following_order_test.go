@@ -9,6 +9,8 @@ import (
 
 func TestUIFollowingListFloatsFailedChecks(t *testing.T) {
 	s := uiFixture(t, "following")
+	s.Subscriptions[1].CheckFailed = true
+	s.Subscriptions[1].LastError = "RSS 请求超时"
 	tt := ui.NewTester(s.view, 1320, 860)
 
 	joined := strings.Join(tt.Texts(), "\n")

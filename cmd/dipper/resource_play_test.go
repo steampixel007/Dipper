@@ -10,6 +10,8 @@ import (
 
 func TestUIResourceRowShowsDownloadState(t *testing.T) {
 	s := uiFixture(t, "detail")
+	s.Downloads[1].Failed = true
+	s.Downloads[1].Error = "连接超时，请重试"
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, "下载中 43%", "已有任务", "失败")
 	failures := func() int {

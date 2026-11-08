@@ -32,6 +32,8 @@ func TestUISidebarCountSharesRowAndLargeTextRemainsReachable(t *testing.T) {
 	for _, scale := range []float32{1, 2} {
 		state := uiFixture(t, "browse")
 		state.Subscriptions[1].CheckFailed = false
+		state.Downloads[1].Failed = true
+		state.Downloads[1].Error = "连接超时，请重试"
 		tester := ui.NewTester(func(c *ui.Context) {
 			installTheme(c, false)
 			state.sidebar(c)

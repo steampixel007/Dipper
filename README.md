@@ -122,8 +122,8 @@ bar and the next action beside every task.
     <th width="50%">Your downloads</th>
   </tr>
   <tr>
-    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="Followed shows as posters, with a failed check marked and a retry action"></a></td>
-    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="Downloads grouped by series, with a group progress bar, per-task speeds, retry, and sharing controls"></a></td>
+    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="Followed shows as posters, each card opening its episode library"></a></td>
+    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="Downloads grouped by series, with a group progress bar, per-task speeds, and sharing controls"></a></td>
   </tr>
 </table>
 
