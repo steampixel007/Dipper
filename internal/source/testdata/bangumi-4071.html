@@ -1,0 +1,2384 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="keywords" content="新番,动漫,动漫下載,新番下载,animation,bangumi,动画,蜜柑计划,Mikan Project" />
+    <meta name="description" content="蜜柑计划：新一代的动漫下载站" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- 若用户有Google Chrome Frame,那么ie浏览时让IE使用chrome内核 -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+
+    <!-- 若是双核浏览器,默认webkit渲染(chrome) -->
+    <meta name="renderer" content="webkit">
+    <title>Mikan Project - &#x81F3;&#x9AD8;&#x4E4B;&#x529B;</title>
+
+    <!-- here put import css lib -->
+    
+    
+        <link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css?v=7s5uDGW3AHqw6xtJmNNtr-OBRJUlgkNJEo78P4b0yRw" />
+        <link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=3dkvEK0WLHRJ7_Csr0BZjAWxERc5WH7bdeUya2aXxdU" />
+        <link rel="stylesheet" href="/css/thirdparty.min.css?v=c2SZy6n-55iljz60XCAALXejEZvjc43kgwamU5DAYUU" />
+        <link rel="stylesheet" href="/css/animate.min.css?v=w_eXqGX0NdMPQ0LZNhdQ8B-DQMYAxelvLoIP39dzmus" />
+        <link rel="stylesheet" href="/css/mikan.min.css?v=BgnOAfR_3VfhpdfW0WBlvPvNAZl933rSFc0qtUGyqJg" />
+
+        <script src="/lib/jquery/dist/jquery.min.js?v=BbhdlvQf_xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44"></script>
+        <script src="/lib/bootstrap/dist/js/bootstrap.min.js?v=KXn5puMvxCw-dAYznun-drMdG1IFl3agK0p_pqT9KAo"></script>
+        <script src="/js/thirdparty.min.js?v=NsK_w5fw7Nm4ZPm4eZDgsivasZNgT6ArhIjmj-bRnR0"></script>
+        <script src="/js/darkreader.min.js?v=Lr_8XODLEDSPtT6LqaeLKzREs4jocJUzV8HvQPItIic"></script>
+        <script src="/js/ScrollMagic.min.js?v=1xuIM3UJWEZX_wWN9zrA8W7CWukfsMaEqb759CeHo3U"></script>
+        <script src="/js/jquery.ScrollMagic.min.js?v=SyygQh9gWWfvyS13QwI0SKGAQyHDachlaigiK4X59iw"></script>
+    
+
+    <link rel="icon" href="/images/favicon.ico?v=2" />
+    <link rel="apple-touch-icon" href="\Images\apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="\Images\apple-touch-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="\Images\apple-touch-icon-180x180.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="\Images\apple-touch-icon-144x144.png">
+
+    <script>
+        (function (i, s, o, g, r, a, m) {
+            i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+                (i[r].q = i[r].q || []).push(arguments)
+            }, i[r].l = 1 * new Date(); a = s.createElement(o),
+                m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+        })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+        ga('create', 'UA-8911610-8', 'auto');
+        ga('send', 'pageview');
+    </script>
+</head>
+<body class="main">
+    <div id="sk-header" class="hidden-xs hidden-sm">
+        <div id="sk-top-nav" class="container">
+            <a id="logo" href="/" style="width:205px;"><img id="mikan-pic" src="/images/mikan-pic.png" /><img src="/images/mikan-text.svg" style="height:30px;" /></a>
+            <div id="nav-list">
+                <ul class="list-inline nav-ul">
+                    <li class="">
+                        <div class="sk-col"><a href="/"><i class="fa fa-home fa-lg"></i>主页</a></div>
+                    </li>
+                    <li class="">
+                        <div class="sk-col"><a href="/Home/MyBangumi"><i class="fa fa-rss fa-lg"></i>订阅</a></div>
+                    </li>
+                    <li class="">
+                        <div class="sk-col"><a href="/Home/Classic"><i class="fa fa-slack fa-lg"></i>列表</a></div>
+                    </li>
+                </ul>
+            </div>
+            <div class="search-form">
+                <form method="get" action="/Home/Search">
+                    <div class="form-group has-feedback">
+                        <label for="search" class="sr-only">搜索</label>
+                        <input type="text" class="form-control input-sm" name="searchstr" id="header-search" placeholder="搜索">
+                        <span class="glyphicon glyphicon-search form-control-feedback"></span>
+                    </div>
+                </form>
+            </div>
+
+            
+
+<section id="login">
+        <div id="user-login" class="pull-right">
+            <a href="/Account/Register" class="text-right">注册</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            <a onclick="ToggleActive(this)" class="text-right" data-toggle="popover-x" data-target="#login-popover" data-placement="bottom bottom-right" rel="popover">登录</a>
+<form action="/Account/Login?ReturnUrl=%2FHome%2FBangumi%2F4071" class="form-vertical" method="post">                <div id="login-popover" class="popover popover-default">
+                    <div class="arrow"></div>
+                    <div id="login-popover-conent">
+                        <div id="login-popover-input">
+                            <div id="login-popover-div-username">
+                                <img src="/images/user-name_login_icon.png" />
+                                <input type="text" placeholder="用户名" id="login-popover-input-username" name="UserName" />
+                            </div>
+                            <div id="login-popover-div-password">
+                                <img src="/images/password_login_icon.png" style="margin-left:3px;" />
+                                <input type="password" placeholder="密码" id="login-popover-input-password" name="Password" />
+                            </div>
+                        </div>
+                        <button id="login-popover-submit" type="submit" class="btn">登&nbsp;&nbsp;&nbsp;录</button>
+                        <div class="checkbox" id="login-popover-password">
+                            <label id="login-popover-remember-password"><input type="checkbox" value="true" name="RememberMe"><input type="hidden" value="false" name="RememberMe">记住密码</label>
+                            <div id="login-popover-forget-password" class="pull-right"><a href="/Account/ForgotPassword" class="forget-password">忘记密码</a></div>
+                        </div>
+
+                        <a id="login-popover-create-account">还没有账号？赶紧来注册一个吧~</a>
+                    </div>
+                </div>
+<input name="__RequestVerificationToken" type="hidden" value="SANITIZED_REQUEST_VERIFICATION_TOKEN" /></form>        </div>
+        <script>
+            var AdvancedSubscriptionEnabled = false;
+        </script>
+</section>
+        </div>
+        <div class="ribbon">
+            <span class="ribbon-color1"></span>
+            <span class="ribbon-color2"></span>
+            <span class="ribbon-color3"></span>
+            <span class="ribbon-color4"></span>
+            <span class="ribbon-color5"></span>
+            <span class="ribbon-color6"></span>
+            <span class="ribbon-color7"></span>
+        </div>
+    </div>
+    <div class="m-home-nav hidden-lg hidden-md" id="sk-mobile-header">
+        <div class="m-home-tool-left clickable" data-toggle="modal" data-target="#modal-nav">
+            <i class="fa fa-bars" aria-hidden="true"></i>
+        </div>
+        <div class="m-home-tool-left"></div>
+        <div style="text-align: center; height:100%;flex:1;">
+            <a href="/" style="text-decoration:none">
+                <img src="/images/mikan-pic.png" style="height: 3rem;margin-top: 0.5rem;">
+                <img src="/images/mikan-text.png" style="height: 1.5rem;margin-top: 0.5rem;">
+            </a>
+        </div>
+        <div class="m-home-tool-right clickable" data-toggle="modal" data-target="#modal-login">
+            <i class="fa fa-user" aria-hidden="true" style="margin-right: 1rem;"></i>
+        </div>
+        <div class="m-home-tool-right clickable" onclick="ShowNavSearch()">
+            <i class="fa fa-search" aria-hidden="true"></i>
+        </div>
+    </div>
+    <div class="m-nav-search" style="width: 100%;">
+        <div style="flex: 1;">
+            <form method="get" action="/Home/Search">
+                <div class="input-group">
+                    <span class="input-group-addon" id="sizing-addon1" style="border: none;background-color: white;">
+                        <i class="fa fa-search" aria-hidden="true"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="搜索" name="searchstr" aria-describedby="sizing-addon1" style="border: none;font-size:16px;">
+                </div>
+            </form>
+        </div>
+        <div style="width: 4rem;" onclick="HideNavSearch()">
+            <span style="font-size: 1.25rem;">取消</span>
+        </div>
+    </div>
+    <div id="sk-container" class="container hidden-sm hidden-xs">
+    <div class="pull-left leftbar-container">
+        <img src="/images/subscribed-badge.svg" class="subscribed-badge" style="display:none;" />
+
+        <div class="bangumi-poster" style="background-image: url('/images/Bangumi/202610/c0745512.jpg?width=400&height=560&format=webp');"></div>
+	<p class="bangumi-title">&#x81F3;&#x9AD8;&#x4E4B;&#x529B; <a href="/RSS/Bangumi?bangumiId=4071" class="mikan-rss" data-placement="bottom" data-toggle="tooltip" data-original-title="RSS" target="_blank"><i class="fa fa-rss-square"></i></a></p>
+        <p class="bangumi-info">放送日期：&#x661F;&#x671F;&#x65E5;</p>
+            <p class="bangumi-info">放送开始：10/3/2026</p>
+            <p class="bangumi-info">官方网站：<br /><a class="w-other-c" target="_blank" href="https://vertexforce.jp/">https://vertexforce.jp/</a></p>
+            <p class="bangumi-info">Bangumi番组计划链接：<br /><a class="w-other-c" target="_blank" href="https://bgm.tv/subject/636512">https://bgm.tv/subject/636512</a></p>
+        <div id="leftbar-nav-anchor"></div>
+        <div class="leftbar-nav">
+            <div class="header">字幕组列表</div>
+            <ul class="list-unstyled">
+                    <li class="leftbar-item">
+                        <span>
+                            <a class="subgroup-name subgroup-370" data-anchor="#370">LoliHouse</a>
+                        </span>
+                        <span class="date">
+                            11/8/2026
+                        </span>
+                    </li>
+                    <li class="leftbar-item">
+                        <span>
+                            <a class="subgroup-name subgroup-1256" data-anchor="#1256">Nix-Raws</a>
+                        </span>
+                        <span class="date">
+                            11/8/2026
+                        </span>
+                    </li>
+                    <li class="leftbar-item">
+                        <span>
+                            <a class="subgroup-name subgroup-615" data-anchor="#615">Kirara Fantasia</a>
+                        </span>
+                        <span class="date">
+                            11/8/2026
+                        </span>
+                    </li>
+                    <li class="leftbar-item">
+                        <span>
+                            <a class="subgroup-name subgroup-583" data-anchor="#583">ANi</a>
+                        </span>
+                        <span class="date">
+                            11/8/2026
+                        </span>
+                    </li>
+                    <li class="leftbar-item">
+                        <span>
+                            <a class="subgroup-name subgroup-202" data-anchor="#202">&#x751F;&#x8089;/&#x4E0D;&#x660E;&#x5B57;&#x5E55;</a>
+                        </span>
+                        <span class="date">
+                            10/12/2026
+                        </span>
+                    </li>
+            </ul>
+
+                <button class="btn logmod-submit js-subscribe_bangumi_page" data-bangumiid="4071" data-subtitlegroupid="">订阅番组</button>
+        </div>
+    </div>
+
+    <div class="central-container">
+            <div class="header2">
+                <span class="header2-text">概况介绍</span>
+            </div>
+            <p class="header2-desc"> 住在冲绳北部的东道明和他姐姐晴香，以及经营咖啡厅的母亲过着安稳的生活。然而这个家庭其实有个秘密。晴香从父亲继承了名为「Engine」的力量，并瞒着身边的人，照常过日子。另一方面，明则是没继承到父亲的力量，对于自身的弱小感到自卑。就在某天，世界各地突然发生异常变化。逐渐逼近主角等人的神秘敌人究竟有什么目的…… 此刻，背负宇宙命运的少年少女们即将展开战斗！
+
+
+
+[简介原文]
+オキナワの北部に住む中学生・東道明は、姉の晴香、カフェを営む母親の3人で平穏な日常を送っていた。 
+だが、この家族にはある秘密があった。晴香は父から"エンジン"と呼ばれる力を受け継いでおり、他人にその力を隠して生活していたのだ。一方、明は父の力を継いでおらず、自らの弱さにコンプレックスを抱いていた。 
+そんな中、世界中で異変が起きる。明たちに迫る、正体不明の敵の目的とは――。 
+宇宙の命運を背負った少年少女の戦いが、いま始まる。 </p>
+        <div class="header2">
+            <span class="header2-text">字幕组列表</span>
+        </div>
+        <div style="margin-top: 10px; margin-bottom: 10px;">
+            
+
+<div style="width:100%; margin-right: auto; margin-left: auto;" class="hidden-xs hidden-sm">
+    <a href="https://equity.tmall.com/tm?agentId=030f9003a26d4361&amp;bc_fl_src=tmall_market_llb_1_2698459&amp;llbPlatform=_pube&amp;llbOsd=1&amp;di=__IDFA__&amp;dim=__IMEI__&amp;oaid=__OAID__&amp;caid=__CAID__&amp;sy=llb" onclick="ga('send', 'event', 'sswj_lg', 'clicked', 'ad');">
+        <img src="/images/SSWJ/sswj12_lg.jpg" style='height: 100%; width: 100%; object-fit: contain' />
+    </a>
+</div>
+
+<div style="width:100%; margin-right: auto; margin-left: auto;" class="hidden-lg hidden-md">
+    <a href="https://equity.tmall.com/tm?agentId=030f9003a26d4361&amp;bc_fl_src=tmall_market_llb_1_2698459&amp;llbPlatform=_pube&amp;llbOsd=1&amp;di=__IDFA__&amp;dim=__IMEI__&amp;oaid=__OAID__&amp;caid=__CAID__&amp;sy=llb" onclick="ga('send', 'event', 'sswj_sm', 'clicked', 'ad');">
+        <img src="/images/SSWJ/sswj12_sm.jpg" style='height: 100%; width: 100%; object-fit: contain' />
+    </a>
+</div>
+        </div>
+            <div class="subgroup-scroll-top-370"></div>
+            <div class="subgroup-text" id="370">
+                    <a href="/Home/PublishGroup/223" target="_blank" style="color: #3bc0c3;">LoliHouse</a>
+                    <a href="/RSS/Bangumi?bangumiId=4071&subgroupid=370" class="mikan-rss" data-placement="bottom" data-toggle="tooltip" data-original-title="RSS" target="_blank"><i class="fa fa-rss-square"></i></a>
+                    <span class="subscribed" style="display:none;">已订阅</span>
+                    <a class="pull-right subgroup-subscribe js-subscribe_bangumi_page" data-toggle="popover-x" data-target="#subscription-popover-4071-370" data-placement="bottom" data-bangumiid="4071" data-subtitlegroupid="370">订阅</a>
+                <div id="subscription-popover-4071-370" class="popover popover-bangumi js-subscribe_bangumi_popover" style="width: 250px;" data-subtitlegroupid="370" data-bangumiid="4071">
+                    <div class="arrow"></div>
+                    <div class="popover-header popover-title">
+                        <button type="button" class="close" data-dismiss="popover-x" aria-hidden="true"><i class="fa fa-times" aria-hidden="true"></i></button>
+                        订阅设置
+                    </div>
+                    <div class="popover-body popover-content" style="height: 200px;">
+                        <p class="text-justify" style="padding-top: 10px; padding-bottom: 8px;">订阅语言</p>
+                        <div style="padding-bottom: 10px;">
+                            <button type="button" class="btn btn-sm btn-language " data-language="2">繁中</button>
+                            <button type="button" class="btn btn-sm btn-language " data-language="1">简中</button>
+                            <button type="button" class="btn btn-sm btn-language active" data-language="0">全部</button>
+                        </div>
+                        <p class="text-justify" style="color: #888">注：仅会显示订阅/RSS时适用，下方一览仍为全部条目</p>
+                    </div>
+                    <div class="popover-footer row">
+                        <div class="checkbox col-sm-5" style="padding-left: 10px;">
+                            <label>
+                                <input type="checkbox" class="js-disable-advancedsubscription"> 不再提示
+                            </label>
+                        </div>
+                        <div class="col-sm-7" style="padding-right: 12px">
+                                <button type="button" class="btn btn-sm btn-submit" onclick="PopoverSubscribeBangumiPage(this)">订阅</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+<div class="episode-table">
+    <div class="copy-info-row">
+        <button type="button" class="btn btn-default btn-xs js-copy-selected" disabled>复制选中磁连</button>
+        <span class="text-muted js-selected-count">已选 0 项</span>
+        <span class="text-success js-copy-status" style="display:none;">已复制</span>
+    </div>
+
+    <table class="table table-striped tbl-border fadeIn">
+        <thead>
+            <tr>
+                <th width="5%"><input type="checkbox" class="js-select-all" aria-label="选择全部" /></th>
+                <th width="60%">番组名</th>
+                <th width="8%">大小</th>
+                <th width="17%">更新时间</th>
+                <th width="5%">下载</th>
+                <th width="5%">播放</th>
+            </tr>
+        </thead>
+        <tbody>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:97e172bfe66ebed0e09430750058a2206cc2f806&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/97e172bfe66ebed0e09430750058a2206cc2f806">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 06 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:97e172bfe66ebed0e09430750058a2206cc2f806&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.1GB</td>
+                    <td>2026/11/08 14:06</td>
+                    <td>
+                        <a
+                            href="/Download/20261108/97e172bfe66ebed0e09430750058a2206cc2f806.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A97e172bfe66ebed0e09430750058a2206cc2f806">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:94c35058a79457a88dc2fb27bee9eb2d2913e695&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/94c35058a79457a88dc2fb27bee9eb2d2913e695">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 05 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:94c35058a79457a88dc2fb27bee9eb2d2913e695&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>927.1MB</td>
+                    <td>2026/11/01 14:14</td>
+                    <td>
+                        <a
+                            href="/Download/20261101/94c35058a79457a88dc2fb27bee9eb2d2913e695.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A94c35058a79457a88dc2fb27bee9eb2d2913e695">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:c5d2775a7b826c3bfe2cc06657ed8d0282185d3a&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/c5d2775a7b826c3bfe2cc06657ed8d0282185d3a">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 04 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:c5d2775a7b826c3bfe2cc06657ed8d0282185d3a&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>957.2MB</td>
+                    <td>2026/10/25 02:29</td>
+                    <td>
+                        <a
+                            href="/Download/20261025/c5d2775a7b826c3bfe2cc06657ed8d0282185d3a.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Ac5d2775a7b826c3bfe2cc06657ed8d0282185d3a">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:3abc693d7b5390f894bed163e5d4c247c3d652e4&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/3abc693d7b5390f894bed163e5d4c247c3d652e4">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 03 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:3abc693d7b5390f894bed163e5d4c247c3d652e4&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.1GB</td>
+                    <td>2026/10/18 14:20</td>
+                    <td>
+                        <a
+                            href="/Download/20261018/3abc693d7b5390f894bed163e5d4c247c3d652e4.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A3abc693d7b5390f894bed163e5d4c247c3d652e4">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:8ef8eb3a9a14f877717cb96b3ad1025b1143d2fa&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/8ef8eb3a9a14f877717cb96b3ad1025b1143d2fa">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 02 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:8ef8eb3a9a14f877717cb96b3ad1025b1143d2fa&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>945.3MB</td>
+                    <td>2026/10/11 02:07</td>
+                    <td>
+                        <a
+                            href="/Download/20261011/8ef8eb3a9a14f877717cb96b3ad1025b1143d2fa.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A8ef8eb3a9a14f877717cb96b3ad1025b1143d2fa">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:94ea17572dd4d54988b5b6ffbc67560adfe8070a&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/94ea17572dd4d54988b5b6ffbc67560adfe8070a">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 01 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:94ea17572dd4d54988b5b6ffbc67560adfe8070a&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>783.6MB</td>
+                    <td>2026/10/05 16:23</td>
+                    <td>
+                        <a
+                            href="/Download/20261005/94ea17572dd4d54988b5b6ffbc67560adfe8070a.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A94ea17572dd4d54988b5b6ffbc67560adfe8070a">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+        </tbody>
+    </table>
+</div>            <div class="subgroup-scroll-end-370"></div>
+            <div style="height:1px;"></div>
+            <div class="subgroup-scroll-top-1256"></div>
+            <div class="subgroup-text" id="1256">
+                    <a href="/Home/PublishGroup/1027" target="_blank" style="color: #3bc0c3;">Nix-Raws</a>
+                    <a href="/RSS/Bangumi?bangumiId=4071&subgroupid=1256" class="mikan-rss" data-placement="bottom" data-toggle="tooltip" data-original-title="RSS" target="_blank"><i class="fa fa-rss-square"></i></a>
+                    <span class="subscribed" style="display:none;">已订阅</span>
+                    <a class="pull-right subgroup-subscribe js-subscribe_bangumi_page" data-toggle="popover-x" data-target="#subscription-popover-4071-1256" data-placement="bottom" data-bangumiid="4071" data-subtitlegroupid="1256">订阅</a>
+                <div id="subscription-popover-4071-1256" class="popover popover-bangumi js-subscribe_bangumi_popover" style="width: 250px;" data-subtitlegroupid="1256" data-bangumiid="4071">
+                    <div class="arrow"></div>
+                    <div class="popover-header popover-title">
+                        <button type="button" class="close" data-dismiss="popover-x" aria-hidden="true"><i class="fa fa-times" aria-hidden="true"></i></button>
+                        订阅设置
+                    </div>
+                    <div class="popover-body popover-content" style="height: 200px;">
+                        <p class="text-justify" style="padding-top: 10px; padding-bottom: 8px;">订阅语言</p>
+                        <div style="padding-bottom: 10px;">
+                            <button type="button" class="btn btn-sm btn-language " data-language="2">繁中</button>
+                            <button type="button" class="btn btn-sm btn-language " data-language="1">简中</button>
+                            <button type="button" class="btn btn-sm btn-language active" data-language="0">全部</button>
+                        </div>
+                        <p class="text-justify" style="color: #888">注：仅会显示订阅/RSS时适用，下方一览仍为全部条目</p>
+                    </div>
+                    <div class="popover-footer row">
+                        <div class="checkbox col-sm-5" style="padding-left: 10px;">
+                            <label>
+                                <input type="checkbox" class="js-disable-advancedsubscription"> 不再提示
+                            </label>
+                        </div>
+                        <div class="col-sm-7" style="padding-right: 12px">
+                                <button type="button" class="btn btn-sm btn-submit" onclick="PopoverSubscribeBangumiPage(this)">订阅</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+<div class="episode-table">
+    <div class="copy-info-row">
+        <button type="button" class="btn btn-default btn-xs js-copy-selected" disabled>复制选中磁连</button>
+        <span class="text-muted js-selected-count">已选 0 项</span>
+        <span class="text-success js-copy-status" style="display:none;">已复制</span>
+    </div>
+
+    <table class="table table-striped tbl-border fadeIn">
+        <thead>
+            <tr>
+                <th width="5%"><input type="checkbox" class="js-select-all" aria-label="选择全部" /></th>
+                <th width="60%">番组名</th>
+                <th width="8%">大小</th>
+                <th width="17%">更新时间</th>
+                <th width="5%">下载</th>
+                <th width="5%">播放</th>
+            </tr>
+        </thead>
+        <tbody>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:a86e8269003de94b4b5783b2aa23746dd26678f7&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/a86e8269003de94b4b5783b2aa23746dd26678f7">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E06 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:a86e8269003de94b4b5783b2aa23746dd26678f7&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.0 GB</td>
+                    <td>2026/11/08 00:02</td>
+                    <td>
+                        <a
+                            href="/Download/20261108/a86e8269003de94b4b5783b2aa23746dd26678f7.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Aa86e8269003de94b4b5783b2aa23746dd26678f7">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:91124e2e6287822af40b2936e1973f470be399dd&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/91124e2e6287822af40b2936e1973f470be399dd">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E04 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:91124e2e6287822af40b2936e1973f470be399dd&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.0 GB</td>
+                    <td>2026/11/06 13:32</td>
+                    <td>
+                        <a
+                            href="/Download/20261106/91124e2e6287822af40b2936e1973f470be399dd.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A91124e2e6287822af40b2936e1973f470be399dd">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:956c300cf2277421e78131c419416a6530a2a05f&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/956c300cf2277421e78131c419416a6530a2a05f">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E05 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:956c300cf2277421e78131c419416a6530a2a05f&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>998.4 MB</td>
+                    <td>2026/11/01 00:05</td>
+                    <td>
+                        <a
+                            href="/Download/20261101/956c300cf2277421e78131c419416a6530a2a05f.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A956c300cf2277421e78131c419416a6530a2a05f">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:1a8802d2d3f86f34df891e8f3dda115cd3a64e00&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/1a8802d2d3f86f34df891e8f3dda115cd3a64e00">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E03 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:1a8802d2d3f86f34df891e8f3dda115cd3a64e00&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.7 GB</td>
+                    <td>2026/10/18 01:14</td>
+                    <td>
+                        <a
+                            href="/Download/20261018/1a8802d2d3f86f34df891e8f3dda115cd3a64e00.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A1a8802d2d3f86f34df891e8f3dda115cd3a64e00">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:fd19a1186452206b84682695f356220561588899&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/fd19a1186452206b84682695f356220561588899">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E02 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:fd19a1186452206b84682695f356220561588899&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.3 GB</td>
+                    <td>2026/10/11 00:04</td>
+                    <td>
+                        <a
+                            href="/Download/20261011/fd19a1186452206b84682695f356220561588899.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Afd19a1186452206b84682695f356220561588899">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:7296ecf6c62587376cdd5aeedd81840988b50229&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/7296ecf6c62587376cdd5aeedd81840988b50229">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E01 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:7296ecf6c62587376cdd5aeedd81840988b50229&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1,017.6 MB</td>
+                    <td>2026/10/06 14:31</td>
+                    <td>
+                        <a
+                            href="/Download/20261006/7296ecf6c62587376cdd5aeedd81840988b50229.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A7296ecf6c62587376cdd5aeedd81840988b50229">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+        </tbody>
+    </table>
+</div>            <div class="subgroup-scroll-end-1256"></div>
+            <div style="height:1px;"></div>
+            <div class="subgroup-scroll-top-615"></div>
+            <div class="subgroup-text" id="615">
+                    <a href="/Home/PublishGroup/392" target="_blank" style="color: #3bc0c3;">Kirara Fantasia</a>
+                    <a href="/RSS/Bangumi?bangumiId=4071&subgroupid=615" class="mikan-rss" data-placement="bottom" data-toggle="tooltip" data-original-title="RSS" target="_blank"><i class="fa fa-rss-square"></i></a>
+                    <span class="subscribed" style="display:none;">已订阅</span>
+                    <a class="pull-right subgroup-subscribe js-subscribe_bangumi_page" data-toggle="popover-x" data-target="#subscription-popover-4071-615" data-placement="bottom" data-bangumiid="4071" data-subtitlegroupid="615">订阅</a>
+                <div id="subscription-popover-4071-615" class="popover popover-bangumi js-subscribe_bangumi_popover" style="width: 250px;" data-subtitlegroupid="615" data-bangumiid="4071">
+                    <div class="arrow"></div>
+                    <div class="popover-header popover-title">
+                        <button type="button" class="close" data-dismiss="popover-x" aria-hidden="true"><i class="fa fa-times" aria-hidden="true"></i></button>
+                        订阅设置
+                    </div>
+                    <div class="popover-body popover-content" style="height: 200px;">
+                        <p class="text-justify" style="padding-top: 10px; padding-bottom: 8px;">订阅语言</p>
+                        <div style="padding-bottom: 10px;">
+                            <button type="button" class="btn btn-sm btn-language " data-language="2">繁中</button>
+                            <button type="button" class="btn btn-sm btn-language " data-language="1">简中</button>
+                            <button type="button" class="btn btn-sm btn-language active" data-language="0">全部</button>
+                        </div>
+                        <p class="text-justify" style="color: #888">注：仅会显示订阅/RSS时适用，下方一览仍为全部条目</p>
+                    </div>
+                    <div class="popover-footer row">
+                        <div class="checkbox col-sm-5" style="padding-left: 10px;">
+                            <label>
+                                <input type="checkbox" class="js-disable-advancedsubscription"> 不再提示
+                            </label>
+                        </div>
+                        <div class="col-sm-7" style="padding-right: 12px">
+                                <button type="button" class="btn btn-sm btn-submit" onclick="PopoverSubscribeBangumiPage(this)">订阅</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+<div class="episode-table">
+    <div class="copy-info-row">
+        <button type="button" class="btn btn-default btn-xs js-copy-selected" disabled>复制选中磁连</button>
+        <span class="text-muted js-selected-count">已选 0 项</span>
+        <span class="text-success js-copy-status" style="display:none;">已复制</span>
+    </div>
+
+    <table class="table table-striped tbl-border fadeIn">
+        <thead>
+            <tr>
+                <th width="5%"><input type="checkbox" class="js-select-all" aria-label="选择全部" /></th>
+                <th width="60%">番组名</th>
+                <th width="8%">大小</th>
+                <th width="17%">更新时间</th>
+                <th width="5%">下载</th>
+                <th width="5%">播放</th>
+            </tr>
+        </thead>
+        <tbody>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:5bbf7f0256e664acbd5ab3f94866e81780658f0f&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/5bbf7f0256e664acbd5ab3f94866e81780658f0f">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 06 (CR 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:5bbf7f0256e664acbd5ab3f94866e81780658f0f&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.0 GB</td>
+                    <td>2026/11/08 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261108/5bbf7f0256e664acbd5ab3f94866e81780658f0f.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A5bbf7f0256e664acbd5ab3f94866e81780658f0f">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:4b9cc96f8c4f666efd24acc186c498c0716c669d&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/4b9cc96f8c4f666efd24acc186c498c0716c669d">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 06 (Baha 1920x1080 AVC AAC MP4)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:4b9cc96f8c4f666efd24acc186c498c0716c669d&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>686.8 MB</td>
+                    <td>2026/11/08 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261108/4b9cc96f8c4f666efd24acc186c498c0716c669d.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A4b9cc96f8c4f666efd24acc186c498c0716c669d">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:0eba44e99e7bd401678c51313a04e6a088d93cb4&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/0eba44e99e7bd401678c51313a04e6a088d93cb4">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 05 (ABEMA 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:0eba44e99e7bd401678c51313a04e6a088d93cb4&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>715.8 MB</td>
+                    <td>2026/11/07 03:00</td>
+                    <td>
+                        <a
+                            href="/Download/20261107/0eba44e99e7bd401678c51313a04e6a088d93cb4.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A0eba44e99e7bd401678c51313a04e6a088d93cb4">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:540cf2b587d6b63b6fcdbeb7348f7e16094ef7b1&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/540cf2b587d6b63b6fcdbeb7348f7e16094ef7b1">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 05 (Baha 1920x1080 AVC AAC MP4)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:540cf2b587d6b63b6fcdbeb7348f7e16094ef7b1&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>614.0 MB</td>
+                    <td>2026/11/01 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261101/540cf2b587d6b63b6fcdbeb7348f7e16094ef7b1.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A540cf2b587d6b63b6fcdbeb7348f7e16094ef7b1">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:21f5f3e8d5066fdd7ab406c213c57db9fd1eff85&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/21f5f3e8d5066fdd7ab406c213c57db9fd1eff85">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 05 (CR 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:21f5f3e8d5066fdd7ab406c213c57db9fd1eff85&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>998.4 MB</td>
+                    <td>2026/11/01 00:00</td>
+                    <td>
+                        <a
+                            href="/Download/20261101/21f5f3e8d5066fdd7ab406c213c57db9fd1eff85.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A21f5f3e8d5066fdd7ab406c213c57db9fd1eff85">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:c3df483e902985205f8a593ae0347bd403b62ade&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/c3df483e902985205f8a593ae0347bd403b62ade">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 04 (ABEMA 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:c3df483e902985205f8a593ae0347bd403b62ade&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>715.6 MB</td>
+                    <td>2026/10/31 03:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261031/c3df483e902985205f8a593ae0347bd403b62ade.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Ac3df483e902985205f8a593ae0347bd403b62ade">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:82c775562a79ccb084d37f721c84b55d9833a413&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/82c775562a79ccb084d37f721c84b55d9833a413">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 04 (CR 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:82c775562a79ccb084d37f721c84b55d9833a413&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.0 GB</td>
+                    <td>2026/10/25 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261025/82c775562a79ccb084d37f721c84b55d9833a413.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A82c775562a79ccb084d37f721c84b55d9833a413">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:ec122427d0ab4c84bca8d8ae0f42a11d47452d73&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/ec122427d0ab4c84bca8d8ae0f42a11d47452d73">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 04 (Baha 1920x1080 AVC AAC MP4)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:ec122427d0ab4c84bca8d8ae0f42a11d47452d73&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>628.6 MB</td>
+                    <td>2026/10/25 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261025/ec122427d0ab4c84bca8d8ae0f42a11d47452d73.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Aec122427d0ab4c84bca8d8ae0f42a11d47452d73">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:b3a020cad56a5bb975b763366150a55c4b4d2e3a&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/b3a020cad56a5bb975b763366150a55c4b4d2e3a">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 03 (ABEMA 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:b3a020cad56a5bb975b763366150a55c4b4d2e3a&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>715.4 MB</td>
+                    <td>2026/10/24 03:00</td>
+                    <td>
+                        <a
+                            href="/Download/20261024/b3a020cad56a5bb975b763366150a55c4b4d2e3a.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Ab3a020cad56a5bb975b763366150a55c4b4d2e3a">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:af678c774c4d49167484679deeb4395781f910a3&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/af678c774c4d49167484679deeb4395781f910a3">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 03 (CR 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:af678c774c4d49167484679deeb4395781f910a3&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.7 GB</td>
+                    <td>2026/10/18 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261018/af678c774c4d49167484679deeb4395781f910a3.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Aaf678c774c4d49167484679deeb4395781f910a3">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:e82626d95d3abcc82675824ff986f28726ea743c&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/e82626d95d3abcc82675824ff986f28726ea743c">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 03 (Baha 1920x1080 AVC AAC MP4)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:e82626d95d3abcc82675824ff986f28726ea743c&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>745.1 MB</td>
+                    <td>2026/10/18 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261018/e82626d95d3abcc82675824ff986f28726ea743c.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Ae82626d95d3abcc82675824ff986f28726ea743c">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:cdddfd0435693f6eeeac9a13485054b25bf8cfce&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/cdddfd0435693f6eeeac9a13485054b25bf8cfce">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 02 (ABEMA 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:cdddfd0435693f6eeeac9a13485054b25bf8cfce&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>715.9 MB</td>
+                    <td>2026/10/17 03:00</td>
+                    <td>
+                        <a
+                            href="/Download/20261017/cdddfd0435693f6eeeac9a13485054b25bf8cfce.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Acdddfd0435693f6eeeac9a13485054b25bf8cfce">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:ea5cb1f783a515e327af5c34b883234be51311e8&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/ea5cb1f783a515e327af5c34b883234be51311e8">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 02 (CR 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:ea5cb1f783a515e327af5c34b883234be51311e8&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.3 GB</td>
+                    <td>2026/10/11 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261011/ea5cb1f783a515e327af5c34b883234be51311e8.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Aea5cb1f783a515e327af5c34b883234be51311e8">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:c5879323f3d3edfebc394b9f48dc2b383b474289&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/c5879323f3d3edfebc394b9f48dc2b383b474289">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 02 (Baha 1920x1080 AVC AAC MP4)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:c5879323f3d3edfebc394b9f48dc2b383b474289&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>647.0 MB</td>
+                    <td>2026/10/11 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261011/c5879323f3d3edfebc394b9f48dc2b383b474289.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Ac5879323f3d3edfebc394b9f48dc2b383b474289">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:36cbd3e3a1b30e42818f52af58c7f1d35cc34b81&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/36cbd3e3a1b30e42818f52af58c7f1d35cc34b81">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 01 (ABEMA 1920x1080 AVC AAC MKV)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:36cbd3e3a1b30e42818f52af58c7f1d35cc34b81&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>715.6 MB</td>
+                    <td>2026/10/10 03:00</td>
+                    <td>
+                        <a
+                            href="/Download/20261010/36cbd3e3a1b30e42818f52af58c7f1d35cc34b81.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A36cbd3e3a1b30e42818f52af58c7f1d35cc34b81">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+        </tbody>
+    </table>
+</div>                <a class="episode-expand js-expand-episode" data-bangumiid="4071" data-subtitlegroupid="615" data-take="65"><img src="/images/ic_keyboard_arrow_down_black_24px.svg" />显示更多</a>
+            <div class="subgroup-scroll-end-615"></div>
+            <div style="height:1px;"></div>
+            <div class="subgroup-scroll-top-583"></div>
+            <div class="subgroup-text" id="583">
+                    <a href="/Home/PublishGroup/359" target="_blank" style="color: #3bc0c3;">ANi</a>
+                    <a href="/RSS/Bangumi?bangumiId=4071&subgroupid=583" class="mikan-rss" data-placement="bottom" data-toggle="tooltip" data-original-title="RSS" target="_blank"><i class="fa fa-rss-square"></i></a>
+                    <span class="subscribed" style="display:none;">已订阅</span>
+                    <a class="pull-right subgroup-subscribe js-subscribe_bangumi_page" data-toggle="popover-x" data-target="#subscription-popover-4071-583" data-placement="bottom" data-bangumiid="4071" data-subtitlegroupid="583">订阅</a>
+                <div id="subscription-popover-4071-583" class="popover popover-bangumi js-subscribe_bangumi_popover" style="width: 250px;" data-subtitlegroupid="583" data-bangumiid="4071">
+                    <div class="arrow"></div>
+                    <div class="popover-header popover-title">
+                        <button type="button" class="close" data-dismiss="popover-x" aria-hidden="true"><i class="fa fa-times" aria-hidden="true"></i></button>
+                        订阅设置
+                    </div>
+                    <div class="popover-body popover-content" style="height: 200px;">
+                        <p class="text-justify" style="padding-top: 10px; padding-bottom: 8px;">订阅语言</p>
+                        <div style="padding-bottom: 10px;">
+                            <button type="button" class="btn btn-sm btn-language " data-language="2">繁中</button>
+                            <button type="button" class="btn btn-sm btn-language " data-language="1">简中</button>
+                            <button type="button" class="btn btn-sm btn-language active" data-language="0">全部</button>
+                        </div>
+                        <p class="text-justify" style="color: #888">注：仅会显示订阅/RSS时适用，下方一览仍为全部条目</p>
+                    </div>
+                    <div class="popover-footer row">
+                        <div class="checkbox col-sm-5" style="padding-left: 10px;">
+                            <label>
+                                <input type="checkbox" class="js-disable-advancedsubscription"> 不再提示
+                            </label>
+                        </div>
+                        <div class="col-sm-7" style="padding-right: 12px">
+                                <button type="button" class="btn btn-sm btn-submit" onclick="PopoverSubscribeBangumiPage(this)">订阅</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+<div class="episode-table">
+    <div class="copy-info-row">
+        <button type="button" class="btn btn-default btn-xs js-copy-selected" disabled>复制选中磁连</button>
+        <span class="text-muted js-selected-count">已选 0 项</span>
+        <span class="text-success js-copy-status" style="display:none;">已复制</span>
+    </div>
+
+    <table class="table table-striped tbl-border fadeIn">
+        <thead>
+            <tr>
+                <th width="5%"><input type="checkbox" class="js-select-all" aria-label="选择全部" /></th>
+                <th width="60%">番组名</th>
+                <th width="8%">大小</th>
+                <th width="17%">更新时间</th>
+                <th width="5%">下载</th>
+                <th width="5%">播放</th>
+            </tr>
+        </thead>
+        <tbody>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:7fd6c8ed8e58d79f6ea6269ea367a2122964f752&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/7fd6c8ed8e58d79f6ea6269ea367a2122964f752">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 06 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:7fd6c8ed8e58d79f6ea6269ea367a2122964f752&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>686.8 MB</td>
+                    <td>2026/11/08 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261108/7fd6c8ed8e58d79f6ea6269ea367a2122964f752.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A7fd6c8ed8e58d79f6ea6269ea367a2122964f752">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:540d560d4995166b5922c79f0c4717662493bf2c&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/540d560d4995166b5922c79f0c4717662493bf2c">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 05 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:540d560d4995166b5922c79f0c4717662493bf2c&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>614.0 MB</td>
+                    <td>2026/11/01 00:00</td>
+                    <td>
+                        <a
+                            href="/Download/20261101/540d560d4995166b5922c79f0c4717662493bf2c.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A540d560d4995166b5922c79f0c4717662493bf2c">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:1afa91874a0a854758777d5ef53141f8941c357a&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/1afa91874a0a854758777d5ef53141f8941c357a">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 04 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:1afa91874a0a854758777d5ef53141f8941c357a&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>628.6 MB</td>
+                    <td>2026/10/25 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261025/1afa91874a0a854758777d5ef53141f8941c357a.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A1afa91874a0a854758777d5ef53141f8941c357a">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:7f727950519a7fbba4909cd760ab0a48fb6a2703&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/7f727950519a7fbba4909cd760ab0a48fb6a2703">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 03 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:7f727950519a7fbba4909cd760ab0a48fb6a2703&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>745.2 MB</td>
+                    <td>2026/10/18 00:11</td>
+                    <td>
+                        <a
+                            href="/Download/20261018/7f727950519a7fbba4909cd760ab0a48fb6a2703.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A7f727950519a7fbba4909cd760ab0a48fb6a2703">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:2389ee049afc17f74cb5056e8faf35f0423d3f34&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/2389ee049afc17f74cb5056e8faf35f0423d3f34">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 02 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:2389ee049afc17f74cb5056e8faf35f0423d3f34&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>647.0 MB</td>
+                    <td>2026/10/11 00:01</td>
+                    <td>
+                        <a
+                            href="/Download/20261011/2389ee049afc17f74cb5056e8faf35f0423d3f34.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3A2389ee049afc17f74cb5056e8faf35f0423d3f34">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:fda139fc36f783bf20fe05289d125a833c9f4d8e&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/fda139fc36f783bf20fe05289d125a833c9f4d8e">[ANi]  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 01 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:fda139fc36f783bf20fe05289d125a833c9f4d8e&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>531.6 MB</td>
+                    <td>2026/10/04 00:00</td>
+                    <td>
+                        <a
+                            href="/Download/20261004/fda139fc36f783bf20fe05289d125a833c9f4d8e.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Afda139fc36f783bf20fe05289d125a833c9f4d8e">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+        </tbody>
+    </table>
+</div>            <div class="subgroup-scroll-end-583"></div>
+            <div style="height:1px;"></div>
+            <div class="subgroup-scroll-top-202"></div>
+            <div class="subgroup-text" id="202">
+&#x751F;&#x8089;/&#x4E0D;&#x660E;&#x5B57;&#x5E55;                    <a href="/RSS/Bangumi?bangumiId=4071&subgroupid=202" class="mikan-rss" data-placement="bottom" data-toggle="tooltip" data-original-title="RSS" target="_blank"><i class="fa fa-rss-square"></i></a>
+                    <span class="subscribed" style="display:none;">已订阅</span>
+                    <a class="pull-right subgroup-subscribe js-subscribe_bangumi_page" data-toggle="popover-x" data-target="#subscription-popover-4071-202" data-placement="bottom" data-bangumiid="4071" data-subtitlegroupid="202">订阅</a>
+                <div id="subscription-popover-4071-202" class="popover popover-bangumi js-subscribe_bangumi_popover" style="width: 250px;" data-subtitlegroupid="202" data-bangumiid="4071">
+                    <div class="arrow"></div>
+                    <div class="popover-header popover-title">
+                        <button type="button" class="close" data-dismiss="popover-x" aria-hidden="true"><i class="fa fa-times" aria-hidden="true"></i></button>
+                        订阅设置
+                    </div>
+                    <div class="popover-body popover-content" style="height: 200px;">
+                        <p class="text-justify" style="padding-top: 10px; padding-bottom: 8px;">订阅语言</p>
+                        <div style="padding-bottom: 10px;">
+                            <button type="button" class="btn btn-sm btn-language " data-language="2">繁中</button>
+                            <button type="button" class="btn btn-sm btn-language " data-language="1">简中</button>
+                            <button type="button" class="btn btn-sm btn-language active" data-language="0">全部</button>
+                        </div>
+                        <p class="text-justify" style="color: #888">注：仅会显示订阅/RSS时适用，下方一览仍为全部条目</p>
+                    </div>
+                    <div class="popover-footer row">
+                        <div class="checkbox col-sm-5" style="padding-left: 10px;">
+                            <label>
+                                <input type="checkbox" class="js-disable-advancedsubscription"> 不再提示
+                            </label>
+                        </div>
+                        <div class="col-sm-7" style="padding-right: 12px">
+                                <button type="button" class="btn btn-sm btn-submit" onclick="PopoverSubscribeBangumiPage(this)">订阅</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+<div class="episode-table">
+    <div class="copy-info-row">
+        <button type="button" class="btn btn-default btn-xs js-copy-selected" disabled>复制选中磁连</button>
+        <span class="text-muted js-selected-count">已选 0 项</span>
+        <span class="text-success js-copy-status" style="display:none;">已复制</span>
+    </div>
+
+    <table class="table table-striped tbl-border fadeIn">
+        <thead>
+            <tr>
+                <th width="5%"><input type="checkbox" class="js-select-all" aria-label="选择全部" /></th>
+                <th width="60%">番组名</th>
+                <th width="8%">大小</th>
+                <th width="17%">更新时间</th>
+                <th width="5%">下载</th>
+                <th width="5%">播放</th>
+            </tr>
+        </thead>
+        <tbody>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:c3ccbfb3103ed634c2c2bed64b2e5974f0a6c84c&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/c3ccbfb3103ed634c2c2bed64b2e5974f0a6c84c">[&#x642C;&#x8FD0;][Erai-raws]&#x81F3;&#x9AD8;&#x4E4B;&#x529B; 02|&#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; 02|VERTEX FORCE 02 (1080P &#x7E41;&#x7B80;&#x4E2D;&#x5B57; &#x591A;&#x56FD;&#x5B57;&#x5E55;)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:c3ccbfb3103ed634c2c2bed64b2e5974f0a6c84c&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.3GB</td>
+                    <td>2026/10/12 23:09</td>
+                    <td>
+                        <a
+                            href="/Download/20261012/c3ccbfb3103ed634c2c2bed64b2e5974f0a6c84c.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Ac3ccbfb3103ed634c2c2bed64b2e5974f0a6c84c">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="js-episode-select"
+                            data-magnet="magnet:?xt=urn:btih:a55db99c0f1ab72cdac24fea8f8740aff6a73c74&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce" aria-label="选择此行" />
+                    </td>
+                    <td>
+                        <a class="magnet-link-wrap" target="_blank" href="/Home/Episode/a55db99c0f1ab72cdac24fea8f8740aff6a73c74">[&#x642C;&#x8FD0;][Erai-raws]&#x81F3;&#x9AD8;&#x4E4B;&#x529B; 01|&#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; 01|VERTEX FORCE 01 (1080P &#x7E41;&#x7B80;&#x4E2D;&#x5B57; &#x591A;&#x56FD;&#x5B57;&#x5E55;)</a>
+                        <a data-clipboard-text="magnet:?xt=urn:btih:a55db99c0f1ab72cdac24fea8f8740aff6a73c74&amp;tr=http%3a%2f%2ft.nyaatracker.com%2fannounce&amp;tr=http%3a%2f%2ftracker.kamigami.org%3a2710%2fannounce&amp;tr=http%3a%2f%2fshare.camoe.cn%3a8080%2fannounce&amp;tr=http%3a%2f%2fopentracker.acgnx.se%2fannounce&amp;tr=http%3a%2f%2fanidex.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2ft.acg.rip%3a6699%2fannounce&amp;tr=https%3a%2f%2ftr.bangumi.moe%3a9696%2fannounce&amp;tr=udp%3a%2f%2ftr.bangumi.moe%3a6969%2fannounce&amp;tr=http%3a%2f%2fopen.acgtracker.com%3a1096%2fannounce&amp;tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce"
+                            class="js-magnet magnet-link">[复制磁连]</a>
+                    </td>
+                    <td>1.4GB</td>
+                    <td>2026/10/04 12:58</td>
+                    <td>
+                        <a
+                            href="/Download/20261004/a55db99c0f1ab72cdac24fea8f8740aff6a73c74.torrent">
+                            <img src="/images/download_icon_blue.svg" style="margin-left: 2px;width: 20px;height:15px;">
+                        </a>
+                    </td>
+                    <td>
+                        <a target="_blank"
+                            href="https://keepshare.org/rclukaia/magnet%3A%3Fxt%3Durn%3Abtih%3Aa55db99c0f1ab72cdac24fea8f8740aff6a73c74">
+                            <i class="fa fa-play-circle" style="color: #47c1c5; margin-left: 4px; font-size: 18px;"></i>
+                        </a>
+                    </td>
+                </tr>
+        </tbody>
+    </table>
+</div>            <div class="subgroup-scroll-end-202"></div>
+            <div style="height:1px;"></div>
+    </div>
+
+    <a href="#0" class="cd-top cd-top-btn">Top</a>
+</div>
+
+<div id="sk-mobile-container" class="m-detail hidden-lg hidden-md">
+    <div id="bangumi-m-main">
+        <div class="m-detail-title">
+            <div style="position: relative;overflow: hidden;">
+                <div class="m-detail-blur-bg blur" style="background-image:url(/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp)"></div>
+            </div>
+            <div class="content">
+                <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" />
+                <section>
+                    <p class="title" style="color:white;">&#x81F3;&#x9AD8;&#x4E4B;&#x529B;</p>
+                    <span>放送日期： &#x661F;&#x671F;&#x65E5;</span>&nbsp;&nbsp;&nbsp;&nbsp;
+                        <span>放送开始：10/3/2026</span>
+                </section>
+            </div>
+        </div>
+            <div class="m-detail-intro">
+
+                <p class="title" style="color:#3bc0c3;">概况介绍</p>
+                <div class="info">
+                    住在冲绳北部的东道明和他姐姐晴香，以及经营咖啡厅的母亲过着安稳的生活。然而这个家庭其实有个秘密。晴香从父亲继承了名为「Engine」的力量，并瞒着身边的人，照常过日子。另一方面，明则是没继承到父亲的力量，对于自身的弱小感到自卑。就在某天，世界各地突然发生异常变化。逐渐逼近主角等人的神秘敌人究竟有什么目的…… 此刻，背负宇宙命运的少年少女们即将展开战斗！
+
+
+
+[简介原文]
+オキナワの北部に住む中学生・東道明は、姉の晴香、カフェを営む母親の3人で平穏な日常を送っていた。 
+だが、この家族にはある秘密があった。晴香は父から"エンジン"と呼ばれる力を受け継いでおり、他人にその力を隠して生活していたのだ。一方、明は父の力を継いでおらず、自らの弱さにコンプレックスを抱いていた。 
+そんな中、世界中で異変が起きる。明たちに迫る、正体不明の敵の目的とは――。 
+宇宙の命運を背負った少年少女の戦いが、いま始まる。
+                </div>
+
+            </div>
+
+        <div style="margin-top: 10px; margin-bottom: 10px;">
+            
+
+<div style="width:100%; margin-right: auto; margin-left: auto;" class="hidden-xs hidden-sm">
+    <a href="https://equity.tmall.com/tm?agentId=030f9003a26d4361&amp;bc_fl_src=tmall_market_llb_1_2698459&amp;llbPlatform=_pube&amp;llbOsd=1&amp;di=__IDFA__&amp;dim=__IMEI__&amp;oaid=__OAID__&amp;caid=__CAID__&amp;sy=llb" onclick="ga('send', 'event', 'sswj_lg', 'clicked', 'ad');">
+        <img src="/images/SSWJ/sswj13_lg.jpg" style='height: 100%; width: 100%; object-fit: contain' />
+    </a>
+</div>
+
+<div style="width:100%; margin-right: auto; margin-left: auto;" class="hidden-lg hidden-md">
+    <a href="https://equity.tmall.com/tm?agentId=030f9003a26d4361&amp;bc_fl_src=tmall_market_llb_1_2698459&amp;llbPlatform=_pube&amp;llbOsd=1&amp;di=__IDFA__&amp;dim=__IMEI__&amp;oaid=__OAID__&amp;caid=__CAID__&amp;sy=llb" onclick="ga('send', 'event', 'sswj_sm', 'clicked', 'ad');">
+        <img src="/images/SSWJ/sswj13_sm.jpg" style='height: 100%; width: 100%; object-fit: contain' />
+    </a>
+</div>
+        </div>
+
+        <div class="m-detail-list">
+            <div class="header">
+                <div style="flex: 1;padding-left: 1.5rem;">
+                    <span class="title">字幕组列表</span>
+                </div>
+                <div style="width: 5rem;" class="clickable" onclick="SortItems('subgroup-list'); InitMobileSubscribeBangumiPage();">
+                    排序&nbsp;&nbsp;<i class="fa fa-sort icon" aria-hidden="true"></i>
+                </div>
+                <div style="width: 5rem;" class="clickable" onclick="ShowSubscribedOnly('subgroup-list')">
+                    筛选&nbsp;&nbsp;<i class="fa fa-filter icon" aria-hidden="true"></i>
+                </div>
+            </div>
+            <div class="m-detail-list-content js-sort-items-list" id="subgroup-list">
+                    <div class="item js-sort-item js-m-subgroup-item" data-index="0" id="m370">
+                        <div class="left clickable" onclick="BangumiSubgroupShowEpisode('bangumi-m-370')">
+                            <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar">
+                        </div>
+                        <div class="right clickable" style="width:3.5rem;text-overflow:ellipsis;overflow: hidden;white-space:nowrap;" onclick="BangumiSubgroupShowEpisode('bangumi-m-370')">
+                            <span class="title" style="font-size: 1.35rem;">LoliHouse</span><br>
+                            <div style="margin-top:  0.75rem;">
+                                <span class="remark">更新: 11/8/2026</span>
+                            </div>
+                        </div>
+                        <div class="m-like">
+                                <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="370"></i></span>
+                        </div>
+                    </div>
+                    <div class="item js-sort-item js-m-subgroup-item" data-index="1" id="m1256">
+                        <div class="left clickable" onclick="BangumiSubgroupShowEpisode('bangumi-m-1256')">
+                            <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar">
+                        </div>
+                        <div class="right clickable" style="width:3.5rem;text-overflow:ellipsis;overflow: hidden;white-space:nowrap;" onclick="BangumiSubgroupShowEpisode('bangumi-m-1256')">
+                            <span class="title" style="font-size: 1.35rem;">Nix-Raws</span><br>
+                            <div style="margin-top:  0.75rem;">
+                                <span class="remark">更新: 11/8/2026</span>
+                            </div>
+                        </div>
+                        <div class="m-like">
+                                <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="1256"></i></span>
+                        </div>
+                    </div>
+                    <div class="item js-sort-item js-m-subgroup-item" data-index="2" id="m615">
+                        <div class="left clickable" onclick="BangumiSubgroupShowEpisode('bangumi-m-615')">
+                            <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar">
+                        </div>
+                        <div class="right clickable" style="width:3.5rem;text-overflow:ellipsis;overflow: hidden;white-space:nowrap;" onclick="BangumiSubgroupShowEpisode('bangumi-m-615')">
+                            <span class="title" style="font-size: 1.35rem;">Kirara Fantasia</span><br>
+                            <div style="margin-top:  0.75rem;">
+                                <span class="remark">更新: 11/8/2026</span>
+                            </div>
+                        </div>
+                        <div class="m-like">
+                                <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="615"></i></span>
+                        </div>
+                    </div>
+                    <div class="item js-sort-item js-m-subgroup-item" data-index="3" id="m583">
+                        <div class="left clickable" onclick="BangumiSubgroupShowEpisode('bangumi-m-583')">
+                            <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar">
+                        </div>
+                        <div class="right clickable" style="width:3.5rem;text-overflow:ellipsis;overflow: hidden;white-space:nowrap;" onclick="BangumiSubgroupShowEpisode('bangumi-m-583')">
+                            <span class="title" style="font-size: 1.35rem;">ANi</span><br>
+                            <div style="margin-top:  0.75rem;">
+                                <span class="remark">更新: 11/8/2026</span>
+                            </div>
+                        </div>
+                        <div class="m-like">
+                                <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="583"></i></span>
+                        </div>
+                    </div>
+                    <div class="item js-sort-item js-m-subgroup-item" data-index="4" id="m202">
+                        <div class="left clickable" onclick="BangumiSubgroupShowEpisode('bangumi-m-202')">
+                            <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar">
+                        </div>
+                        <div class="right clickable" style="width:3.5rem;text-overflow:ellipsis;overflow: hidden;white-space:nowrap;" onclick="BangumiSubgroupShowEpisode('bangumi-m-202')">
+                            <span class="title" style="font-size: 1.35rem;">&#x751F;&#x8089;/&#x4E0D;&#x660E;&#x5B57;&#x5E55;</span><br>
+                            <div style="margin-top:  0.75rem;">
+                                <span class="remark">更新: 10/12/2026</span>
+                            </div>
+                        </div>
+                        <div class="m-like">
+                                <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="202"></i></span>
+                        </div>
+                    </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="bangumi-m-370" class="m-bangumi-list-content" style="display:none">
+        <div class="m-bangumi-header1 item">
+            <div class="left">
+                <i class="fa fa-angle-left fa-2x clickable" aria-hidden="true" style="color:#888" onclick="BangumiSubgroupHideEpisode(this)" data-subtitlegroupid="370"></i>
+                <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar" style="left:4.5rem;">
+            </div>
+            <div class="right" style="flex:1;">
+                    <a href="/Home/PublishGroup/223" class="title" style="color:#222; text-decoration:none;">LoliHouse</a>
+<br>
+                <div>
+                    <span class="remark">更新: 2026/11/08</span>
+                </div>
+            </div>
+            <div class="m-like" style="border-bottom:none;">
+                    <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="370"></i></span>
+            </div>
+        </div>
+        <div class="m-bangumi-header2">
+            <div class="left">
+                &#x81F3;&#x9AD8;&#x4E4B;&#x529B;
+            </div>
+            <div class="right clickable" onclick="SortItems('bangumi-episode-subgroup-370');">
+                <div>排序</div>
+                <div class="icon">
+                    <i class="fa fa-sort" aria-hidden="true"></i>
+                </div>
+            </div>
+        </div>
+        <div class="m-bangumi-content" id="bangumi-episode-subgroup-370">
+            
+    <div class="m-bangumi-item js-sort-item" data-index="0">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/97e172bfe66ebed0e09430750058a2206cc2f806" style="color:inherit;">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 06 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a></div>
+                <div class="date">11/8/2026 6:06 AM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261108/97e172bfe66ebed0e09430750058a2206cc2f806.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="1">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/94c35058a79457a88dc2fb27bee9eb2d2913e695" style="color:inherit;">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 05 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a></div>
+                <div class="date">11/1/2026 6:14 AM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261101/94c35058a79457a88dc2fb27bee9eb2d2913e695.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="2">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/c5d2775a7b826c3bfe2cc06657ed8d0282185d3a" style="color:inherit;">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 04 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a></div>
+                <div class="date">10/24/2026 6:29 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261025/c5d2775a7b826c3bfe2cc06657ed8d0282185d3a.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="3">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/3abc693d7b5390f894bed163e5d4c247c3d652e4" style="color:inherit;">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 03 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a></div>
+                <div class="date">10/18/2026 6:20 AM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261018/3abc693d7b5390f894bed163e5d4c247c3d652e4.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="4">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/8ef8eb3a9a14f877717cb96b3ad1025b1143d2fa" style="color:inherit;">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 02 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a></div>
+                <div class="date">10/10/2026 6:07 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261011/8ef8eb3a9a14f877717cb96b3ad1025b1143d2fa.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="5">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/94ea17572dd4d54988b5b6ffbc67560adfe8070a" style="color:inherit;">[LoliHouse] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / VERTEX FORCE - 01 [WebRip 1080p HEVC-10bit AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;&#x5B57;&#x5E55;]</a></div>
+                <div class="date">10/5/2026 8:23 AM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261005/94ea17572dd4d54988b5b6ffbc67560adfe8070a.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+
+        </div>
+    </div>
+    <div id="bangumi-m-1256" class="m-bangumi-list-content" style="display:none">
+        <div class="m-bangumi-header1 item">
+            <div class="left">
+                <i class="fa fa-angle-left fa-2x clickable" aria-hidden="true" style="color:#888" onclick="BangumiSubgroupHideEpisode(this)" data-subtitlegroupid="1256"></i>
+                <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar" style="left:4.5rem;">
+            </div>
+            <div class="right" style="flex:1;">
+                    <a href="/Home/PublishGroup/1027" class="title" style="color:#222; text-decoration:none;">Nix-Raws</a>
+<br>
+                <div>
+                    <span class="remark">更新: 2026/11/08</span>
+                </div>
+            </div>
+            <div class="m-like" style="border-bottom:none;">
+                    <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="1256"></i></span>
+            </div>
+        </div>
+        <div class="m-bangumi-header2">
+            <div class="left">
+                &#x81F3;&#x9AD8;&#x4E4B;&#x529B;
+            </div>
+            <div class="right clickable" onclick="SortItems('bangumi-episode-subgroup-1256');">
+                <div>排序</div>
+                <div class="icon">
+                    <i class="fa fa-sort" aria-hidden="true"></i>
+                </div>
+            </div>
+        </div>
+        <div class="m-bangumi-content" id="bangumi-episode-subgroup-1256">
+            
+    <div class="m-bangumi-item js-sort-item" data-index="0">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/a86e8269003de94b4b5783b2aa23746dd26678f7" style="color:inherit;">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E06 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a></div>
+                <div class="date">11/7/2026 4:02 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261108/a86e8269003de94b4b5783b2aa23746dd26678f7.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="1">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/91124e2e6287822af40b2936e1973f470be399dd" style="color:inherit;">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E04 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a></div>
+                <div class="date">11/6/2026 5:32 AM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261106/91124e2e6287822af40b2936e1973f470be399dd.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="2">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/956c300cf2277421e78131c419416a6530a2a05f" style="color:inherit;">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E05 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a></div>
+                <div class="date">10/31/2026 4:05 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261101/956c300cf2277421e78131c419416a6530a2a05f.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="3">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/1a8802d2d3f86f34df891e8f3dda115cd3a64e00" style="color:inherit;">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E03 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a></div>
+                <div class="date">10/17/2026 5:14 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261018/1a8802d2d3f86f34df891e8f3dda115cd3a64e00.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="4">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/fd19a1186452206b84682695f356220561588899" style="color:inherit;">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E02 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a></div>
+                <div class="date">10/10/2026 4:04 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261011/fd19a1186452206b84682695f356220561588899.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="5">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/7296ecf6c62587376cdd5aeedd81840988b50229" style="color:inherit;">[Nix-Raws] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / &#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; / VERTEX FORCE S01E01 [CR WEB-DL 1080p AVC AAC][&#x7B80;&#x7E41;&#x5185;&#x5C01;]</a></div>
+                <div class="date">10/6/2026 6:31 AM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261006/7296ecf6c62587376cdd5aeedd81840988b50229.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+
+        </div>
+    </div>
+    <div id="bangumi-m-615" class="m-bangumi-list-content" style="display:none">
+        <div class="m-bangumi-header1 item">
+            <div class="left">
+                <i class="fa fa-angle-left fa-2x clickable" aria-hidden="true" style="color:#888" onclick="BangumiSubgroupHideEpisode(this)" data-subtitlegroupid="615"></i>
+                <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar" style="left:4.5rem;">
+            </div>
+            <div class="right" style="flex:1;">
+                    <a href="/Home/PublishGroup/392" class="title" style="color:#222; text-decoration:none;">Kirara Fantasia</a>
+<br>
+                <div>
+                    <span class="remark">更新: 2026/11/08</span>
+                </div>
+            </div>
+            <div class="m-like" style="border-bottom:none;">
+                    <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="615"></i></span>
+            </div>
+        </div>
+        <div class="m-bangumi-header2">
+            <div class="left">
+                &#x81F3;&#x9AD8;&#x4E4B;&#x529B;
+            </div>
+            <div class="right clickable" onclick="SortItems('bangumi-episode-subgroup-615');">
+                <div>排序</div>
+                <div class="icon">
+                    <i class="fa fa-sort" aria-hidden="true"></i>
+                </div>
+            </div>
+        </div>
+        <div class="m-bangumi-content" id="bangumi-episode-subgroup-615">
+            
+    <div class="m-bangumi-item js-sort-item" data-index="0">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/5bbf7f0256e664acbd5ab3f94866e81780658f0f" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 06 (CR 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">11/7/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261108/5bbf7f0256e664acbd5ab3f94866e81780658f0f.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="1">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/4b9cc96f8c4f666efd24acc186c498c0716c669d" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 06 (Baha 1920x1080 AVC AAC MP4)</a></div>
+                <div class="date">11/7/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261108/4b9cc96f8c4f666efd24acc186c498c0716c669d.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="2">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/0eba44e99e7bd401678c51313a04e6a088d93cb4" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 05 (ABEMA 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">11/6/2026 7:00 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261107/0eba44e99e7bd401678c51313a04e6a088d93cb4.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="3">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/540cf2b587d6b63b6fcdbeb7348f7e16094ef7b1" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 05 (Baha 1920x1080 AVC AAC MP4)</a></div>
+                <div class="date">10/31/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261101/540cf2b587d6b63b6fcdbeb7348f7e16094ef7b1.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="4">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/21f5f3e8d5066fdd7ab406c213c57db9fd1eff85" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 05 (CR 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">10/31/2026 4:00 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261101/21f5f3e8d5066fdd7ab406c213c57db9fd1eff85.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="5">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/c3df483e902985205f8a593ae0347bd403b62ade" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 04 (ABEMA 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">10/30/2026 7:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261031/c3df483e902985205f8a593ae0347bd403b62ade.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="6">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/82c775562a79ccb084d37f721c84b55d9833a413" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 04 (CR 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">10/24/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261025/82c775562a79ccb084d37f721c84b55d9833a413.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="7">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/ec122427d0ab4c84bca8d8ae0f42a11d47452d73" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 04 (Baha 1920x1080 AVC AAC MP4)</a></div>
+                <div class="date">10/24/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261025/ec122427d0ab4c84bca8d8ae0f42a11d47452d73.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="8">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/b3a020cad56a5bb975b763366150a55c4b4d2e3a" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 03 (ABEMA 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">10/23/2026 7:00 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261024/b3a020cad56a5bb975b763366150a55c4b4d2e3a.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="9">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/af678c774c4d49167484679deeb4395781f910a3" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 03 (CR 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">10/17/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261018/af678c774c4d49167484679deeb4395781f910a3.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="10">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/e82626d95d3abcc82675824ff986f28726ea743c" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 03 (Baha 1920x1080 AVC AAC MP4)</a></div>
+                <div class="date">10/17/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261018/e82626d95d3abcc82675824ff986f28726ea743c.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="11">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/cdddfd0435693f6eeeac9a13485054b25bf8cfce" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 02 (ABEMA 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">10/16/2026 7:00 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261017/cdddfd0435693f6eeeac9a13485054b25bf8cfce.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="12">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/ea5cb1f783a515e327af5c34b883234be51311e8" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 02 (CR 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">10/10/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261011/ea5cb1f783a515e327af5c34b883234be51311e8.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="13">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/c5879323f3d3edfebc394b9f48dc2b383b474289" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 02 (Baha 1920x1080 AVC AAC MP4)</a></div>
+                <div class="date">10/10/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261011/c5879323f3d3edfebc394b9f48dc2b383b474289.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="14">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/36cbd3e3a1b30e42818f52af58c7f1d35cc34b81" style="color:inherit;">[&#x9ED2;&#x30CD;&#x30BA;&#x30DF;&#x305F;&#x3061;] &#x81F3;&#x9AD8;&#x4E4B;&#x529B; / Vertex Force - 01 (ABEMA 1920x1080 AVC AAC MKV)</a></div>
+                <div class="date">10/9/2026 7:00 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261010/36cbd3e3a1b30e42818f52af58c7f1d35cc34b81.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+
+        </div>
+            <button class="form-control js-m-expand-episode" style="height: 5rem;color: #3bc0c3;border: none;" data-bangumiid="4071" data-subtitlegroupid="615" data-take="65">
+                查看更多
+            </button>
+    </div>
+    <div id="bangumi-m-583" class="m-bangumi-list-content" style="display:none">
+        <div class="m-bangumi-header1 item">
+            <div class="left">
+                <i class="fa fa-angle-left fa-2x clickable" aria-hidden="true" style="color:#888" onclick="BangumiSubgroupHideEpisode(this)" data-subtitlegroupid="583"></i>
+                <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar" style="left:4.5rem;">
+            </div>
+            <div class="right" style="flex:1;">
+                    <a href="/Home/PublishGroup/359" class="title" style="color:#222; text-decoration:none;">ANi</a>
+<br>
+                <div>
+                    <span class="remark">更新: 2026/11/08</span>
+                </div>
+            </div>
+            <div class="m-like" style="border-bottom:none;">
+                    <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="583"></i></span>
+            </div>
+        </div>
+        <div class="m-bangumi-header2">
+            <div class="left">
+                &#x81F3;&#x9AD8;&#x4E4B;&#x529B;
+            </div>
+            <div class="right clickable" onclick="SortItems('bangumi-episode-subgroup-583');">
+                <div>排序</div>
+                <div class="icon">
+                    <i class="fa fa-sort" aria-hidden="true"></i>
+                </div>
+            </div>
+        </div>
+        <div class="m-bangumi-content" id="bangumi-episode-subgroup-583">
+            
+    <div class="m-bangumi-item js-sort-item" data-index="0">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/7fd6c8ed8e58d79f6ea6269ea367a2122964f752" style="color:inherit;">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 06 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a></div>
+                <div class="date">11/7/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261108/7fd6c8ed8e58d79f6ea6269ea367a2122964f752.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="1">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/540d560d4995166b5922c79f0c4717662493bf2c" style="color:inherit;">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 05 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a></div>
+                <div class="date">10/31/2026 4:00 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261101/540d560d4995166b5922c79f0c4717662493bf2c.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="2">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/1afa91874a0a854758777d5ef53141f8941c357a" style="color:inherit;">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 04 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a></div>
+                <div class="date">10/24/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261025/1afa91874a0a854758777d5ef53141f8941c357a.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="3">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/7f727950519a7fbba4909cd760ab0a48fb6a2703" style="color:inherit;">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 03 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a></div>
+                <div class="date">10/17/2026 4:11 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261018/7f727950519a7fbba4909cd760ab0a48fb6a2703.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="4">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/2389ee049afc17f74cb5056e8faf35f0423d3f34" style="color:inherit;">[ANi] VERTEX FORCE /  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 02 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a></div>
+                <div class="date">10/10/2026 4:01 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261011/2389ee049afc17f74cb5056e8faf35f0423d3f34.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="5">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/fda139fc36f783bf20fe05289d125a833c9f4d8e" style="color:inherit;">[ANi]  &#x81F3;&#x9AD8;&#x4E4B;&#x529B; - 01 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]</a></div>
+                <div class="date">10/3/2026 4:00 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261004/fda139fc36f783bf20fe05289d125a833c9f4d8e.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+
+        </div>
+    </div>
+    <div id="bangumi-m-202" class="m-bangumi-list-content" style="display:none">
+        <div class="m-bangumi-header1 item">
+            <div class="left">
+                <i class="fa fa-angle-left fa-2x clickable" aria-hidden="true" style="color:#888" onclick="BangumiSubgroupHideEpisode(this)" data-subtitlegroupid="202"></i>
+                <img src="/images/Bangumi/202610/c0745512.jpg?width=400&height=400&format=webp" alt="" class="m-detail-avatar" style="left:4.5rem;">
+            </div>
+            <div class="right" style="flex:1;">
+                    <a href="/Home/PublishGroup/180" class="title" style="color:#222; text-decoration:none;">&#x751F;&#x8089;/&#x4E0D;&#x660E;&#x5B57;&#x5E55;</a>
+<br>
+                <div>
+                    <span class="remark">更新: 2026/10/12</span>
+                </div>
+            </div>
+            <div class="m-like" style="border-bottom:none;">
+                    <span><i class="fa fa-heart-o clickable js-m-subscribe_bangumi_page" aria-hidden="true" data-bangumiid="4071" data-subtitlegroupid="202"></i></span>
+            </div>
+        </div>
+        <div class="m-bangumi-header2">
+            <div class="left">
+                &#x81F3;&#x9AD8;&#x4E4B;&#x529B;
+            </div>
+            <div class="right clickable" onclick="SortItems('bangumi-episode-subgroup-202');">
+                <div>排序</div>
+                <div class="icon">
+                    <i class="fa fa-sort" aria-hidden="true"></i>
+                </div>
+            </div>
+        </div>
+        <div class="m-bangumi-content" id="bangumi-episode-subgroup-202">
+            
+    <div class="m-bangumi-item js-sort-item" data-index="0">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/c3ccbfb3103ed634c2c2bed64b2e5974f0a6c84c" style="color:inherit;">[&#x642C;&#x8FD0;][Erai-raws]&#x81F3;&#x9AD8;&#x4E4B;&#x529B; 02|&#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; 02|VERTEX FORCE 02 (1080P &#x7E41;&#x7B80;&#x4E2D;&#x5B57; &#x591A;&#x56FD;&#x5B57;&#x5E55;)</a></div>
+                <div class="date">10/12/2026 3:09 PM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261012/c3ccbfb3103ed634c2c2bed64b2e5974f0a6c84c.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+    <div class="m-bangumi-item js-sort-item" data-index="1">
+        <div class="left">
+            <div class="text"><a href="/Home/Episode/a55db99c0f1ab72cdac24fea8f8740aff6a73c74" style="color:inherit;">[&#x642C;&#x8FD0;][Erai-raws]&#x81F3;&#x9AD8;&#x4E4B;&#x529B; 01|&#x30D0;&#x30FC;&#x30C6;&#x30C3;&#x30AF;&#x30B9;&#x30D5;&#x30A9;&#x30FC;&#x30B9; 01|VERTEX FORCE 01 (1080P &#x7E41;&#x7B80;&#x4E2D;&#x5B57; &#x591A;&#x56FD;&#x5B57;&#x5E55;)</a></div>
+                <div class="date">10/4/2026 4:58 AM 发布</div>
+        </div>
+        <div class="right">
+            <a href="/Download/20261004/a55db99c0f1ab72cdac24fea8f8740aff6a73c74.torrent">
+                <img class="icon" src="/images/download_icon_black.svg">
+            </a>
+        </div>
+    </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+    $(function () {
+        InitLeftBarMagicScroll();
+    });
+
+    function InitLeftBarMagicScroll() {
+        if (window.smController != null) {
+            window.smController.destroy(true);
+        }
+        // init controller
+        window.smController = new ScrollMagic.Controller();
+
+
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-top-370'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("leave", function (event) {
+                    if (event.scrollDirection == 'FORWARD') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-370').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-end-370'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("enter", function (event) {
+                    if (event.scrollDirection == 'REVERSE') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-370').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+            
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-top-1256'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("leave", function (event) {
+                    if (event.scrollDirection == 'FORWARD') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-1256').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-end-1256'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("enter", function (event) {
+                    if (event.scrollDirection == 'REVERSE') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-1256').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+            
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-top-615'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("leave", function (event) {
+                    if (event.scrollDirection == 'FORWARD') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-615').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-end-615'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("enter", function (event) {
+                    if (event.scrollDirection == 'REVERSE') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-615').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+            
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-top-583'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("leave", function (event) {
+                    if (event.scrollDirection == 'FORWARD') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-583').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-end-583'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("enter", function (event) {
+                    if (event.scrollDirection == 'REVERSE') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-583').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+            
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-top-202'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("leave", function (event) {
+                    if (event.scrollDirection == 'FORWARD') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-202').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+
+            // create a scene
+            new ScrollMagic.Scene({
+                triggerElement: $('.subgroup-scroll-end-202'),
+                triggerHook: 0,
+                duration: 1
+            })
+                .on("enter", function (event) {
+                    if (event.scrollDirection == 'REVERSE') {
+                        $('.subgroup-name').removeClass('active');
+                        $('.subgroup-202').addClass("active");
+                    }
+                })
+                .addTo(window.smController);
+                }
+</script>
+
+    <div class="modal modal-fullscreen fade" id="modal-nav" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="background-color:#3bc0c3;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-body" style="margin: auto;width:100%;">
+                    <div class="m-tool">
+                        <span class="m-close clickable"><i class="fa fa-times" aria-hidden="true" data-toggle="modal" data-target="#modal-nav"></i></span>
+                        <div class="m-tool-toolbar">
+                            <img src="/images/mikan-pic.png" style="width: 3rem;">
+                            <img src="/images/mikan-text.png" style="width: 7rem;">
+                        </div>
+                        <div class="m-tool-list">
+                            <ul>
+                                <li><a href="/" class="link">主页</a></li>
+                                <li class="m-tool-search-change"><a href="/Home/MyBangumi" class="link">订阅</a></li>
+                                <li class="m-tool-search-change"><a href="/Home/Classic" class="link">列表</a></li>
+                                <li onclick="tool.clickSearch()" class="m-tool-search-change">
+                                    <i class="fa fa-search" aria-hidden="true"></i>&nbsp;&nbsp;搜索站内
+                                </li>
+                                <li class="m-tool-search-input">
+                                    <form method="get" action="/Home/Search">
+                                        <div style="display: flex;height: 100%;">
+                                            <input type="text" class="form-control" name="searchstr" style="font-size:16px;" />
+                                            <span style="width: 5rem;" onclick="tool.resetSearch()">取消</span>
+                                        </div>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal modal-fullscreen fade" id="modal-login" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="background-color:#edf1f2;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-body" style="margin: auto;width:100%;height:85vh;">
+                    <div class="m-login">
+                        <span class="m-left clickable"><i class="fa fa-angle-left" aria-hidden="true" data-toggle="modal" data-target="#modal-login"></i></span>
+
+                            <div class="m-tool-title">
+                                登陆mikan账号
+                            </div>
+                            <div style="text-align: center;margin-top: 2rem;">
+                                <img src="/images/mikan-pic.png" style="width: 6rem;">
+                            </div>
+<form action="/Account/Login?ReturnUrl=%2FHome%2FBangumi%2F4071" method="post">                                <div>
+                                    <input type="text" class="form-control" aria-label="..." placeholder="用户名" name="UserName">
+                                    <input type="password" class="form-control" aria-label="..." placeholder="密码" name="Password">
+                                </div>
+                                <button class="form-control" type="submit">登录</button>
+<input name="__RequestVerificationToken" type="hidden" value="SANITIZED_REQUEST_VERIFICATION_TOKEN" /></form>                            <div class="m-goto-registry">
+                                <a href="/Account/ForgotPassword" class="w-other-c" style="color:#3bc0c3">忘记密码</a>
+                                &nbsp;·&nbsp;
+                                <a href="/Account/Register" class="w-other-c" style="color:#3bc0c3">立即注册</a>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="footer hidden-xs hidden-sm">
+        <div id="sk-footer" class="container text-center">
+            <div>Powered by Mikan Project <a href="/Home/Contact" target="_blank">联系我们</a></div>
+            <div>Cooperate by PlaymateCat@Lisa</div>
+        </div>
+    </footer>
+
+    <script>
+        var tool = {};
+        (function () {
+
+            var inputPEl = $('.m-tool-search-input');
+            var inputEl = inputPEl.find('input');
+            var changeEl = $('.m-tool-search-change');
+            inputPEl.hide();
+            tool.clickSearch = clickSearch;
+            tool.resetSearch = resetSearch;
+
+            function clickSearch() {
+                changeEl.hide();
+                inputPEl.show();
+                inputEl.focus();
+            }
+
+            function resetSearch() {
+                changeEl.show();
+                inputPEl.hide();
+                inputEl.val('');
+            }
+        })();
+    </script>
+
+    <script>
+        var pageUtil;
+
+        (function () {
+            pageUtil = {
+                isMobile: isMobile
+            };
+
+            function isMobile() {
+                var check = false;
+                (function (a) {
+                    if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) check = true;
+                })(navigator.userAgent || navigator.vendor || window.opera);
+                return check;
+            }
+        })();
+
+        //detect if page is mobile
+        if (pageUtil.isMobile()) {
+            document.getElementsByTagName('html')[0].style['font-size'] = window.innerWidth / 32 + 'px';
+        }
+    </script>
+</body>
+
+<!-- here put your own javascript -->
+
+
+    <script src="/js/mikan.min.js?v=qRXHLOHXVSKBbhi0nkhAESSs-hTLpEkp-cYNQDVFkww"></script>
+
+
+
+</html>

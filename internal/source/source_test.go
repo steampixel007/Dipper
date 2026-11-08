@@ -146,6 +146,67 @@ func TestDetailRealSamples(t *testing.T) {
 	}
 }
 
+func TestDetailGroupedSizeRealSample(t *testing.T) {
+	body := fixture(t, "bangumi-4071.html")
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/Home/Bangumi/4071" {
+			t.Errorf("wrong detail path %s", r.URL)
+		}
+		w.Write(body)
+	})
+	detail, err := c.Detail(t.Context(), "4071")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.Anime.Title != "至高之力" || detail.Anime.Day != "0" || detail.Anime.Summary == "" {
+		t.Fatalf("unexpected anime: %+v", detail.Anime)
+	}
+	want := map[string]struct {
+		name  string
+		count int
+	}{
+		"370":  {"LoliHouse", 6},
+		"1256": {"Nix-Raws", 6},
+		"615":  {"Kirara Fantasia", -1},
+		"583":  {"ANi", 6},
+		"202":  {"生肉/不明字幕", 2},
+	}
+	if len(detail.Groups) != len(want) {
+		t.Fatalf("groups=%+v", detail.Groups)
+	}
+	for _, group := range detail.Groups {
+		expected, ok := want[group.ID]
+		if !ok || group.Name != expected.name || group.Count != expected.count {
+			t.Fatalf("unexpected group: %+v", group)
+		}
+		delete(want, group.ID)
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing groups: %+v", want)
+	}
+}
+
+func TestParseSizeGroupedThousands(t *testing.T) {
+	for _, test := range []struct {
+		text string
+		want int64
+	}{
+		{"", 0},
+		{"1,017.6 MB", 1067030938},
+		{"1,017 MB", 1066401792},
+	} {
+		got, err := parseSize(test.text)
+		if err != nil || got != test.want {
+			t.Errorf("parseSize(%q) = %d, %v; want %d", test.text, got, err, test.want)
+		}
+	}
+	for _, text := range []string{"1,17.6 MB", "1,0176 MB", ",017 MB"} {
+		if got, err := parseSize(text); err == nil {
+			t.Errorf("parseSize(%q) = %d, want an error", text, got)
+		}
+	}
+}
+
 func TestHistory1522AndRSS100(t *testing.T) {
 	first := fixture(t, "probe-b227-g161-take1000.html")
 	full := fixture(t, "probe-b227-g161-take1523.html")
