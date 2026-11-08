@@ -1,0 +1,3 @@
+$ go test -count=1 -timeout 10m -run ^TestSoftwareAutomaticCheckTreatsFutureTimestampAsDue$|^TestSoftwareManualFailureDoesNotBecomeGlobalNotice$ ./cmd/dipper
+
+ok  	github.com/steampixel007/Dipper/cmd/dipper	0.204s

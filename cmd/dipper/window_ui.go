@@ -98,11 +98,20 @@ func (s *State) exitApp() {
 }
 
 func (s *State) restoreAfterQuitVeto() {
+	s.abortSoftwareUpdate()
 	s.Update(func() {
 		if s.ShowWindow != nil {
 			s.ShowWindow()
 		}
 	})
+}
+
+func (s *State) prepareAppQuit() bool {
+	if !s.saveBeforeClose() || !s.commitSoftwareUpdate() {
+		s.restoreAfterQuitVeto()
+		return false
+	}
+	return true
 }
 
 func (s *State) finishClose(behavior string, remember bool) bool {

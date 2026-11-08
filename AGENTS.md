@@ -26,6 +26,7 @@ carry it, the invariants a change must preserve, and what its tests prove.
 | The BT engine, piece storage, transfer policy, the shared upload limit | [docs/subsystems/downloader.md](docs/subsystems/downloader.md) |
 | Fetching and parsing the catalog, a group's history, RSS, covers | [docs/subsystems/source.md](docs/subsystems/source.md) |
 | The single-instance lock and window activation | [docs/subsystems/instance.md](docs/subsystems/instance.md) |
+| Release discovery, verified downloads, and the Windows portable updater | [docs/subsystems/update.md](docs/subsystems/update.md) |
 | The window, its pages and the state it renders | [docs/subsystems/gui.md](docs/subsystems/gui.md) |
 
 [docs/subsystems/README.md](docs/subsystems/README.md) is the index, and lists the

@@ -1,0 +1,7 @@
+$ go test -count=1 -timeout 10m -run ^TestReplaceRestartPreservesContextAndData$ ./internal/update
+
+--- FAIL: TestReplaceRestartPreservesContextAndData (0.02s)
+    helper_test.go:101: successful update retained unexpected stage files: [- helper.exe] <nil>
+FAIL
+FAIL	github.com/steampixel007/Dipper/internal/update	0.055s
+FAIL

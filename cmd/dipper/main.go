@@ -20,17 +20,23 @@ import (
 	"github.com/steampixel007/Dipper/internal/proxy"
 	"github.com/steampixel007/Dipper/internal/source"
 	"github.com/steampixel007/Dipper/internal/trackers"
+	"github.com/steampixel007/Dipper/internal/update"
 )
 
-var version = "0.1.0"
+var version = "dev"
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "--software-update-helper" {
+		os.Exit(update.RunHelper(os.Args[2]))
+	}
 	render := flag.String("render", "", "Render fixture screenshots for UI review")
 	data := flag.String("data", "", "Application data directory")
 	origin := flag.String("source", "", "Mikan origin override")
 	probe := flag.Bool("probe-source", false, "Read public catalog, detail, history and RSS without starting downloads")
 	quitAfter := flag.Duration("quit-after", 0, "Quit after a duration for native startup checks")
 	root := flag.String("download-root", "", "Initial download root for new application data")
+	readyAddress := flag.String("software-update-ready-address", "", "Private post-update readiness address")
+	readyToken := flag.String("software-update-ready-token", "", "Private post-update readiness token")
 	flag.Parse()
 	loadImages()
 	if *render != "" {
@@ -45,6 +51,33 @@ func main() {
 			log.Fatal(err)
 		}
 		return
+	}
+	var launchGate *update.Gate
+	if *readyAddress == "" && *readyToken == "" {
+		executable, executableErr := os.Executable()
+		if executableErr != nil {
+			failStartup(executableErr)
+			return
+		}
+		gateCtx, gateCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		gate, gateErr := update.AcquireLaunchGate(gateCtx, executable)
+		gateCancel()
+		if gateErr != nil {
+			failStartup(fmt.Errorf("%s%w", softwareText.startBlocked, gateErr))
+			return
+		}
+		launchGate = gate
+		defer func() {
+			if launchGate != nil {
+				launchGate.Close()
+			}
+		}()
+		update.CleanupCompleted(executable)
+	} else {
+		if err := update.AuthorizeRestart(*readyAddress, *readyToken); err != nil {
+			failStartup(fmt.Errorf("%s%w", softwareText.handshakeRejected, err))
+			return
+		}
 	}
 	paths, err := appdata.Resolve(*data)
 	if err != nil {
@@ -64,6 +97,10 @@ func main() {
 	}
 	if owner == nil {
 		return
+	}
+	if launchGate != nil {
+		launchGate.Close()
+		launchGate = nil
 	}
 	defer owner.Close()
 	if err = os.MkdirAll(paths.LogDir, 0700); err != nil {
@@ -152,9 +189,8 @@ func main() {
 	quitting := false
 	s.Quit = func() { mygo.App.Quit() }
 	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
-		if !s.saveBeforeClose() {
+		if !s.prepareAppQuit() {
 			e.PreventDefault()
-			s.restoreAfterQuitVeto()
 			return
 		}
 		quitting = true
@@ -260,6 +296,11 @@ func main() {
 				win.Update(s.requestClose)
 			}
 		})
+		s.startAutomaticSoftwareCheck()
+		if err := update.NotifyReady(*readyAddress, *readyToken); err != nil {
+			slog.Error("post-update readiness handshake failed", "error", err)
+			s.SoftwareUpdate.StartupError = softwareText.startupError
+		}
 		s.refreshCatalog()
 		_ = os.WriteFile(filepath.Join(paths.DataDir, "ready"), []byte(version), 0644)
 		slog.Info("ready", "version", version)

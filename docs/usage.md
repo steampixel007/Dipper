@@ -53,6 +53,47 @@ documentation update.
 
 To compile Dipper or use diagnostic flags, see [Development](development.md).
 
+## Software updates
+
+Settings has a **软件更新** (Software update) section, separate from checking an
+anime feed. It shows the running version, a manual **立即检查** (Check now)
+action, and **启动后自动检查** (Check automatically after startup). Automatic
+checks use GitHub's stable releases only and run at most once per day. They do
+not interrupt startup; a new version appears as a nonblocking notice. Automatic
+check failures stay quiet. Manual checks show an actionable error and allow a
+retry. Development builds show a development version and do not check
+automatically, but a manual check can offer the latest stable release.
+
+Opening the notice shows the release notes and the official package selected
+for the current platform and architecture. Nothing is installed until you
+choose **下载更新** (Download update) and then confirm the installation action.
+Downloads show progress and can be cancelled or retried. Dipper verifies the
+package against the release's `SHA256SUMS` before offering installation.
+
+On Windows, a portable ZIP copy uses the in-app Windows ZIP replacement. After
+confirmation, Dipper saves settings and core state, stops downloads and the
+engine, and closes. A private helper waits for that exact process to exit,
+stages the new executable on the destination volume, keeps a backup, and
+relaunches with the same data-directory context, working directory, and
+arguments. The helper is itself a temporary copy of the old executable, so the
+distributed ZIP still contains only `Dipper.exe`. Replacement is not forced: if
+you keep the app open or cancel the quit, the pending replacement is cancelled
+and the window stays usable. If replacement or the new process's readiness
+check fails, Dipper restores the old executable where it can do so safely and
+reports where the backup remains. Follow rules, downloads, and preferences are
+preserved.
+
+The installed Windows copy (`%LOCALAPPDATA%\Programs\Dipper`) and macOS/Linux
+builds use a verified official setup executable, disk image, package, or
+archive. Dipper opens that downloaded file only when you ask it to; it does not
+silently run an installer or claim to replace itself on those platforms.
+
+The updater does not add a portable data mode. The Windows ZIP remains
+install-free and uses the normal data directories described below. It also
+makes no promise that an older release can open a database migrated by a newer
+release; restoring an old executable does not silently revert migrated user
+data.
+
 ## Follow a series and watch
 
 The interface is currently in Chinese. Dipper needs no browser, Node.js, or

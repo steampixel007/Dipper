@@ -1,0 +1,7 @@
+$ go test -count=1 -timeout 10m -run ^TestCleanupCompletedUpdateStages$ ./internal/update
+
+--- FAIL: TestCleanupCompletedUpdateStages (0.01s)
+    helper_test.go:152: acknowledged stage was not removed: <nil>
+FAIL
+FAIL	github.com/steampixel007/Dipper/internal/update	0.746s
+FAIL

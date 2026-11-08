@@ -11,6 +11,7 @@ that has drifted from the code is a bug in the page.
 | [downloader](downloader.md) | The embedded BT engine, transfer policy, seeding limits, storage layout and resume | `internal/downloader/` |
 | [source](source.md) | Fetching the anime catalog and a group's releases, and parsing them out of HTML | `internal/source/` |
 | [instance](instance.md) | One owner per data directory, and forwarding a second launch to the running window | `internal/instance/` |
+| [update](update.md) | Stable release discovery, verified downloads, and Windows portable replacement | `internal/update/` |
 | [gui](gui.md) | The native window, its pages, and the state it renders | `cmd/dipper/` |
 
 ## How to describe a change to a subsystem

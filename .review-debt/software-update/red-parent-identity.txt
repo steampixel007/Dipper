@@ -1,0 +1,7 @@
+$ go test -count=1 -timeout 10m -run TestWindowsExactParentAndLockedTarget ./internal/update
+
+--- FAIL: TestWindowsExactParentAndLockedTarget (0.00s)
+    process_windows_test.go:269: accepted reused PID with a different creation identity
+FAIL
+FAIL	github.com/steampixel007/Dipper/internal/update	0.710s
+FAIL

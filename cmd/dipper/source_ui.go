@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -14,6 +15,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/steampixel007/Dipper/internal/core"
 	"github.com/steampixel007/Dipper/internal/source"
+	"github.com/steampixel007/Dipper/internal/update"
 )
 
 type sourceRoute struct {
@@ -50,7 +52,7 @@ func (s *State) sourceLabel(origin string) string {
 }
 
 func newState(dir string) *State {
-	s := &State{Dir: dir, ConfigDir: dir, Platform: runtime.GOOS, Appearance: appearanceLight, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes}
+	s := &State{Dir: dir, ConfigDir: dir, Platform: runtime.GOOS, Appearance: appearanceLight, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes, SoftwareAuto: true, SoftwareClient: update.NewClient(), SoftwareExecutable: os.Executable, OpenSoftwareFile: update.OpenDownloaded}
 	s.Seed = "1 小时"
 	s.SeedRatio = "1:1"
 	if dir != "" {

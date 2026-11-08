@@ -161,6 +161,7 @@ func (s *State) view(c *ui.Context) {
 			if s.SaveError != "" {
 				ui.Text(c, s.SaveError).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk).Background(colors(c).errorWash).Padding(8, 24)
 			}
+			s.softwareNotice(c)
 			ui.Box(c.Key("page-host")).Grow(1).MinHeight(0).FillWidth().Clip().Children(func() {
 				ui.Column(c.Key("page-" + s.Page)).Fill().Transition(pageTransition).Children(func() {
 					switch s.Page {
@@ -187,6 +188,7 @@ func (s *State) view(c *ui.Context) {
 	s.summaryDialog(c)
 	s.closeDialog(c)
 	s.filesDialog(c)
+	s.softwareUpdateDialog(c)
 	if s.Page == "detail" && !s.Help && !s.SummaryOpen && !s.ClosePrompt {
 		c.OnShortcut(ui.Ctrl, ui.KeyZ, s.undoFilter)
 		c.OnShortcut(ui.Ctrl, ui.KeyY, s.redoFilter)
@@ -2093,6 +2095,7 @@ func (s *State) settings(c *ui.Context) {
 				}
 			})
 			s.windowSettings(c)
+			s.softwareUpdateSettings(c)
 		})
 	})
 }

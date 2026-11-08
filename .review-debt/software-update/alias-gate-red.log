@@ -1,0 +1,7 @@
+$ go test -count=1 -timeout 10m -run ^TestSystemTempAliasKeepsUpdatePathsSafe$ ./internal/update
+
+--- FAIL: TestSystemTempAliasKeepsUpdatePathsSafe (0.04s)
+    paths_test.go:53: aliases selected different launch gates while target absent: "C:\\Users\\nathan\\AppData\\Local\\Temp\\TestSystemTempAliasKeepsUpdatePathsSafe187243022\\001\\system-temp\\Dipper-update-locks\\4e6c041504676990d1aeda7db641e0ddf39dbc3ea462c834a9c25218dfcde0c7.lock" "C:\\Users\\nathan\\AppData\\Local\\Temp\\TestSystemTempAliasKeepsUpdatePathsSafe187243022\\001\\system-temp\\Dipper-update-locks\\25eb511eb48e78fe6791b60ce4758ac19a801e7d463e24e5b2c0adbf27458fcd.lock" <nil>
+FAIL
+FAIL	github.com/steampixel007/Dipper/internal/update	0.957s
+FAIL
