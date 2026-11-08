@@ -78,7 +78,8 @@ For a portable Windows copy:
 3. The user confirms installation. The UI saves preferences and core state,
    commits the helper, and proceeds through the normal graceful quit path so
    the core and downloader close before the process exits.
-4. The helper acquires the per-executable launch gate, renames the old
+4. The helper acquires the per-executable launch gate in a per-user lock
+   directory, renames the old
    executable to a staged backup, moves the staged executable into place, and
    starts it with the original working directory and arguments.
 5. The new process validates the one-time restart token, sends `authorize`,

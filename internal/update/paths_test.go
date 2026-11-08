@@ -71,7 +71,7 @@ func TestSystemTempAliasKeepsUpdatePathsSafe(t *testing.T) {
 	if body, err := os.ReadFile(filepath.Join(escape, "Dipper.exe")); err != nil || string(body) != "protected fixture" {
 		t.Fatalf("redirect rejection changed unrelated data: %q %v", body, err)
 	}
-	lockDirectory := filepath.Join(storage, "Dipper-update-locks")
+	lockDirectory := launchLockDirectory(storage, os.Getuid())
 	if err := os.Rename(lockDirectory, lockDirectory+"-original"); err != nil {
 		t.Fatal(err)
 	}
@@ -110,5 +110,27 @@ func TestUpdateRejectsDirectoryRedirects(t *testing.T) {
 	}
 	if err := Extract(context.Background(), archive, filepath.Join(alias, "Dipper.exe")); err == nil || !strings.Contains(err.Error(), "unsafe extraction directory") {
 		t.Fatalf("did not reject redirected extraction directory before writing: %v", err)
+	}
+}
+
+func TestLaunchLockDirectoryIsUserScoped(t *testing.T) {
+	root := t.TempDir()
+	first := launchLockDirectory(root, 1000)
+	second := launchLockDirectory(root, 1001)
+	if first == second {
+		t.Fatalf("distinct users share a launch-lock directory: %q", first)
+	}
+	shared := filepath.Join(root, "Dipper-update-locks")
+	if first == shared || second == shared {
+		t.Fatal("launch-lock directory is shared across users")
+	}
+	if filepath.Dir(first) != root || filepath.Dir(second) != root {
+		t.Fatalf("launch-lock directory escaped its root: %q %q", first, second)
+	}
+	if got := launchLockDirectory(root, -1); got != shared {
+		t.Fatalf("platform without a user id lost its existing lock path: %q", got)
+	}
+	if got, err := gatePath(filepath.Join(root, "Dipper.exe")); err != nil || filepath.Dir(got) != launchLockDirectory(os.TempDir(), os.Getuid()) {
+		t.Fatalf("launch gate does not use the user-scoped lock directory: %q %v", got, err)
 	}
 }

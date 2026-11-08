@@ -626,7 +626,7 @@ func gatePath(target string) (string, error) {
 		absolute = strings.ToLower(absolute)
 	}
 	hash := sha256.Sum256([]byte(absolute))
-	directory := filepath.Join(os.TempDir(), "Dipper-update-locks")
+	directory := launchLockDirectory(os.TempDir(), os.Getuid())
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return "", err
 	}
@@ -639,4 +639,15 @@ func gatePath(target string) (string, error) {
 		return "", errors.New("unsafe update lock file")
 	}
 	return path, nil
+}
+
+func launchLockDirectory(root string, uid int) string {
+	return filepath.Join(root, launchLockName(uid))
+}
+
+func launchLockName(uid int) string {
+	if uid < 0 {
+		return "Dipper-update-locks"
+	}
+	return "Dipper-update-locks-" + strconv.Itoa(uid)
 }
