@@ -7,15 +7,15 @@
 Open the repository's [Releases page](https://github.com/steampixel007/Dipper/releases/latest)
 and expand **Assets**. Download an application package for your computer;
 GitHub's **Source code** archives require development tools and are not the app.
-The filenames below were checked against release `v0.1.2` on November 6, 2026.
+The filenames below were checked against release `v0.1.3` on November 8, 2026.
 For a later release, use that release's version number.
 
 | Platform | Recommended package | Archive alternative |
 | --- | --- | --- |
-| Windows x64 (Intel / AMD) | `dipper_0.1.2_windows_amd64_setup.exe` | `dipper_0.1.2_windows_amd64.zip` |
-| macOS, Apple silicon (M series) | `dipper_0.1.2_darwin_arm64.dmg` | `dipper_0.1.2_darwin_arm64.tar.gz` |
-| macOS, Intel | `dipper_0.1.2_darwin_amd64.dmg` | `dipper_0.1.2_darwin_amd64.tar.gz` |
-| Debian / Ubuntu Linux x64 | `dipper_0.1.2_linux_amd64.deb` | `dipper_0.1.2_linux_amd64.tar.gz` |
+| Windows x64 (Intel / AMD) | `dipper_0.1.3_windows_amd64_setup.exe` | `dipper_0.1.3_windows_amd64.zip` |
+| macOS, Apple silicon (M series) | `dipper_0.1.3_darwin_arm64.dmg` | `dipper_0.1.3_darwin_arm64.tar.gz` |
+| macOS, Intel | `dipper_0.1.3_darwin_amd64.dmg` | `dipper_0.1.3_darwin_amd64.tar.gz` |
+| Debian / Ubuntu Linux x64 | `dipper_0.1.3_linux_amd64.deb` | `dipper_0.1.3_linux_amd64.tar.gz` |
 
 **Windows:** run the setup EXE, then open Dipper from the Start menu. The
 installer is for the current user. Alternatively, extract the ZIP and open
@@ -30,7 +30,7 @@ The archive alternative also contains `Dipper.app`.
 install it with the package manager, then open Dipper from the applications menu:
 
 ```sh
-sudo apt install ./dipper_0.1.2_linux_amd64.deb
+sudo apt install ./dipper_0.1.3_linux_amd64.deb
 ```
 
 The DEB declares its GTK3 and Ayatana AppIndicator dependencies. For other

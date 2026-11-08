@@ -32,15 +32,15 @@ A native desktop app with automatic following and a built-in downloader.
 
 Download Dipper from this repository's **[Releases](https://github.com/steampixel007/Dipper/releases/latest)**.
 Expand **Assets** and choose the file for your computer. You do not need Git or
-Go. The filenames below are from `v0.1.2`, checked on November 6, 2026; later
+Go. The filenames below are from `v0.1.3`, checked on November 8, 2026; later
 releases use their own version number.
 
 | Your computer | Download | Install and open |
 | --- | --- | --- |
-| Windows x64 (Intel or AMD) | `dipper_0.1.2_windows_amd64_setup.exe` | Open the installer, then launch Dipper from the Start menu. |
-| Mac with Apple silicon (M series) | `dipper_0.1.2_darwin_arm64.dmg` | Open the disk image, drag Dipper to Applications, then open it there. |
-| Mac with an Intel processor | `dipper_0.1.2_darwin_amd64.dmg` | Open the disk image, drag Dipper to Applications, then open it there. |
-| Debian / Ubuntu Linux x64 | `dipper_0.1.2_linux_amd64.deb` | Install with your package manager, then open Dipper from the applications menu. [Install command and archive alternatives](docs/usage.md#install). |
+| Windows x64 (Intel or AMD) | `dipper_0.1.3_windows_amd64_setup.exe` | Open the installer, then launch Dipper from the Start menu. |
+| Mac with Apple silicon (M series) | `dipper_0.1.3_darwin_arm64.dmg` | Open the disk image, drag Dipper to Applications, then open it there. |
+| Mac with an Intel processor | `dipper_0.1.3_darwin_amd64.dmg` | Open the disk image, drag Dipper to Applications, then open it there. |
+| Debian / Ubuntu Linux x64 | `dipper_0.1.3_linux_amd64.deb` | Install with your package manager, then open Dipper from the applications menu. [Install command and archive alternatives](docs/usage.md#install). |
 
 On a Mac, **Apple menu → About This Mac** identifies the chip or processor
 ([Apple's guide](https://support.apple.com/en-us/116943)).
@@ -51,6 +51,10 @@ signing without Apple notarization; the system may block the first launch.
 See the [installation notes](docs/usage.md#install) if that happens.
 Clean-machine installation and native macOS/Linux first launch have not been
 validated in this documentation update.
+
+In-app updates arrive with the next release: Settings gains a **软件更新**
+(Software update) section, and Dipper will check for a stable release at most
+once a day after startup. See [software updates](docs/usage.md#software-updates).
 
 Once Dipper opens (the interface is currently in Chinese):
 
@@ -109,7 +113,8 @@ Later, you can fetch older releases without changing the rule.
 
 Open a poster in My Follows to see its episode library and play completed
 downloads. Use the library's **···** menu to view resources or manage the follow.
-Downloads show progress and transfer speeds, with the next action beside each task.
+Downloads are grouped by series and fansub group, each group with one progress
+bar and the next action beside every task.
 
 <table>
   <tr>
@@ -117,8 +122,8 @@ Downloads show progress and transfer speeds, with the next action beside each ta
     <th width="50%">Your downloads</th>
   </tr>
   <tr>
-    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="Followed shows with fansub groups, saved rules, and last-check results"></a></td>
-    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="Download progress, upload and download speeds, retry, and sharing controls"></a></td>
+    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="Followed shows as posters, with a failed check marked and a retry action"></a></td>
+    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="Downloads grouped by series, with a group progress bar, per-task speeds, retry, and sharing controls"></a></td>
   </tr>
 </table>
 

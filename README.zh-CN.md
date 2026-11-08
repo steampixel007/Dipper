@@ -30,18 +30,20 @@
 
 ## 开始使用
 
-前往本仓库的 **[Releases 下载页](https://github.com/steampixel007/Dipper/releases/latest)**，展开 **Assets**，选择适合电脑的安装包，无需安装 Git 或 Go。下表列出的是 2026 年 11 月 6 日核实的 `v0.1.2` 文件名；后续版本的文件名会使用对应的版本号。
+前往本仓库的 **[Releases 下载页](https://github.com/steampixel007/Dipper/releases/latest)**，展开 **Assets**，选择适合电脑的安装包，无需安装 Git 或 Go。下表列出的是 2026 年 11 月 8 日核实的 `v0.1.3` 文件名；后续版本的文件名会使用对应的版本号。
 
 | 你的电脑 | 下载文件 | 安装与打开 |
 | --- | --- | --- |
-| Windows x64（Intel 或 AMD） | `dipper_0.1.2_windows_amd64_setup.exe` | 打开安装程序，完成后从开始菜单启动 Dipper。 |
-| Apple 芯片 Mac（M 系列） | `dipper_0.1.2_darwin_arm64.dmg` | 打开磁盘映像，把 Dipper 拖入“应用程序”，再从那里打开。 |
-| Intel 芯片 Mac | `dipper_0.1.2_darwin_amd64.dmg` | 打开磁盘映像，把 Dipper 拖入“应用程序”，再从那里打开。 |
-| Debian / Ubuntu Linux x64 | `dipper_0.1.2_linux_amd64.deb` | 使用系统的软件包管理器安装，再从应用菜单打开。[安装命令与压缩包用法（英文）](docs/usage.md#install)。 |
+| Windows x64（Intel 或 AMD） | `dipper_0.1.3_windows_amd64_setup.exe` | 打开安装程序，完成后从开始菜单启动 Dipper。 |
+| Apple 芯片 Mac（M 系列） | `dipper_0.1.3_darwin_arm64.dmg` | 打开磁盘映像，把 Dipper 拖入“应用程序”，再从那里打开。 |
+| Intel 芯片 Mac | `dipper_0.1.3_darwin_amd64.dmg` | 打开磁盘映像，把 Dipper 拖入“应用程序”，再从那里打开。 |
+| Debian / Ubuntu Linux x64 | `dipper_0.1.3_linux_amd64.deb` | 使用系统的软件包管理器安装，再从应用菜单打开。[安装命令与压缩包用法（英文）](docs/usage.md#install)。 |
 
 Mac 用户可以在 **苹果菜单 → 关于本机** 中查看芯片或处理器，参见 [Apple 说明](https://support.apple.com/zh-cn/116943)。请选择上表中的应用安装包；下载页的 **Source code** 是源码包。
 
 Windows 安装包没有发布者证书；macOS 安装包使用临时签名，未经 Apple 公证，首次打开时可能被系统拦截。处理方式见[安装说明（英文）](docs/usage.md#install)。本次文档更新未验证全新系统安装，也未完成 macOS / Linux 原生环境的首次启动验收。
+
+下一个版本起可以在应用内更新：设置里会新增**软件更新**，Dipper 启动后每天最多检查一次稳定版本，详见[软件更新（英文）](docs/usage.md#software-updates)。
 
 打开 Dipper 后：
 
@@ -75,7 +77,7 @@ Dipper 把蜜柑目录、字幕组发布记录、版本选择和本地下载放�
 
 ## 追番与下载，进展一目了然
 
-在“我的追番”中点击海报，就能进入剧集库，播放已下载完成的资源。查看资源、修改条件等管理操作放在剧集库的 **···** 菜单中。下载列表会显示进度、传输速度，并在每个任务旁提供下一步操作。
+在“我的追番”中点击海报，就能进入剧集库，播放已下载完成的资源。查看资源、修改条件等管理操作放在剧集库的 **···** 菜单中。下载按番剧和字幕组分组，每组一条总进度，每个任务旁都有下一步操作。
 
 <table>
   <tr>
@@ -83,8 +85,8 @@ Dipper 把蜜柑目录、字幕组发布记录、版本选择和本地下载放�
     <th width="50%">我的下载</th>
   </tr>
   <tr>
-    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="追番列表：字幕组、已保存的规则和最近一次检查结果"></a></td>
-    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="下载列表：进度、上传与下载速度、失败重试和分享控制"></a></td>
+    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="追番列表：海报卡片，检查失败的番剧已标记并可重试"></a></td>
+    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="下载列表：按番剧分组，组内总进度、每个任务的速度、失败重试和分享控制"></a></td>
   </tr>
 </table>
 
