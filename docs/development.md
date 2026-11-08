@@ -65,6 +65,7 @@ The sample titles, fansub groups, dates, and transfer figures come from
 | [10-group-picker.png](assets/ui/10-group-picker.png) | Subtitle-group search and release counts |
 | [11-view-resources.png](assets/ui/11-view-resources.png) | Following-card resource entry and manual backfill |
 | [12-seed-settings.png](assets/ui/12-seed-settings.png) | Seeding-duration choice in transfer settings |
+| [14-following-check-failure.png](assets/ui/14-following-check-failure.png) | A failed follow check and its retry |
 
 Keep the README's sample-data caption when refreshing these images. Review
 them at the size readers see on GitHub and keep image alternative text
