@@ -594,3 +594,49 @@ func TestSoftwareTransientInstallFailureKeepsVerifiedDownload(t *testing.T) {
 	}
 	uiRequireText(t, tt, message)
 }
+
+func TestSoftwareManualCheckRecoversFromInvalidPendingDownload(t *testing.T) {
+	s, tt, queue := softwareAutoFixture(t)
+	var checks, downloads atomic.Int32
+	s.SoftwareClient = softwareClientFixture{
+		check: func(context.Context) (update.Offer, error) {
+			checks.Add(1)
+			return softwareOffer(), nil
+		},
+		download: func(ctx context.Context, offer update.Offer, root string, progress func(int64, int64)) (update.Download, error) {
+			downloads.Add(1)
+			return softwareVerifiedDownload(ctx, offer, root, progress)
+		},
+	}
+	softwareStartAutoDownload(t, s, tt, queue)
+	invalid := s.SoftwarePending
+	if invalid == nil {
+		t.Fatal("automatic download did not persist a pending update")
+	}
+	if err := os.WriteFile(invalid.Download.Executable, []byte("tampered executable"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	s.checkSoftware(true)
+	if s.SoftwarePending != nil || s.SoftwareUpdate.Downloaded.Executable != "" {
+		t.Fatalf("manual check retained the invalid pending download: %+v", s.SoftwareUpdate)
+	}
+	softwareApply(t, tt, queue)
+	if checks.Load() != 2 {
+		t.Fatalf("manual check did not refresh the release after an invalid download: %d", checks.Load())
+	}
+	if _, err := os.Stat(invalid.Download.Directory); !os.IsNotExist(err) {
+		t.Fatalf("manual check did not reclaim the invalid download: %v", err)
+	}
+	pref, err := readPreferences(s.ConfigDir)
+	if err != nil || pref.SoftwarePending != nil {
+		t.Fatalf("manual check kept the invalid download persisted: %+v %v", pref, err)
+	}
+	if !s.SoftwareUpdate.Dialog || !s.SoftwareUpdate.Available {
+		t.Fatalf("manual check did not offer the release again: %+v", s.SoftwareUpdate)
+	}
+	s.downloadSoftware()
+	softwareApply(t, tt, queue)
+	if downloads.Load() != 2 || s.SoftwarePending == nil || s.SoftwareUpdate.Downloaded.Executable == "" {
+		t.Fatalf("recovered release could not be downloaded again: downloads=%d state=%+v", downloads.Load(), s.SoftwareUpdate)
+	}
+}

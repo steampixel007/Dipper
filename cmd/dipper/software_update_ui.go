@@ -138,10 +138,13 @@ func (s *State) checkSoftware(manual bool) {
 		return
 	}
 	if s.SoftwareUpdate.Downloaded.Executable != "" && s.SoftwarePending != nil {
-		if manual {
-			s.SoftwareUpdate.Dialog = true
+		if s.validateSoftwarePending(s.SoftwarePending) == nil {
+			if manual {
+				s.SoftwareUpdate.Dialog = true
+			}
+			return
 		}
-		return
+		s.discardInvalidSoftwarePending(s.SoftwarePending)
 	}
 	if s.SoftwareClient == nil {
 		if manual {
@@ -231,9 +234,14 @@ func (s *State) downloadSoftware() {
 }
 
 func (s *State) startSoftwareDownload(manual bool) {
-	if !s.SoftwareUpdate.Available || s.SoftwareUpdate.Busy || s.SoftwareClient == nil ||
-		(s.SoftwarePending != nil && s.SoftwareUpdate.Downloaded.Executable != "") {
+	if !s.SoftwareUpdate.Available || s.SoftwareUpdate.Busy || s.SoftwareClient == nil {
 		return
+	}
+	if s.SoftwarePending != nil && s.SoftwareUpdate.Downloaded.Executable != "" {
+		if s.validateSoftwarePending(s.SoftwarePending) == nil {
+			return
+		}
+		s.discardInvalidSoftwarePending(s.SoftwarePending)
 	}
 	offer := s.SoftwareUpdate.Offer
 	s.discardSoftwareDownload()

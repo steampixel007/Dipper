@@ -69,7 +69,9 @@ both the original package and the extracted executable before showing a
 restart action. Missing, modified, or obsolete downloads are not offered.
 If installation preparation rejects a download whose bytes no longer verify,
 the UI clears the pending record and reclaims only that managed directory, so a
-later check can download the release again.
+later check can download the release again. A manual check and a new download
+request also revalidate the retained download before honoring it, so a file
+modified or deleted while Dipper is running cannot block recovery.
 Development and nonportable copies do not download automatically.
 
 ## Windows portable replacement
