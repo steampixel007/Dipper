@@ -144,7 +144,7 @@ func Extract(ctx context.Context, archive, destination string) error {
 		return errors.New("unsafe extraction destination")
 	}
 	parent := filepath.Dir(destination)
-	resolved, err := filepath.EvalSymlinks(parent)
+	resolved, err := resolveUpdatePath(parent)
 	if err != nil || !samePath(parent, resolved) {
 		return errors.New("unsafe extraction directory")
 	}

@@ -1,0 +1,7 @@
+$ go test -count=1 -timeout 10m -run ^TestSystemTempAliasKeepsUpdatePathsSafe$ ./internal/update
+
+--- FAIL: TestSystemTempAliasKeepsUpdatePathsSafe (0.02s)
+    paths_test.go:27: the OS temporary alias does not identify the same directory
+FAIL
+FAIL	github.com/steampixel007/Dipper/internal/update	0.768s
+FAIL

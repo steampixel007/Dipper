@@ -22,6 +22,7 @@ helper. It never changes the application database schema or user data.
 | `helper.go` | Preparation, commit/abort, validated helper state, replacement, restart, and readiness |
 | `process_windows.go`, `process_other.go` | Exact parent-process identity and waiting |
 | `gate_windows.go`, `gate_other.go` | The per-executable launch gate |
+| `paths_windows.go`, `paths_other.go` | Resolved path identity, including Windows junctions |
 | `open_windows.go`, `open_linux.go`, `open_darwin.go` | Explicit opening of a verified installer on non-portable paths |
 
 ## Release and asset rules
@@ -50,7 +51,10 @@ Downloads are written to a fresh temporary directory. The client reads
 downloaded byte count and SHA-256 with the release metadata. Cancellation
 removes the incomplete directory. Windows ZIPs must contain exactly one regular
 `Dipper.exe`; traversal, directory entries, extra entries and oversized entries
-are rejected. The running executable is not touched until the user clicks the
+are rejected. Path comparisons normalize the OS-selected temporary root, which
+can be a Windows short path or a macOS `/var` alias. Links and redirects below
+that trusted root remain rejected, including extraction and launch-lock paths.
+The running executable is not touched until the user clicks the
 install action and the application commits the replacement during graceful
 quit.
 

@@ -84,17 +84,33 @@ func copyExclusive(source, target string) error {
 }
 
 func samePath(left, right string) bool {
+	left, right = canonicalTempPath(left), canonicalTempPath(right)
 	if runtime.GOOS == "windows" {
 		return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
 	}
 	return filepath.Clean(left) == filepath.Clean(right)
 }
 
+func canonicalTempPath(path string) string {
+	path = filepath.Clean(path)
+	root := filepath.Clean(os.TempDir())
+	relative, err := filepath.Rel(root, path)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return path
+	}
+	resolved, err := resolveUpdatePath(root)
+	if err != nil {
+		return path
+	}
+	// Trust the OS-selected temporary root, but never resolve links below it.
+	return filepath.Join(resolved, relative)
+}
+
 func safeRegular(path string) error {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return errors.New("expected a clean absolute path")
 	}
-	resolved, err := filepath.EvalSymlinks(path)
+	resolved, err := resolveUpdatePath(path)
 	if err != nil {
 		return err
 	}
@@ -602,7 +618,8 @@ func gatePath(target string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if resolved, err := filepath.EvalSymlinks(absolute); err == nil {
+	absolute = canonicalTempPath(absolute)
+	if resolved, err := resolveUpdatePath(absolute); err == nil {
 		absolute = resolved
 	}
 	if runtime.GOOS == "windows" {
@@ -613,7 +630,7 @@ func gatePath(target string) (string, error) {
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return "", err
 	}
-	resolved, err := filepath.EvalSymlinks(directory)
+	resolved, err := resolveUpdatePath(directory)
 	if err != nil || !samePath(directory, resolved) {
 		return "", errors.New("unsafe update lock directory")
 	}
