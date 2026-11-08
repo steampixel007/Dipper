@@ -20,11 +20,11 @@ A native desktop app with automatic following and a built-in downloader.
 
 <br>
 
-<a href="docs/assets/ui/01-browse.png">
-  <img src="docs/assets/ui/01-browse.png" width="960" alt="Dipper's seasonal anime catalog, with cover artwork, season selection, search, and weekday filters">
+<a href="docs/assets/screenshots/01-browse.png">
+  <img src="docs/assets/screenshots/01-browse.png" width="960" alt="Dipper's seasonal anime catalog, with cover artwork, season selection, search, and weekday filters">
 </a>
 
-<sub>Native interface rendered with sample data. Titles, groups, and transfer figures are illustrative.</sub>
+<sub>Captured from Dipper running on Windows with the real Mikan autumn 2025 catalog. Screenshots taken on November 8, 2026.</sub>
 
 </div>
 
@@ -101,8 +101,8 @@ Click a title word and choose **只要** (include), **不要** (exclude), or
 **不限** (any). Matching counts and release selections update beside your
 choices, and undo lets you try another combination.
 
-<a href="docs/assets/ui/02-filter.png">
-  <img src="docs/assets/ui/02-filter.png" width="960" alt="Version selection with a 1080p include rule, matching release previews, and the downloads selected for this follow">
+<a href="docs/assets/screenshots/02-filter.png">
+  <img src="docs/assets/screenshots/02-filter.png" width="960" alt="Real 桜都字幕组 releases for Spy x Family season 3, filtered to 1080p and simplified Chinese, with existing downloads unchecked">
 </a>
 
 Existing matches are selected by default. Uncheck anything you do not want
@@ -116,16 +116,11 @@ downloads. Use the library's **···** menu to view resources or manage the fol
 Downloads are grouped by series and fansub group, each group with one progress
 bar and the next action beside every task.
 
-<table>
-  <tr>
-    <th width="50%">Your follows</th>
-    <th width="50%">Your downloads</th>
-  </tr>
-  <tr>
-    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="Followed shows as posters, each card opening its episode library"></a></td>
-    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="Downloads grouped by series, with a group progress bar, per-task speeds, and sharing controls"></a></td>
-  </tr>
-</table>
+<a href="docs/assets/screenshots/03-following.png">
+  <img src="docs/assets/screenshots/03-following.png" width="960" alt="My Follows in the running Windows app, with real Ranma 1/2 and Spy x Family subscriptions">
+</a>
+
+<sub>These saved follows were paused after capture setup. No episodes were downloaded for the screenshots.</sub>
 
 On Windows and Linux, you can keep following and downloading in the tray when
 you close the window. On macOS, closing the window keeps Dipper running in the

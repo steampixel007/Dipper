@@ -20,11 +20,11 @@
 
 <br>
 
-<a href="docs/assets/ui/01-browse.png">
-  <img src="docs/assets/ui/01-browse.png" width="960" alt="Dipper 新番目录：封面、季度选择、标题搜索与星期筛选">
+<a href="docs/assets/screenshots/01-browse.png">
+  <img src="docs/assets/screenshots/01-browse.png" width="960" alt="Dipper 新番目录：封面、季度选择、标题搜索与星期筛选">
 </a>
 
-<sub>截图为使用示例数据渲染的原生界面，番名、字幕组和传输数据仅作展示。</sub>
+<sub>Windows 实机截图，展示蜜柑的真实 2025 年秋季目录。拍摄于 2026 年 11 月 8 日。</sub>
 
 </div>
 
@@ -69,8 +69,8 @@ Dipper 把蜜柑目录、字幕组发布记录、版本选择和本地下载放�
 
 点击标题里的词，选择 **只要**、**不要** 或 **不限**。匹配数量与发布记录会随之更新，也可以撤销操作，试试其他组合。
 
-<a href="docs/assets/ui/02-filter.png">
-  <img src="docs/assets/ui/02-filter.png" width="960" alt="版本选择：只要 1080p，预览匹配记录，并勾选这次要下载的内容">
+<a href="docs/assets/screenshots/02-filter.png">
+  <img src="docs/assets/screenshots/02-filter.png" width="960" alt="间谍过家家 第三季的真实字幕组发布记录：筛选 1080p、简体内嵌，本次不下载已有资源">
 </a>
 
 已有的匹配记录默认勾选。不想这次下载的内容，取消勾选即可；这次的下载选择与今后的匹配规则相互独立。之后也可以补下旧集，无需改动规则。
@@ -79,16 +79,11 @@ Dipper 把蜜柑目录、字幕组发布记录、版本选择和本地下载放�
 
 在“我的追番”中点击海报，就能进入剧集库，播放已下载完成的资源。查看资源、修改条件等管理操作放在剧集库的 **···** 菜单中。下载按番剧和字幕组分组，每组一条总进度，每个任务旁都有下一步操作。
 
-<table>
-  <tr>
-    <th width="50%">我的追番</th>
-    <th width="50%">我的下载</th>
-  </tr>
-  <tr>
-    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="追番列表：海报卡片，点击即可进入剧集库"></a></td>
-    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="下载列表：按番剧分组，组内总进度、每个任务的速度和分享控制"></a></td>
-  </tr>
-</table>
+<a href="docs/assets/screenshots/03-following.png">
+  <img src="docs/assets/screenshots/03-following.png" width="960" alt="Windows 实机中的我的追番：已保存乱马1/2 第二季和间谍过家家 第三季的真实追番">
+</a>
+
+<sub>图中的追番在拍摄准备完成后已暂停，拍摄过程中没有下载剧集。</sub>
 
 在 Windows 和 Linux 上，关闭窗口后可以让 Dipper 留在托盘，继续追番和下载。在 macOS 上，关闭窗口后 Dipper 会继续在 Dock 中运行。退出应用会停止后台活动。
 
