@@ -49,27 +49,48 @@ Development diagnostic flags:
 
 ## README screenshots
 
-The README uses the app icon in `cmd/dipper/assets/dipper-icon.png` and the
-native interface renders in `docs/assets/ui/`. Regenerate the screenshots with
-the build script's `-Render` (Windows) or `--render` (macOS/Linux) option above.
-The sample titles, fansub groups, dates, and transfer figures come from
-`cmd/dipper/ui_render.go`; they demonstrate the interface, not live activity.
+The README uses the app icon in `cmd/dipper/assets/dipper-icon.png` and actual
+Windows window captures in `docs/assets/screenshots/`. The screenshots were
+taken on November 8, 2026, from a locally built Dipper with the public Mikan
+source and a separate application data directory.
 
-| Image | View |
+| Image | Captured state |
 | --- | --- |
-| [01-browse.png](assets/ui/01-browse.png) | Seasonal catalog; README overview |
+| [01-browse.png](assets/screenshots/01-browse.png) | The real autumn 2025 catalog, with loaded covers and source titles |
+| [02-filter.png](assets/screenshots/02-filter.png) | 桜都字幕组 releases for Spy x Family season 3, filtered by 1080p and simplified Chinese; existing releases unchecked |
+| [03-following.png](assets/screenshots/03-following.png) | Saved Ranma 1/2 season 2 and Spy x Family season 3 follows, both paused |
+
+These are captures of a running native window, not `--render` output. No
+historical downloads were submitted, and the isolated database contained zero
+download tasks. The images do not demonstrate completed downloads or playback.
+
+To refresh the screenshots:
+
+1. In PowerShell, set `$env:CGO_ENABLED = "0"` and build a capture-only executable with `go build -trimpath -ldflags "-H windowsgui" -o ./bin/dipper-readme.exe ./cmd/dipper`. This keeps the installed application separate from the capture build.
+2. Launch `./bin/dipper-readme.exe --data ./data/readme-capture/state --download-root ./data/readme-capture/downloads` using a fresh, isolated data directory.
+3. Browse the autumn 2025 catalog and wait for covers to load. Open a title, choose a real fansub group, and select the title words to show matching releases.
+4. Clear the existing release selection before saving a follow. Pause saved follows before leaving the capture session unattended.
+5. Capture only the Dipper window, keeping its native window controls visible. The recorded captures used Windows `PrintWindow` with `PW_RENDERFULLCONTENT`; invisible resize borders were excluded from the captured bounds.
+6. Review the images at the README's displayed width, update both README languages and this provenance note, and verify every local image reference.
+
+The separate `docs/assets/ui/` directory remains the offline UI regression
+reference. The build script's `-Render` (Windows) or `--render` (macOS/Linux)
+option regenerates those fixture renders from `cmd/dipper/ui_render.go` without
+overwriting the real README screenshots. Fixture titles, groups, dates and
+transfer figures are illustrative. They do not establish live source access or
+public-network downloads.
+
+| Fixture render | Offline reference |
+| --- | --- |
+| [01-browse.png](assets/ui/01-browse.png) | Seasonal catalog |
 | [02-filter.png](assets/ui/02-filter.png) | Title-word selection and release preview |
-| [03-following.png](assets/ui/03-following.png) | Saved follows as posters, opening the episode library |
+| [03-following.png](assets/ui/03-following.png) | Saved follows and the episode-library entry |
 | [04-downloads.png](assets/ui/04-downloads.png) | Transfer progress and controls |
 | [09-anime-summary.png](assets/ui/09-anime-summary.png) | Full synopsis in a reading dialog |
 | [10-group-picker.png](assets/ui/10-group-picker.png) | Subtitle-group search and release counts |
-| [11-view-resources.png](assets/ui/11-view-resources.png) | Following-card resource entry and manual backfill |
-| [12-seed-settings.png](assets/ui/12-seed-settings.png) | Seeding-duration choice in transfer settings |
-| [14-following-check-failure.png](assets/ui/14-following-check-failure.png) | Failed follow check and its retry; developer reference, not used in the README |
-
-Keep the README's sample-data caption when refreshing these images. Review
-them at the size readers see on GitHub and keep image alternative text
-descriptive when changing a view.
+| [11-view-resources.png](assets/ui/11-view-resources.png) | Resource entry and manual backfill |
+| [12-seed-settings.png](assets/ui/12-seed-settings.png) | Seeding-duration choice |
+| [14-following-check-failure.png](assets/ui/14-following-check-failure.png) | Failed follow check and retry |
 
 ## Verification and boundaries
 
