@@ -29,7 +29,10 @@ means and guessing would shift every release by hours.
 
 `Resource.Size` is approximate for HTML and zero when the source omits it. A
 zero size means *unknown*, not *empty* — the downloader must not treat it as a
-zero-byte target.
+zero-byte target. Source sizes may use thousands separators, as in
+`1,017.6 MB`; only valid three-digit grouping is accepted, and the commas are
+removed only after that check. A grouped size parses to the same approximate
+byte value as the ungrouped spelling.
 
 `Group.Count` is `-1` when the detail page only shows a truncated preview, which
 is different from `0`.
@@ -133,6 +136,8 @@ Points a change is expected to prove:
 - A `Content-Length` larger than the cap is refused before reading.
 - `Retry-After` in both forms moves `nextRequest` forward.
 - An omitted size parses as zero, and zero is distinguishable from a real zero.
+- A grouped size parses like its ungrouped spelling, and malformed grouping is
+  refused rather than silently read as a different number.
 
 ## Invariants a change must preserve
 

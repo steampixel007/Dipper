@@ -19,7 +19,7 @@ var (
 	numericID = regexp.MustCompile(`^[1-9][0-9]*$`)
 	hashID    = regexp.MustCompile(`^[a-fA-F0-9]{40}$`)
 	cssURL    = regexp.MustCompile(`(?i)url\(\s*['"]?([^'"\)]+)['"]?\s*\)`)
-	sizeText  = regexp.MustCompile(`(?i)^([0-9]+(?:\.[0-9]+)?)\s*(B|KB|MB|GB|TB|KIB|MIB|GIB|TIB)$`)
+	sizeText  = regexp.MustCompile(`(?i)^((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?)\s*(B|KB|MB|GB|TB|KIB|MIB|GIB|TIB)$`)
 )
 
 func (c *Client) document(ctx context.Context, path string, query url.Values) (*goquery.Document, *url.URL, error) {
@@ -332,7 +332,7 @@ func parseSize(text string) (int64, error) {
 	if len(match) != 3 {
 		return 0, fmt.Errorf("invalid source size %q", text)
 	}
-	n, err := strconv.ParseFloat(match[1], 64)
+	n, err := strconv.ParseFloat(strings.ReplaceAll(match[1], ",", ""), 64)
 	if err != nil {
 		return 0, err
 	}
