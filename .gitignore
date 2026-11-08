@@ -8,3 +8,6 @@ build/icon/dist/
 
 .redcheck/
 .claude/
+output/
+.review-debt/
+/dipper.exe

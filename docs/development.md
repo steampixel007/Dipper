@@ -88,7 +88,8 @@ pixel-contrast checks correctly fail.
 What is not verified: native windows, the tray, input methods and install paths
 on macOS and Linux need acceptance on real hardware — a cross-compile only shows
 the code builds. On non-Windows platforms network availability is inferred from
-an active interface and does not prove the internet is reachable. The cover cache
-has no eviction policy. Unsigned Windows builds may be blocked by SmartScreen; the
+an active interface and does not prove the internet is reachable. Cover cache
+eviction is covered by unit tests but not by long browsing sessions on real
+hardware. Unsigned Windows builds may be blocked by SmartScreen; the
 "未知发布者" (Unknown publisher) prompt can only be avoided by signing with a
 release certificate.
