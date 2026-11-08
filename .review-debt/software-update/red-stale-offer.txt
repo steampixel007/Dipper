@@ -1,7 +1,0 @@
-$ go test -count=1 -timeout 10m -run ^TestSoftwareFailedCheckHidesUnavailableRelease$ ./cmd/dipper
-
---- FAIL: TestSoftwareFailedCheckHidesUnavailableRelease (0.15s)
-    software_update_ui_test.go:303: failed check retained an uninstallable release offer
-FAIL
-FAIL	github.com/steampixel007/Dipper/cmd/dipper	0.900s
-FAIL

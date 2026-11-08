@@ -1,7 +1,0 @@
-$ go test -count=1 -timeout 10m -run ^TestSoftwareAutomaticCheckTreatsFutureTimestampAsDue$ ./cmd/dipper
-
---- FAIL: TestSoftwareAutomaticCheckTreatsFutureTimestampAsDue (5.14s)
-    software_update_ui_test.go:198: software operation did not post its UI result
-FAIL
-FAIL	github.com/steampixel007/Dipper/cmd/dipper	5.179s
-FAIL
