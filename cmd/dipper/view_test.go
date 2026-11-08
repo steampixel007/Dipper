@@ -335,6 +335,8 @@ func TestUIFollowingShowsPendingAndActiveSummary(t *testing.T) {
 
 func TestUIFollowingUsesSubscriptionIdentityAndRSSResult(t *testing.T) {
 	s := uiFixture(t, "following")
+	s.Subscriptions[1].CheckFailed = true
+	s.Subscriptions[1].LastError = "RSS 请求超时"
 	s.Catalog = nil
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, s.KnownAnime[s.AnimeID].Title, s.Subscriptions[0].GroupName, s.Subscriptions[1].GroupName, "检查失败")
@@ -670,6 +672,10 @@ func TestUIDownloadsShowDashForStoppedTransfers(t *testing.T) {
 
 func TestUINavigationCallsOutFailedChecks(t *testing.T) {
 	s := uiFixture(t, "browse")
+	s.Subscriptions[1].CheckFailed = true
+	s.Subscriptions[1].LastError = "RSS 请求超时"
+	s.Downloads[1].Failed = true
+	s.Downloads[1].Error = "连接超时，请重试"
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, "1 失败")
 	s.Subscriptions[1].CheckFailed = false
@@ -684,6 +690,8 @@ func TestUINavigationCallsOutFailedChecks(t *testing.T) {
 
 func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	s := uiFixture(t, "following")
+	s.Downloads[1].Failed = true
+	s.Downloads[1].Error = "连接超时，请重试"
 	sub := s.Subscriptions[0]
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiClick(t, tt, "打开追番 "+sub.GroupName)
@@ -904,6 +912,8 @@ func TestUIRemoveDownloadForwardsDeleteAndRedownloadToCore(t *testing.T) {
 
 func TestUIActionsDelegateInsteadOfChangingFixtureState(t *testing.T) {
 	s := uiFixture(t, "downloads")
+	s.Downloads[1].Failed = true
+	s.Downloads[1].Error = "连接超时，请重试"
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiClick(t, tt, "暂停全部下载")
 	uiClick(t, tt, "暂停")
@@ -927,6 +937,9 @@ func TestUIActionsDelegateInsteadOfChangingFixtureState(t *testing.T) {
 
 func TestUIDownloadsGroupByAnimeWithSummary(t *testing.T) {
 	s := uiFixture(t, "downloads")
+	s.Downloads[1].Failed = true
+	s.Downloads[1].Error = "连接超时，请重试"
+	s.Downloads[1].MB = 0
 	tt := ui.NewTester(s.view, 1320, 860)
 	headers := 0
 	for _, text := range tt.Texts() {
@@ -960,6 +973,8 @@ func TestUIDownloadsFilterHidesOtherStates(t *testing.T) {
 
 func TestUIDownloadsEmptyFilterOffersReset(t *testing.T) {
 	s := uiFixture(t, "downloads")
+	s.Downloads[1].Failed = true
+	s.Downloads[1].Error = "连接超时，请重试"
 	s.DownloadFilter = downloadsPaused
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiRequireText(t, tt, "这个筛选下没有下载", "查看全部下载")
@@ -1323,6 +1338,30 @@ func TestUISettingsShowSeedAdvancedOptions(t *testing.T) {
 	}
 }
 
+func TestUIRenderFixtureShowsNoFailures(t *testing.T) {
+	s := uiRenderFixture()
+	for _, sub := range s.Subscriptions {
+		if sub.CheckFailed || sub.LastError != "" {
+			t.Fatalf("render fixture follow %q carries a failure: %+v", sub.ID, sub)
+		}
+	}
+	for _, download := range s.Downloads {
+		if download.Failed || download.Error != "" {
+			t.Fatalf("render fixture download %q carries a failure: %+v", download.ID, download)
+		}
+	}
+	for _, page := range []string{"browse", "following", "downloads"} {
+		s.Page = page
+		tt := ui.NewTester(s.view, 1320, 860)
+		tt.Frame()
+		for _, text := range tt.Texts() {
+			if text == "检查失败" || text == "重试检查" || text == "失败 1" || text == "失败 2" {
+				t.Errorf("%s screenshot shows a failure mark: %q", page, text)
+			}
+		}
+	}
+}
+
 func TestUIRenderScreensOffline(t *testing.T) {
 	dir := t.TempDir()
 	if err := renderScreens(dir); err != nil {
@@ -1506,6 +1545,8 @@ func (e *resumeAllTestEngine) Resume(id string) error {
 
 func TestUIDownloadsPauseAllIgnoresStoppedTransfers(t *testing.T) {
 	s := uiFixture(t, "downloads")
+	s.Downloads[1].Failed = true
+	s.Downloads[1].Error = "连接超时，请重试"
 	s.Downloads[0].Stopped = true
 	s.Downloads = append(s.Downloads, Download{ID: "finished-paused", Progress: 1, Stopped: true, Paused: true})
 	engine := &resumeAllTestEngine{}

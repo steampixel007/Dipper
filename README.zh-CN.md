@@ -85,8 +85,8 @@ Dipper 把蜜柑目录、字幕组发布记录、版本选择和本地下载放�
     <th width="50%">我的下载</th>
   </tr>
   <tr>
-    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="追番列表：海报卡片，检查失败的番剧已标记并可重试"></a></td>
-    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="下载列表：按番剧分组，组内总进度、每个任务的速度、失败重试和分享控制"></a></td>
+    <td><a href="docs/assets/ui/03-following.png"><img src="docs/assets/ui/03-following.png" alt="追番列表：海报卡片，点击即可进入剧集库"></a></td>
+    <td><a href="docs/assets/ui/04-downloads.png"><img src="docs/assets/ui/04-downloads.png" alt="下载列表：按番剧分组，组内总进度、每个任务的速度和分享控制"></a></td>
   </tr>
 </table>
 

@@ -59,13 +59,13 @@ The sample titles, fansub groups, dates, and transfer figures come from
 | --- | --- |
 | [01-browse.png](assets/ui/01-browse.png) | Seasonal catalog; README overview |
 | [02-filter.png](assets/ui/02-filter.png) | Title-word selection and release preview |
-| [03-following.png](assets/ui/03-following.png) | Saved follows and check results |
+| [03-following.png](assets/ui/03-following.png) | Saved follows as posters, opening the episode library |
 | [04-downloads.png](assets/ui/04-downloads.png) | Transfer progress and controls |
 | [09-anime-summary.png](assets/ui/09-anime-summary.png) | Full synopsis in a reading dialog |
 | [10-group-picker.png](assets/ui/10-group-picker.png) | Subtitle-group search and release counts |
 | [11-view-resources.png](assets/ui/11-view-resources.png) | Following-card resource entry and manual backfill |
 | [12-seed-settings.png](assets/ui/12-seed-settings.png) | Seeding-duration choice in transfer settings |
-| [14-following-check-failure.png](assets/ui/14-following-check-failure.png) | A failed follow check and its retry |
+| [14-following-check-failure.png](assets/ui/14-following-check-failure.png) | Failed follow check and its retry; developer reference, not used in the README |
 
 Keep the README's sample-data caption when refreshing these images. Review
 them at the size readers see on GitHub and keep image alternative text

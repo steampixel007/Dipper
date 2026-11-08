@@ -13,6 +13,8 @@ func TestUIEpisodeLibraryListsAndPlaysEpisodes(t *testing.T) {
 	s.LibraryID = s.Subscriptions[0].ID
 	s.Downloads[0].Episode = "02"
 	s.Downloads[2].Episode = "05"
+	s.Downloads[1].Failed = true
+	s.Downloads[1].Error = "连接超时，请重试"
 	played := make(chan string, 1)
 	engine := &playTestEngine{files: []string{filepath.Join(s.Root, "星海旅记", "episode.mkv")}}
 	s.Engine = engine
