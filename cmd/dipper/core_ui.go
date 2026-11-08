@@ -55,7 +55,9 @@ type preferences struct {
 	CloseBehavior string
 	// SourceOrigin persists the ASCII origin, not the Chinese label, so
 	// rewording the route label does not reset the user's choice.
-	SourceOrigin string
+	SourceOrigin      string
+	SoftwareAuto      *bool
+	SoftwareCheckedAt time.Time
 }
 
 var proxyModes = []string{proxy.ModeAuto, proxy.ModeDirect, proxy.ModeCustom}
@@ -219,6 +221,11 @@ func (s *State) loadPreferences() error {
 	s.ReduceEffects = pref.ReduceEffects
 	s.Appearance = normalizeAppearance(pref.Appearance)
 	s.CloseBehavior = normalizeCloseBehavior(pref.CloseBehavior)
+	s.SoftwareAuto = true
+	if pref.SoftwareAuto != nil {
+		s.SoftwareAuto = *pref.SoftwareAuto
+	}
+	s.SoftwareCheckedAt = pref.SoftwareCheckedAt
 	origin := pref.SourceOrigin
 	if origin == "" {
 		origin = source.DefaultOrigin
@@ -268,7 +275,8 @@ func (s *State) save() {
 }
 
 func (s *State) savePreferences() error {
-	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, Appearance: normalizeAppearance(s.Appearance), CloseBehavior: s.CloseBehavior, SourceOrigin: s.sourceOrigin(s.SourceRoute)})
+	automatic := s.SoftwareAuto
+	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, Appearance: normalizeAppearance(s.Appearance), CloseBehavior: s.CloseBehavior, SourceOrigin: s.sourceOrigin(s.SourceRoute), SoftwareAuto: &automatic, SoftwareCheckedAt: s.SoftwareCheckedAt})
 	path := filepath.Join(s.ConfigDir, "preferences.json")
 	err := os.WriteFile(path+".tmp", b, 0644)
 	if err == nil {

@@ -1,0 +1,11 @@
+$ go test -count=1 -timeout 10m -run TestChecksumAndArchiveErrors ./internal/update
+
+--- FAIL: TestChecksumAndArchiveErrors (0.02s)
+    download_test.go:115: accepted unsafe archive [../Dipper.exe]
+    download_test.go:115: accepted unsafe archive [bin/Dipper.exe]
+    download_test.go:115: accepted unsafe archive [/Dipper.exe]
+    download_test.go:115: accepted unsafe archive [Dipper.exe:stream]
+    download_test.go:115: accepted unsafe archive [dipper.exe]
+FAIL
+FAIL	github.com/steampixel007/Dipper/internal/update	0.754s
+FAIL

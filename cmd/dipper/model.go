@@ -7,6 +7,7 @@ import (
 	"github.com/steampixel007/Dipper/internal/core"
 	"github.com/steampixel007/Dipper/internal/downloader"
 	"github.com/steampixel007/Dipper/internal/source"
+	"github.com/steampixel007/Dipper/internal/update"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -89,24 +90,26 @@ const (
 )
 
 type Saved struct {
-	Root            string
-	Upload          string
-	Seed            string
-	SeedRatio       string
-	TrackerFeedback string
-	ExtraTrackers   string
-	ProxyMode       int
-	ProxyURL        string
-	ProxyAuto       string
-	ProxyFeedback   string
-	ProxyTesting    bool
-	SourceRoute     string
-	Subscriptions   []Subscription
-	Downloads       []Download
-	IntroHidden     bool
-	ReduceEffects   bool
-	Appearance      string
-	CloseBehavior   string
+	Root              string
+	Upload            string
+	Seed              string
+	SeedRatio         string
+	TrackerFeedback   string
+	ExtraTrackers     string
+	ProxyMode         int
+	ProxyURL          string
+	ProxyAuto         string
+	ProxyFeedback     string
+	ProxyTesting      bool
+	SourceRoute       string
+	Subscriptions     []Subscription
+	Downloads         []Download
+	IntroHidden       bool
+	ReduceEffects     bool
+	Appearance        string
+	CloseBehavior     string
+	SoftwareAuto      bool
+	SoftwareCheckedAt time.Time
 }
 type downloadEngine interface {
 	Snapshot() []downloader.Snapshot
@@ -221,6 +224,11 @@ type State struct {
 	FilesError                 string
 	FilesLoading               bool
 	filesRevision              int
+	SoftwareUpdate             softwareUpdate
+	SoftwareClient             softwareClient
+	SoftwareExecutable         func() (string, error)
+	OpenSoftwareFile           func(string) error
+	PrepareSoftware            func(context.Context, string, update.Download, []string) (softwareInstaller, error)
 }
 
 var seasons = []string{"冬", "春", "夏", "秋"}

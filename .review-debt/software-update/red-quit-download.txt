@@ -1,0 +1,7 @@
+$ go test -count=1 -timeout 10m -run ^TestSoftwareQuitVetoPreservesVerifiedDownload$ ./cmd/dipper
+
+--- FAIL: TestSoftwareQuitVetoPreservesVerifiedDownload (0.15s)
+    software_update_ui_test.go:336: quit veto discarded the verified download
+FAIL
+FAIL	github.com/steampixel007/Dipper/cmd/dipper	0.187s
+FAIL

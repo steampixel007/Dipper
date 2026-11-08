@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/steampixel007/Dipper/internal/source"
@@ -204,10 +203,7 @@ func TestWindowSettingsCanChangeAndResetRememberedBehavior(t *testing.T) {
 	s, _, quit := windowFixture(t)
 	s.Page = "settings"
 	tt := ui.NewTester(s.view, 1040, 720)
-	for range 6 {
-		tt.Wheel(800, 500, 0, 160)
-		tt.Advance(100 * time.Millisecond)
-	}
+	uiScrollTo(t, tt, windowText.closeLabel)
 	uiRequireText(t, tt, windowText.closeLabel, windowText.ask, windowText.background, windowText.exitChoice)
 	for _, choice := range []struct{ label, value string }{{windowText.background, closeBackground}, {windowText.exitChoice, closeQuit}, {windowText.ask, closeAsk}} {
 		uiClick(t, tt, choice.label)

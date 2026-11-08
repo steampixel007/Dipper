@@ -1,0 +1,10 @@
+$ go test -count=1 -timeout 10m -run TestReplaceFailuresPreserveUsableOldExecutable ./internal/update
+
+--- FAIL: TestReplaceFailuresPreserveUsableOldExecutable (0.10s)
+    --- FAIL: TestReplaceFailuresPreserveUsableOldExecutable/start (0.01s)
+        helper_test.go:143: failed update lost usable old executable GetFileAttributesEx C:\Users\nathan\AppData\Local\Temp\TestReplaceFailuresPreserveUsableOldExecutablestart848152967\001\Dipper.exe: The system cannot find the file specified.
+    --- FAIL: TestReplaceFailuresPreserveUsableOldExecutable/exit (0.01s)
+        helper_test.go:143: failed update lost usable old executable GetFileAttributesEx C:\Users\nathan\AppData\Local\Temp\TestReplaceFailuresPreserveUsableOldExecutableexit2058565150\001\Dipper.exe: The system cannot find the file specified.
+FAIL
+FAIL	github.com/steampixel007/Dipper/internal/update	0.808s
+FAIL
