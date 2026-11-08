@@ -55,9 +55,11 @@ type preferences struct {
 	CloseBehavior string
 	// SourceOrigin persists the ASCII origin, not the Chinese label, so
 	// rewording the route label does not reset the user's choice.
-	SourceOrigin      string
-	SoftwareAuto      *bool
-	SoftwareCheckedAt time.Time
+	SourceOrigin         string
+	SoftwareAuto         *bool
+	SoftwareAutoDownload bool
+	SoftwarePending      *softwarePending
+	SoftwareCheckedAt    time.Time
 }
 
 var proxyModes = []string{proxy.ModeAuto, proxy.ModeDirect, proxy.ModeCustom}
@@ -225,6 +227,7 @@ func (s *State) loadPreferences() error {
 	if pref.SoftwareAuto != nil {
 		s.SoftwareAuto = *pref.SoftwareAuto
 	}
+	s.SoftwareAutoDownload = pref.SoftwareAutoDownload
 	s.SoftwareCheckedAt = pref.SoftwareCheckedAt
 	origin := pref.SourceOrigin
 	if origin == "" {
@@ -234,6 +237,7 @@ func (s *State) loadPreferences() error {
 		return fmt.Errorf("应用线路设置：%w", err)
 	}
 	s.SourceRoute = s.sourceLabel(origin)
+	s.SoftwarePending = pref.SoftwarePending
 	return nil
 }
 
@@ -276,7 +280,7 @@ func (s *State) save() {
 
 func (s *State) savePreferences() error {
 	automatic := s.SoftwareAuto
-	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, Appearance: normalizeAppearance(s.Appearance), CloseBehavior: s.CloseBehavior, SourceOrigin: s.sourceOrigin(s.SourceRoute), SoftwareAuto: &automatic, SoftwareCheckedAt: s.SoftwareCheckedAt})
+	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, Appearance: normalizeAppearance(s.Appearance), CloseBehavior: s.CloseBehavior, SourceOrigin: s.sourceOrigin(s.SourceRoute), SoftwareAuto: &automatic, SoftwareAutoDownload: s.SoftwareAutoDownload, SoftwarePending: s.SoftwarePending, SoftwareCheckedAt: s.SoftwareCheckedAt})
 	path := filepath.Join(s.ConfigDir, "preferences.json")
 	err := os.WriteFile(path+".tmp", b, 0644)
 	if err == nil {

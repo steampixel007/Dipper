@@ -61,13 +61,28 @@ with explicit `--data`, the XDG config directory on Linux); the rest is per-run.
 UI code reads `State` and calls `Update` to schedule a repaint, and never mutates it from another goroutine
 without going through `Update`.
 
-Software update state is separate from anime-feed checks. `SoftwareAuto` and
-`SoftwareCheckedAt` are saved preferences; the latter limits automatic release
-checks to once per day. The release client uses the same proxy transport as the
+Software update state is separate from anime-feed checks. `SoftwareAuto`,
+`SoftwareAutoDownload`, `SoftwarePending`, and `SoftwareCheckedAt` are saved in
+`preferences.json`; the timestamp limits automatic release checks to once per
+day. Automatic downloads are opt-in and apply only to release Windows portable
+offers. The release client uses the same proxy transport as the
 rest of the app. A check or download carries a revision and cancellation pair,
 and a stale result is dropped. Automatic failures are quiet; manual failures
 show the error and a retry action. A discovered update is a nonblocking top-bar
-notice until the user opens and confirms it.
+notice until the user opens and confirms it. With automatic downloads enabled,
+an automatic check starts a verified background download without opening a
+dialog. Its completed notice calls `installSoftware` directly when clicked;
+preparation and graceful-quit vetoes retain a retryable download.
+
+`software_update_pending.go` restores completed portable downloads at startup,
+before the automatic-check and daily-throttle gates. It checks the version,
+current installation type, managed paths, and both package and executable
+hashes off the UI thread. Only the UI callback publishes the verified result.
+An obsolete, missing, or modified download is cleared from preferences and
+reclaimed only inside the managed update directory. Other settings saves keep
+pending metadata. Software fixture tests in `software_update_pending_test.go`
+cover these states, notice clicks through the full view, cancellation, and
+quiet failures without using the network or a real replacement helper.
 
 The Mikan origin is a saved preference, not core state: the window tests a new
 origin with one catalog probe before committing it, rolls the client back on

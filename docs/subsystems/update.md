@@ -58,6 +58,22 @@ The running executable is not touched until the user clicks the
 install action and the application commits the replacement during graceful
 quit.
 
+For release Windows portable downloads, the UI passes a persistent
+`updates` directory under the preferences directory instead of the OS temporary
+root. A successfully verified download records its offer, paths, and hashes in
+`preferences.json`. Ordinary shutdown keeps it; cancellation and failed saves
+reclaim the incomplete or unpublished download. At the next launch the UI
+requires a newer portable offer for the current executable and paths directly
+under a managed download directory, then `VerifyPortableDownload` verifies
+both the original package and the extracted executable before showing a
+restart action. Missing, modified, or obsolete downloads are not offered.
+If installation preparation rejects a download whose bytes no longer verify,
+the UI clears the pending record and reclaims only that managed directory, so a
+later check can download the release again. A manual check and a new download
+request also revalidate the retained download before honoring it, so a file
+modified or deleted while Dipper is running cannot block recovery.
+Development and nonportable copies do not download automatically.
+
 ## Windows portable replacement
 
 Only the Windows ZIP asset is handled as a portable replacement. The installed
@@ -113,6 +129,10 @@ temporary trees and harmless fixture executables; `process_windows_test.go`
 exercises the real process identity, locked-target failure, and bounded wait
 paths. UI tests in `cmd/dipper/software_update_ui_test.go` click the rendered
 controls and assert state and engine effects without contacting the network.
+`cmd/dipper/software_update_pending_test.go` adds persisted-switch, background
+download, restart restoration, package/executable tampering, cancellation,
+managed-path cleanup, and quit-veto coverage using real fixture files and a
+stub replacement helper.
 
 ## Invariants
 
