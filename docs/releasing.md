@@ -118,6 +118,15 @@ systems, not every Linux distribution.
 Both macOS formats contain `Dipper.app`. Extract the tarball, or open the DMG and
 drag the app to Applications. Intel and Apple Silicon have separate downloads.
 
+The updater uses the ZIP for both Windows installations and extracted copies,
+and the tarball for both macOS distribution formats. It replaces the complete
+macOS bundle. Linux archive copies use the tarball; a `dipper`-owned
+`/opt/dipper/dipper` selects the DEB and upgrades through the package manager.
+Keep both archive and installer assets in every release. The in-app **重启更新**
+action preserves settings and download locations and restarts the application.
+Debian updates may require system authorization. Old versions need an upgrade
+to obtain this updater before they can use the new replacement paths.
+
 Download `SHA256SUMS` beside the archives. On Linux, verify with
 `sha256sum --check SHA256SUMS`; on macOS use `shasum -a 256 -c SHA256SUMS`. On
 Windows, use `Get-FileHash .\dipper_VERSION_windows_amd64.zip -Algorithm SHA256`

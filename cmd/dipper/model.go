@@ -229,6 +229,7 @@ type State struct {
 	SoftwareUpdate             softwareUpdate
 	SoftwareClient             softwareClient
 	SoftwareExecutable         func() (string, error)
+	SoftwareInstallationOffer  func(context.Context, update.Offer, string, string) (update.Offer, error)
 	OpenSoftwareFile           func(string) error
 	PrepareSoftware            func(context.Context, string, update.Download, []string) (softwareInstaller, error)
 }

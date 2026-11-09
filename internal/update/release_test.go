@@ -89,7 +89,7 @@ func TestReleaseSelection(t *testing.T) {
 		json.NewEncoder(writer).Encode([]Release{beta, release, draft})
 	})
 	for _, target := range []struct{ platform, arch, suffix string }{
-		{"windows", "amd64", ".zip"}, {"darwin", "arm64", ".dmg"}, {"darwin", "amd64", ".dmg"}, {"linux", "amd64", ".deb"},
+		{"windows", "amd64", ".zip"}, {"darwin", "arm64", ".tar.gz"}, {"darwin", "amd64", ".tar.gz"}, {"linux", "amd64", ".tar.gz"},
 	} {
 		offer, err := client.Check(context.Background(), "v0.1.2", target.platform, target.arch)
 		if err != nil || !offer.Available || offer.Release.Tag != "v0.1.3" || !strings.HasSuffix(offer.Package.Name, target.suffix) || offer.Checksums.Name != "SHA256SUMS" {
@@ -179,7 +179,7 @@ func TestUpdateProxyAndRedirects(t *testing.T) {
 	}
 }
 
-func TestWindowsInstalledCopyUsesSetup(t *testing.T) {
+func TestWindowsInstalledCopyRestartsWithArchive(t *testing.T) {
 	offer := Offer{Release: fixtureRelease(t), Package: fixtureRelease(t).Assets[6], Available: true, Portable: true}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "Dipper.exe")
@@ -191,18 +191,49 @@ func TestWindowsInstalledCopyUsesSetup(t *testing.T) {
 		t.Fatal(err)
 	}
 	installed, err := WindowsInstallationOffer(offer, path)
-	if err != nil || installed.Portable || !strings.HasSuffix(installed.Package.Name, "_setup.exe") {
-		t.Fatalf("installed copy must use setup: %+v %v", installed, err)
+	if err != nil || !installed.Portable || installed.Mode != ModeWindows || !strings.HasSuffix(installed.Package.Name, ".zip") {
+		t.Fatalf("installed copy must support restart update: %+v %v", installed, err)
 	}
 	if selected, err := WindowsInstallationOffer(installed, path); err != nil || selected.Package != installed.Package {
-		t.Fatalf("setup fallback was rejected: %+v %v", selected, err)
+		t.Fatalf("archive offer was rejected: %+v %v", selected, err)
 	}
 	offer.Release.Assets = append(offer.Release.Assets, installed.Package)
 	if _, err := WindowsInstallationOffer(offer, path); err == nil {
-		t.Fatal("accepted duplicate setup asset")
+		t.Fatal("accepted duplicate archive asset")
 	}
 	offer.Release.Assets = nil
 	if _, err := WindowsInstallationOffer(offer, path); err == nil {
-		t.Fatal("invented missing setup asset")
+		t.Fatal("invented missing archive asset")
+	}
+}
+
+func TestInstallationPreservesPackageOwnership(t *testing.T) {
+	for _, scenario := range []struct {
+		platform, mode, suffix string
+		debian                 bool
+	}{
+		{"windows", ModeWindows, ".zip", false},
+		{"darwin", ModeMacOS, ".tar.gz", false},
+		{"linux", ModeLinux, ".tar.gz", false},
+		{"linux", ModeDebian, ".deb", true},
+	} {
+		t.Run(scenario.mode, func(t *testing.T) {
+			release := fixtureRelease(t)
+			stem := "dipper_0.1.3_" + scenario.platform + "_amd64"
+			offer := Offer{Release: release, Available: true, Package: Asset{Name: stem + scenario.suffix}}
+			selected, err := installationOffer(offer, "/fixture/dipper", scenario.platform, func(string) (bool, error) {
+				return scenario.debian, nil
+			})
+			if err != nil || selected.Mode != scenario.mode || !SelfUpdating(selected) || selected.Package.Name != stem+scenario.suffix {
+				t.Fatalf("wrong update path for installation: %+v %v", selected, err)
+			}
+			if scenario.platform == "linux" {
+				if _, err := installationOffer(offer, "/fixture/dipper", "linux", func(string) (bool, error) {
+					return false, errors.New("unreadable package ownership")
+				}); err == nil {
+					t.Fatal("unknown package ownership was treated as a portable installation")
+				}
+			}
+		})
 	}
 }

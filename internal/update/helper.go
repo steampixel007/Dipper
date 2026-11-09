@@ -26,6 +26,9 @@ const helperFlag = "--software-update-helper"
 const completedStageMarker = "complete"
 
 type helperState struct {
+	Mode                         string
+	InstallTarget, InstallHash   string
+	PackageHash                  string
 	ParentPID                    int
 	ParentCreated                string
 	Target, TargetHash           string
@@ -44,6 +47,19 @@ type Installer struct {
 	mu        sync.Mutex
 	committed bool
 	closed    bool
+}
+
+func PrepareUpdate(ctx context.Context, target string, downloaded Download, args []string) (*Installer, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := VerifyUpdateDownload(downloaded); err != nil {
+		return nil, err
+	}
+	if runtime.GOOS == "windows" && (downloaded.Mode == "" || downloaded.Mode == ModeWindows) {
+		return PreparePortable(ctx, target, downloaded, args)
+	}
+	return preparePlatformUpdate(ctx, target, downloaded, args)
 }
 
 func randomToken() (string, error) {
@@ -320,14 +336,18 @@ func acceptToken(listener net.Listener, expected string, timeout time.Duration) 
 }
 
 func RunHelper(statePath string) int {
-	if err := runHelperFile(statePath); err != nil {
-		reportUpdateFailure(err)
+	stage, err := runHelperFile(statePath)
+	if err != nil {
+		reportUpdateFailure(stage, err)
 		return 1
 	}
 	return 0
 }
 
 func validateState(state helperState, statePath, executable string) error {
+	if state.Mode != "" && state.Mode != ModeWindows {
+		return validateUnixState(state, statePath, executable)
+	}
 	if !filepath.IsAbs(state.WorkingDirectory) {
 		return errors.New("working directory must be absolute")
 	}
@@ -356,13 +376,13 @@ func validateState(state helperState, statePath, executable string) error {
 	return hashMatches(state.Staged, state.StagedHash)
 }
 
-func runHelperFile(statePath string) error {
+func runHelperFile(statePath string) (string, error) {
 	if err := safeRegular(statePath); err != nil {
-		return err
+		return "", err
 	}
 	file, err := os.Open(statePath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var state helperState
 	decoder := json.NewDecoder(io.LimitReader(file, 65536))
@@ -373,50 +393,53 @@ func runHelperFile(statePath string) error {
 	}
 	file.Close()
 	if err != nil {
-		return err
+		return "", err
 	}
 	executable, err := os.Executable()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := validateState(state, statePath, executable); err != nil {
-		return err
+		return "", err
 	}
 	parent, err := openParent(state.ParentPID, state.ParentCreated, 90*time.Second)
 	if err != nil {
-		return err
+		return state.Stage, err
 	}
 	defer closeParent(parent)
 	if err := verifyParentImage(parent, state.Target); err != nil {
-		return err
+		return state.Stage, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
 	gate, err := AcquireLaunchGate(ctx, state.Target)
 	if err != nil {
-		return err
+		return state.Stage, err
 	}
 	defer gate.Close()
 	control, err := net.DialTimeout("tcp4", state.ControlAddress, 5*time.Second)
 	if err != nil {
-		return err
+		return state.Stage, err
 	}
 	defer control.Close()
 	control.SetDeadline(time.Now().Add(30 * time.Second))
 	if _, err := fmt.Fprintln(control, "ready:"+state.ControlToken); err != nil {
-		return err
+		return state.Stage, err
 	}
 	instruction, err := readLine(control)
 	if err != nil || instruction != "commit" {
-		return nil
+		return state.Stage, nil
 	}
 	if _, err := fmt.Fprintln(control, "accepted"); err != nil {
-		return err
+		return state.Stage, err
 	}
 	if err := waitParent(parent); err != nil {
-		return fmt.Errorf("Dipper is still running; the executable was not changed: %w", err)
+		return state.Stage, fmt.Errorf("Dipper is still running; the executable was not changed: %w", err)
 	}
-	return replaceAndRestart(state, 40*time.Second, startReplacement)
+	if state.Mode == ModeDebian {
+		return state.Stage, installDebianAndRestart(state, 40*time.Second, startReplacement)
+	}
+	return state.Stage, replaceAndRestart(state, 40*time.Second, startReplacement)
 }
 
 type restartedProcess struct {
@@ -437,10 +460,25 @@ func startReplacement(target string, args []string, workingDirectory string) (re
 }
 
 func replaceAndRestart(state helperState, timeout time.Duration, start restartFunc) error {
-	if err := hashMatches(state.Target, state.TargetHash); err != nil {
+	if state.Mode == ModeLinux {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		owner, err := linuxPackageOwner(ctx, state.Target)
+		if err != nil {
+			return err
+		}
+		if owner != "" {
+			return fmt.Errorf("executable belongs to Debian package %s; refusing direct replacement", owner)
+		}
+	}
+	target, oldHash := state.Target, state.TargetHash
+	if state.Mode == ModeMacOS || state.Mode == ModeLinux {
+		target, oldHash = state.InstallTarget, state.InstallHash
+	}
+	if err := payloadMatches(target, oldHash, state.Mode); err != nil {
 		return err
 	}
-	if err := hashMatches(state.Staged, state.StagedHash); err != nil {
+	if err := payloadMatches(state.Staged, state.StagedHash, state.Mode); err != nil {
 		return err
 	}
 	backup := filepath.Join(state.Stage, "old.exe")
@@ -453,28 +491,41 @@ func replaceAndRestart(state helperState, timeout time.Duration, start restartFu
 	}
 	defer listener.Close()
 	listener.(*net.TCPListener).SetDeadline(time.Now().Add(timeout))
-	if err := os.Rename(state.Target, backup); err != nil {
+	if err := os.Rename(target, backup); err != nil {
 		return fmt.Errorf("cannot move the old executable; close other Dipper copies and check folder permissions: %w", err)
 	}
 	restore := func(cause error) error {
-		if _, err := os.Lstat(state.Target); err == nil {
-			if err := hashMatches(state.Target, state.StagedHash); err != nil {
+		if err := payloadMatches(backup, oldHash, state.Mode); err != nil {
+			return errors.Join(cause, fmt.Errorf("backup changed; recovery files retained at %s: %w", backup, err))
+		}
+		if _, err := os.Lstat(target); err == nil {
+			if err := payloadMatches(target, state.StagedHash, state.Mode); err != nil {
 				return errors.Join(cause, fmt.Errorf("target changed; old executable retained at %s", backup))
 			}
-			if err := os.Remove(state.Target); err != nil {
+			if err := removePayload(target, state.Mode); err != nil {
 				return errors.Join(cause, err)
 			}
 		} else if !os.IsNotExist(err) {
 			return errors.Join(cause, err)
 		}
-		if err := os.Rename(backup, state.Target); err != nil {
+		if err := os.Rename(backup, target); err != nil {
 			return errors.Join(cause, fmt.Errorf("restore failed; old executable retained at %s: %w", backup, err))
 		}
 		return fmt.Errorf("%w; old executable restored, user data was not reverted; review the release notes before reopening", cause)
 	}
-	if err := os.Rename(state.Staged, state.Target); err != nil {
+	if err := os.Rename(state.Staged, target); err != nil {
 		return restore(err)
 	}
+	complete := func() {
+		removePayload(backup, state.Mode)
+		os.Remove(filepath.Join(state.Stage, "state.json"))
+		markStageComplete(state.Stage)
+	}
+	return restartWithReadiness(state, listener, timeout, start, restore, complete,
+		fmt.Sprintf("old executable retained at %s", backup))
+}
+
+func restartWithReadiness(state helperState, listener net.Listener, timeout time.Duration, start restartFunc, restore func(error) error, complete func(), recovery string) error {
 	args := append(PrivateArguments(state.Args), "--software-update-ready-address", listener.Addr().String(), "--software-update-ready-token", state.ReadyToken)
 	process, err := start(state.Target, args, state.WorkingDirectory)
 	if err != nil {
@@ -500,23 +551,19 @@ func replaceAndRestart(state helperState, timeout time.Duration, start restartFu
 	select {
 	case err := <-ready:
 		if err == nil {
-			os.Remove(backup)
-			os.Remove(filepath.Join(state.Stage, "state.json"))
-			markStageComplete(state.Stage)
+			complete()
 			return nil
 		}
 		select {
 		case <-process.exited:
 			return restore(fmt.Errorf("new executable did not become ready: %w", err))
 		default:
-			return fmt.Errorf("new executable is still running without readiness; no rollback attempted; old executable retained at %s; user data was not reverted", backup)
+			return fmt.Errorf("new executable is still running without readiness; no rollback attempted; %s; user data was not reverted", recovery)
 		}
 	case err := <-process.exited:
 		listener.Close()
 		if readyErr := <-ready; readyErr == nil {
-			os.Remove(backup)
-			os.Remove(filepath.Join(state.Stage, "state.json"))
-			markStageComplete(state.Stage)
+			complete()
 			return nil
 		}
 		return restore(fmt.Errorf("new executable exited before readiness: %v", err))
@@ -531,7 +578,12 @@ func markStageComplete(stage string) {
 // restarted application. The marker is written only after that handshake, so
 // active or failed update stages are left for inspection and recovery.
 func CleanupCompleted(executable string) {
-	root := filepath.Clean(filepath.Dir(executable))
+	for _, root := range updateStageRoots(executable) {
+		cleanupCompletedRoot(root)
+	}
+}
+
+func cleanupCompletedRoot(root string) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return

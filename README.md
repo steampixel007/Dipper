@@ -54,7 +54,11 @@ validated in this documentation update.
 
 In-app updates arrive with the next release: Settings gains a **软件更新**
 (Software update) section, and Dipper will check for a stable release at most
-once a day after startup. See [software updates](docs/usage.md#software-updates).
+once a day after startup. Installed and extracted Windows copies, macOS apps,
+and Linux archive/DEB installations share the download and **重启更新**
+(Restart and update) flow. Automatic downloads are optional. See
+[software updates](docs/usage.md#software-updates) for authorization and
+verification boundaries.
 
 Once Dipper opens (the interface is currently in Chinese):
 

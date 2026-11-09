@@ -42,6 +42,7 @@ func (installer *softwareInstallerFixture) Abort() { installer.aborts.Add(1) }
 func softwareFixture(t *testing.T) (*State, *ui.Tester, chan func()) {
 	t.Helper()
 	s := uiFixture(t, "settings")
+	s.Platform = "windows"
 	ctx, cancel := context.WithCancel(context.Background())
 	s.Ctx = ctx
 	queue := make(chan func(), 32)
@@ -82,10 +83,14 @@ func softwareRequireFailure(t *testing.T, tt *ui.Tester, update softwareUpdate) 
 }
 
 func softwareOffer() update.Offer {
+	asset := update.Asset{
+		Name: "dipper_9.0.0_windows_amd64.zip", Size: 100,
+		URL: "https://github.com/steampixel007/Dipper/releases/download/v9.0.0/dipper_9.0.0_windows_amd64.zip",
+	}
 	return update.Offer{
 		Available: true, Portable: true,
-		Release: update.Release{Tag: "v9.0.0", Notes: "Release notes fixture"},
-		Package: update.Asset{Name: "dipper_9.0.0_windows_amd64.zip", Size: 100},
+		Release: update.Release{Tag: "v9.0.0", Notes: "Release notes fixture", Assets: []update.Asset{asset}},
+		Package: asset,
 	}
 }
 
@@ -221,6 +226,54 @@ func TestSoftwareReadinessErrorSurvivesAutomaticCheck(t *testing.T) {
 	if s.SoftwareUpdate.StartupError != softwareText.startupError {
 		t.Fatal("automatic check cleared the post-update readiness failure")
 	}
+	uiRequireText(t, tt, softwareText.startupError)
+}
+
+func TestSoftwareUpdateFailureReportShownOnRestart(t *testing.T) {
+	s, tt, _ := softwareFixture(t)
+	stage := filepath.Join(s.Dir, ".dipper-update-failed")
+	if err := os.Mkdir(stage, 0700); err != nil {
+		t.Fatal(err)
+	}
+	message := "software update failed: authorization denied"
+	reportPath := filepath.Join(stage, "failure.json")
+	if err := os.WriteFile(reportPath, []byte(`{"message":"`+message+`"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.restoreSoftwareFailure(filepath.Join(s.Dir, "Dipper.exe")); err != nil {
+		t.Fatal(err)
+	}
+	if s.SoftwareUpdate.StartupError != message {
+		t.Fatalf("startup error = %q, want reported failure", s.SoftwareUpdate.StartupError)
+	}
+	tt.Frame()
+	uiRequireText(t, tt, message)
+	notice := ui.NewTester(func(c *ui.Context) { s.softwareNotice(c) }, 1040, 720)
+	notice.Frame()
+	uiRequireText(t, notice, message)
+	if _, err := os.Stat(reportPath); !os.IsNotExist(err) {
+		t.Fatalf("consumed failure report remains: %v", err)
+	}
+}
+
+func TestSoftwareUpdateFailureReportReadErrorUsesGenericNotice(t *testing.T) {
+	s, tt, _ := softwareFixture(t)
+	stage := filepath.Join(s.Dir, ".dipper-update-failed")
+	if err := os.Mkdir(stage, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(stage, "failure.json"), []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.restoreSoftwareFailure(filepath.Join(s.Dir, "Dipper.exe")); err == nil {
+		t.Fatal("malformed failure report was accepted")
+	}
+	if s.SoftwareUpdate.StartupError != softwareText.startupError {
+		t.Fatalf("startup error = %q, want generic recovery guidance", s.SoftwareUpdate.StartupError)
+	}
+	tt.Frame()
 	uiRequireText(t, tt, softwareText.startupError)
 }
 
@@ -578,6 +631,7 @@ func TestSoftwareSettingsPageManualCheckAtMinimumWindowSize(t *testing.T) {
 	version = "0.1.2"
 	defer func() { version = oldVersion }()
 	s := uiFixture(t, "settings")
+	s.Platform = "windows"
 	ctx, cancel := context.WithCancel(context.Background())
 	s.Ctx = ctx
 	queue := make(chan func(), 8)

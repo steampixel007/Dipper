@@ -71,18 +71,20 @@ Downloads show progress and can be cancelled or retried. Dipper verifies the
 package against the release's `SHA256SUMS` before offering installation.
 
 **自动下载更新** (Download updates automatically), beside the startup-check
-switch, is off by default. For a Windows portable copy, enabling it lets an
+switch, is off by default. For a release build, enabling it lets an
 automatic check download and verify a new stable version in the background
 without opening a dialog. The top of every page then shows **新版本 vX 已下载，
 点击重启更新** (Version vX downloaded; click to restart and update). Clicking
 that notice starts the existing save, prepare-helper, quit, and replacement
-flow. It never restarts on its own. A completed portable download is retained
+flow. It never restarts on its own. A completed download is retained
 across an ordinary quit; the next launch verifies it again and restores the
 notice, even if either automatic switch has since been turned off. A manual
-check still opens the update dialog. Installed Windows copies, macOS, Linux,
-and development builds keep their explicit download and installation behavior.
+check still opens the update dialog. Development builds require a manual check.
 
-On Windows, a portable ZIP copy uses the in-app Windows ZIP replacement. After
+Windows installed and ZIP copies use the verified Windows ZIP. macOS uses a
+tarball to replace the complete `Dipper.app`, including its resources. Linux
+archive copies replace the executable; Debian installations select the DEB so
+the package manager also updates its installation records. After
 confirmation, Dipper saves settings and core state, stops downloads and the
 engine, and closes. A private helper waits for that exact process to exit,
 stages the new executable on the destination volume, keeps a backup, and
@@ -95,10 +97,18 @@ check fails, Dipper restores the old executable where it can do so safely and
 reports where the backup remains. Follow rules, downloads, and preferences are
 preserved.
 
-The installed Windows copy (`%LOCALAPPDATA%\Programs\Dipper`) and macOS/Linux
-builds use a verified official setup executable, disk image, package, or
-archive. Dipper opens that downloaded file only when you ask it to; it does not
-silently run an installer or claim to replace itself on those platforms.
+Click **重启更新** (Restart and update) after downloading. You do not need to
+download an installer again or manually drag a new app over the old one.
+The installation's parent directory must be writable by your user, so move
+`Dipper.app` out of the mounted DMG into a writable application location.
+Only a Debian package upgrade asks the system for authorization; cancelling it
+leaves the installed application available. Protected macOS and Linux archive
+directories are reported as a permission error rather than being modified.
+
+An older release must first receive a version containing this updater. An
+update cannot add new replacement capabilities to the executable already
+running. Native macOS/Linux replacement and authorization still require the
+platform acceptance described in the development documentation.
 
 The updater does not add a portable data mode. The Windows ZIP remains
 install-free and uses the normal data directories described below. It also

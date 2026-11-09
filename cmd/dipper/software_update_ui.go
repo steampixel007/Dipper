@@ -43,21 +43,32 @@ type softwareUpdate struct {
 	cancel       context.CancelFunc
 }
 
+func (s *State) restoreSoftwareFailure(executable string) error {
+	report, err := update.ConsumeFailureReport(executable)
+	switch {
+	case report != "":
+		s.SoftwareUpdate.StartupError = report
+	case err != nil:
+		s.SoftwareUpdate.StartupError = softwareText.startupError
+	}
+	return err
+}
+
 var softwareText = struct {
-	title, current, automatic, automaticDetail, check, checking, latest, available    string
-	failed, download, downloading, cancel, cancelled, ready, install, installing      string
-	retry, notes, installLater, manualInstall, manualDetail, disabled                 string
-	development, unavailable, preferenceError, networkAdvice, downloadError           string
-	openError, installError, unchanged, noNotes, portableDetail, startupError         string
-	preparing, startBlocked, handshakeRejected, manualWindows, manualMac, manualLinux string
-	autoDownload, autoDownloadDetail, downloadedRestart, downloadPreferenceError      string
+	title, current, automatic, automaticDetail, check, checking, latest, available         string
+	failed, download, downloading, cancel, cancelled, ready, install, installing           string
+	retry, notes, installLater, manualInstall, manualDetail, disabled                      string
+	development, unavailable, preferenceError, networkAdvice, downloadError                string
+	openError, installError, unchanged, noNotes, archiveDetail, debianDetail, startupError string
+	preparing, startBlocked, handshakeRejected, manualWindows, manualMac, manualLinux      string
+	autoDownload, autoDownloadDetail, downloadedRestart, downloadPreferenceError           string
 }{
 	title: "软件更新", current: "当前版本", automatic: "启动后自动检查",
 	automaticDetail: "每天最多检查一次，只使用稳定版本；自动检查失败不会打扰你。",
 	check:           "立即检查", checking: "正在检查…", latest: "已是最新版本。",
 	available: "发现新版本 ", failed: "检查失败", download: "下载更新",
 	downloading: "正在下载并校验…", cancel: "取消下载", cancelled: "已取消，旧版本未改动。",
-	ready: "下载完成，校验通过。安装前不会改动当前版本。", install: "安装并重启",
+	ready: "更新已下载并校验，点击“重启更新”完成安装。", install: "重启更新",
 	installing: "正在退出并安装更新…", retry: "重试", notes: "更新说明",
 	installLater: "稍后", manualInstall: "打开安装包",
 	manualDetail: "下载已校验。请按安装包提示完成更新；Dipper 不会静默执行安装器。",
@@ -67,16 +78,17 @@ var softwareText = struct {
 	downloadError: "下载或校验失败：", openError: "无法打开安装包：", installError: "无法开始安装：",
 	unchanged:               "。请检查目录写入权限或关闭占用程序后重试，旧版本未被改动。",
 	noNotes:                 "此版本没有附加说明。",
-	portableDetail:          "确认后会退出并重启，只替换 Dipper.exe；追番、下载和设置保留。启动失败时可能保留旧程序备份，但不会回退用户数据。请先阅读版本说明。",
+	archiveDetail:           "确认后会保存当前状态、退出并替换程序文件，再自动启动；追番、下载和设置保留。程序所在目录需要可写。启动失败时可能保留旧程序备份，但不会回退用户数据。请先阅读版本说明。",
+	debianDetail:            "确认后会保存当前状态、退出并由系统包管理器安装更新，再自动启动；追番、下载和设置保留。系统会要求授权安装。启动失败时需通过系统包管理器恢复，不支持直接回滚程序；用户数据不会回退。请先阅读版本说明。",
 	startupError:            "软件更新启动确认失败，请保留旧程序备份并检查日志。",
 	preparing:               "正在准备更新助手…",
 	startBlocked:            "软件更新仍在进行，请稍后重新打开 Dipper：",
 	handshakeRejected:       "软件更新交接验证失败：",
 	manualWindows:           "请保存工作并退出 Dipper，再按官方安装包提示完成安装。不会自动运行安装器。",
-	manualMac:               "请退出 Dipper，打开磁盘映像或解压归档，将 Dipper.app 放到应用程序目录后重新打开。",
-	manualLinux:             "请退出 Dipper，使用系统包管理器安装 DEB，或解压归档替换应用程序，再重新打开。",
+	manualMac:               "下载官方安装包后，按提示完成安装。",
+	manualLinux:             "下载官方安装包后，按提示完成安装。",
 	autoDownload:            "自动下载更新",
-	autoDownloadDetail:      "仅 Windows 便携版：发现新版本后后台下载并校验，完成后提示重启。",
+	autoDownloadDetail:      "发现新版本后后台下载并校验，完成后提示重启更新；关闭时可手动下载。",
 	downloadedRestart:       "新版本 %s 已下载，点击重启更新",
 	downloadPreferenceError: "自动下载设置保存失败：",
 }
@@ -107,7 +119,7 @@ func (s *State) startAutomaticSoftwareCheck() {
 	if s.SoftwareUpdate.Busy {
 		return
 	}
-	if s.SoftwareUpdate.Downloaded.Executable != "" {
+	if s.softwareRestartReady() {
 		return
 	}
 	if s.SoftwarePending != nil {
@@ -137,7 +149,7 @@ func (s *State) checkSoftware(manual bool) {
 	if s.SoftwareUpdate.Busy {
 		return
 	}
-	if s.SoftwareUpdate.Downloaded.Executable != "" && s.SoftwarePending != nil {
+	if s.softwareRestartReady() && s.SoftwarePending != nil {
 		if s.validateSoftwarePending(s.SoftwarePending) == nil {
 			if manual {
 				s.SoftwareUpdate.Dialog = true
@@ -167,15 +179,23 @@ func (s *State) checkSoftware(manual bool) {
 	}
 	client := s.SoftwareClient
 	executable := s.SoftwareExecutable
+	installationOffer := s.softwareInstallationOffer()
+	platform := s.Platform
+	if platform == "" {
+		platform = runtime.GOOS
+	}
 	go func() {
-		offer, err := client.Check(ctx, version, runtime.GOOS, runtime.GOARCH)
-		if err == nil && offer.Portable && executable != nil {
+		offer, err := client.Check(ctx, version, platform, runtime.GOARCH)
+		if err == nil && offer.Available && executable != nil {
 			path, pathErr := executable()
 			if pathErr != nil {
 				err = pathErr
 			} else {
-				offer, err = update.WindowsInstallationOffer(offer, path)
+				offer, err = installationOffer(ctx, offer, path, platform)
 			}
+		}
+		if ctx.Err() != nil {
+			err = ctx.Err()
 		}
 		s.Update(func() {
 			if revision != s.SoftwareUpdate.revision || s.Ctx.Err() != nil {
@@ -201,7 +221,7 @@ func (s *State) checkSoftware(manual bool) {
 			default:
 				s.setSoftwareStatus("")
 			}
-			if !manual && s.SoftwareAutoDownload && s.softwarePortable(offer) && offer.Available {
+			if !manual && s.SoftwareAutoDownload && s.softwarePersistent(offer) && offer.Available {
 				s.startSoftwareDownload(false)
 			}
 		})
@@ -237,7 +257,7 @@ func (s *State) startSoftwareDownload(manual bool) {
 	if !s.SoftwareUpdate.Available || s.SoftwareUpdate.Busy || s.SoftwareClient == nil {
 		return
 	}
-	if s.SoftwarePending != nil && s.SoftwareUpdate.Downloaded.Executable != "" {
+	if s.SoftwarePending != nil && s.softwareRestartReady() {
 		if s.validateSoftwarePending(s.SoftwarePending) == nil {
 			return
 		}
@@ -255,7 +275,7 @@ func (s *State) startSoftwareDownload(manual bool) {
 	s.SoftwareUpdate.revision++
 	revision := s.SoftwareUpdate.revision
 	client := s.SoftwareClient
-	persistent := s.softwarePortable(offer)
+	persistent := s.softwarePersistent(offer)
 	go func() {
 		lastReport := time.Time{}
 		directory := os.TempDir()
@@ -294,13 +314,21 @@ func (s *State) startSoftwareDownload(manual bool) {
 			context.AfterFunc(s.Ctx, func() { os.RemoveAll(download.Directory) })
 		}
 		if ctx.Err() != nil {
-			os.RemoveAll(download.Directory)
+			if persistent {
+				s.removeSoftwarePending(&softwarePending{Download: download})
+			} else {
+				os.RemoveAll(download.Directory)
+			}
 			download = update.Download{}
 			err = ctx.Err()
 		}
 		s.Update(func() {
 			if revision != s.SoftwareUpdate.revision || s.Ctx.Err() != nil {
-				os.RemoveAll(download.Directory)
+				if persistent {
+					s.removeSoftwarePending(&softwarePending{Download: download})
+				} else {
+					os.RemoveAll(download.Directory)
+				}
 				return
 			}
 			cancel()
@@ -381,9 +409,13 @@ func (s *State) installSoftware() {
 		return
 	}
 	switch {
-	case s.SoftwareUpdate.Downloaded.Executable != "":
+	case s.softwareRestartReady():
 		if !s.saveBeforeClose() {
 			s.restoreAfterQuitVeto()
+			return
+		}
+		if s.SoftwareExecutable == nil {
+			s.setSoftwareError(softwareText.unavailable)
 			return
 		}
 		executable, err := s.SoftwareExecutable()
@@ -403,15 +435,23 @@ func (s *State) installSoftware() {
 		prepare := s.PrepareSoftware
 		if prepare == nil {
 			prepare = func(ctx context.Context, target string, downloaded update.Download, args []string) (softwareInstaller, error) {
-				return update.PreparePortable(ctx, target, downloaded, args)
+				return update.PrepareUpdate(ctx, target, downloaded, args)
 			}
 		}
 		args := append([]string(nil), os.Args[1:]...)
 		go func() {
-			installer, err := prepare(ctx, executable, downloaded, args)
+			var installer softwareInstaller
+			var err error
 			invalidPending := false
-			if err != nil && ctx.Err() == nil && pending != nil && downloaded.Executable != "" {
-				invalidPending = update.VerifyPortableDownload(downloaded) != nil
+			if pending != nil {
+				err = s.validateSoftwarePending(pending)
+				invalidPending = err != nil
+			}
+			if err == nil {
+				installer, err = prepare(ctx, executable, downloaded, args)
+			}
+			if err != nil && ctx.Err() == nil && pending != nil {
+				invalidPending = s.validateSoftwarePending(pending) != nil
 			}
 			if installer != nil {
 				context.AfterFunc(s.Ctx, installer.Abort)
@@ -507,7 +547,7 @@ func (s *State) softwareNotice(c *ui.Context) {
 	if message == "" {
 		return
 	}
-	if s.SoftwarePending != nil && s.SoftwareUpdate.Downloaded.Executable != "" {
+	if s.SoftwarePending != nil && s.softwareRestartReady() {
 		ui.Row(c).Wrap().Gap(12).Padding(8, 24).Background(colors(c).blueWash).Children(func() {
 			quiet(c, "restart-software-update", fmt.Sprintf(softwareText.downloadedRestart, s.SoftwareUpdate.Offer.Release.Tag), s.installSoftware).
 				Disabled(s.Busy || s.SoftwareUpdate.Busy || s.SoftwareUpdate.Installing)
@@ -563,7 +603,7 @@ func (s *State) softwareUpdateSettings(c *ui.Context) {
 			switch {
 			case s.SoftwareUpdate.Busy:
 				quiet(c, "software-cancel", softwareText.cancel, s.cancelSoftwareDownload)
-			case s.SoftwareUpdate.Downloaded.Executable != "":
+			case s.softwareRestartReady():
 				primary(c, "software-install", softwareText.install, s.installSoftware).FontSize(textSize(c, textCaption)).Disabled(s.Busy || s.SoftwareUpdate.Installing)
 			case s.SoftwareUpdate.Downloaded.Package != "":
 				primary(c, "software-open-installer", softwareText.manualInstall, s.installSoftware).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
@@ -609,8 +649,12 @@ func (s *State) softwareUpdateDialog(c *ui.Context) {
 			if s.SoftwareUpdate.Busy && s.SoftwareUpdate.Total > 0 {
 				caption(c, fmt.Sprintf("%.0f%%", float64(s.SoftwareUpdate.Progress)*100/float64(s.SoftwareUpdate.Total)))
 			}
-			if offer.Portable {
-				caption(c, softwareText.portableDetail)
+			if s.softwareSelfUpdating(offer) {
+				detail := softwareText.archiveDetail
+				if softwareOfferMode(offer) == update.ModeDebian {
+					detail = softwareText.debianDetail
+				}
+				caption(c, detail)
 			} else if offer.Available {
 				detail := softwareText.manualWindows
 				if s.Platform == "darwin" {
@@ -631,7 +675,7 @@ func (s *State) softwareUpdateDialog(c *ui.Context) {
 			if s.SoftwareUpdate.Available && !s.SoftwareUpdate.Busy && s.SoftwareUpdate.Downloaded.Package == "" {
 				secondary(c, "software-dialog-download", softwareText.download, s.downloadSoftware).Disabled(s.Busy)
 			}
-			if s.SoftwareUpdate.Downloaded.Executable != "" {
+			if s.softwareRestartReady() {
 				primary(c, "software-dialog-install", softwareText.install, s.installSoftware).Disabled(s.Busy || s.SoftwareUpdate.Installing)
 			} else if s.SoftwareUpdate.Downloaded.Package != "" {
 				primary(c, "software-dialog-open", softwareText.manualInstall, s.installSoftware).Disabled(s.Busy)
