@@ -44,6 +44,7 @@ func softwareFixture(t *testing.T) (*State, *ui.Tester, chan func()) {
 	s := uiFixture(t, "settings")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.Ctx = ctx
+	s.Platform = "windows"
 	queue := make(chan func(), 32)
 	s.Update = func(fn func()) { queue <- fn }
 	s.SoftwareExecutable = func() (string, error) { return filepath.Join(s.Dir, "Dipper.exe"), nil }
@@ -82,10 +83,14 @@ func softwareRequireFailure(t *testing.T, tt *ui.Tester, update softwareUpdate) 
 }
 
 func softwareOffer() update.Offer {
+	asset := update.Asset{
+		Name: "dipper_9.0.0_windows_amd64.zip", Size: 100,
+		URL: "https://github.com/steampixel007/Dipper/releases/download/v9.0.0/dipper_9.0.0_windows_amd64.zip",
+	}
 	return update.Offer{
 		Available: true, Portable: true,
-		Release: update.Release{Tag: "v9.0.0", Notes: "Release notes fixture"},
-		Package: update.Asset{Name: "dipper_9.0.0_windows_amd64.zip", Size: 100},
+		Release: update.Release{Tag: "v9.0.0", Notes: "Release notes fixture", Assets: []update.Asset{asset}},
+		Package: asset,
 	}
 }
 

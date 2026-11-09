@@ -18,6 +18,7 @@ const maxPackage = 512 << 20
 
 type Download struct {
 	Directory, Package, Executable, SHA256, PackageSHA256 string
+	Mode, Bundle, BundleSHA256                            string
 }
 
 func VerifyDownload(downloaded Download) error {
@@ -27,6 +28,38 @@ func VerifyDownload(downloaded Download) error {
 func VerifyPortableDownload(downloaded Download) error {
 	if err := VerifyDownload(downloaded); err != nil {
 		return err
+	}
+	return hashMatches(downloaded.Executable, downloaded.SHA256)
+}
+
+func VerifyUpdateDownload(downloaded Download) error {
+	if err := VerifyDownload(downloaded); err != nil {
+		return err
+	}
+	switch downloaded.Mode {
+	case ModeDebian:
+		if downloaded.Executable != "" || downloaded.Bundle != "" || !strings.HasSuffix(downloaded.Package, ".deb") {
+			return errors.New("invalid Debian update payload")
+		}
+		return nil
+	case ModeMacOS:
+		if filepath.Base(downloaded.Bundle) != "Dipper.app" ||
+			downloaded.Executable != filepath.Join(downloaded.Bundle, "Contents", "MacOS", "Dipper") {
+			return errors.New("invalid macOS update executable")
+		}
+		digest, err := BundleDigest(downloaded.Bundle)
+		if err != nil {
+			return err
+		}
+		if digest != downloaded.BundleSHA256 {
+			return errors.New("application bundle changed after verification")
+		}
+	case "", ModeWindows, ModeLinux:
+		if downloaded.Bundle != "" {
+			return errors.New("unexpected update bundle")
+		}
+	default:
+		return errors.New("unsupported update mode")
 	}
 	return hashMatches(downloaded.Executable, downloaded.SHA256)
 }
@@ -120,11 +153,36 @@ func (c *Client) Download(ctx context.Context, offer Offer, directory string, pr
 		return result, errors.New("download size or SHA-256 mismatch; retry the official download")
 	}
 	result.PackageSHA256 = expected
-	if offer.Portable {
+	result.Mode = offer.Mode
+	if offer.Portable && result.Mode == "" {
+		result.Mode = ModeWindows
+	}
+	switch result.Mode {
+	case ModeWindows:
 		result.Executable = filepath.Join(stage, "Dipper.exe")
 		if err := Extract(ctx, result.Package, result.Executable); err != nil {
 			return result, err
 		}
+	case ModeLinux, ModeMacOS:
+		result.Executable, result.Bundle, err = extractTar(ctx, result.Package, stage, result.Mode)
+		if err != nil {
+			return result, err
+		}
+		if result.Bundle != "" {
+			result.BundleSHA256, err = BundleDigest(result.Bundle)
+			if err != nil {
+				return result, err
+			}
+		}
+	case ModeDebian:
+		if !strings.HasSuffix(result.Package, ".deb") {
+			return result, errors.New("invalid Debian package name")
+		}
+	case "":
+	default:
+		return result, errors.New("unsupported update mode")
+	}
+	if result.Executable != "" {
 		result.SHA256, err = Digest(result.Executable)
 	}
 	return result, err

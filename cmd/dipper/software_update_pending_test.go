@@ -194,7 +194,14 @@ func TestSoftwareAutoDownloadEligibility(t *testing.T) {
 				offer.Portable = false
 			case "linux", "darwin":
 				s.Platform = scenario
-				offer.Portable = false
+				mode := update.ModeLinux
+				if scenario == "darwin" {
+					mode = update.ModeMacOS
+				}
+				offer = softwareModeOffer(mode)
+				if err := os.WriteFile(filepath.Join(s.Dir, "Dipper.exe"), []byte("running fixture"), 0700); err != nil {
+					t.Fatal(err)
+				}
 			case "development":
 				version = "dev"
 			case "development-offer":
@@ -203,8 +210,12 @@ func TestSoftwareAutoDownloadEligibility(t *testing.T) {
 				if err := os.WriteFile(filepath.Join(s.Dir, "Uninstall.exe"), []byte("fixture"), 0600); err != nil {
 					t.Fatal(err)
 				}
-				offer.Release.Assets = []update.Asset{{Name: "dipper_9.0.0_windows_amd64_setup.exe", Size: 100}}
+				offer.Release.Assets = append(offer.Release.Assets, update.Asset{
+					Name: "dipper_9.0.0_windows_amd64_setup.exe", Size: 100,
+					URL: "https://github.com/steampixel007/Dipper/releases/download/v9.0.0/dipper_9.0.0_windows_amd64_setup.exe",
+				})
 			}
+			eligible := scenario == "portable" || scenario == "nonportable" || scenario == "linux" || scenario == "darwin" || scenario == "installed"
 			var checks, downloads atomic.Int32
 			s.SoftwareClient = softwareClientFixture{
 				check: func(context.Context) (update.Offer, error) {
@@ -213,8 +224,8 @@ func TestSoftwareAutoDownloadEligibility(t *testing.T) {
 				},
 				download: func(ctx context.Context, offer update.Offer, root string, progress func(int64, int64)) (update.Download, error) {
 					downloads.Add(1)
-					if scenario == "portable" {
-						return softwareVerifiedDownload(ctx, offer, root, progress)
+					if eligible {
+						return softwareVerifiedModeDownload(ctx, offer, root, progress)
 					}
 					return update.Download{}, errors.New("must not download automatically")
 				},
@@ -231,21 +242,18 @@ func TestSoftwareAutoDownloadEligibility(t *testing.T) {
 				return
 			}
 			softwareApply(t, tt, queue)
-			if scenario == "portable" {
+			if eligible {
 				if !s.SoftwareUpdate.Busy || s.SoftwareUpdate.Dialog {
-					t.Fatal("eligible Windows portable offer did not start a quiet download")
+					t.Fatal("supported installation did not start a quiet download")
 				}
 				softwareApply(t, tt, queue)
 				if downloads.Load() != 1 || s.SoftwareUpdate.Downloaded.Executable == "" {
-					t.Fatal("eligible Windows portable offer was not downloaded")
+					t.Fatal("supported installation was not downloaded")
 				}
 				return
 			}
 			if downloads.Load() != 0 || s.SoftwareUpdate.Busy || s.SoftwareUpdate.Dialog != (scenario == "manual") {
 				t.Fatalf("ineligible check changed its existing behavior: downloads=%d state=%+v", downloads.Load(), s.SoftwareUpdate)
-			}
-			if scenario == "installed" && s.SoftwareUpdate.Offer.Portable {
-				t.Fatal("installed Windows copy was treated as portable")
 			}
 		})
 	}
@@ -310,7 +318,7 @@ func TestSoftwarePendingSurvivesRestartAndInstalls(t *testing.T) {
 }
 
 func TestSoftwarePendingRejectsInvalidDownloads(t *testing.T) {
-	for _, scenario := range []string{"package", "executable", "missing", "outdated", "outside", "installed"} {
+	for _, scenario := range []string{"package", "executable", "missing", "outdated", "outside", "mode"} {
 		t.Run(scenario, func(t *testing.T) {
 			s, tt, queue := softwareAutoFixture(t)
 			s.SoftwareAuto = false
@@ -338,8 +346,8 @@ func TestSoftwarePendingRejectsInvalidDownloads(t *testing.T) {
 				err = os.Remove(download.Executable)
 			case "outdated":
 				version = "v9.0.0"
-			case "installed":
-				err = os.WriteFile(filepath.Join(s.Dir, "Uninstall.exe"), []byte("fixture"), 0600)
+			case "mode":
+				s.SoftwarePending.Download.Mode = update.ModeLinux
 			}
 			if err != nil {
 				t.Fatal(err)
@@ -528,7 +536,7 @@ func TestSoftwareInstallFailureDiscardsInvalidDownloadAndRecovers(t *testing.T) 
 	message := "新版本 v9.0.0 已下载，点击重启更新"
 	uiClick(t, tt, message)
 	softwareApply(t, tt, queue)
-	if prepares.Load() != 1 || s.SoftwareUpdate.Error == "" || s.SoftwareUpdate.Installing {
+	if prepares.Load() != 0 || s.SoftwareUpdate.Error == "" || s.SoftwareUpdate.Installing {
 		t.Fatalf("invalid download failure was not reported: %+v", s.SoftwareUpdate)
 	}
 	if s.SoftwarePending != nil || s.SoftwareUpdate.Downloaded.Executable != "" {

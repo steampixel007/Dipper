@@ -297,6 +297,11 @@ func main() {
 			}
 		})
 		s.startAutomaticSoftwareCheck()
+		if executable, err := os.Executable(); err == nil {
+			if err := update.RefreshInstallationVersion(executable, version); err != nil {
+				slog.Warn("refresh installed version metadata", "error", err)
+			}
+		}
 		if err := update.NotifyReady(*readyAddress, *readyToken); err != nil {
 			slog.Error("post-update readiness handshake failed", "error", err)
 			s.SoftwareUpdate.StartupError = softwareText.startupError

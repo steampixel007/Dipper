@@ -1,8 +1,8 @@
 # update
 
 `internal/update` finds official releases, downloads the matching package and
-`SHA256SUMS`, and on Windows replaces a portable executable through a private
-helper. It never changes the application database schema or user data.
+`SHA256SUMS`, and replaces supported installations through a private helper.
+It never changes the application database schema or user data.
 
 ## What it owns
 
@@ -10,20 +10,22 @@ helper. It never changes the application database schema or user data.
 - Selecting a stable release that is newer than this executable.
 - Choosing the package for the running platform and architecture.
 - Downloading and verifying the package before it is offered for installation.
-- The Windows portable replacement helper, its readiness handshake, and its
-  bounded recovery path.
+- Replacement for Windows installed/ZIP copies, macOS app bundles, Linux
+  archives, and Debian packages, including readiness and bounded recovery.
 
 ## Files
 
 | File | Holds |
 | --- | --- |
 | `release.go` | SemVer comparison, release selection, asset validation, and the HTTP client |
-| `download.go` | Download, `SHA256SUMS` verification, and safe ZIP extraction |
+| `download.go`, `archive.go` | Download, checksums, safe ZIP/tar extraction, and whole-bundle verification |
 | `helper.go` | Preparation, commit/abort, validated helper state, replacement, restart, and readiness |
-| `process_windows.go`, `process_other.go` | Exact parent-process identity and waiting |
+| `platform_unix.go`, `helper_unix_payload.go`, `helper_debian.go` | Unix staging, bundle copying, and authorized package upgrades |
+| `process_windows.go`, `process_linux.go`, `process_darwin.go`, `process_other.go` | Exact parent-process identity and waiting |
+| `installation*.go` | Updating the matching Windows uninstall record after startup |
 | `gate_windows.go`, `gate_other.go` | The per-executable launch gate |
 | `paths_windows.go`, `paths_other.go` | Resolved path identity, including Windows junctions |
-| `open_windows.go`, `open_linux.go`, `open_darwin.go` | Explicit opening of a verified installer on non-portable paths |
+| `open_windows.go`, `open_linux.go`, `open_darwin.go` | Explicit fallback opening of a verified package when restart replacement is unavailable |
 
 ## Release and asset rules
 
@@ -40,9 +42,11 @@ as a development build and may offer the latest stable release for a manual
 choice, but automatic checks are disabled.
 
 The package name is built from the release tag and `runtime.GOOS` /
-`runtime.GOARCH`. Windows prefers the ZIP, macOS prefers the DMG then tarball,
-and Linux prefers the DEB then tarball. A missing or malformed package is a
-failed check, never a made-up URL.
+`runtime.GOARCH`. Windows uses the ZIP, macOS uses the tarball, and Linux uses
+the tarball unless the canonical `/opt/dipper/dipper` belongs to the `dipper`
+Debian package, in which case it uses the DEB. Ownership errors are not treated
+as an archive installation. A missing or malformed package is a failed check,
+never a made-up URL.
 
 ## Downloads
 
@@ -58,49 +62,68 @@ The running executable is not touched until the user clicks the
 install action and the application commits the replacement during graceful
 quit.
 
-For release Windows portable downloads, the UI passes a persistent
+Linux tarballs contain only `dipper`; macOS tarballs contain only `Dipper.app`
+and must include its executable and metadata. Extraction rejects traversal,
+duplicate entries, links, special files, and excessive expanded sizes or entry
+counts. A macOS bundle digest covers every file, directory, and permission,
+including resources and signing data. Debian downloads retain the verified
+package rather than extracting a standalone executable.
+
+For self-updating release downloads, the UI passes a persistent
 `updates` directory under the preferences directory instead of the OS temporary
 root. A successfully verified download records its offer, paths, and hashes in
 `preferences.json`. Ordinary shutdown keeps it; cancellation and failed saves
 reclaim the incomplete or unpublished download. At the next launch the UI
-requires a newer portable offer for the current executable and paths directly
-under a managed download directory, then `VerifyPortableDownload` verifies
-both the original package and the extracted executable before showing a
+requires a newer offer for the current installation mode and paths directly
+under a managed download directory, then `VerifyUpdateDownload` verifies
+the original package and the extracted executable or entire app bundle before showing a
 restart action. Missing, modified, or obsolete downloads are not offered.
 If installation preparation rejects a download whose bytes no longer verify,
 the UI clears the pending record and reclaims only that managed directory, so a
 later check can download the release again. A manual check and a new download
 request also revalidate the retained download before honoring it, so a file
 modified or deleted while Dipper is running cannot block recovery.
-Development and nonportable copies do not download automatically.
+Development builds do not download automatically.
 
-## Windows portable replacement
+## Replacement and restart
 
-Only the Windows ZIP asset is handled as a portable replacement. The installed
-copy under `%LOCALAPPDATA%\Programs\Dipper` is recognized by the `Uninstall.exe`
-beside the running executable and is offered its official setup executable
-instead, without automatic execution. macOS and Linux download a verified
-official installer or archive and expose an explicit open action; the app does
-not claim to replace itself on those platforms.
+Windows installed and extracted copies use the same executable replacement.
+After startup, an installed copy updates `DisplayVersion` only when its
+existing per-user uninstall record matches the running location and an
+uninstaller is present. No new uninstall record is created for extracted copies.
 
-For a portable Windows copy:
+The shared protocol is:
 
-1. `PreparePortable` verifies the downloaded executable and original executable,
-   stages both the new executable and a copy of the old helper beside the
-   target, and starts the helper in private mode.
+1. `PrepareUpdate` verifies the download and running installation, stages the
+   new payload and a copy of the old helper, and starts it in private mode.
 2. The helper validates the state file, hashes, paths, local control address,
    token, timestamp, and its own image. It holds the exact parent process handle
-   and creation time, then waits with a bounded timeout.
+   identity, then waits with a bounded timeout. Linux uses `/proc` start time;
+   macOS uses the kernel process start time and executable path.
 3. The user confirms installation. The UI saves preferences and core state,
    commits the helper, and proceeds through the normal graceful quit path so
    the core and downloader close before the process exits.
 4. The helper acquires the per-executable launch gate in a per-user lock
    directory, renames the old
-   executable to a staged backup, moves the staged executable into place, and
+   executable or bundle to a staged backup, moves the staged payload into place, and
    starts it with the original working directory and arguments.
 5. The new process validates the one-time restart token, sends `authorize`,
    reaches database and window startup, sends `ready`, and only then removes the
    backup and private state.
+
+For macOS, replacement and recovery move the complete bundle, never only its
+executable. The staged bundle and backup retain the same tree digest.
+Archive replacements require write permission in the installation's parent
+directory. A mounted read-only DMG is not a replacement target.
+
+Debian installations use a fixed system `pkexec` command. A privileged script
+copies the verified package into a fresh root-owned directory, rechecks its
+SHA-256 and package identity, rejects a non-upgrade, and invokes `dpkg --install`.
+The application helper itself is never elevated. Package-manager ownership and
+installation records stay consistent. Authorization cancellation or package
+failure is reported and the helper attempts to reopen the installed app.
+Package recovery belongs to the system package manager; there is no direct
+binary rollback of a partially changed Debian installation.
 
 A quit veto cancels the pending operation and restores the visible window. A
 replacement or startup failure restores the old executable when the target is
@@ -124,7 +147,9 @@ continue to determine where user data lives.
 `release_test.go` uses `httptest` release responses and covers SemVer order,
 stable selection, pagination limits, asset matching, proxy use, redirects, and
 Windows installed-copy package selection. `download_test.go` covers checksums,
-cancellation, unsafe ZIP entries and extraction errors. `helper_test.go` uses
+cancellation, unsafe ZIP entries and extraction errors. `archive_test.go`
+covers Linux/macOS/DEB verified payloads, archive traversal and links, and whole
+bundle resource tampering. `helper_test.go` uses
 temporary trees and harmless fixture executables; `process_windows_test.go`
 exercises the real process identity, locked-target failure, and bounded wait
 paths. UI tests in `cmd/dipper/software_update_ui_test.go` click the rendered
@@ -133,6 +158,8 @@ controls and assert state and engine effects without contacting the network.
 download, restart restoration, package/executable tampering, cancellation,
 managed-path cleanup, and quit-veto coverage using real fixture files and a
 stub replacement helper.
+Platform compilation and fixture tests do not establish native macOS/Linux
+authorization, desktop launch, or package-manager acceptance.
 
 ## Invariants
 

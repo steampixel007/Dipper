@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -18,6 +19,13 @@ import (
 )
 
 const repository = "steampixel007/Dipper"
+
+const (
+	ModeWindows = "windows"
+	ModeMacOS   = "macos"
+	ModeLinux   = "linux"
+	ModeDebian  = "debian"
+)
 
 var versionPattern = regexp.MustCompile(`^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?(\+([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$`)
 
@@ -120,6 +128,7 @@ type Offer struct {
 	Available   bool
 	Development bool
 	Portable    bool
+	Mode        string
 }
 
 type Client struct {
@@ -147,29 +156,97 @@ func officialRedirect(request *http.Request, via []*http.Request) error {
 }
 
 func WindowsInstallationOffer(offer Offer, executable string) (Offer, error) {
-	if !offer.Portable {
+	return installationOffer(offer, executable, "windows", nil)
+}
+
+func SelfUpdating(offer Offer) bool {
+	switch offer.Mode {
+	case ModeWindows, ModeMacOS, ModeLinux, ModeDebian:
+		return true
+	}
+	return offer.Portable && offer.Mode == ""
+}
+
+func InstallationOffer(ctx context.Context, offer Offer, executable, platform string) (Offer, error) {
+	return installationOffer(offer, executable, platform, func(target string) (bool, error) {
+		return DebianInstallation(ctx, target)
+	})
+}
+
+func installationOffer(offer Offer, executable, platform string, debian func(string) (bool, error)) (Offer, error) {
+	if !offer.Available {
 		return offer, nil
 	}
-	if _, err := os.Stat(filepath.Join(filepath.Dir(executable), "Uninstall.exe")); os.IsNotExist(err) {
-		return offer, nil
-	} else if err != nil {
-		return Offer{}, err
-	}
-	name := strings.TrimSuffix(offer.Package.Name, ".zip") + "_setup.exe"
-	var setup Asset
-	for _, asset := range offer.Release.Assets {
-		if asset.Name == name && asset.Size > 0 && officialAsset(asset.URL, offer.Release.Tag, name) {
-			if setup.Name != "" {
-				return Offer{}, errors.New("release contains duplicate Windows setup assets")
+	var suffix, mode string
+	switch platform {
+	case "windows":
+		suffix, mode = ".zip", ModeWindows
+	case "darwin":
+		suffix, mode = ".tar.gz", ModeMacOS
+	case "linux":
+		suffix, mode = ".tar.gz", ModeLinux
+		if debian != nil {
+			installed, err := debian(executable)
+			if err != nil {
+				return Offer{}, fmt.Errorf("identify installed package: %w", err)
 			}
-			setup = asset
+			if installed {
+				suffix, mode = ".deb", ModeDebian
+			}
+		}
+	default:
+		return Offer{}, errors.New("unsupported update platform")
+	}
+	stem := offer.Package.Name
+	for _, extension := range []string{"_setup.exe", ".tar.gz", ".zip", ".dmg", ".deb"} {
+		if strings.HasSuffix(stem, extension) {
+			stem = strings.TrimSuffix(stem, extension)
+			break
 		}
 	}
-	if setup.Name != "" {
-		offer.Package, offer.Portable = setup, false
-		return offer, nil
+	name := stem + suffix
+	var selected Asset
+	for _, asset := range offer.Release.Assets {
+		if asset.Name == name {
+			if selected.Name != "" || asset.Size <= 0 || !officialAsset(asset.URL, offer.Release.Tag, name) {
+				return Offer{}, errors.New("release contains invalid or duplicate update assets")
+			}
+			selected = asset
+		}
 	}
-	return Offer{}, errors.New("this installed copy requires an official Windows setup package, which this release does not provide")
+	if selected.Name == "" {
+		return Offer{}, errors.New("release does not provide the required verified update package")
+	}
+	offer.Package, offer.Mode, offer.Portable = selected, mode, mode == ModeWindows
+	return offer, nil
+}
+
+func DebianInstallation(ctx context.Context, executable string) (bool, error) {
+	resolved, err := filepath.EvalSymlinks(executable)
+	if err != nil {
+		return false, err
+	}
+	if resolved != "/opt/dipper/dipper" {
+		return false, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, "/usr/bin/dpkg-query", "--search", resolved)
+	body, err := command.Output()
+	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && exit.ExitCode() == 1 {
+			return false, nil
+		}
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("read Debian package ownership: %w", err)
+	}
+	if strings.TrimSpace(string(body)) != "dipper: "+resolved {
+		return false, errors.New("unexpected owner of the installed Dipper executable")
+	}
+	return true, nil
 }
 
 func officialAsset(raw, tag, name string) bool {
@@ -253,9 +330,9 @@ func (c *Client) Check(ctx context.Context, current, platform, architecture stri
 	case "windows":
 		names = []string{stem + ".zip", stem + "_setup.exe"}
 	case "darwin":
-		names = []string{stem + ".dmg", stem + ".tar.gz"}
+		names = []string{stem + ".tar.gz", stem + ".dmg"}
 	case "linux":
-		names = []string{stem + ".deb", stem + ".tar.gz"}
+		names = []string{stem + ".tar.gz", stem + ".deb"}
 	}
 	find := func(name string) (Asset, error) {
 		var found Asset
@@ -289,5 +366,15 @@ func (c *Client) Check(ctx context.Context, current, platform, architecture stri
 		return offer, fmt.Errorf("release has no verified package for %s/%s", platform, architecture)
 	}
 	offer.Portable = platform == "windows" && strings.HasSuffix(offer.Package.Name, ".zip")
+	switch {
+	case offer.Portable:
+		offer.Mode = ModeWindows
+	case platform == "darwin" && strings.HasSuffix(offer.Package.Name, ".tar.gz"):
+		offer.Mode = ModeMacOS
+	case platform == "linux" && strings.HasSuffix(offer.Package.Name, ".tar.gz"):
+		offer.Mode = ModeLinux
+	case platform == "linux" && strings.HasSuffix(offer.Package.Name, ".deb"):
+		offer.Mode = ModeDebian
+	}
 	return offer, nil
 }
