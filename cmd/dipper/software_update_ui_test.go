@@ -45,7 +45,6 @@ func softwareFixture(t *testing.T) (*State, *ui.Tester, chan func()) {
 	s.Platform = "windows"
 	ctx, cancel := context.WithCancel(context.Background())
 	s.Ctx = ctx
-	s.Platform = "windows"
 	queue := make(chan func(), 32)
 	s.Update = func(fn func()) { queue <- fn }
 	s.SoftwareExecutable = func() (string, error) { return filepath.Join(s.Dir, "Dipper.exe"), nil }
@@ -584,6 +583,7 @@ func TestSoftwareSettingsPageManualCheckAtMinimumWindowSize(t *testing.T) {
 	version = "0.1.2"
 	defer func() { version = oldVersion }()
 	s := uiFixture(t, "settings")
+	s.Platform = "windows"
 	ctx, cancel := context.WithCancel(context.Background())
 	s.Ctx = ctx
 	queue := make(chan func(), 8)
