@@ -42,6 +42,7 @@ func (installer *softwareInstallerFixture) Abort() { installer.aborts.Add(1) }
 func softwareFixture(t *testing.T) (*State, *ui.Tester, chan func()) {
 	t.Helper()
 	s := uiFixture(t, "settings")
+	s.Platform = "windows"
 	ctx, cancel := context.WithCancel(context.Background())
 	s.Ctx = ctx
 	s.Platform = "windows"

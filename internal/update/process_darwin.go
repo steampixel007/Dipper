@@ -12,7 +12,7 @@ import (
 func processIdentity(pid int) (string, error) {
 	info, err := unix.SysctlKinfoProc("kern.proc.pid", pid)
 	if err != nil {
-		if errors.Is(err, unix.ESRCH) || errors.Is(err, unix.ENOENT) {
+		if errors.Is(err, unix.ESRCH) || errors.Is(err, unix.ENOENT) || errors.Is(err, unix.EIO) {
 			return "", os.ErrNotExist
 		}
 		return "", err

@@ -22,6 +22,9 @@ func openParent(pid int, creation string, limit time.Duration) (*parentProcess, 
 	}
 	actual, err := processIdentity(pid)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &parentProcess{pid: pid, identity: creation, limit: limit}, nil
+		}
 		return nil, err
 	}
 	if actual != creation {

@@ -141,7 +141,10 @@ func TestSoftwarePendingModesRejectTampering(t *testing.T) {
 					} else if mode != update.ModeWindows {
 						s.Platform = "linux"
 					}
-					root := filepath.Join(s.ConfigDir, "updates")
+					root, err := s.softwareUpdateRoot()
+					if err != nil {
+						t.Fatal(err)
+					}
 					if err := os.MkdirAll(root, 0700); err != nil {
 						t.Fatal(err)
 					}
