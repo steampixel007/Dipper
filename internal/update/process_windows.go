@@ -79,7 +79,7 @@ func hideHelper(command *exec.Cmd) {
 	command.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 }
 
-func reportUpdateFailure(err error) {
+func reportUpdateFailure(_ string, err error) {
 	title, _ := windows.UTF16PtrFromString(helperFailureTitle)
 	message, _ := windows.UTF16PtrFromString(helperFailureText + err.Error())
 	windows.NewLazySystemDLL("user32.dll").NewProc("MessageBoxW").Call(0, uintptr(unsafe.Pointer(message)), uintptr(unsafe.Pointer(title)), 0x10)

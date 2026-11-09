@@ -86,6 +86,9 @@ func upgradeAndRestart(state helperState, timeout time.Duration, start restartFu
 		return err
 	}
 	upgradeErr := upgrade(state)
+	if upgradeErr != nil {
+		_ = persistUpdateFailure(state.Stage, upgradeErr)
+	}
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		return errors.Join(upgradeErr, err)

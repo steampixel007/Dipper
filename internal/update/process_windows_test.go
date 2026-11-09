@@ -35,7 +35,7 @@ func TestMain(tests *testing.M) {
 		var err error
 		switch {
 		case len(os.Args) == 3 && os.Args[1] == helperFlag:
-			err = runHelperFile(os.Args[2])
+			_, err = runHelperFile(os.Args[2])
 		case len(os.Args) > 2 && os.Args[1] == "--fixture-parent":
 			err = fixtureParent(os.Args[2])
 		case len(os.Args) > 2 && os.Args[1] == "--fixture-restart":

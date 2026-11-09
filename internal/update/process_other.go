@@ -73,6 +73,12 @@ func verifyParentImage(parent *parentProcess, target string) error {
 
 func hideHelper(command *exec.Cmd) {}
 
-func reportUpdateFailure(err error) {
+func reportUpdateFailure(stage string, err error) {
 	fmt.Fprintln(os.Stderr, helperFailureText+err.Error())
+	if stage == "" {
+		return
+	}
+	if persistErr := persistUpdateFailure(stage, err); persistErr != nil {
+		fmt.Fprintln(os.Stderr, "cannot persist update failure report:", persistErr)
+	}
 }

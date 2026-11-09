@@ -20,6 +20,7 @@ It never changes the application database schema or user data.
 | `release.go` | SemVer comparison, release selection, asset validation, and the HTTP client |
 | `download.go`, `archive.go` | Download, checksums, safe ZIP/tar extraction, and whole-bundle verification |
 | `helper.go` | Preparation, commit/abort, validated helper state, replacement, restart, and readiness |
+| `failure.go` | Durable helper-failure reports consumed by the next GUI launch |
 | `platform_unix.go`, `helper_unix_payload.go`, `helper_debian.go` | Unix staging, bundle copying, and authorized package upgrades |
 | `process_windows.go`, `process_linux.go`, `process_darwin.go`, `process_other.go` | Exact parent-process identity and waiting |
 | `installation*.go` | Updating the matching Windows uninstall record after startup |
@@ -125,6 +126,15 @@ failure is reported and the helper attempts to reopen the installed app.
 Package recovery belongs to the system package manager; there is no direct
 binary rollback of a partially changed Debian installation.
 
+On Unix, the helper has no attached terminal after the original process exits.
+Once its state file has been validated, a later failure is recorded as a
+mode-0600 `failure.json` inside the update stage. The next GUI launch reads and
+removes that report, keeps the failed stage for diagnosis, and shows the
+specific error in the software-update notice and settings page. If the report
+cannot be read or decoded, startup shows generic recovery guidance instead of
+silently treating the update as successful. Windows keeps its helper message
+box because the detached helper has no GUI report channel.
+
 A quit veto cancels the pending operation and restores the visible window. A
 replacement or startup failure restores the old executable when the target is
 still the known staged image and the old copy is available. If restoration is
@@ -152,7 +162,9 @@ covers Linux/macOS/DEB verified payloads, archive traversal and links, and whole
 bundle resource tampering. `helper_test.go` uses
 temporary trees and harmless fixture executables; `process_windows_test.go`
 exercises the real process identity, locked-target failure, and bounded wait
-paths. UI tests in `cmd/dipper/software_update_ui_test.go` click the rendered
+paths. `failure_test.go` covers durable helper reports, permission and size
+checks, malformed or linked reports, and preservation of failed stages. UI tests
+in `cmd/dipper/software_update_ui_test.go` click the rendered
 controls and assert state and engine effects without contacting the network.
 `cmd/dipper/software_update_pending_test.go` adds persisted-switch, background
 download, restart restoration, package/executable tampering, cancellation,

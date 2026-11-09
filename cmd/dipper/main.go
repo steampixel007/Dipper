@@ -173,6 +173,13 @@ func main() {
 		failStartup(err)
 		return
 	}
+	if executable, executableErr := os.Executable(); executableErr == nil {
+		if err := s.restoreSoftwareFailure(executable); err != nil {
+			slog.Warn("read software update failure report", "error", err)
+		}
+	} else {
+		slog.Warn("locate executable for software update failure report", "error", executableErr)
+	}
 	s.ApplyAppearance = func(value string) { mygo.Theme.SetSource(mygo.ThemeSource(normalizeAppearance(value))) }
 	s.ApplyAppearance(s.Appearance)
 	if *origin != "" {

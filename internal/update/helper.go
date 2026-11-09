@@ -336,8 +336,9 @@ func acceptToken(listener net.Listener, expected string, timeout time.Duration) 
 }
 
 func RunHelper(statePath string) int {
-	if err := runHelperFile(statePath); err != nil {
-		reportUpdateFailure(err)
+	stage, err := runHelperFile(statePath)
+	if err != nil {
+		reportUpdateFailure(stage, err)
 		return 1
 	}
 	return 0
@@ -375,13 +376,13 @@ func validateState(state helperState, statePath, executable string) error {
 	return hashMatches(state.Staged, state.StagedHash)
 }
 
-func runHelperFile(statePath string) error {
+func runHelperFile(statePath string) (string, error) {
 	if err := safeRegular(statePath); err != nil {
-		return err
+		return "", err
 	}
 	file, err := os.Open(statePath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var state helperState
 	decoder := json.NewDecoder(io.LimitReader(file, 65536))
@@ -392,53 +393,53 @@ func runHelperFile(statePath string) error {
 	}
 	file.Close()
 	if err != nil {
-		return err
+		return "", err
 	}
 	executable, err := os.Executable()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := validateState(state, statePath, executable); err != nil {
-		return err
+		return "", err
 	}
 	parent, err := openParent(state.ParentPID, state.ParentCreated, 90*time.Second)
 	if err != nil {
-		return err
+		return state.Stage, err
 	}
 	defer closeParent(parent)
 	if err := verifyParentImage(parent, state.Target); err != nil {
-		return err
+		return state.Stage, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
 	gate, err := AcquireLaunchGate(ctx, state.Target)
 	if err != nil {
-		return err
+		return state.Stage, err
 	}
 	defer gate.Close()
 	control, err := net.DialTimeout("tcp4", state.ControlAddress, 5*time.Second)
 	if err != nil {
-		return err
+		return state.Stage, err
 	}
 	defer control.Close()
 	control.SetDeadline(time.Now().Add(30 * time.Second))
 	if _, err := fmt.Fprintln(control, "ready:"+state.ControlToken); err != nil {
-		return err
+		return state.Stage, err
 	}
 	instruction, err := readLine(control)
 	if err != nil || instruction != "commit" {
-		return nil
+		return state.Stage, nil
 	}
 	if _, err := fmt.Fprintln(control, "accepted"); err != nil {
-		return err
+		return state.Stage, err
 	}
 	if err := waitParent(parent); err != nil {
-		return fmt.Errorf("Dipper is still running; the executable was not changed: %w", err)
+		return state.Stage, fmt.Errorf("Dipper is still running; the executable was not changed: %w", err)
 	}
 	if state.Mode == ModeDebian {
-		return installDebianAndRestart(state, 40*time.Second, startReplacement)
+		return state.Stage, installDebianAndRestart(state, 40*time.Second, startReplacement)
 	}
-	return replaceAndRestart(state, 40*time.Second, startReplacement)
+	return state.Stage, replaceAndRestart(state, 40*time.Second, startReplacement)
 }
 
 type restartedProcess struct {
@@ -577,18 +578,8 @@ func markStageComplete(stage string) {
 // restarted application. The marker is written only after that handshake, so
 // active or failed update stages are left for inspection and recovery.
 func CleanupCompleted(executable string) {
-	root := filepath.Clean(filepath.Dir(executable))
-	if runtime.GOOS == "darwin" {
-		if bundle, err := applicationBundle(executable); err == nil {
-			root = filepath.Dir(bundle)
-		}
-	}
-	cleanupCompletedRoot(root)
-	if runtime.GOOS == "linux" {
-		cleanupCompletedRoot(filepath.Clean(os.TempDir()))
-		if debianRoot, err := debianStageRoot(); err == nil {
-			cleanupCompletedRoot(debianRoot)
-		}
+	for _, root := range updateStageRoots(executable) {
+		cleanupCompletedRoot(root)
 	}
 }
 

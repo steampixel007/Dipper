@@ -43,6 +43,17 @@ type softwareUpdate struct {
 	cancel       context.CancelFunc
 }
 
+func (s *State) restoreSoftwareFailure(executable string) error {
+	report, err := update.ConsumeFailureReport(executable)
+	switch {
+	case report != "":
+		s.SoftwareUpdate.StartupError = report
+	case err != nil:
+		s.SoftwareUpdate.StartupError = softwareText.startupError
+	}
+	return err
+}
+
 var softwareText = struct {
 	title, current, automatic, automaticDetail, check, checking, latest, available         string
 	failed, download, downloading, cancel, cancelled, ready, install, installing           string
