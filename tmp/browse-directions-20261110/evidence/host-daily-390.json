@@ -1,0 +1,38 @@
+{
+  "status": "issues",
+  "exitCode": 0,
+  "scopes": [
+    {
+      "selector": "body",
+      "findings": [
+        {
+          "rule": "control-edge-inset",
+          "element": "button.compare-toggle",
+          "message": "layout: button.compare-toggle puts content 12px from the left and 0px from the right (CSS padding 12px / 0px)",
+          "evidence": {
+            "paddingLeft": 12,
+            "paddingRight": 0,
+            "leftGap": 12,
+            "rightGap": 0
+          }
+        }
+      ],
+      "checked": {
+        "controls": 17,
+        "paddedContainers": 5,
+        "compositionCrops": 0
+      },
+      "deferred": [],
+      "manual": [
+        "This snapshot checks box fit and authored insets; inspect optical centering, shape contours, interaction states and motion visually."
+      ]
+    }
+  ],
+  "errors": [],
+  "manualReviewRequired": true,
+  "viewport": {
+    "width": 390,
+    "height": 1000
+  },
+  "url": "http://127.0.0.1:4397/#daily"
+}

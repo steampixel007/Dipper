@@ -1,0 +1,37 @@
+{
+  "status": "issues",
+  "mode": "still",
+  "stages": [
+    {
+      "key": "stage-1",
+      "label": "ss-fit",
+      "coverage": {
+        "status": "complete",
+        "frames": 1,
+        "durationMs": 0,
+        "maxGapMs": 0,
+        "reasons": [],
+        "framingSamples": 1,
+        "layout": {
+          "controls": 23,
+          "paddedContainers": 5,
+          "compositionCrops": 0
+        }
+      },
+      "findings": [
+        "lopsided: button.nav-item \"下载\" has 14px on the left and 69px on the right (still)",
+        "lopsided: button.nav-item \"设置\" has 14px on the left and 70px on the right (still)",
+        "tight control: button.nav-item \"我的追番2\" sits 7.0px under div.nav-item \"浏览番剧\"; a button keeps 8px or more from the field, line or card edge above it (still)",
+        "uneven padding: main.browse-main has bottom 0px against 26px at the side; a card pads its content the same on every side (the outer radius is the inner radius plus the padding) (still)",
+        "kit override: .schedule-row .ss-row__subtitle is restyled by the example's own CSS (position, size or spacing); a kit part's geometry is the kit's. Style your own class, pass the part's props, or set its tokens (still)",
+        "kit override: [data-layout=\"compact\"] .schedule-row .ss-row__subtitle is restyled by the example's own CSS (position, size or spacing); a kit part's geometry is the kit's. Style your own class, pass the part's props, or set its tokens (still)",
+        "layout: button.season-button puts content 8px from the left and 0px from the right (CSS padding 8px / 0px) (still)",
+        "layout: button.unfollowed-filter puts content 12px from the left and 0px from the right (CSS padding 12px / 0px) (still)"
+      ],
+      "manual": []
+    }
+  ],
+  "errors": [],
+  "manualReviewRequired": false,
+  "exitCode": 0
+}
