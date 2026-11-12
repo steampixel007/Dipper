@@ -1,8 +1,196 @@
 # Rehearsal: Dipper Browse directions
 
-Date: November 11, 2026.
+Latest revision: November 12, 2026. Older sections below are historical.
 
-## Scope and reference
+## Current correction: separate follow setup, November 12, 2026
+
+The owner's correction supersedes the inline-version flow below. Detail now
+introduces the work only. `追这部` opens a separate `追番设置` page inside
+the product window. An explicit subtitle-group choice reveals only that
+group's attributed mock resources. `返回详情` and Escape preserve the mounted
+synopsis and its scroll. Confirmation returns to detail with the result and
+undo. Previously followed works can change groups without increasing the count.
+
+Final `npm run check` (t18x): 69 detail and 41 discovery checks passed.
+Final `npm run build` (t190): passed. No native application or binary changed.
+`scripts/group-flow-red.mjs` (t184) injected a group radio into detail, triggered
+the exact synopsis-boundary assertion, and restored the source in `finally`.
+This is bounded mutation evidence, not a rebuild of the historical implementation.
+
+Desktop detail and desktop/390px setup screenshots were inspected. They show
+no group controls inside detail, a distinct setup page, and compact fixed
+actions. The group search input's native border and the oversized return action
+were corrected before the final build and captures.
+
+The first compact walkthrough exposed simultaneous opacity fades when setup
+content changed: the resource prompt and rows were briefly legible together.
+The resource transition now clears the prompt before showing rows, and group
+selection is screenshotted only after its rows reach full opacity. Leaving
+setup fades its contents first, then its white surface, while the detail panel
+is already mounted underneath. The later 390px capture shows no double
+exposure in the tested frames.
+
+Current stills: `evidence/shelf-detail.png`,
+`evidence/shelf-group-resources.png`, and
+`evidence/shelf-group-resources-390.png`.
+Current walkthroughs use `evidence/shelf-group-flow-wide.png` and
+`evidence/shelf-group-flow-390.png`. Historical inline-version captures below
+do not establish acceptance of the corrected navigation.
+
+Latest walkthrough gates (both exit 2 because sampling coverage is
+inconclusive, with `rehearsal passed`):
+
+- `t18y`, width 390: 38 shots requested at 450ms; 1405 sampled frames over
+  17.82s; largest gap 125.2ms; 109 gaps over 16ms. Remaining observations are
+  the footer's 14px label offset, cursor-on-label presses, the hidden browse
+  page's direct removal, and two same-box text changes.
+- `t18z`, width 1320: 38 shots requested at 450ms; 1307 sampled frames over
+  19.37s; largest gap 270.8ms; 122 gaps over 17ms. Remaining observations are
+  the hidden browse page's direct removal, a status badge's direct removal,
+  and three same-box text changes.
+
+These reports do not establish frame-complete motion approval. The sampled
+gaps and manual observations remain limits, and the latest separate flow has
+not received a new independent fresh-eye review.
+
+## Historical inline-version discovery revision (superseded)
+
+Gold: stageshow `examples/phone-touch`, copied into `motion-gold/` and filmed
+before this revision as `evidence/motion-gold.png` with its JSON report. Kept
+the causal open, explicit result hold and close, and a complete reduced-motion
+poster. Applied those relationships to the existing Shelf, rather than copying
+the phone's identity. The earlier static-card reference remains historical.
+
+Beats: shelf, open a work, read, choose an inline version, confirm, hold the
+followed result, undo, close back to the same shelf. Playback is opt-in at
+`/?capture=shelf&rehearse`, once with explicit replay. The manual route is
+`/#shelf`. Reduced motion shows the completed followed result with usable
+manual controls.
+
+Changes:
+
+- Removed the separate Shelf version page: poster, version, confirm takes
+  three clicks instead of four. A new work starts without a selected version.
+  Existing follows retain their saved version; unchanged confirmation is
+  disabled and version updates do not duplicate counts or expose destructive
+  undo.
+- Search covers the whole local season while typing; clearing restores filters.
+  Enter opens a sole result, Ctrl+K focuses search, and Escape clears it.
+- Previous/next detail controls retain the original comparison list, including
+  when following removes a work from the unfollowed filter. Dismissal preserves
+  shelf scroll and restores a connected poster, or search for an empty list.
+- The cover and title stay fixed while the keyboard-focusable synopsis scrolls.
+  Outgoing reading layers retain their previous scroll offset; new works start
+  at the top. Panel, toolbar and footer stay anchored.
+- Retained badges, undo, status text and toast have transitions. The confirmation
+  button retains the kit's press easing as well as its opacity transition.
+  A harmless idle Stage script enables actual manual motion; a Stage without
+  a script intentionally makes descendants still.
+- Weekdays are a pressed-button filter group with arrow/Home/End navigation.
+  Compact framing reduces the introduction and improves essential helper text.
+
+Functional validation:
+
+- Before implementation, t16q failed the new assertion `opening a work must
+  expose version choices without another page or click`. This was a real
+  assertion failure, not a timeout, missing import or compile failure.
+- Latest `npm run check`, t17w: 67 regression checks and 30 discovery checks
+  passed. Coverage includes the three-click flow, search/filter restoration,
+  existing-version updates, keyboard scrolling with retained identity, outgoing
+  scroll offset, stable comparison, fallback focus and reduced-motion controls.
+- Latest `npm run build`, t17x: passed after the final CSS correction.
+  No Go code or native binary changed.
+
+Current captures and film results:
+
+| Capture | Latest observation |
+| --- | --- |
+| `evidence/shelf-motion-wide.png` / `.json`, t17s | 38 shots requested at 450ms, width 1320; 1404 sampled frames over 22.71s; largest gap 240.0ms; 154 gaps over 20ms. |
+| `evidence/shelf-motion-390.png` / `.json`, t17t | 38 shots requested at 450ms, width 390; 1183 sampled frames over 17.99s; largest gap 132.7ms; 121 gaps over 19ms. |
+| `evidence/shelf-open-beat.png`, `shelf-confirm-beat.png`, `shelf-close-beat.png` | Eight shots each requested at 80ms around reading, followed and returned marks, width 390. Actual screenshot intervals are longer, approximately 350–500ms; marks follow the actions, so these show state continuity rather than every press or exit frame. |
+| `evidence/shelf-motion-reduced.png` | Reduced-motion still; complete followed result. Static capture does not judge motion. |
+| `evidence/shelf-home-390.png` | Compact homepage still; search, weekdays and two poster columns remain legible. |
+
+Both current full-walkthrough gates end:
+
+```text
+film: inconclusive; watch the motion and inspect every image before approval
+rehearsal passed (necessary, not sufficient: references/verify.md and the fresh eye in review.md still stand)
+```
+
+The exit code is 2 because coverage is inconclusive. Gate passage is necessary
+evidence, not an overall motion pass. Opened both full contact sheets and all
+three smaller mark sequences. The smaller sheets show readable, stable content
+in the new, followed and returned states. The large desktop sheet is difficult
+to inspect at readable scale; it is not evidence for fine text or every frame.
+The target-following confirmation close-up attempt t17v failed to find a visible
+target and is not approval evidence.
+
+Remaining film observations:
+
+- Desktop: sidebar count `2` and poster metadata `查看详情` change in the same
+  box at 7.58s. Compact: the poster metadata changes at 7.41s. These peripheral
+  values still update directly. The primary detail status crossfades; the
+  peripheral text should receive further motion review before production.
+- Compact: cursor overlap on `撤销` at 9.5s. This is a walkthrough choreography
+  issue; the control remains visible in settled frames. It remains unresolved.
+- Previous confirmation-button pop/jump reports did not recur after restoring
+  the kit press transition and removing forwards animation fill. Sampling gaps
+  prevent treating that absence as proof that no intermediate defect exists.
+
+Fresh-eye review: `evidence/fresh-eye.md`, t16y, inspected source and earlier
+contact sheets, not a live browser. Addressed its seven findings: focusable
+synopsis scrolling, connected fallback focus, retained outgoing scroll, fixed
+identity, filter semantics, compact header space, and helper readability.
+The latest 30 discovery checks exercise the behavioral fixes. That reviewer did
+not independently verify the final motion or final frames.
+
+Compared with phone-touch, the anime cover/title remains the focal object and
+the footer carries the result. This study has more content because comparing
+catalog works is its purpose; the phone's sparse composition is not the target.
+The full desktop composition, compact layout and transitions still need user
+evaluation at their actual display size.
+
+Assumptions and limits: local temporary follow state, mock versions and weekdays,
+two synopsis samples. This prototype ends at following, not playback. No real
+subscription/download, metadata completeness, time-to-find improvement, physical
+touch, screen reader, zoom, cross-browser performance, native GUI or production
+integration was verified. Remaining sampling gaps and choreography observations
+prevent claiming complete animation acceptance.
+
+## Historical Shelf detail revision, November 12, 2026
+
+Replaced Shelf's narrow right sheet with an 800px centered panel. A persistent
+poster anchors both the synopsis and version-selection steps. The footer
+stays visible while the body scrolls. Two sourced synopsis samples replace
+generic subscription instructions; missing descriptions are explicit. Existing
+follows retain their selected version, and saving a version does not offer an
+undo action that would remove the existing follow.
+
+Validation:
+
+- Before implementation, the new geometry assertion failed against the old
+  drawer with `shelf detail should be a wide centered panel, with equal space
+  on both sides` (terminal t16f). This was an assertion failure, not a missing
+  element or compilation failure.
+- Latest `npm run check`: 65 browser checks, including centered geometry,
+  synopsis content, inactive background, keyboard wrapping and restoration,
+  return from version selection, unchanged follow count before confirmation,
+  shelf scroll preservation, existing-version updates, backdrop and close
+  controls, compact footer visibility, long-title wrapping, and direct links.
+- `npm run build`: passed. No Go code changed; native builds, native GUI
+  acceptance, and cross-platform checks were not run for this prototype.
+- Visually inspected `evidence/shelf-detail.png`, `shelf-version.png`,
+  `shelf-detail-390.png`, and `shelf-detail-long-390.png`. The desktop content
+  reads poster, title, synopsis, then action. Compact content stacks with a
+  separate footer; the long title remains fully visible.
+
+Updated Shelf captures are plain Playwright screenshots. The earlier film
+gate results below describe the prior layout; that gate was not rerun and
+does not certify this revision. Daily and Cinema were exercised by the
+browser regression checks.
+
+## Historical scope and reference
 
 Three interactive design studies, served locally at port 4397. Production Go
 code, DESIGN.md, preferences, subscriptions, and downloads are outside this
@@ -45,7 +233,7 @@ driven by the viewer:
 4. Follow the title; observe the changed action and count; optionally undo.
 5. Dismiss the overlay and continue browsing with restored keyboard focus.
 
-Shelf uses a side sheet; Daily keeps a selected preview beside its list on
+Shelf now uses a centered detail panel; Daily keeps a selected preview beside its list on
 desktop and above it on compact layouts; Cinema uses a spotlight and rail.
 
 ## Captures and functional verification

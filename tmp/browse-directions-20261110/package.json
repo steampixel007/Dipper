@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4397 --strictPort",
     "build": "vite build",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs && node scripts/discovery.mjs"
   },
   "dependencies": {
     "react": "18.3.1",

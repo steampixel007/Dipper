@@ -1,0 +1,37 @@
+{
+  "status": "inconclusive",
+  "mode": "motion",
+  "stages": [
+    {
+      "key": "stage-1",
+      "label": "ss-fit",
+      "coverage": {
+        "status": "inconclusive",
+        "frames": 1183,
+        "durationMs": 17985.10000014305,
+        "medianMs": 12,
+        "maxGapMs": 132.70000004768372,
+        "skippedGaps": 121,
+        "cameraFrames": 0,
+        "reasons": [
+          "121 sampling gap(s) exceeded 19ms; motion during those gaps was not judged"
+        ],
+        "framingSamples": 38,
+        "layout": {
+          "controls": 13,
+          "paddedContainers": 2,
+          "compositionCrops": 0
+        }
+      },
+      "findings": [
+        "covers: the cursor sits on \"撤销\" as it presses; aim off the label (9.5s)"
+      ],
+      "manual": [
+        "same-box content change: span \"查看详情\" changes text or drawing at 7.41s [reading]; inspect the transition in motion (geometry alone cannot judge it)"
+      ]
+    }
+  ],
+  "errors": [],
+  "manualReviewRequired": true,
+  "exitCode": 2
+}

@@ -1,0 +1,36 @@
+{
+  "status": "inconclusive",
+  "mode": "motion",
+  "stages": [
+    {
+      "key": "stage-1",
+      "label": "ss-fit fx",
+      "coverage": {
+        "status": "inconclusive",
+        "frames": 3637,
+        "durationMs": 17193.799999952316,
+        "medianMs": 3.9000000953674316,
+        "maxGapMs": 111.60000014305115,
+        "skippedGaps": 256,
+        "cameraFrames": 0,
+        "reasons": [
+          "256 sampling gap(s) exceeded 6ms; motion during those gaps was not judged"
+        ],
+        "framingSamples": 28,
+        "layout": {
+          "controls": 0,
+          "paddedContainers": 2,
+          "compositionCrops": 0
+        }
+      },
+      "findings": [
+        "half-pixel glyph: a 15px svg centered in the 70x21 span.ss-states__item sits on a half pixel, so it draws there while span.ss-states__item moves and hops sideways when it settles; size it 14 or 16px (even inside even) (11 frames from 3.6s)",
+        "lands on a transform: div.ss-expand__content \"Tempo Run32 minWarm \" comes to rest at the end of a transform, so its text hops a fraction of a pixel as it lands; keep it on a layer for good (will-change: transform), or scale only its surface"
+      ],
+      "manual": []
+    }
+  ],
+  "errors": [],
+  "manualReviewRequired": true,
+  "exitCode": 2
+}
