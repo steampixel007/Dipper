@@ -1,6 +1,138 @@
 # Rehearsal: Dipper Browse directions
 
-Latest revision: November 12, 2026. Older sections below are historical.
+Latest revision: November 14, 2026. Older sections below are historical.
+
+## Empty-state refinement, November 14, 2026
+
+The three Shelf empty states now share one horizontal status card: the icon and
+title name what happened, the supporting line gives only the missing context,
+and the action names the next step. Search repeats the query and offers
+`清空搜索`. An empty weekday says which day has no updates and suggests trying
+another date. An all-followed day explains that `只看未追番` is hiding results
+and offers `显示已追番` plus `浏览全部番剧`. At 390px the card keeps its
+structure, wraps the explanation, and gives full-width actions their own row.
+
+Inspected `evidence/empty-search-desktop.png`, `empty-day-desktop.png`,
+`empty-followed-desktop.png`, `empty-search-compact.png`,
+`empty-day-compact.png`, and `empty-followed-compact.png`. The primary action
+retains the neutral charcoal fill and white text. `npm run build`,
+`node scripts/check.mjs` (84 checks), and `node scripts/discovery.mjs`
+(63 discovery checks) passed with no browser errors. The standalone Shelf
+export was rebuilt with all 19 covers.
+
+## Follow-status filter revision, November 14, 2026
+
+The shelf now treats the follow-status filter as a secondary result control,
+not a weekday. `只看未追番` sits in the result row as a checkbox, keeps a visible
+checked state, composes with search and weekdays, and remains available at
+390px. Following a work while it is active still removes that work and restores
+focus to a remaining poster. Empty filter results identify the filter and offer
+`显示全部作品`. The idle result row no longer contains the instructional hint
+`点开海报，先了解一下`, and the season-wide search explanation is removed.
+Poster cards also omit the repeated `查看详情` and `已在片单` labels: the footer
+carries the broadcast day only when all days are shown or search crosses the
+week, while the followed badge and poster hover treatment carry the remaining
+state. Inspected
+`evidence/poster-card-footer-1144.png` at 1144px; the grid footer is materially
+quieter without losing schedule information.
+
+Season context now appears once, in the functional top-right selector. The shelf
+heading omits the decorative English season eyebrow, and the idle result row
+shows only the count. A selected weekday is already named by the active tab, so
+it is omitted from the result row and poster footers; search reports `找到 N 部`
+without explaining its scope, and an empty query says `没有找到相关番剧`.
+Inspected `evidence/shelf-copy-all-1144.png`,
+`evidence/shelf-copy-weekday-1144.png`,
+`evidence/shelf-copy-search-1144.png`,
+`evidence/shelf-copy-empty-1144.png`, and
+`evidence/shelf-copy-restored-1144.png` at 1144px; the result row stays quiet
+without losing the count or the cross-week broadcast day.
+
+Inspected the desktop hover and checked states plus the checked compact state in
+`evidence/filter-hover-1144.png`, `filter-active-1144.png`, and
+`filter-active-390.png`. The filter moved from 19 to 17 works with the two
+initial follows. `node scripts/discovery.mjs` passed 55 checks, including search
+composition, preserved filter state after clearing search, weekday scope in the
+Daily concept, the removed-origin focus return, and compact visibility.
+`npm run build`, the standalone shelf export, and `git diff --check` passed. The
+broader browser regression run was attempted but still stops at the existing
+reduced-motion press-scaling assertion; this copy revision does not touch that
+motion code. No independent visual review was run.
+
+## Detail header simplification, November 13, 2026
+
+The header now reads `番剧详情`. Adjacent-work arrows, the counter, and visible
+Escape text are removed. The close button remains, with `关闭详情（Esc）` as
+its tooltip. Choose another work by returning to the shelf. The standalone
+export passed header, close, Escape, and follow-flow checks at 728px and 390px.
+All 39 current discovery checks and the Vite production build passed.
+The broader regression run reached its reduced-motion press check and failed:
+the existing detail action override still scales the button under reduced
+motion. That separate interaction issue remains unresolved.
+
+## Work-first detail and explicit next step, November 13, 2026
+
+The detail study gives the poster a 250px column, enlarges the title and
+synopsis, and aligns actions with the reading columns. The owner rejected the
+blue-teal action color. Both detail actions now use neutral charcoal: an outlined
+`返回选片` action and a filled `选择字幕组` action, with matching height, corner
+radius, minimum width, and padding. The helper says
+`选好字幕组后，再确认追番`. Choosing a subtitle group remains a separate page,
+and only its confirmation creates the simulated follow.
+
+Inspected the refreshed desktop and 390px detail crops, compact setup, and
+compact missing-description state. Both viewport sizes have a visible close
+control and no horizontal document overflow. Actual pointer checks confirm
+background feedback on both actions. The full suite passed 81 regression and
+41 discovery checks before the later button refinements. Targeted checks of
+the earlier ghost variant verified hover feedback, setup entry, Escape back
+to detail, and return to the shelf at both widths. Current export verification
+is recorded below.
+
+The outlined-return revision passed focused checks at 728px and 390px: both
+actions have a 44px height, 8px corner radius, and matching total horizontal
+padding. The return action has a white idle fill, visible inset outline,
+hover feedback, press feedback, and dismisses back to the shelf. Inspected
+settled screenshots at both widths. The standalone export passed its setup,
+confirmation, undo, and reset flow with no console errors or external
+requests; the Vite production build passed.
+
+The earlier 390px reduced-motion still gate passed. The desktop still gate
+reported two padding heuristics on the panel and footer. Their toolbar, reading
+columns, and action rows intentionally use different insets; this is a recorded
+gate failure, not a full visual-gate approval. No fresh animation audit or
+independent visual review was completed. An optional capture helper timed out
+when searching a filtered shelf; fresh direct-link captures succeeded.
+
+Current frames use `evidence/detail-redesign-*`. `detail-review.html` presents
+the desktop and narrow crops with a link to the running interactive prototype.
+This is an exploratory React prototype; DESIGN.md and the native app are
+unchanged.
+
+## Footer color correction, November 13, 2026
+
+The owner's feedback concerns the two detail actions. The secondary action
+now has a white surface, a gray-green edge, and matching dark text. The primary
+uses muted slate blue (#46647C) instead of saturated blue. Follow setup shares
+the footer tokens. The existing Button hover, press, disabled, and reduced-motion
+behavior remains in place.
+
+Inspected `evidence/button-colors-1320.png`, `button-colors-390.png`,
+`button-colors-setup-390.png`, and both desktop hover close-ups in `evidence/`.
+Actual pointer checks at both widths verified a background change on each
+action and restoration after leaving. `npm run check` passed 81 regression
+and 41 discovery checks, including press and reduced-motion checks.
+`npm run build` passed.
+
+The wide and reduced-motion 390px still gates both ended:
+`rehearsal passed (necessary, not sufficient: references/verify.md and the fresh eye in review.md still stand)`.
+Reports and frames use the `evidence/button-colors-gate-` prefix. The narrow
+report repeats the historical 14px label-offset observation. In the inspected
+reduced-motion frame, that offset is the secondary button's internal padding;
+the button edge aligns with the footer copy. Nothing is clipped there.
+These are still gates; motion was not judged. The complete walkthrough and a
+new independent review were not repeated for this color-only correction.
+No native application or binary changed.
 
 ## Current correction: separate follow setup, November 12, 2026
 
@@ -335,3 +467,117 @@ animation contact sheets, intermediate transition frames, or loop seams.
 The reduced-motion still and browser behavior checks do not establish motion
 quality. The remaining gate findings are listed above rather than presented
 as complete visual approval.
+
+## Interactive detail export, November 13
+
+The earlier inline detail review used screenshots and could not respond to a
+pointer. `detail-interactive.html` now embeds the actual React prototype and
+its local assets. Its stage fits the chat frame; the underlying product
+components and interaction handlers are shared with the Vite version.
+
+The detail primary action changes from `#333` to `#232323` on hover, rises
+one pixel, gains a subtle shadow, and moves its trailing arrow two pixels.
+Pressing scales the button to `.97` and reduces the shadow. These styles are
+scoped to the detail action, retaining the charcoal palette.
+
+`node scripts/check-detail-export.mjs` passed at widths 728 and 390. It
+checks actual pointer hover and press, subtitle-group selection,
+confirmation, undo, reset, image loading, and absence of external requests
+and browser errors. This focused check does not replace the visual and motion
+limits recorded above.
+
+## Detail typography trial, November 14
+
+The detail panel now shares one font stack, four desktop type sizes, regular
+and semibold weights, and strong/body/muted neutral text roles. Compact titles
+use 20px; synopsis text retains its 16px size and 28px leading. Empty synopsis
+copy uses the supporting role. The footer helper is one sentence before
+following; the saved group and undo remain available after confirmation.
+
+Verification: the standalone detail export passed its pointer and follow-flow
+checks at 728px and 390px. All 39 discovery checks, the Vite build, and
+`git diff --check` passed. Browser measurements at 1144px and 390px verified
+the shared font stack, equal action typography, retained reading space and
+footer, and no horizontal panel overflow for works 4031, 3984 and 4063.
+Captures in `evidence/detail-type-{id}-{width}.png` include the long-title,
+missing-description case. Both desktop-to-compact and compact-to-desktop
+resizes retained the primary action.
+
+This reversible prototype styling pass adds no new regression tests.
+The broader `scripts/check.mjs` suite was not rerun; its previously recorded
+reduced-motion press-scaling failure remains unresolved. Native GUI builds,
+Go tests, production design adoption and the motion-quality limits above
+remain outside this trial.
+
+## Shelf typography and color trial, November 14
+
+Shelf now uses the detail panel's font stack and neutral text roles. Desktop
+page titles are 28px and compact titles 20px. Navigation, search, filters,
+poster titles and primary actions are 14px; counts, schedule text, badges and
+footer hints are 12px. Titles and selected navigation use strong ink, controls
+and descriptions use body ink, and supporting copy uses muted ink. Semibold is
+reserved for titles, selected controls and actions.
+
+Blue-gray navigation and filter accents are replaced by neutral gray surfaces.
+Green remains only for followed status, matching detail. Poster artwork is the
+page's main color source. Pointer hover reveals the poster action and raises
+the cover; selected weekdays use weight, ink and an underline; focus rings
+remain visible.
+
+Verification: browser measurements at 1144px and 390px found the same font
+stack and text colors in Shelf and detail, 14px controls and card titles, 12px
+supporting copy, and no horizontal page overflow. Opening a poster retained
+the shared detail typography; Esc closed it and restored poster focus with no
+browser errors. All 39 discovery checks and the Vite build passed.
+`node scripts/check-detail-export.mjs` covers the unchanged detail export.
+Captures are `evidence/home-type-{1144,390}.png` and
+`evidence/home-type-hover-{1144,390}.png`.
+
+This reversible prototype pass adds no regression test. The unresolved
+reduced-motion press-scaling failure in the broader check suite remains out of
+scope, as do native builds and platform and motion-quality checks.
+
+## Followed status color revision, November 14
+
+The following status now uses warm amber rather than green. The poster pill is
+#7A4E10 text on #FFF8ECF2 with a one-pixel #EAD9BC inset edge; detail metadata
+uses the same #7A4E10 ink. The text/background contrast is 6.8:1 against the
+opaque ivory equivalent. Preserved dimensions are 12px text and a 20px pill on
+desktop, with the existing compact override at 10px.
+
+Verification: browser measurements on the standalone Shelf export confirmed
+the amber text, ivory background and inset edge at 1144px and 390px. Following
+a work in the standalone detail export produced the same amber status at
+1144px. The long and dark covers in `evidence/followed-color-final-shelf-1144.png`
+were inspected for legibility. All 39 discovery checks, the standalone detail
+export check, the Vite production build and `git diff --check` passed with no
+browser errors.
+
+Final captures are `evidence/followed-color-final-shelf-{1144,390}.png` and
+`evidence/followed-color-final-detail-1144.png`. Candidate studies are
+`evidence/followed-color-{amber,paper,ink}.png`. The broader `scripts/check.mjs`
+suite was not rerun; its recorded reduced-motion press-scaling failure remains
+outside this color-only pass. Native builds, production adoption and a complete
+motion-quality review were not checked.
+
+## Shelf action and count revision, November 14
+
+The isolated `19 部` row is gone. Weekday navigation, the result summary and
+`只看未追番` now share one toolbar; the summary reads `共 19 部番剧`,
+`共 1 部番剧` or `找到 N 部番剧`. Compact layouts keep the days on one line and
+the right-aligned summary and follow filter on the next.
+
+The poster's full-width charcoal strip is replaced by a compact white
+`查看番剧详情` chip with a chevron. On pointer hover or keyboard focus the
+cover dims to 86% brightness and scales 1.5%, while the chip rises six pixels.
+Reduced motion removes those transitions without hiding the affordance.
+
+Verification: all 56 discovery checks passed, including the complete count copy
+and the explicit hover destination. The Vite production build, standalone Shelf
+export and `git diff --check` passed. Inspected
+`evidence/shelf-result-toolbar-{1144,390}.png` and
+`evidence/shelf-poster-action-{1144,390}.png`: the count reads as a complete
+phrase in the filter toolbar, the compact layout keeps it right-aligned below
+the weekdays, and the hover chip remains legible without a heavy full-width
+overlay. The pre-existing reduced-motion press-scaling failure in
+`scripts/check.mjs` remains outside this revision.

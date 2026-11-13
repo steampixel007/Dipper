@@ -1,0 +1,30 @@
+{
+  "status": "issues",
+  "mode": "still",
+  "stages": [
+    {
+      "key": "stage-1",
+      "label": "ss-fit",
+      "coverage": {
+        "status": "complete",
+        "frames": 1,
+        "durationMs": 0,
+        "maxGapMs": 0,
+        "reasons": [],
+        "framingSamples": 1,
+        "layout": {
+          "controls": 20,
+          "paddedContainers": 5,
+          "compositionCrops": 0
+        }
+      },
+      "findings": [
+        "clipped: near aligned: span.ss-states__item \"已加入我的追番\" and span.ss-roll__item \"继续逛逛\" start 14.0px apart in footer.detail-panel-footer; lines in a card share one left edge, or one is indented on purpose by a column (an avatar's width and gap), never by a few pixels (still)"
+      ],
+      "manual": []
+    }
+  ],
+  "errors": [],
+  "manualReviewRequired": false,
+  "exitCode": 0
+}

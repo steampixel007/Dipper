@@ -1,0 +1,6 @@
+$ go test -count=1 -timeout 10m -run ^(TestUnixUpdateDownloadVerifiesWholePayload|TestWindowsInstalledCopyRestartsWithArchive)$ ./internal/update
+
+# github.com/steampixel007/Dipper/internal/update [github.com/steampixel007/Dipper/internal/update.test]
+internal\update\helper_debian_test.go:68:33: invalid operation: operator ! not defined on <-finished (comma, ok expression of interface type error)
+FAIL	github.com/steampixel007/Dipper/internal/update [build failed]
+FAIL

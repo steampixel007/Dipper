@@ -1,0 +1,8 @@
+$ go test -count=1 -timeout 10m -run ^TestUnixUpdateDownloadVerifiesWholePayload/macos$ ./internal/update
+
+--- FAIL: TestUnixUpdateDownloadVerifiesWholePayload (0.02s)
+    --- FAIL: TestUnixUpdateDownloadVerifiesWholePayload/macos (0.02s)
+        archive_test.go:103: modified payload was accepted for restart update
+FAIL
+FAIL	github.com/steampixel007/Dipper/internal/update	0.793s
+FAIL

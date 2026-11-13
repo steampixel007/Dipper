@@ -61,22 +61,30 @@
   .ss-button[data-trailing] { padding-right: var(--ss-button-pad-icon); }
 
   /* Variants: hover is one step of the button's own color, never a gray swap */
-  .ss-button[data-hover] { background: color-mix(in srgb, var(--ss-surface), #000 4%); }
+  .ss-button:is([data-hover], :hover):not([aria-disabled="true"]) { background: color-mix(in srgb, var(--ss-surface), #000 4%); }
 
   .ss-button[data-variant="primary"] { background: var(--ss-accent); color: #fff; box-shadow: none; }
-  .ss-button[data-variant="primary"][data-hover] { background: color-mix(in srgb, var(--ss-accent), #000 10%); }
+  .ss-button[data-variant="primary"]:is([data-hover], :hover):not([aria-disabled="true"]) { background: color-mix(in srgb, var(--ss-accent), #000 10%); }
 
   .ss-button[data-variant="danger"] { background: var(--ss-danger); color: #fff; box-shadow: none; }
-  .ss-button[data-variant="danger"][data-hover] { background: color-mix(in srgb, var(--ss-danger), #000 10%); }
+  .ss-button[data-variant="danger"]:is([data-hover], :hover):not([aria-disabled="true"]) { background: color-mix(in srgb, var(--ss-danger), #000 10%); }
 
   .ss-button[data-variant="tertiary"] { background: var(--ss-ink-2); box-shadow: none; }
-  .ss-button[data-variant="tertiary"][data-hover] { background: var(--ss-ink-3); }
+  .ss-button[data-variant="tertiary"]:is([data-hover], :hover):not([aria-disabled="true"]) { background: var(--ss-ink-3); }
 
   .ss-button[data-variant="ghost"] { background: transparent; box-shadow: none; }
-  .ss-button[data-variant="ghost"][data-hover] { background: var(--ss-ink-2); }
+  .ss-button[data-variant="ghost"]:is([data-hover], :hover):not([aria-disabled="true"]) { background: var(--ss-ink-2); }
 
   /* The press: a small scale on pointer-down, the label stays put inside it */
-  .ss-button[data-pressed] { transform: scale(0.97); }
+  .ss-button:is([data-pressed], :active):not([aria-disabled="true"]) { transform: scale(0.97); }
+
+  .ss-button:focus-visible { outline: 2px solid var(--ss-accent); outline-offset: 3px; }
+  .ss-button[aria-disabled="true"] { cursor: not-allowed; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ss-button { transition-duration: 0s; }
+    .ss-button:is([data-pressed], :active):not([aria-disabled="true"]) { transform: none; }
+  }
 
   .ss-button__icon {
     display: grid;

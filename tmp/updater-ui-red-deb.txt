@@ -1,0 +1,8 @@
+$ go test -count=1 -timeout 10m -run ^TestSoftwareAllModesBackgroundPersistRestart$ ./cmd/dipper
+
+--- FAIL: TestSoftwareAllModesBackgroundPersistRestart (0.22s)
+    --- FAIL: TestSoftwareAllModesBackgroundPersistRestart/debian (0.01s)
+        software_update_modes_test.go:199: background download did not persist a restartable debian update: {Busy:false Available:true Development:false Manual:false Installing:false Committed:false Offer:{Release:{Tag:v9.0.0 Notes:Release notes fixture Draft:false Prerelease:false Assets:[{Name:dipper_9.0.0_linux_amd64.deb URL:https://github.com/steampixel007/Dipper/releases/download/v9.0.0/dipper_9.0.0_linux_amd64.deb Size:100}]} Package:{Name:dipper_9.0.0_linux_amd64.deb URL:https://github.com/steampixel007/Dipper/releases/download/v9.0.0/dipper_9.0.0_linux_amd64.deb Size:100} Checksums:{Name: URL: Size:0} Available:true Development:false Portable:false Mode:debian} Downloaded:{Directory:C:\Users\nathan\AppData\Local\Temp\TestSoftwareAllModesBackgroundPersistRestartdebian3688373817\001\updates\dipper-update-download-1657533329 Package:C:\Users\nathan\AppData\Local\Temp\TestSoftwareAllModesBackgroundPersistRestartdebian3688373817\001\updates\dipper-update-download-1657533329\dipper_9.0.0_linux_amd64.deb Executable: SHA256: PackageSHA256:97c3fc22f88f0ca528af1702d7091ada7c192b5b299c013003ba526dfaea9763 Mode:debian Bundle: BundleSHA256:} Installer:<nil> Status:更新已下载并校验，点击“重启更新”完成安装。 Error: StartupError: Progress:100 Total:100 Dialog:false revision:3 cancel:<nil>}
+FAIL
+FAIL	github.com/steampixel007/Dipper/cmd/dipper	0.944s
+FAIL

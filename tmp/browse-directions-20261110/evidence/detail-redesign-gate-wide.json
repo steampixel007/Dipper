@@ -1,0 +1,31 @@
+{
+  "status": "issues",
+  "mode": "still",
+  "stages": [
+    {
+      "key": "stage-1",
+      "label": "ss-fit",
+      "coverage": {
+        "status": "complete",
+        "frames": 1,
+        "durationMs": 0,
+        "maxGapMs": 0,
+        "reasons": [],
+        "framingSamples": 1,
+        "layout": {
+          "controls": 31,
+          "paddedContainers": 8,
+          "compositionCrops": 0
+        }
+      },
+      "findings": [
+        "uneven padding: section.detail-panel has top 21px against 33px at the side; a card pads its content the same on every side (the outer radius is the inner radius plus the padding) (still)",
+        "uneven padding: footer.detail-panel-footer has bottom 29px, top 25px against 43px at the side; a card pads its content the same on every side (the outer radius is the inner radius plus the padding) (still)"
+      ],
+      "manual": []
+    }
+  ],
+  "errors": [],
+  "manualReviewRequired": false,
+  "exitCode": 0
+}

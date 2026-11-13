@@ -1,0 +1,12 @@
+$ go test -count=1 -timeout 10m -run ^TestSoftwareAllModesBackgroundPersistRestart$ ./cmd/dipper
+
+--- FAIL: TestSoftwareAllModesBackgroundPersistRestart (0.18s)
+    --- FAIL: TestSoftwareAllModesBackgroundPersistRestart/macos (0.01s)
+        software_update_modes_test.go:193: supported release did not start a nonmodal background download
+    --- FAIL: TestSoftwareAllModesBackgroundPersistRestart/linux (0.01s)
+        software_update_modes_test.go:193: supported release did not start a nonmodal background download
+    --- FAIL: TestSoftwareAllModesBackgroundPersistRestart/debian (0.01s)
+        software_update_modes_test.go:193: supported release did not start a nonmodal background download
+FAIL
+FAIL	github.com/steampixel007/Dipper/cmd/dipper	1.062s
+FAIL

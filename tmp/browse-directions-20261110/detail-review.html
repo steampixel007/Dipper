@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>番剧详情设计探索</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--foreground); font-family: var(--font-sans); }
+  nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 13px; }
+  button { font: inherit; color: var(--muted-foreground); background: transparent; border: 1px solid transparent; border-radius: var(--radius); padding: 7px 11px; cursor: pointer; }
+  button[aria-pressed="true"] { background: var(--secondary); color: var(--foreground); border-color: var(--border); }
+  button:hover { color: var(--foreground); background: var(--secondary); }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+  a { margin-left: auto; color: var(--foreground); text-underline-offset: 4px; padding: 7px 0; }
+  img { display: block; width: 100%; height: auto; }
+  img[hidden] { display: none; }
+  #compact { max-width: 326px; margin: 0 auto; }
+</style>
+<nav aria-label="预览尺寸">
+  <button type="button" aria-pressed="true" data-view="desktop">桌面</button>
+  <button type="button" aria-pressed="false" data-view="compact">窄窗口</button>
+  <a href="http://127.0.0.1:4397/?capture=shelf&amp;anime=4031" target="_blank" rel="noopener">打开交互原型 ↗</a>
+</nav>
+<img id="desktop" src="C:/Users/nathan/Documents/CodeProject/Dipper/tmp/browse-directions-20261110/evidence/detail-redesign-dialog-1320.png" alt="新版番剧详情：先阅读海报、标题和简介，底部用文字按钮返回选片，用深灰主按钮选择字幕组；辅助说明选好字幕组后再确认追番。">
+<img id="compact" hidden src="C:/Users/nathan/Documents/CodeProject/Dipper/tmp/browse-directions-20261110/evidence/detail-redesign-dialog-390.png" alt="窄窗口详情：海报和标题并排，简介使用整行宽度，底部始终保留返回选片与选择字幕组。">
+<script>
+  document.querySelectorAll('[data-view]').forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('[data-view]').forEach(option => option.setAttribute('aria-pressed', String(option === button)));
+      document.getElementById('desktop').hidden = button.dataset.view !== 'desktop';
+      document.getElementById('compact').hidden = button.dataset.view !== 'compact';
+    });
+  });
+</script>
+</html>

@@ -26,7 +26,7 @@ are simulated and interactive. Follow state is temporary. Bundled covers
 and titles are real catalog assets; weekdays, groups, and resource previews are mock
 data and do not establish current availability.
 
-Shelf detail introduces the work without group or version controls. `追这部`
+Shelf detail introduces the work without group or version controls. `选择字幕组`
 opens a separate setup page: choose a subtitle group, inspect its attributed
 resource previews, then confirm. Returning without confirmation preserves the
 synopsis scroll and creates no follow. Confirmation returns to the detail with
@@ -36,6 +36,11 @@ entered; clearing it restores the previous filters. Enter opens a sole result,
 Ctrl+K focuses search, and Escape clears it. Previous/next controls compare works
 without closing details. Closing preserves the shelf position and restores focus,
 including when a newly followed work disappears from the unfollowed filter.
+
+The current detail study gives the poster and synopsis more room. Its charcoal
+primary names the next step, while a matching text action, `返回选片`, closes the
+detail. The helper explains that follow confirmation comes after choosing a
+subtitle group. Open `/?capture=shelf&anime=4031` to try this study directly.
 
 The cover and title stay visible while the synopsis scrolls. Compact layouts
 shorten the header and retain the same footer. Manual interactions animate;
@@ -50,7 +55,7 @@ npm run check
 npm run build
 ```
 
-The latest browser run passed 110 checks (69 regression and 41 discovery checks),
+The latest browser run passed 147 checks (84 regression and 63 discovery checks),
 and the web build passed. The browser
 check writes state screenshots into `evidence/`. Dependencies and generated
 `dist/` are ignored; the lockfile is included.
@@ -102,3 +107,12 @@ metadata fetch or a complete catalog:
 All other titles show an explicit missing-description message. Weekday labels
 and subtitle groups and resources are still simulations. The synopsis samples establish no
 current release or download availability.
+
+## Interactive detail review
+
+Run `node scripts/export-detail.mjs` to rebuild `detail-interactive.html`.
+This standalone export embeds the React prototype, stylesheet, catalog, and
+covers. It opens directly on the detail view and needs no server. Pointer,
+keyboard, subtitle-group selection, confirmation, undo, and reset use the same
+components as the live prototype. Run `node scripts/check-detail-export.mjs`
+to check the export at desktop-chat and narrow widths.

@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowDownToLine, ArrowLeft, ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Compass, Grid2X2, Heart, ListFilter, Search, Settings2, Sparkles, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowLeft, ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Compass, Grid2X2, Heart, Search, Settings2, Sparkles, X } from 'lucide-react'
 import { Badge, Button, Field, Row, Stage, States, Tabs, Window, type Act } from './kit'
 import { useReducedMotion } from './kit/reduced-motion'
 import Gold from './gold'
@@ -58,8 +58,8 @@ const GROUP_OPTIONS: GroupOption[] = [
 const REHEARSAL_GROUP = 0
 const PINNED = ['4063', '4031', '3887', '4059', '4056', '4070', '4105', '4072', '4086', '4062', '4082', '4118', '4085', '4057', '4093', '4087', '3984', '4058', '4068']
 
-function Action({ children, onClick, variant = 'secondary', className = '', icon, target, label, disabled = false }: { children: ReactNode; onClick: () => void; variant?: 'primary' | 'secondary' | 'ghost' | 'tertiary'; className?: string; icon?: ReactNode; target?: string; label?: string; disabled?: boolean }) {
-  return <Button variant={variant} size="large" className={className} icon={icon} onClick={() => { if (!disabled) onClick() }} tabIndex={0} aria-label={label} aria-disabled={disabled || undefined} data-target={target} onKeyDown={(event) => {
+function Action({ children, onClick, variant = 'secondary', className = '', icon, trailingIcon, target, label, title, disabled = false }: { children: ReactNode; onClick: () => void; variant?: 'primary' | 'secondary' | 'ghost' | 'tertiary'; className?: string; icon?: ReactNode; trailingIcon?: ReactNode; target?: string; label?: string; title?: string; disabled?: boolean }) {
+  return <Button variant={variant} size="large" className={className} icon={icon} trailingIcon={trailingIcon} onClick={() => { if (!disabled) onClick() }} tabIndex={0} aria-label={label} title={title} aria-disabled={disabled || undefined} data-target={target} onKeyDown={(event) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       if (!disabled) onClick()
@@ -227,19 +227,21 @@ function AppPreview({ direction, catalog, capture = false, rehearsal = false }: 
   if (notice) lastNotice.current = notice
   const closeTimer = useRef<ReturnType<typeof setTimeout>>()
   const grid = useRef<HTMLDivElement>(null)
-  const detailItems = useRef<Anime[]>(catalog)
   const rehearsalActions = useRef<Partial<Record<number | 'poster', () => void>>>({})
   const search = query.trim().toLowerCase()
-  const filtered = catalog.filter((anime) => direction === 'shelf' && search
-    ? anime.title.toLowerCase().includes(search)
-    : (day < 0 || anime.day === day) && anime.title.toLowerCase().includes(search) && (!onlyUnfollowed || follows[anime.id] === undefined))
+  const filtered = catalog.filter((anime) => {
+    const matchesRange = direction === 'shelf' && search !== ''
+      ? true
+      : day < 0 || anime.day === day
+    return matchesRange
+      && anime.title.toLowerCase().includes(search)
+      && (!onlyUnfollowed || follows[anime.id] === undefined)
+  })
   const isFollowed = follows[selected.id] !== undefined
   const visibleSelected = filtered.find((anime) => anime.id === selected.id) ?? filtered[0] ?? selected
   const current = direction === 'shelf' ? selected : visibleSelected
   const currentFollowed = follows[current.id] !== undefined
   const count = Object.keys(follows).length
-  const comparisonItems = detail ? detailItems.current : filtered
-  const selectedIndex = comparisonItems.findIndex((anime) => anime.id === selected.id)
 
   useLayoutEffect(() => {
     const exiting = previousGroupOpen.current && !groupOpen && !reduced
@@ -320,7 +322,7 @@ function AppPreview({ direction, catalog, capture = false, rehearsal = false }: 
     }, 6500)
   }
   const choose = (anime: Anime) => {
-    if (!detail) { detailItems.current = filtered; openerIndex.current = filtered.findIndex((item) => item.id === anime.id) }
+    if (!detail) openerIndex.current = filtered.findIndex((item) => item.id === anime.id)
     clearTimeout(closeTimer.current)
     setClosing(false)
     setSelected(anime)
@@ -403,7 +405,42 @@ function AppPreview({ direction, catalog, capture = false, rehearsal = false }: 
     <p className="helper-copy">{follows[anime.id] !== undefined ? '已留在片单里，前往「我的追番」接着看。' : '先了解作品，再选字幕组。'}</p>
   </div>
 
-  const noResults = <div className="empty-state"><Search size={27} /><h3>{query ? '没找到这部番' : '这一天，暂时没有样本'}</h3><p>{query ? '换个关键词，或者看看这一季的其他作品。' : '试试周二或周三，继续体验排期浏览。'}</p><Action onClick={() => { setQuery(''); setDay(-1); setOnlyUnfollowed(false) }} variant="secondary">查看全部番剧</Action></div>
+  const dayWorks = catalog.filter((anime) => day < 0 || anime.day === day)
+  const allDayWorksFollowed = dayWorks.length > 0 && dayWorks.every((anime) => follows[anime.id] !== undefined)
+  const filterOnlyEmpty = direction === 'shelf' && onlyUnfollowed && !query && allDayWorksFollowed
+  const emptyKind = query ? 'search' : filterOnlyEmpty ? 'followed' : 'day'
+  const emptyTitle = query
+    ? `没有找到“${query}”`
+    : filterOnlyEmpty
+      ? `${day < 0 ? '这一季' : DAYS[day]}的番剧都追过了`
+      : `${day < 0 ? '这一季' : DAYS[day]}没有番剧更新`
+  const emptyDescription = query
+    ? onlyUnfollowed
+      ? '「只看未追番」仍在生效，已追过的番剧不会显示。'
+      : '试试其他关键词，或者回看这一季的全部番剧。'
+    : filterOnlyEmpty
+      ? '「只看未追番」仍开着，已追过的番剧被隐藏了。'
+      : day < 0
+        ? '这一季暂时没有可浏览的番剧。'
+        : '可以换个日期继续找。'
+  const showAllWorks = () => { setQuery(''); setDay(-1); setOnlyUnfollowed(false) }
+  const noResults = <div className="empty-state" data-kind={emptyKind}>
+    <span className="empty-state-icon" aria-hidden="true">{query ? <Search size={18} /> : filterOnlyEmpty ? <Check size={18} strokeWidth={2.5} /> : <CalendarDays size={18} />}</span>
+    <div className="empty-state-copy"><h3>{emptyTitle}</h3><p>{emptyDescription}</p></div>
+    <div className="empty-state-actions">
+      {query
+        ? <>
+          <Action onClick={() => setQuery('')} variant="primary" target="clear-search" icon={<X size={15} />}>清空搜索</Action>
+          {(onlyUnfollowed || day >= 0) && <Action onClick={showAllWorks} variant="secondary" target="show-all">查看全部番剧</Action>}
+        </>
+        : filterOnlyEmpty
+          ? <>
+            <Action onClick={() => setOnlyUnfollowed(false)} variant="primary" target="show-followed" icon={<Check size={15} />}>显示已追番</Action>
+            {day >= 0 && <Action onClick={showAllWorks} variant="secondary" target="show-all">浏览全部番剧</Action>}
+          </>
+          : <Action onClick={showAllWorks} variant="primary" target="show-all">浏览全部番剧</Action>}
+    </div>
+  </div>
 
   const product = <Window className={`study-window ${direction}`} title="Dipper" toolbar={<div className="windows-actions" aria-hidden="true"><span>—</span><span>□</span><span>×</span></div>} body={{ className: 'product-body' }}>
     <Sidebar direction={direction} count={count} onOther={() => inform('这里先专注「浏览番剧」，其他页面暂未接入')} inactive={detail && !groupOpen} />
@@ -411,13 +448,23 @@ function AppPreview({ direction, catalog, capture = false, rehearsal = false }: 
       <div className="browse-page" hidden={groupOpen} {...(groupOpen ? { inert: '' } : {})}>
       <div className="product-top"><span><Compass size={14} /> 浏览番剧</span><div className="top-season">{season}</div><span className="sample-label">本地海报样本</span></div>
       {direction === 'shelf' && <div className="shelf-content">
-        <div className="page-heading"><div><span className="eyebrow">2026 · AUTUMN COLLECTION</span><h1>这一季，想看什么？</h1><p>从一张海报开始，找到下一部期待。</p></div><SearchBox value={query} onChange={setQuery} onEnter={() => { if (search && filtered.length === 1) choose(filtered[0]) }} /></div>
-        <div className="shelf-filter">{days()}<button className={`unfollowed-filter ${!search && onlyUnfollowed ? 'active' : ''}`} aria-pressed={!search && onlyUnfollowed} onClick={() => { setQuery(''); setOnlyUnfollowed(!onlyUnfollowed) }}><ListFilter size={14} />未追番</button></div>
-        <div className="catalog-subline"><span role="status">{search ? '全季搜索' : day < 0 ? '秋季番剧' : `${DAYS[day]}片单`}<small>{filtered.length} 部作品</small></span><span>{search ? '搜索覆盖整季，清空后恢复筛选' : '点开海报，先了解一下'} <ArrowRight size={12} /></span></div>
+        <div className="page-heading"><div><h1>这一季，想看什么？</h1><p>从一张海报开始，找到下一部期待。</p></div><SearchBox value={query} onChange={setQuery} onEnter={() => { if (search && filtered.length === 1) choose(filtered[0]) }} /></div>
+        <div className="shelf-filter">
+          {days()}
+          <div className="catalog-options">
+            {filtered.length > 0
+              ? <small className="result-count" role="status">{search ? `找到 ${filtered.length} 部番剧` : `共 ${filtered.length} 部番剧`}</small>
+              : <span className="sr-only" role="status">{emptyTitle}</span>}
+            <button className={`unfollowed-filter ${onlyUnfollowed ? 'active' : ''}`} aria-pressed={onlyUnfollowed} onClick={() => setOnlyUnfollowed(!onlyUnfollowed)}>
+              <span className="unfollowed-check" aria-hidden="true">{onlyUnfollowed && <Check size={10} strokeWidth={3} />}</span>
+              只看未追番
+            </button>
+          </div>
+        </div>
         <div className="shelf-grid" ref={grid} data-crop="scrolling-catalog">
           {filtered.map((anime) => <button className="poster-card" onClick={() => choose(anime)} key={anime.id} data-target={`anime-${anime.id}`}>
-            <span className="poster-wrap"><Poster anime={anime} /><span className="poster-followed" data-visible={follows[anime.id] !== undefined || undefined} aria-hidden={follows[anime.id] === undefined}><Badge>已追番</Badge></span><span className="poster-hover">了解这部</span></span>
-            <strong>{anime.title}</strong><span className="poster-meta">{DAYS[anime.day]}<span>{follows[anime.id] !== undefined ? '已在片单' : '查看详情'}</span></span>
+            <span className="poster-wrap"><Poster anime={anime} /><span className="poster-followed" data-visible={follows[anime.id] !== undefined || undefined} aria-hidden={follows[anime.id] === undefined}><Badge>已追番</Badge></span><span className="poster-hover" aria-hidden="true"><span>查看番剧详情</span><ChevronRight size={13} /></span></span>
+            <strong>{anime.title}</strong>{(search || day < 0) && <span className="poster-meta">{DAYS[anime.day]}</span>}
           </button>)}
           {!filtered.length && noResults}
         </div>
@@ -462,11 +509,14 @@ function AppPreview({ direction, catalog, capture = false, rehearsal = false }: 
 
     {direction === 'shelf' && detail && <div className="sheet-layer" data-yielding={groupOpen || undefined} aria-hidden={groupOpen || undefined} {...(groupOpen ? { inert: '' } : {})} data-closing={closing || undefined} onMouseDown={(event) => { if (event.target === event.currentTarget) close() }}>
       <section className="detail-panel" role="dialog" aria-modal="true" aria-label={selected.title} ref={dialog} onKeyDown={trap}>
-        <div className="sheet-toolbar"><span>作品详情</span><div className="detail-navigation"><button data-target="detail-prev" aria-label="上一部" disabled={selectedIndex <= 0} onClick={() => choose(comparisonItems[selectedIndex - 1])}><ChevronLeft size={16} /></button><span>{selectedIndex < 0 ? '—' : selectedIndex + 1} / {comparisonItems.length}</span><button data-target="detail-next" aria-label="下一部" disabled={selectedIndex < 0 || selectedIndex >= comparisonItems.length - 1} onClick={() => choose(comparisonItems[selectedIndex + 1])}><ChevronRight size={16} /></button></div><Action variant="ghost" target="close-detail" label="关闭详情" onClick={dismissDetail} icon={<X size={18} />}>{null}</Action></div>
+        <div className="sheet-toolbar"><span>番剧详情</span><div className="detail-dismiss"><Action variant="tertiary" target="close-detail" label="关闭详情" title="关闭详情（Esc）" onClick={dismissDetail} icon={<X size={18} />}>{null}</Action></div></div>
         <ReadingTransition anime={selected} followed={isFollowed} />
         <footer className="detail-panel-footer">
-          <div className="detail-action-note" role="status"><span><States value={isFollowed ? 'followed' : 'new'} align="start" states={{ followed: '已加入我的追番', new: '想看这部？留在片单里' }} /><button className="undo-action" data-target="undo-follow" data-visible={undoId === selected.id || undefined} onClick={undo} disabled={undoId !== selected.id} aria-hidden={undoId !== selected.id} tabIndex={undoId === selected.id ? 0 : -1}>撤销</button></span><small><States value={isFollowed ? String(follows[selected.id]) : 'new'} align="start" states={{ new: '演示原型 · 不影响真实片单', ...groupSummary }} /></small></div>
-          <div className="detail-panel-actions"><Action variant="ghost" onClick={dismissDetail}>继续逛逛</Action><Action variant="primary" target="choose-group" onClick={startGroup} icon={<Heart size={16} />}>{isFollowed ? '追番设置' : '追这部'}</Action></div>
+          <Action variant="secondary" className="detail-browse-back" target="continue-browsing" onClick={dismissDetail} icon={<ArrowLeft size={16} />}>返回选片</Action>
+          <div className="detail-decision">
+            <div className="detail-action-note" role="status"><span><States value={isFollowed ? 'followed' : 'new'} align="start" states={{ followed: '已加入我的追番', new: '选好字幕组后，再确认追番' }} /><button className="undo-action" data-target="undo-follow" data-visible={undoId === selected.id || undefined} onClick={undo} disabled={undoId !== selected.id} aria-hidden={undoId !== selected.id} tabIndex={undoId === selected.id ? 0 : -1}>撤销</button></span>{isFollowed && <small><States value={String(follows[selected.id])} align="start" states={groupSummary} /></small>}</div>
+            <div className="detail-panel-actions"><Action variant="primary" target="choose-group" onClick={startGroup} trailingIcon={<ArrowRight size={16} />}>{isFollowed ? '追番设置' : '选择字幕组'}</Action></div>
+          </div>
         </footer>
       </section>
     </div>}
