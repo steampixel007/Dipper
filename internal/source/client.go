@@ -246,7 +246,7 @@ func challenge(body []byte) bool {
 // Cover returns encoded image bytes; decoding and caching belong to the caller.
 // Image requests and redirects accept only HTTP(S). Bodies are limited to 5 MiB.
 func (c *Client) Cover(ctx context.Context, imageURL string) ([]byte, error) {
-	body, _, err := c.get(ctx, imageURL, 5<<20)
+	body, _, err := c.get(ctx, OriginalCoverURL(imageURL), 5<<20)
 	if err != nil {
 		return nil, err
 	}
@@ -254,6 +254,21 @@ func (c *Client) Cover(ctx context.Context, imageURL string) ([]byte, error) {
 		return nil, fmt.Errorf("%w: expected an image", ErrStructure)
 	}
 	return body, nil
+}
+
+// OriginalCoverURL removes the source's resize parameters. They crop portrait
+// posters into square catalog thumbnails, so a smaller size is not a complete
+// image.
+func OriginalCoverURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	query := u.Query()
+	query.Del("width")
+	query.Del("height")
+	u.RawQuery = query.Encode()
+	return u.String()
 }
 
 // Probe checks the source origin the way a real request reaches it, rate

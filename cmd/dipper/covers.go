@@ -64,13 +64,13 @@ func (s *State) loadCovers(ctx context.Context, rows []source.Anime) {
 				})
 				return
 			}
-			key := fmt.Sprintf("%x", sha256.Sum256([]byte(a.Cover)))
+			key := coverCacheKey(a)
 			var data []byte
 			path := ""
 			keep := make(map[string]bool)
 			for _, p := range pending {
 				if p.Cover != "" {
-					keep[filepath.Join(s.CoverDir, fmt.Sprintf("%x", sha256.Sum256([]byte(p.Cover))))] = true
+					keep[filepath.Join(s.CoverDir, coverCacheKey(p))] = true
 				}
 			}
 			if s.CoverDir != "" {
@@ -146,6 +146,13 @@ func (s *State) pageCoverRows(page string) []source.Anime {
 		}
 		return rows
 	}
+}
+
+// coverCacheKey identifies the complete image, not the source's crop query.
+// It keeps an original poster from reusing a thumbnail cached by an older
+// version under the URL's old hash.
+func coverCacheKey(a source.Anime) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(source.OriginalCoverURL(a.Cover))))
 }
 
 // touchCover marks a cover as recently used for eviction.

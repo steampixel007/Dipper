@@ -104,7 +104,7 @@ Use a 4 DIP spacing base: 4, 8, 12, 16, 20, 24, 28, 32.
 | Top bar | Fixed 64 DIP slot, opaque canvas, content clipped beneath |
 | Controls | 8 DIP radius; 8 × 12 DIP normal padding |
 | Icon buttons | 36 × 36 DIP; meaningful accessible label and tooltip |
-| Posters | 8 DIP radius; width-to-height ratio 1:1.36 |
+| Posters | 8 DIP radius; original image ratio; 1:1.36 while loading |
 | Grid | 18 DIP horizontal gap; 24 DIP vertical gap |
 | Dialogs | 12 DIP radius; shared scroll and footer helpers |
 | Status badges | 4 DIP radius; 3 × 7 DIP padding |
@@ -160,12 +160,15 @@ Weekdays sit directly below. Inputs and buttons share a visual height.
 The entire poster tile is clickable, including its title and metadata. Browse
 opens group selection or existing resources; My Follows opens the episode
 library. Keep artwork large and metadata subordinate. Use the same radius,
-aspect ratio and hover behavior in both grids.
+image sizing and hover behavior in both grids.
 Align each tile's content to the top of its grid row. Wrapped titles and
 metadata can increase the row height, but must not shift neighboring posters
 downward.
-Show the whole poster with uniform scaling, centered in its fixed frame.
-Use the theme's neutral sunken surface for any unused space.
+Show the whole poster with uniform scaling at the grid column width. Derive
+each loaded poster's height from its original image ratio so its frame contains
+no unused space. Titles follow their own artwork; different image ratios may
+place titles at different heights. Loading and missing-image placeholders use
+the default 1:1.36 ratio until the original dimensions are available.
 
 Browse uses one quiet followed badge. My Follows shows actionable failures,
 paused/download status and new-resource counts. Automatic-follow status remains
