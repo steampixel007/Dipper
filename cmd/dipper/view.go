@@ -131,6 +131,20 @@ func cover(c *ui.Context, a Anime, w, h float32) {
 	coverWithRadius(c, a, w, h, coverRadius)
 }
 
+func posterCover(c *ui.Context, a Anime, width float32) {
+	height := width * 1.36
+	coversMu.Lock()
+	bitmap := covers[a.Cover]
+	coversMu.Unlock()
+	if bitmap != nil {
+		imageWidth, imageHeight := bitmap.Size()
+		if imageWidth > 0 && imageHeight > 0 {
+			height = width * float32(imageHeight) / float32(imageWidth)
+		}
+	}
+	coverWithRadius(c, a, width, height, browseCoverRadius)
+}
+
 func coverWithRadius(c *ui.Context, a Anime, w, h, radius float32) {
 	coversMu.Lock()
 	b := covers[a.Cover]
@@ -436,7 +450,7 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
 	b.Children(func() {
 		ui.Box(c).Radius(browseCoverRadius).
 			Shadow(0, 2, 6, -2, pal.cardShadow).Children(func() {
-			coverWithRadius(c, a, width, width*1.36, browseCoverRadius)
+			posterCover(c, a, width)
 			for _, sub := range s.Subscriptions {
 				if sub.AnimeID == a.ID {
 					ui.Text(c, "已追番").FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(pal.ink).Background(pal.paper).Border(1, pal.line).Radius(4).Padding(3, 7).Absolute().Top(8).Left(8)
@@ -1335,7 +1349,7 @@ func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
 	tile.Children(func() {
 		ui.Box(c).Radius(browseCoverRadius).
 			Shadow(0, 2, 6, -2, pal.cardShadow).Children(func() {
-			coverWithRadius(c, a, width, width*1.36, browseCoverRadius)
+			posterCover(c, a, width)
 			ui.Column(c).Absolute().Top(8).Left(8).Right(8).Gap(4).AlignItems(ui.Start).Children(func() {
 				if sub.CheckFailed {
 					badge(c, "检查失败", colors(c).amber, colors(c).amberWash)

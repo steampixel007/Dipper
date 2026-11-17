@@ -53,7 +53,7 @@ func TestStartupRestoresFollowingCover(t *testing.T) {
 				delete(covers, url)
 				delete(loadingCovers, url)
 			})
-			path := filepath.Join(s.CoverDir, fmt.Sprintf("%x", sha256.Sum256([]byte(url))))
+			path := filepath.Join(s.CoverDir, fmt.Sprintf("%x", sha256.Sum256([]byte(source.OriginalCoverURL(url)))))
 			if tc.cached {
 				if err := os.MkdirAll(s.CoverDir, 0755); err != nil {
 					t.Fatal(err)

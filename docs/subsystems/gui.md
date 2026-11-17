@@ -46,6 +46,16 @@ the label row at normal text size and move below the label when text is enlarged
 `visual_system_test.go` verifies rendered neutral chrome, count alignment and
 clickable navigation at normal and doubled text size.
 
+Browse and follow tiles use the column width and each loaded image's original
+ratio to determine poster height. This keeps the complete artwork visible
+without letterboxing or stretching. Placeholders keep a 1:1.36 ratio until the
+bitmap loads; bounded detail thumbnails retain their existing contain behavior.
+`poster_layout_test.go` checks all four artwork edges and the title's position
+for portrait, landscape and square covers in both grids and themes.
+`poster_source_test.go` decodes real captured source artwork through the loader,
+page grid and disk cache so a cropped thumbnail cannot hide behind synthetic
+bitmaps.
+
 Feedback uses a 130 ms easing curve; content uses 160 ms without spring bounce.
 Pages fade without translation. Posters lift 2 DIP on hover, return on press,
 and do not scale. Ordinary buttons press to 0.99 scale. Popovers move at most
@@ -433,23 +443,27 @@ network access.
 ## Covers
 
 `covers.go` loads a cover on a background goroutine and decodes it on the UI
-thread, because the bitmap cache belongs to that thread. The file is named by
-the SHA-256 of its URL and cached under `State.CoverDir` (the system cache
-directory by default, or `--data/covers` when explicitly configured). A cover whose load is
-in flight is marked in `loadingCovers`, set when the load is scheduled and
-cleared on decode, on failure, and for the rest when the load's context is
-cancelled. The flag keeps a second `loadCovers` call from fetching the same URL
-again. A card with a cover URL shows a Blocks indicator until its bitmap is
-available, including after a failed load; only a card without a cover URL shows
-the bird mark. Starting or refreshing the catalog also loads saved subscription
-covers from disk or the source, using the application context so a season change
-or unavailable catalog cannot cancel their restoration. A later catalog refresh
-retries missing covers. Loaded covers fit entirely within the
-fixed frame in browsing, detail and following views: scaled uniformly and
-centered without cropping. Unused space uses the theme's neutral `sunken`
-surface. `TestUICoverShowsWholePosterWithoutStretching` checks all four edges,
-uniform scaling, and the background in both themes.
-`blueWash` is the box for the loading and no-cover states.
+thread, because the bitmap cache belongs to that thread. The source's cover
+URLs carry width and height parameters that crop, rather than merely resize, a
+portrait poster into a square catalog thumbnail. `source.OriginalCoverURL`
+removes them before the request, so the cache and the grids receive complete
+artwork. The disk file
+is named by the SHA-256 of that normalized URL and cached under
+`State.CoverDir` (the system cache directory by default, or `--data/covers`
+when explicitly configured), so a thumbnail written by an older version is not
+reused as the original. A cover whose load is in flight is marked in
+`loadingCovers`, set when the load is scheduled and cleared on decode, on
+failure, and for the rest when the load's context is cancelled. The flag keeps
+a second `loadCovers` call from fetching the same URL again. A card with a
+cover URL shows a Blocks indicator until its bitmap is available, including
+after a failed load; only a card without a cover URL shows the bird mark.
+Starting or refreshing the catalog also loads saved subscription covers from
+disk or the source, using the application context so a season change or
+unavailable catalog cannot cancel their restoration. A later catalog refresh
+retries missing covers. Browse and following posters take their height from
+the decoded image's ratio, so the whole image shows without cropping,
+letterboxing or unused surface. Bounded detail thumbnails keep their fixed
+contain frame. `blueWash` is the box for the loading and no-cover states.
 
 Both caches are capped. The in-memory bitmap cache keeps the
 `coverCacheCap` most recently used covers; eviction runs when a load starts

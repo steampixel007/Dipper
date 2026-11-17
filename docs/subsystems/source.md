@@ -68,6 +68,11 @@ The cap is applied twice — once against `ContentLength` and once against the
 bytes actually read through an `io.LimitReader` — because a lying
 `Content-Length` must not be able to allocate unbounded memory.
 
+Catalog cover URLs carry `width` and `height` parameters that crop full poster
+art into square thumbnails. `Cover` removes both through `OriginalCoverURL`
+before requesting. The response is then the complete artwork; displaying it at a fixed
+square size would undo this at the last step.
+
 A non-200 response becomes `HTTPError`, carrying `RetryAfter` parsed from the
 header in either its seconds or its HTTP-date form. `RetryAfter` is pushed into
 `nextRequest` so the next request waits it out instead of hammering.

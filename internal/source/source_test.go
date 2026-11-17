@@ -530,6 +530,24 @@ func TestCoverValidationAndLimit(t *testing.T) {
 	}
 }
 
+func TestCoverRequestsOriginalMikanArtwork(t *testing.T) {
+	original := fixture(t, "poster-original.webp")
+	cropped := fixture(t, "poster-square.webp")
+	client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Has("width") || r.URL.Query().Has("height") {
+			w.Write(cropped)
+			return
+		}
+		w.Write(original)
+	})
+	for _, query := range []string{"width=400&height=400&format=webp", "width=400&height=560&format=webp", "height=400", "width=400"} {
+		got, err := client.Cover(t.Context(), client.base.String()+"/images/Bangumi/202610/8e2c071c.jpg?"+query)
+		if err != nil || !bytes.Equal(got, original) {
+			t.Errorf("cover %s returned a resized/cropped thumbnail: bytes=%d err=%v", query, len(got), err)
+		}
+	}
+}
+
 type repeatingReader struct{}
 
 func (repeatingReader) Read(p []byte) (int, error) {
