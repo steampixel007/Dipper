@@ -421,6 +421,10 @@ checks, regression evidence, and remaining native boundaries.
 
 ## Rendering
 
+Browse cards show their weekday only under the all-days filter. Selecting a
+weekday hides that repeated label and its separator, while keeping the resource
+action and download status.
+
 `ui_render.go` holds a fixed sample state used to render each page's layout
 without a live source or database. It is how a layout change is checked in
 isolation, and it is the reason `view_test.go` can assert on rendering without

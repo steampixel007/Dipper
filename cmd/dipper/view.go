@@ -447,8 +447,10 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
 		ui.Column(c).Gap(4).Children(func() {
 			ui.Text(c, a.Title).FontSize(textSize(c, textBody)).FontWeight(600).LineHeight(1.4).TextColor(pal.ink)
 			ui.Row(c).Wrap().Gap(6).Children(func() {
-				ui.Text(c, dayName(a.Day)).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
-				ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline)
+				if s.Day == -1 {
+					ui.Text(c, dayName(a.Day)).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
+					ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline)
+				}
 				label := "选择版本"
 				for _, sub := range s.Subscriptions {
 					if sub.AnimeID == a.ID {
