@@ -1,10 +1,36 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
 )
+
+func TestUIBrowseCardWeekdayOnlyInAllDays(t *testing.T) {
+	for day := -1; day <= 6; day++ {
+		t.Run(fmt.Sprint(day), func(t *testing.T) {
+			state := uiFixture(t, "browse")
+			state.Day = day
+			state.Subscriptions = nil
+			state.Downloads = nil
+			anime := state.Catalog[0]
+			if day >= 0 {
+				anime.Day = day
+			}
+			tester := ui.NewTester(func(c *ui.Context) {
+				state.animeCard(c, anime, 180)
+			}, 300, 500)
+			if got, want := tester.HasText(dayName(anime.Day)), day == -1; got != want {
+				t.Fatalf("card weekday visible = %v, want %v for day filter %d", got, want, day)
+			}
+			if got, want := tester.HasText("·"), day == -1; got != want {
+				t.Fatalf("weekday separator visible = %v, want %v for day filter %d", got, want, day)
+			}
+			uiRequireText(t, tester, anime.Title, "选择版本")
+		})
+	}
+}
 
 func TestUIBrowseFiltersShareOneCompactBand(t *testing.T) {
 	state := uiFixture(t, "browse")
