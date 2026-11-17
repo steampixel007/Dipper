@@ -12,62 +12,90 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-func TestUICoverFillsFrameWithoutStretching(t *testing.T) {
-	// A gray poster with a centered green cross: the cross measures the
-	// scale on both axes (stretch shows as unequal arms), and the gray body
-	// shows where the image leaves filler margins.
+func TestUICoverShowsWholePosterWithoutStretching(t *testing.T) {
 	gray := color.RGBA{90, 90, 100, 255}
 	marker := color.RGBA{30, 190, 40, 255}
-	for _, landscape := range []bool{false, true} {
-		orientation := "portrait"
-		w, h := 400, 560
-		if landscape {
-			orientation = "landscape"
-			w, h = 560, 400
-		}
+	for _, dimensions := range [][2]int{{400, 560}, {400, 700}, {700, 400}, {400, 400}} {
+		w, h := dimensions[0], dimensions[1]
 		poster := image.NewRGBA(image.Rect(0, 0, w, h))
 		draw.Draw(poster, poster.Bounds(), image.NewUniform(gray), image.Point{}, draw.Src)
-		const arm, bar = 100, 12
+		edges := []struct {
+			name  string
+			rect  image.Rectangle
+			color color.RGBA
+		}{
+			{"top", image.Rect(w/3, 0, 2*w/3, 32), color.RGBA{220, 30, 40, 255}},
+			{"bottom", image.Rect(w/3, h-32, 2*w/3, h), color.RGBA{30, 60, 220, 255}},
+			{"left", image.Rect(0, h/3, 32, 2*h/3), color.RGBA{220, 150, 30, 255}},
+			{"right", image.Rect(w-32, h/3, w, 2*h/3), color.RGBA{30, 190, 210, 255}},
+		}
+		for _, edge := range edges {
+			draw.Draw(poster, edge.rect, image.NewUniform(edge.color), image.Point{}, draw.Src)
+		}
+		const arm, bar = 100, 32
 		for _, r := range []image.Rectangle{
 			image.Rect(w/2-arm, h/2-bar/2, w/2+arm, h/2+bar/2),
 			image.Rect(w/2-bar/2, h/2-arm, w/2+bar/2, h/2+arm),
 		} {
 			draw.Draw(poster, r, image.NewUniform(marker), image.Point{}, draw.Src)
 		}
-		// The equal-arms check has a 2-px floor, so it discriminates only at
-		// the largest card; keep a 180x245 entry in the table.
 		for _, size := range [][2]int{{180, 245}, {52, 72}, {68, 94}} {
-			t.Run(fmt.Sprintf("%s/%dx%d", orientation, size[0], size[1]), func(t *testing.T) {
-				url := t.Name()
-				covers[url] = ui.NewBitmap(poster)
-				t.Cleanup(func() { delete(covers, url) })
-				tt := ui.NewTester(func(c *ui.Context) {
-					cover(c, Anime{Cover: url}, float32(size[0]), float32(size[1]))
-				}, size[0], size[1])
-				frame := tt.Image()
-				for _, margin := range []image.Point{
-					{X: size[0] / 2, Y: 1}, {X: size[0] / 2, Y: size[1] - 2},
-					{X: 1, Y: size[1] / 2}, {X: size[0] - 2, Y: size[1] / 2},
-				} {
-					if got := frame.RGBAAt(margin.X, margin.Y); near(got, color.RGBA{lightPalette.blueWash.R, lightPalette.blueWash.G, lightPalette.blueWash.B, lightPalette.blueWash.A}, 15) {
-						t.Errorf("cover leaves filler at %v = %v; want the image to fill the frame", margin, got)
-					}
-				}
-				minX, minY, maxX, maxY := size[0], size[1], 0, 0
-				for y := range size[1] {
-					for x := range size[0] {
-						if near(frame.RGBAAt(x, y), marker, 45) {
-							minX, minY, maxX, maxY = min(minX, x), min(minY, y), max(maxX, x), max(maxY, y)
+			for _, dark := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%dx%d/%dx%d/dark%v", w, h, size[0], size[1], dark), func(t *testing.T) {
+					url := t.Name()
+					covers[url] = ui.NewBitmap(poster)
+					t.Cleanup(func() { delete(covers, url) })
+					tt := ui.NewTester(func(c *ui.Context) {
+						installTheme(c, dark)
+						cover(c, Anime{Cover: url}, float32(size[0]), float32(size[1]))
+					}, size[0], size[1])
+					frame := tt.Image()
+					scale := min(float32(size[0])/float32(w), float32(size[1])/float32(h))
+					offsetX := (float32(size[0]) - float32(w)*scale) / 2
+					offsetY := (float32(size[1]) - float32(h)*scale) / 2
+					for _, edge := range edges {
+						centerX := float32(edge.rect.Min.X+edge.rect.Max.X) / 2
+						centerY := float32(edge.rect.Min.Y+edge.rect.Max.Y) / 2
+						point := image.Pt(int(offsetX+centerX*scale), int(offsetY+centerY*scale))
+						if got := frame.RGBAAt(point.X, point.Y); !near(got, edge.color, 45) {
+							t.Errorf("%s poster edge is cropped or misplaced at %v: got %v, want %v", edge.name, point, got, edge.color)
 						}
 					}
-				}
-				if minX > maxX {
-					t.Fatal("centered cross marker is not visible; the crop ate it")
-				}
-				if armX, armY := maxX-minX+1, maxY-minY+1; max(armX-armY, armY-armX) > 2 {
-					t.Errorf("cover cross measures %d×%d; want equal arms (no stretching)", armX, armY)
-				}
-			})
+					palette := lightPalette
+					if dark {
+						palette = darkPalette
+					}
+					background := color.RGBA{palette.sunken.R, palette.sunken.G, palette.sunken.B, palette.sunken.A}
+					if offsetX >= 3 {
+						for _, point := range []image.Point{{X: 1, Y: size[1] / 2}, {X: size[0] - 2, Y: size[1] / 2}} {
+							if got := frame.RGBAAt(point.X, point.Y); !near(got, background, 15) {
+								t.Errorf("side margin at %v = %v, want neutral background %v", point, got, background)
+							}
+						}
+					}
+					if offsetY >= 3 {
+						for _, point := range []image.Point{{X: size[0] / 2, Y: 1}, {X: size[0] / 2, Y: size[1] - 2}} {
+							if got := frame.RGBAAt(point.X, point.Y); !near(got, background, 15) {
+								t.Errorf("vertical margin at %v = %v, want neutral background %v", point, got, background)
+							}
+						}
+					}
+					minX, minY, maxX, maxY := size[0], size[1], 0, 0
+					for y := range size[1] {
+						for x := range size[0] {
+							if near(frame.RGBAAt(x, y), marker, 45) {
+								minX, minY, maxX, maxY = min(minX, x), min(minY, y), max(maxX, x), max(maxY, y)
+							}
+						}
+					}
+					if minX > maxX {
+						t.Fatal("centered cross marker is not visible")
+					}
+					if armX, armY := maxX-minX+1, maxY-minY+1; max(armX-armY, armY-armX) > 2 {
+						t.Errorf("cover cross measures %d×%d; want equal arms (no stretching)", armX, armY)
+					}
+				})
+			}
 		}
 	}
 }
