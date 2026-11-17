@@ -161,6 +161,11 @@ The entire poster tile is clickable, including its title and metadata. Browse
 opens group selection or existing resources; My Follows opens the episode
 library. Keep artwork large and metadata subordinate. Use the same radius,
 aspect ratio and hover behavior in both grids.
+Align each tile's content to the top of its grid row. Wrapped titles and
+metadata can increase the row height, but must not shift neighboring posters
+downward.
+Show the whole poster with uniform scaling, centered in its fixed frame.
+Use the theme's neutral sunken surface for any unused space.
 
 Browse uses one quiet followed badge. My Follows shows actionable failures,
 paused/download status and new-resource counts. Automatic-follow status remains

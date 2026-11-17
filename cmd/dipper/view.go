@@ -136,7 +136,7 @@ func coverWithRadius(c *ui.Context, a Anime, w, h, radius float32) {
 	b := covers[a.Cover]
 	coversMu.Unlock()
 	if b != nil {
-		ui.Image(c, b).Size(w, h).Fit(ui.Cover).Radius(radius)
+		ui.Image(c, b).Size(w, h).Fit(ui.Contain).Background(colors(c).sunken).Radius(radius)
 	} else if a.Cover != "" {
 		ui.Box(c).Size(w, h).Radius(radius).Clip().Background(colors(c).blueWash).Center().Children(func() {
 			loading.Blocks(c, loading.Options{Size: 26, Color: colors(c).blue}).Label("正在加载封面")
@@ -424,7 +424,7 @@ func (s *State) browseDays(c *ui.Context) {
 
 func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
 	pal := colors(c)
-	b := ui.ButtonBase(c.Key("anime-" + a.ID)).Label("查看 " + a.Title).Width(width).Column().Gap(10).Padding(0).AlignItems(ui.Stretch).Radius(browseCoverRadius).Cursor(ui.CursorPointer)
+	b := ui.ButtonBase(c.Key("anime-" + a.ID)).Label("查看 " + a.Title).Width(width).Column().Justify(ui.Start).Gap(10).Padding(0).AlignItems(ui.Stretch).Radius(browseCoverRadius).Cursor(ui.CursorPointer)
 	pose := ui.Pose{}
 	if b.Hovered() {
 		pose.Y = -2
@@ -1323,7 +1323,7 @@ func gridColumns(width float32) (int, float32) {
 func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
 	a := s.anime(sub.AnimeID)
 	pal := colors(c)
-	tile := ui.ButtonBase(c.Key("subscription-" + sub.ID)).Label("打开追番 " + sub.GroupName).Width(width).Column().Gap(10).Padding(0).AlignItems(ui.Stretch).Radius(browseCoverRadius).Cursor(ui.CursorPointer)
+	tile := ui.ButtonBase(c.Key("subscription-" + sub.ID)).Label("打开追番 " + sub.GroupName).Width(width).Column().Justify(ui.Start).Gap(10).Padding(0).AlignItems(ui.Stretch).Radius(browseCoverRadius).Cursor(ui.CursorPointer)
 	pose := ui.Pose{}
 	if tile.Hovered() {
 		pose.Y = -2

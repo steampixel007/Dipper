@@ -444,9 +444,11 @@ available, including after a failed load; only a card without a cover URL shows
 the bird mark. Starting or refreshing the catalog also loads saved subscription
 covers from disk or the source, using the application context so a season change
 or unavailable catalog cannot cancel their restoration. A later catalog refresh
-retries missing covers. Loaded covers fill the
-fixed frame in browsing, detail and following views: scaled uniformly,
-centered, and cropped to the frame, so a poster never shows filler beside it.
+retries missing covers. Loaded covers fit entirely within the
+fixed frame in browsing, detail and following views: scaled uniformly and
+centered without cropping. Unused space uses the theme's neutral `sunken`
+surface. `TestUICoverShowsWholePosterWithoutStretching` checks all four edges,
+uniform scaling, and the background in both themes.
 `blueWash` is the box for the loading and no-cover states.
 
 Both caches are capped. The in-memory bitmap cache keeps the
