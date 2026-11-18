@@ -86,6 +86,36 @@ func TestClientInterruptedRetryRespectsCancellationAndRateLimit(t *testing.T) {
 	}
 }
 
+type interruptedRetryTransport func(*http.Request) (*http.Response, error)
+
+func (transport interruptedRetryTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	return transport(request)
+}
+
+func TestClientReportsCancellationWhenTransportReturnsEOF(t *testing.T) {
+	for _, interruption := range []error{io.EOF, io.ErrUnexpectedEOF} {
+		for _, cancelOnAttempt := range []int{1, 2} {
+			ctx, cancel := context.WithCancel(t.Context())
+			client := New("http://127.0.0.1")
+			client.interval = 0
+			requests := 0
+			client.http.Transport = interruptedRetryTransport(func(*http.Request) (*http.Response, error) {
+				requests++
+				if requests == cancelOnAttempt {
+					cancel()
+				}
+				return nil, interruption
+			})
+
+			items, err := client.Feed(ctx, "4063", "370")
+			cancel()
+			if items != nil || !errors.Is(err, context.Canceled) || requests != cancelOnAttempt {
+				t.Errorf("cancellation with %v: items=%v requests=%d want=%d err=%v", interruption, items, requests, cancelOnAttempt, err)
+			}
+		}
+	}
+}
+
 func TestClientDoesNotRetryCompleteInvalidResponses(t *testing.T) {
 	for _, response := range []struct {
 		name   string

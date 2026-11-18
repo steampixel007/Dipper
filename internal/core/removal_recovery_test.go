@@ -38,7 +38,10 @@ func TestRecoveryCompletesInterruptedRemoval(t *testing.T) {
 	if err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, func() bool { return d2.removeCount() == 1 })
+	c.wg.Wait()
+	if d2.removeCount() != 1 {
+		t.Fatalf("recovery did not remove the old task exactly once: attempts=%d", d2.removeCount())
+	}
 	if d2.count() != 0 {
 		t.Fatalf("recovery resubmitted a deleted task: calls=%d", d2.count())
 	}
@@ -74,7 +77,10 @@ func TestRecoveryCompletesInterruptedRedownload(t *testing.T) {
 	if err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, func() bool { return d2.count() == 1 })
+	c.wg.Wait()
+	if d2.count() != 1 {
+		t.Fatalf("recovery did not resubmit the task exactly once: calls=%d", d2.count())
+	}
 	if d2.removeCount() != 1 {
 		t.Fatalf("recovery skipped the engine half: attempts=%d", d2.removeCount())
 	}
