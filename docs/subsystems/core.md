@@ -311,7 +311,8 @@ Points a change is expected to prove:
 - A crash after the removal tombstone commits is completed by startup
   recovery: the engine half is re-asked, the record finalizes, and a
   failing downloader backs off without resubmitting the task, with each
-  failed attempt moving the next one further out.
+  failed attempt moving the next one further out. The removal and redownload
+  tests wait for startup work to finish before checking the committed records.
 - A re-download that arrives while a removal is in flight, or after a failed
   removal left its tombstone, survives: it is submitted and recovery does not
   remove it.

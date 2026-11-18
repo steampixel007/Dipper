@@ -56,7 +56,8 @@ callers.
 
 An EOF while receiving headers or reading the body gets one retry. Both attempts
 share the gate, the 30-second operation timeout and the rate limit; an incomplete
-body is closed and discarded before retrying. Cancellation stops the operation.
+body is closed and discarded before retrying. If either attempt encounters an
+EOF and its context has already ended, the operation returns the context error.
 HTTP statuses, challenges and parsing failures do not trigger this retry.
 
 Redirects are followed at most five times, and every redirect target must still
