@@ -1,4 +1,4 @@
-<!-- reviewed-through: 3604636 (2026-11-08 02:28 +0800) -->
+<!-- reviewed-through: bfa113a (2026-11-19 00:57 +0800) -->
 # Lessons from merged work
 
 Each day the commits since the `reviewed-through` mark above are reviewed:
@@ -117,6 +117,21 @@ once it moves.
 - bb24820 put 简/繁/外挂/内嵌/内封 into `flagsPattern` under `\b`, but Go's `\b` is an ASCII word boundary, so those alternatives were dead; a flag standing alone ("[1080P][内封][MKV]", "[中日外挂]") lost its label even though the captured testdata contains both forms.
 - Fixed in the night-audit worktree: a separate pattern bounds CJK flags with `(?:^|[^一-鿿])`. `TestReleaseTagsRecognizeCommonLabels` fails on the old code (REAL RED: "\"[组] 剧名 [1080P][内封][MKV]\": got [1080p mkv], want [1080p mkv 内封]").
 - Seen 1× (2026-11-08).
+
+**Check a strict field parser against captured pages with real formatting variants.**
+- The detail table for Mikan 4071 included `1,017.6 MB`. The size parser rejected the separator, so one row made the whole detail unavailable, including the synopsis and subtitle groups.
+- fc0a988 accepts valid three-digit grouping, keeps rejecting malformed grouping, and adds the captured page as a regression fixture.
+- Seen 1× (2026-11-20).
+
+**Define the image layout against both the source asset and the rendered frame.**
+- 9b019a4 fit the complete decoded image inside a shared frame with neutral margins. That still allowed upstream thumbnails to omit artwork edges and the shared frame to add empty space around differently shaped covers.
+- 2aee3cf fetches and caches original artwork, sizes browse and following covers by natural aspect ratio, and covers artwork edges and cached thumbnails in regression tests.
+- Seen 1× (2026-11-20).
+
+**Wait for the durable effect before asserting recovery.**
+- The interrupted removal and redownload tests polled downloader call counts before checking stored records. A count could change before startup recovery had finished writing those records, so a correct recovery could fail the test.
+- 334c6bb waits for startup work to finish in both tests with the scheduler disabled, then checks the counts and the committed state.
+- Seen 1× (2026-11-20).
 
 ## Moved to the code standards
 

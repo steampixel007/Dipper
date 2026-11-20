@@ -6,7 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/anacrolix/generics v0.2.0
 	github.com/anacrolix/torrent v1.62.0
-	github.com/egoist/mygo v0.8.3
+	github.com/egoist/mygo v0.9.0
 	golang.org/x/sys v0.50.0
 	golang.org/x/time v0.16.0
 	modernc.org/sqlite v1.62.0
