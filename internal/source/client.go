@@ -167,11 +167,18 @@ func (c *Client) get(ctx context.Context, rawURL string, limit int64) ([]byte, *
 	case <-ctx.Done():
 		return nil, nil, ctx.Err()
 	}
-	body, finalURL, err := c.getOnce(ctx, rawURL, limit)
-	if ctx.Err() == nil && (errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)) {
-		return c.getOnce(ctx, rawURL, limit)
+	for attemptsLeft := 2; ; attemptsLeft-- {
+		body, finalURL, err := c.getOnce(ctx, rawURL, limit)
+		if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+			return body, finalURL, err
+		}
+		if contextErr := ctx.Err(); contextErr != nil {
+			return nil, nil, contextErr
+		}
+		if attemptsLeft == 1 {
+			return body, finalURL, err
+		}
 	}
-	return body, finalURL, err
 }
 
 func (c *Client) getOnce(ctx context.Context, rawURL string, limit int64) ([]byte, *url.URL, error) {
