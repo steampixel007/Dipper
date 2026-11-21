@@ -153,12 +153,12 @@ func coverWithRadius(c *ui.Context, a Anime, w, h, radius float32) {
 	if b != nil {
 		ui.Image(c, b).Size(w, h).Fit(ui.Contain).Background(colors(c).sunken).Radius(radius)
 	} else if a.Cover != "" {
-		ui.Box(c).Size(w, h).Radius(radius).Clip().Background(colors(c).blueWash).Center().Children(func() {
-			loading.Blocks(c, loading.Options{Size: 26, Color: colors(c).blue}).Label("正在加载封面")
+		ui.Box(c).Size(w, h).Radius(radius).Clip().Background(colors(c).sunken).Center().Children(func() {
+			loading.Blocks(c, loading.Options{Size: 26, Color: colors(c).muted}).Label("正在加载封面")
 		})
 	} else {
 		size := min(w, h) * 0.62
-		ui.Box(c).Size(w, h).Radius(radius).Clip().Background(colors(c).blueWash).Center().Children(func() { ui.Image(c, brandLogo).Size(size, size).Background(colors(c).brandWash).Radius(8) })
+		ui.Box(c).Size(w, h).Radius(radius).Clip().Background(colors(c).sunken).Center().Children(func() { ui.Image(c, brandLogo).Size(size, size).Background(colors(c).brandWash).Radius(8) })
 	}
 }
 
@@ -237,7 +237,7 @@ func (s *State) sidebar(c *ui.Context) {
 				b := ui.ButtonBase(c.Key("nav-"+nav.id)).Label(current.label).FillWidth().MinHeight(44).Padding(10, 14).Gap(12).Radius(controlRadius).Cursor(ui.CursorPointer)
 				tactile(b)
 				if active {
-					b.Background(colors(c).paper).TextColor(colors(c).ink).FontWeight(600)
+					b.Background(pal.blueWash).TextColor(pal.blue).FontWeight(600)
 				} else if b.Hovered() {
 					b.Background(colors(c).line)
 				}
@@ -293,7 +293,7 @@ func (s *State) sidebar(c *ui.Context) {
 			b := ui.ButtonBase(c.Key("nav-settings")).MinHeight(44).Padding(10, 14).Gap(12).Radius(controlRadius).Children(func() { icon(c, "settings"); ui.Text(c, "设置").FontSize(textSize(c, textBody)) }).OnClick(func() { s.enterPage("settings"); s.Notice = "" })
 			tactile(b)
 			if s.Page == "settings" {
-				b.Background(colors(c).paper).TextColor(colors(c).ink)
+				b.Background(pal.blueWash).TextColor(pal.blue).FontWeight(600)
 			} else if b.Hovered() {
 				b.Background(colors(c).line)
 			}
@@ -735,7 +735,7 @@ func (s *State) ruleEditor(c *ui.Context) {
 			helper string
 			words  []string
 			color  ui.Color
-		}{{"只要这些词", "标题里必须都有", s.Rule.All, colors(c).blue}, {"不要这些词", "标题里出现任意一个就不下载", s.Rule.None, colors(c).avoidInk}} {
+		}{{"只要这些词", "标题里必须都有", s.Rule.All, colors(c).blue}, {"不要这些词", "标题里出现任意一个就不下载", s.Rule.None, colors(c).muted}} {
 			k := kind
 			ui.Column(c).Gap(6).Children(func() {
 				ui.Text(c, k.title).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(k.color)
@@ -774,7 +774,7 @@ func (s *State) ruleEditor(c *ui.Context) {
 		ui.TextInput(c.Key("keyword"), &s.Keyword).Label("标题关键词").Placeholder("输入标题中的词").FillWidth().MinHeight(inputHeight(c))
 		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
 			secondary(c, "want-custom", "只要这个词", func() { s.setWord(s.Keyword, wordWant); s.Keyword = "" }).FontSize(textSize(c, textBody)).Padding(6, 10).TextColor(colors(c).blue).Disabled(strings.TrimSpace(s.Keyword) == "")
-			secondary(c, "avoid-custom", "不要这个词", func() { s.setWord(s.Keyword, wordAvoid); s.Keyword = "" }).FontSize(textSize(c, textBody)).Padding(6, 10).TextColor(colors(c).avoidInk).Disabled(strings.TrimSpace(s.Keyword) == "")
+			secondary(c, "avoid-custom", "不要这个词", func() { s.setWord(s.Keyword, wordAvoid); s.Keyword = "" }).FontSize(textSize(c, textBody)).Padding(6, 10).TextColor(colors(c).muted).Disabled(strings.TrimSpace(s.Keyword) == "")
 		})
 		quiet(c, "toggle-aliases", "添加同义写法", func() { s.ShowAliases = !s.ShowAliases }).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Padding(3, 0)
 		if s.ShowAliases {
@@ -793,7 +793,7 @@ func (s *State) tagChip(c *ui.Context, key, word string) {
 	if choice := s.wordChoice(word); choice == wordWant {
 		col, bg = colors(c).blue, colors(c).blueWash
 	} else if choice == wordAvoid {
-		col, bg = colors(c).avoidInk, colors(c).avoidWash
+		col, bg = colors(c).muted, colors(c).sunken
 	}
 	b := quiet(c, key, word, func() { s.WordAnchor = key; s.WordOpen = true }).Label("筛选 "+word).FontSize(textSize(c, textCaption)).Padding(4, 8).Radius(4).Border(1, colors(c).line).Background(bg).TextColor(col).Tooltip("选择只要、不要，或移除条件")
 	if s.WordAnchor == key {
@@ -810,7 +810,7 @@ func (s *State) wordChip(c *ui.Context, key, word string) {
 	}
 	if choice == wordAvoid {
 		label = "− " + word
-		col, bg = colors(c).avoidInk, colors(c).avoidWash
+		col, bg = colors(c).muted, colors(c).sunken
 	}
 	b := quiet(c, key, label, func() { s.WordAnchor = key; s.WordOpen = true }).Label("筛选 "+word).FontSize(textSize(c, textCaption)).Padding(5, 8).Radius(5).Border(1, colors(c).line).Background(bg).TextColor(col).Tooltip("选择只要、不要，或移除条件")
 	if s.WordAnchor == key {
@@ -827,7 +827,7 @@ func (s *State) wordPopover(c *ui.Context, anchor ui.Element, key, word string) 
 			label, description string
 			choice             wordChoice
 			color, bg          ui.Color
-		}{{"只要包含", "标题里必须有这个词", wordWant, colors(c).blue, colors(c).blueWash}, {"不要包含", "标题里有这个词就不下载", wordAvoid, colors(c).avoidInk, colors(c).avoidWash}} {
+		}{{"只要包含", "标题里必须有这个词", wordWant, colors(c).blue, colors(c).blueWash}, {"不要包含", "标题里有这个词就不下载", wordAvoid, colors(c).muted, colors(c).sunken}} {
 			o := option
 			count := s.countRuleMatches(ruleWithWord(s.Rule, word, o.choice))
 			button := ui.ButtonBase(c.Key(fmt.Sprintf("word-choice-%d", o.choice))).Label(map[wordChoice]string{wordWant: "只要含「" + word + "」的", wordAvoid: "不要含「" + word + "」的"}[o.choice]).Column().FillWidth().Gap(5).Padding(12).Radius(6).Border(1, colors(c).line).Background(colors(c).paper).Cursor(ui.CursorPointer)
@@ -1461,9 +1461,17 @@ func (s *State) library(c *ui.Context) {
 	}
 	indices := s.libraryEpisodes(sub.AnimeID)
 	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
-		ui.Row(c).Padding(18, 28, 0).Gap(6).Children(func() {
-			iconButton(c, "back-following", "返回我的追番", "back", func() { s.enterPage("following") })
-			quiet(c, "back-following-list", "返回我的追番", func() { s.enterPage("following") }).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted)
+		ui.Row(c).Padding(12, 16, 0).Children(func() {
+			back := ui.ButtonBase(c.Key("back-following")).Label("返回我的追番").
+				Padding(8, 12).Gap(6).AlignItems(ui.Center).Radius(controlRadius).
+				FontSize(textSize(c, textCaption)).TextColor(colors(c).muted).Cursor(ui.CursorPointer)
+			if back.Hovered() {
+				back.Background(colors(c).chrome)
+			}
+			tactile(back).Children(func() {
+				icon(c, "back")
+				ui.Text(c, "返回我的追番")
+			}).OnClick(func() { s.enterPage("following") })
 		})
 		s.libraryHero(c, sub)
 		ui.Divider(c).Background(colors(c).line)
@@ -1471,56 +1479,69 @@ func (s *State) library(c *ui.Context) {
 			s.empty(c, "还没有下载完成的剧集", "正在下载的剧集也会显示；完成后就能播放。", "查看资源", func() { s.viewSubscriptionResources(sub.ID) })
 			return
 		}
-		ui.Scroll(c.Key("episode-list")).Grow(1).MinHeight(0).Padding(14, 28, 24).Children(func() {
-			ui.Column(c).Gap(12).Children(func() {
-				for _, i := range indices {
-					idx := i
-					d := s.Downloads[idx]
-					ui.Row(c.Key("episode-"+d.ID)).Wrap().Gap(controlGap).Padding(14, 16).Background(colors(c).paper).Border(1, colors(c).line).Radius(8).Children(func() {
-						ui.Text(c, episodeLabel(d.Episode)).FontSize(textSize(c, textBody)).FontWeight(600)
-						switch {
-						case d.Failed:
-							badge(c, "失败", colors(c).amber, colors(c).amberWash)
-						case d.Progress < 1 && d.Stopped:
-							badge(c, "已停止", colors(c).muted, colors(c).canvas)
-						case d.Progress < 1 && d.Paused:
-							badge(c, "已暂停", colors(c).muted, colors(c).canvas)
-						case d.Progress < 1:
-							badge(c, fmt.Sprintf("下载中 %d%%", int(d.Progress*100)), colors(c).blue, colors(c).blueWash)
-						default:
-							badge(c, "已完成", colors(c).green, colors(c).greenWash)
-						}
-						ui.Column(c).FillWidth().MinWidth(0).Gap(4).Children(func() {
-							ui.Text(c, d.Title).FontSize(textSize(c, textBody)).TextColor(colors(c).muted)
-							if d.Error != "" {
-								ui.Text(c, d.Error).FontSize(textSize(c, textCaption)).TextColor(colors(c).amber)
-							}
-						})
-						switch {
-						case d.Failed:
-							quiet(c, "retry-episode-"+d.ID, "重试", func() { s.retryDownload(idx) }).Label("重试 " + d.ID).FontSize(textSize(c, textBody)).TextColor(colors(c).blue).Disabled(s.Busy)
-						case d.Progress < 1 && (d.Paused || d.Stopped):
-							quiet(c, "resume-episode-"+d.ID, "继续", func() { s.pauseDownload(idx) }).Label("继续 " + d.ID).FontSize(textSize(c, textBody)).TextColor(colors(c).blue).Disabled(s.Busy)
-						case d.Progress >= 1:
-							quiet(c, "play-episode-"+d.ID, "播放", func() { s.playDownload(idx) }).Label("播放 " + d.ID).FontSize(textSize(c, textBody)).TextColor(colors(c).blue).Disabled(s.Busy)
-							quiet(c, "open-episode-folder-"+d.ID, "打开文件夹", func() {
-								if s.OpenFolder != nil {
-									s.OpenFolder(d.Folder)
-								}
-							}).Label("打开文件夹 " + d.ID).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Disabled(s.Busy || s.OpenFolder == nil || d.Folder == "")
-							ui.PopoverMenuButton(c.Key("episode-menu-"+d.ID), "更多", func(menu *ui.Menu) {
-								if menu.Item("查看文件").Disabled(s.Busy).Chosen() {
-									s.openFiles(idx)
-								}
-								if menu.Item("删除或重新下载").Disabled(s.Busy).Chosen() {
-									s.RemovePrompt, s.RemoveID = true, d.ID
-								}
-							}).Label("剧集操作 " + d.ID).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
-						}
-					})
+		ui.Scroll(c.Key("episode-list")).Grow(1).MinHeight(0).Padding(0, 28, 24).Children(func() {
+			for position, index := range indices {
+				if position > 0 {
+					ui.Divider(c).Background(colors(c).line)
+				}
+				s.libraryEpisodeRow(c, index)
+			}
+		})
+	})
+}
+
+func (s *State) libraryEpisodeRow(c *ui.Context, index int) {
+	download := s.Downloads[index]
+	palette := colors(c)
+	ui.Row(c.Key("episode-"+download.ID)).AlignItems(ui.Center).Gap(16).Padding(14, 0).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(4).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(8).Children(func() {
+				ui.Text(c, episodeLabel(download.Episode)).FontSize(textSize(c, textBody)).FontWeight(600)
+				switch {
+				case download.Failed:
+					badge(c, "失败", palette.amber, palette.amberWash)
+				case download.Progress >= 1:
+					caption(c, "已完成")
+				case download.Stopped:
+					caption(c, "已停止")
+				case download.Paused:
+					caption(c, "已暂停")
+				default:
+					caption(c, fmt.Sprintf("下载中 %d%%", int(download.Progress*100)))
 				}
 			})
+			caption(c, download.Title)
+			if download.Error != "" {
+				ui.Text(c, download.Error).FontSize(textSize(c, textCaption)).TextColor(palette.amber)
+			}
 		})
+		switch {
+		case download.Failed:
+			secondary(c, "retry-episode-"+download.ID, "重试", func() { s.retryDownload(index) }).
+				Label("重试 " + download.ID).MinHeight(40).Shrink(0).Disabled(s.Busy)
+		case download.Progress < 1 && (download.Paused || download.Stopped):
+			secondary(c, "resume-episode-"+download.ID, "继续", func() { s.pauseDownload(index) }).
+				Label("继续 " + download.ID).MinHeight(40).Shrink(0).Disabled(s.Busy)
+		case download.Progress >= 1:
+			ui.Row(c).AlignItems(ui.Center).Gap(8).Shrink(0).Children(func() {
+				primary(c, "play-episode-"+download.ID, "播放", func() { s.playDownload(index) }).
+					Label("播放 " + download.ID).MinWidth(72).MinHeight(40).Disabled(s.Busy)
+				iconButton(c, "open-episode-folder-"+download.ID, "打开文件夹", "folder", func() {
+					if s.OpenFolder != nil {
+						s.OpenFolder(download.Folder)
+					}
+				}).Label("打开文件夹 "+download.ID).Size(40, 40).Disabled(s.Busy || s.OpenFolder == nil || download.Folder == "")
+				ui.PopoverMenuButton(c.Key("episode-menu-"+download.ID), "更多", func(menu *ui.Menu) {
+					if menu.Item("查看文件").Disabled(s.Busy).Chosen() {
+						s.openFiles(index)
+					}
+					if menu.Item("删除或重新下载").Disabled(s.Busy).Chosen() {
+						s.RemovePrompt, s.RemoveID = true, download.ID
+					}
+				}, ui.PopoverMenuButtonOptions{At: ui.AnchorBottomEnd, Self: ui.AnchorTopEnd}).
+					Label("剧集操作 " + download.ID).FontSize(textSize(c, textCaption)).MinHeight(40).Disabled(s.Busy)
+			})
+		}
 	})
 }
 
@@ -1692,7 +1713,7 @@ func (s *State) downloads(c *ui.Context) {
 			})
 		})
 		ui.Row(c).Wrap().Gap(12).Children(func() {
-			if ui.TextInput(c.Key("download-search"), &s.DownloadSearch).Label("搜索下载").Placeholder("搜索番剧或任务").Width(260).MinHeight(inputHeight(c)).Background(colors(c).sunken).Changed() {
+			if ui.TextInput(c.Key("download-search"), &s.DownloadSearch).Label("搜索下载").Placeholder("搜索番剧或任务").Width(260).MinHeight(inputHeight(c)).Changed() {
 				s.DownloadScroll = ui.ScrollState{}
 			}
 			if strings.TrimSpace(s.DownloadSearch) != "" {
@@ -1875,18 +1896,18 @@ func (s *State) downloads(c *ui.Context) {
 											badge(c, episodeLabel(d.Episode), colors(c).muted, colors(c).canvas)
 										}
 										status := "下载中"
-										col := colors(c).blue
+										col, wash := colors(c).blue, colors(c).blueWash
 										switch {
 										case d.Failed:
-											status, col = "失败", colors(c).amber
+											status, col, wash = "失败", colors(c).amber, colors(c).amberWash
 										case d.Stopped && d.Progress < 1:
-											status, col = "已停止", colors(c).muted
+											status, col, wash = "已停止", colors(c).muted, colors(c).canvas
 										case d.Paused:
-											status, col = "已暂停", colors(c).muted
+											status, col, wash = "已暂停", colors(c).muted, colors(c).canvas
 										case d.Progress >= 1:
-											status, col = "已完成，分享中", colors(c).green
+											status, col, wash = "已完成，分享中", colors(c).green, colors(c).greenWash
 										}
-										badge(c, status, col, colors(c).canvas)
+										badge(c, status, col, wash)
 									})
 									ui.Text(c, d.Title).FontSize(textSize(c, textBody)).TextColor(colors(c).muted)
 									progress := ui.Box(c.Key("transfer-progress")).Height(5)
@@ -2241,7 +2262,7 @@ func (s *State) titlePreferences(c *ui.Context) {
 							label     string
 							choice    wordChoice
 							color, bg ui.Color
-						}{{"不限", wordUnrestricted, colors(c).ink, colors(c).canvas}, {"＋ 只要", wordWant, colors(c).blue, colors(c).blueWash}, {"− 不要", wordAvoid, colors(c).avoidInk, colors(c).avoidWash}} {
+						}{{"不限", wordUnrestricted, colors(c).ink, colors(c).canvas}, {"＋ 只要", wordWant, colors(c).blue, colors(c).blueWash}, {"− 不要", wordAvoid, colors(c).muted, colors(c).sunken}} {
 							o := option
 							b := quiet(c, fmt.Sprintf("suggested-%d-%d", i, o.choice), o.label, func() { s.setWord(w, o.choice) }).Label(o.label+" "+w).Grow(1).Justify(ui.Center).FontSize(textSize(c, textCaption)).Padding(controlPaddingY, controlPaddingX).Radius(controlRadius).Border(1, colors(c).line)
 							if s.wordChoice(w) == o.choice {

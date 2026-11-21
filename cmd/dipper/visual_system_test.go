@@ -2,10 +2,41 @@ package main
 
 import (
 	"image"
+	"image/color"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
 )
+
+func TestUISidebarUsesSharedSelectionWash(t *testing.T) {
+	for _, appearance := range []string{appearanceLight, appearanceDark} {
+		t.Run(appearance, func(t *testing.T) {
+			state := uiFixture(t, "browse")
+			state.Appearance = appearance
+			tester := ui.NewTester(state.view, 1040, 720)
+			tester.SetPreferences(ui.Preferences{ReduceMotion: true})
+			palette := lightPalette
+			if appearance == appearanceDark {
+				palette = darkPalette
+			}
+			frame := tester.Image()
+			for _, sample := range []struct {
+				name  string
+				point image.Point
+				fill  ui.Color
+			}{
+				{"selected navigation", image.Pt(180, 114), palette.blueWash},
+				{"inactive navigation", image.Pt(180, 166), palette.chrome},
+			} {
+				pixel := color.NRGBAModel.Convert(frame.At(sample.point.X, sample.point.Y)).(color.NRGBA)
+				want := color.NRGBA{R: sample.fill.R, G: sample.fill.G, B: sample.fill.B, A: 255}
+				if pixel != want {
+					t.Errorf("%s fill=%v, want %v", sample.name, pixel, want)
+				}
+			}
+		})
+	}
+}
 
 func TestUIChromeStaysNeutralAcrossThemes(t *testing.T) {
 	for _, appearance := range []string{appearanceLight, appearanceDark} {
@@ -20,8 +51,11 @@ func TestUIChromeStaysNeutralAcrossThemes(t *testing.T) {
 				image.Pt(1032, 8), image.Pt(210, 680),
 			} {
 				red, green, blue, _ := frame.At(point.X, point.Y).RGBA()
-				if spread := max(red, green, blue) - min(red, green, blue); spread > 10*257 {
+				if spread := max(red, green, blue) - min(red, green, blue); spread > 14*257 {
 					t.Errorf("chrome at %v carries a color cast: rgb=(%d,%d,%d), want neutral surroundings for artwork", point, red/257, green/257, blue/257)
+				}
+				if blue < green || green < red {
+					t.Errorf("chrome at %v has a competing tint: rgb=(%d,%d,%d), want cool neutrals", point, red/257, green/257, blue/257)
 				}
 			}
 		})
