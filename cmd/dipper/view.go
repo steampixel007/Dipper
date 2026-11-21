@@ -365,7 +365,7 @@ func (s *State) browseCatalog(c *ui.Context, width float32, split bool) {
 		if s.SourceError != "" && !s.catalogFromDisk && len(s.Catalog) == 0 {
 			ui.Row(c).Wrap().Gap(controlGap).Margin(0, 0, 14, 0).Children(func() {
 				quiet(c, "catalog-error-previous", "上一季", func() { s.changeSeason(-1) })
-				quiet(c, "catalog-error-next", "下一季", func() { s.changeSeason(1) })
+				quiet(c, "catalog-error-next", "下一季", func() { s.changeSeason(1) }).Disabled(!s.canAdvanceSeason())
 				quiet(c, "catalog-error-current", "回到当季", s.currentSeason)
 			})
 			s.empty(c, "来源暂时无法连接", s.SourceError, "重试加载", s.refreshCatalog)
@@ -447,7 +447,7 @@ func (s *State) browseToolbar(c *ui.Context, split bool) {
 					tactile(b).Children(func() { ui.Text(c, q+"季") }).OnClick(func() { s.Season = q; s.refreshCatalog() })
 				}
 			})
-			iconButton(c, "next-season", "下一季", "next", func() { s.changeSeason(1) })
+			iconButton(c, "next-season", "下一季", "next", func() { s.changeSeason(1) }).Disabled(!s.canAdvanceSeason())
 			ui.Spacer(c)
 			if ui.TextInput(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(searchWidth).MinHeight(inputHeight(c)).Radius(controlRadius).Background(pal.paper).Changed() {
 				s.resetBrowseScroll()
@@ -524,18 +524,9 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) ui.Element {
 		})
 		ui.Column(c).Gap(4).Children(func() {
 			ui.Text(c, a.Title).FontSize(textSize(c, textBody)).FontWeight(600).LineHeight(1.4).TextColor(pal.ink)
-			ui.Row(c).Wrap().Gap(6).Children(func() {
-				completed := s.completedDownloads(a.ID)
-				if s.Day == -1 {
-					ui.Text(c, dayName(a.Day)).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
-					if completed > 0 {
-						ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline)
-					}
-				}
-				if completed > 0 {
-					ui.Textf(c, "已完成 %d 个下载", completed).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
-				}
-			})
+			if s.Day == -1 {
+				ui.Text(c, dayName(a.Day)).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
+			}
 		})
 	}).OnClick(func() { s.openBrowseDetail(a) })
 }
@@ -552,7 +543,7 @@ func catalogYears(selected string) []string {
 		year = 2000
 	}
 	var years []string
-	for y := max(time.Now().Year(), year); y >= min(2000, max(1, year)); y-- {
+	for y := time.Now().Year(); y >= min(2000, year); y-- {
 		years = append(years, strconv.Itoa(y))
 	}
 	return years

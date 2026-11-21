@@ -3,9 +3,53 @@ package main
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 )
+
+func TestUIBrowseNextSeasonStopsAtCurrentYear(t *testing.T) {
+	year := time.Now().Year()
+	for _, failed := range []bool{false, true} {
+		state := uiFixture(t, "browse")
+		if failed {
+			state.Catalog = nil
+			state.SourceError = "来源返回 HTTP 503"
+		}
+		state.Year, state.Season = fmt.Sprint(year-1), "秋"
+		tester := ui.NewTester(state.view, 1320, 860)
+		uiClick(t, tester, "下一季")
+		if state.Year != fmt.Sprint(year) || state.Season != "冬" {
+			t.Fatalf("source failed=%t: historical year did not advance to %d winter: %s %s", failed, year, state.Year, state.Season)
+		}
+
+		state.Season = "夏"
+		tester.Frame()
+		uiClick(t, tester, "下一季")
+		if state.Year != fmt.Sprint(year) || state.Season != "秋" {
+			t.Fatalf("source failed=%t: current year did not advance to %d autumn: %s %s", failed, year, state.Year, state.Season)
+		}
+
+		next := requireLayoutBound(t, tester, "下一季", 1320, 860)
+		tester.ClickAt(next.X+next.W/2, next.Y+next.H/2)
+		if tester.Focused("下一季") {
+			t.Errorf("source failed=%t: next season still takes focus at the year boundary", failed)
+		}
+		if state.Year != fmt.Sprint(year) || state.Season != "秋" {
+			t.Errorf("source failed=%t: next season crossed into a future year: %s %s", failed, state.Year, state.Season)
+		}
+	}
+
+	state := uiFixture(t, "browse")
+	state.Year, state.Season = fmt.Sprint(year), "秋"
+	state.changeSeason(1)
+	if state.Year != fmt.Sprint(year) || state.Season != "秋" {
+		t.Errorf("season handler crossed into a future year: %s %s", state.Year, state.Season)
+	}
+	if years := catalogYears(fmt.Sprint(year + 1)); len(years) == 0 || years[0] != fmt.Sprint(year) {
+		t.Errorf("year picker does not start at the current year: %v", years)
+	}
+}
 
 func TestUIBrowseCardWeekdayOnlyInAllDays(t *testing.T) {
 	for day := -1; day <= 6; day++ {

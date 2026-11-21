@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -696,7 +697,16 @@ func safeName(name string) string {
 	return strings.TrimRight(strings.NewReplacer("/", "／", `\`, "＼", ":", "：", "*", "＊", "?", "？", `"`, "＂", "<", "＜", ">", "＞", "|", "｜").Replace(name), ". ")
 }
 
+func (s *State) canAdvanceSeason() bool {
+	year, err := strconv.Atoi(s.Year)
+	currentYear := time.Now().Year()
+	return err == nil && (year < currentYear || (year == currentYear && s.Season != seasons[len(seasons)-1]))
+}
+
 func (s *State) changeSeason(delta int) {
+	if delta > 0 && !s.canAdvanceSeason() {
+		return
+	}
 	idx := slices.Index(seasons, s.Season)
 	var year int
 	_, _ = fmt.Sscan(s.Year, &year)

@@ -187,8 +187,8 @@ The detail page runs in one of two modes, distinguished by `Backfill`:
   match, and confirm. Existing matches are selected by default.
 - **Backfill** — pick releases from an existing subscription's history to
   download now, without changing the rule.
-Browse cards mark followed anime with a 已追番 badge and show the number of
-completed downloads. Clicking a card opens its synopsis. The catalog reflows
+Browse cards mark followed anime with a 已追番 badge. Clicking a card opens
+its synopsis. The catalog reflows
 beside the right panel on wide windows and stays full width behind a centered
 dialog on narrow windows. Switching cards cancels the previous synopsis request.
 The panel retains its reading position when returning from group selection or
@@ -211,6 +211,9 @@ scroll to the top and a non-empty search offers 清除搜索 beside the input.
 Year, season, and search share one band above a text-only weekday row, so the
 poster grid keeps the visual weight; `browse_layout_test.go` pins that
 hierarchy and the 200% text-scale bounds.
+The year picker ends at the current calendar year. Next-season navigation is
+disabled at that year's autumn in both the toolbar and the source-error
+recovery row. Historical autumns still advance to the following winter.
 The following page searches saved follows by anime title, subtitle group, or a
 word the saved rule requires; the count line reports how many follow tiles match
 and offers a clear action, and an empty result offers a way to clear the search. Cards whose last RSS check failed
@@ -441,9 +444,8 @@ checks, regression evidence, and remaining native boundaries.
 
 ## Rendering
 
-Browse cards show their weekday only under the all-days filter. Selecting a
-weekday hides the repeated label and its separator while keeping download
-status. The 查看详情 hint appears on hover and keyboard focus.
+Browse cards show their weekday only under the all-days filter. The 查看详情
+hint appears on hover and keyboard focus.
 
 `ui_render.go` holds a fixed sample state used to render each page's layout
 without a live source or database. It is how a layout change is checked in
