@@ -154,6 +154,9 @@ type State struct {
 	DetailReturn                                       string
 	catalogRevision, detailRevision, historyRevision   uint64
 	catalogCancel, detailCancel, historyCancel         context.CancelFunc
+	catalogFromDisk                                    bool
+	catalogShown                                       catalogKey
+	catalogDisk                                        catalogDisk
 
 	Saved
 	Catalog                  []Anime
@@ -208,6 +211,7 @@ type State struct {
 	Dir                        string
 	ConfigDir                  string
 	CoverDir                   string
+	coverLoader                coverLoader
 	ApplyAppearance            func(string)
 	PickFolder                 func()
 	OpenFolder                 func(string)

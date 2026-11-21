@@ -23,7 +23,10 @@ type sourceRoute struct {
 	Origin string
 }
 
-var defaultSourceRoutes = []sourceRoute{{Label: "线路一（默认）：mikanime.tv", Origin: "https://mikanime.tv"}, {Label: "线路二：mikanani.me", Origin: "https://mikanani.me"}}
+var defaultSourceRoutes = []sourceRoute{
+	{Label: "线路一：mikanime.tv", Origin: "https://mikanime.tv"},
+	{Label: "线路二（默认）：mikanani.me", Origin: "https://mikanani.me"},
+}
 
 func (s *State) routeLabels() []string {
 	labels := make([]string, len(s.SourceRoutes))
@@ -62,7 +65,7 @@ func newState(dir string) *State {
 	s.setCurrentSeason()
 	s.Root, s.SaveError = initialDownloadRoot()
 	s.Upload = "1 MiB/s"
-	s.SourceRoute = defaultSourceRoutes[0].Label
+	s.SourceRoute = s.sourceLabel(source.DefaultOrigin)
 	return s
 }
 
@@ -101,13 +104,7 @@ func (s *State) refreshCatalog() {
 	if s.Source == nil {
 		return
 	}
-	var following []source.Anime
-	for _, sub := range s.Subscriptions {
-		a := s.anime(sub.AnimeID)
-		following = append(following, source.Anime{ID: a.ID, Cover: a.Cover})
-	}
-	// Saved covers must survive a season change or a failed catalog request.
-	s.loadCovers(s.Ctx, following)
+	s.retryVisibleCovers()
 	if s.catalogCancel != nil {
 		s.catalogCancel()
 	}
@@ -116,13 +113,29 @@ func (s *State) refreshCatalog() {
 	s.catalogRevision++
 	rev := s.catalogRevision
 	year, _ := strconv.Atoi(s.Year)
-	season := s.Season
+	client, dir, update := s.Source, s.Dir, s.Update
+	key := catalogKey{Origin: client.Origin(), Year: year, Season: s.Season}
+	if s.catalogShown != key || len(s.Catalog) == 0 {
+		s.Catalog = nil
+		s.catalogShown = catalogKey{}
+		s.catalogFromDisk = false
+	}
 	s.SourceLoading = true
 	s.SourceError = ""
-	s.Catalog = nil
 	go func() {
-		rows, err := s.Source.Catalog(ctx, year, season)
-		s.Update(func() {
+		if snapshot, ok := readCatalogSnapshot(dir, key); ok {
+			update(func() {
+				if rev == s.catalogRevision && s.SourceLoading {
+					s.setCatalog(key, snapshot.Rows)
+					s.catalogFromDisk = true
+				}
+			})
+		}
+		rows, err := client.Catalog(ctx, key.Year, key.Season)
+		if err == nil && client.Origin() == key.Origin {
+			s.catalogDisk.write(ctx, dir, catalogSnapshot{Key: key, Rows: rows})
+		}
+		update(func() {
 			if rev != s.catalogRevision {
 				return
 			}
@@ -131,15 +144,21 @@ func (s *State) refreshCatalog() {
 				s.SourceError = sourceErrorMessage(err)
 				return
 			}
-			for _, a := range rows {
-				v := fromAnime(a)
-				v.Summary = s.KnownAnime[a.ID].Summary
-				s.Catalog = append(s.Catalog, v)
-				s.KnownAnime[a.ID] = v
-			}
-			s.loadCovers(ctx, rows)
+			s.setCatalog(key, rows)
+			s.catalogFromDisk = false
 		})
 	}()
+}
+
+func (s *State) setCatalog(key catalogKey, rows []source.Anime) {
+	s.Catalog = make([]Anime, 0, len(rows))
+	for _, row := range rows {
+		anime := fromAnime(row)
+		anime.Summary = s.KnownAnime[row.ID].Summary
+		s.Catalog = append(s.Catalog, anime)
+		s.KnownAnime[row.ID] = anime
+	}
+	s.catalogShown = key
 }
 
 type sourceFailureKind int
@@ -323,6 +342,7 @@ func (s *State) switchSourceRoute(label string) {
 		return
 	}
 	previousLabel := s.sourceLabel(previousOrigin)
+	previousCatalog := s.catalogShown
 	s.SourceRoute = label
 	s.SourceTesting = true
 	s.SourceRouteError = ""
@@ -332,6 +352,7 @@ func (s *State) switchSourceRoute(label string) {
 			s.Update(func() {
 				s.SourceRoute = previousLabel
 				s.SourceTesting = false
+				s.catalogShown = previousCatalog
 				s.SourceRouteError = sourceRouteFailureMessage(classifySourceError(err))
 			})
 			return
@@ -341,9 +362,17 @@ func (s *State) switchSourceRoute(label string) {
 		s.Update(func() {
 			s.SourceTesting = false
 			if err != nil {
-				s.Source.Retarget(previousOrigin)
-				s.SourceRoute = previousLabel
 				s.SourceRouteError = routeError(err)
+				if rollbackErr := s.Source.Retarget(previousOrigin); rollbackErr != nil {
+					s.SourceRoute = s.sourceLabel(s.Source.Origin())
+					s.Catalog = nil
+					s.catalogShown = catalogKey{}
+					s.catalogFromDisk = false
+					s.SourceRouteError += "；切回原线路失败：" + routeError(rollbackErr)
+				} else {
+					s.SourceRoute = previousLabel
+					s.catalogShown = previousCatalog
+				}
 				return
 			}
 			s.SourceRouteError = ""
@@ -433,7 +462,7 @@ func (s *State) viewSubscriptionResources(id string) {
 // episodes, ready to play. The resource view behind it stays the way to pick
 // releases or change the rule.
 func (s *State) openLibrary(id string) {
-	sub, ok := s.subscription(id)
+	_, ok := s.subscription(id)
 	if !ok {
 		return
 	}
@@ -441,10 +470,6 @@ func (s *State) openLibrary(id string) {
 	s.LibraryMenuOpen = false
 	s.Page = "episodes"
 	s.Notice = ""
-	a := s.anime(sub.AnimeID)
-	if s.Source != nil && a.Cover != "" {
-		s.loadCovers(s.Ctx, []source.Anime{{ID: a.ID, Cover: a.Cover}})
-	}
 }
 
 func (s *State) refreshDetail() {
@@ -486,7 +511,6 @@ func (s *State) refreshDetail() {
 			}
 			s.KnownAnime[id] = a
 			s.ProposedFolder = folder
-			s.loadCovers(ctx, []source.Anime{d.Anime})
 			s.Groups = nil
 			s.GroupIDs = nil
 			s.GroupCounts = nil

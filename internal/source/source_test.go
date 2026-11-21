@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -38,6 +39,7 @@ func testClient(t *testing.T, handler http.HandlerFunc) *Client {
 	t.Cleanup(server.Close)
 	c := New(server.URL)
 	c.interval = 0
+	c.coverInterval = 0
 	return c
 }
 
@@ -447,6 +449,118 @@ func TestHTTPFailuresAndRetryAfter(t *testing.T) {
 	}
 }
 
+func clockedClient(origin string, handler http.HandlerFunc) *Client {
+	client := New(origin)
+	client.http.Transport = interruptedRetryTransport(func(req *http.Request) (*http.Response, error) {
+		if err := req.Context().Err(); err != nil {
+			return nil, err
+		}
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, req)
+		if err := req.Context().Err(); err != nil {
+			return nil, err
+		}
+		resp := recorder.Result()
+		resp.Request = req
+		return resp, nil
+	})
+	return client
+}
+
+func cooldownOnce(retryAfter string) http.HandlerFunc {
+	first := true
+	return func(w http.ResponseWriter, r *http.Request) {
+		if first {
+			first = false
+			w.Header().Set("Retry-After", retryAfter)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func assertProbeCooldown(t *testing.T, client *Client) {
+	t.Helper()
+	var status *HTTPError
+	if err := client.Probe(t.Context()); !errors.As(err, &status) || status.RetryAfter != 90*time.Second {
+		t.Fatalf("probe did not establish cooldown: %v", err)
+	}
+}
+
+func TestClientTimeoutStartsAfterAdmission(t *testing.T) {
+	for _, wait := range []string{"gate", "cooldown"} {
+		t.Run(wait, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var handler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				}
+				if wait == "cooldown" {
+					handler = cooldownOnce("90")
+				}
+				client := clockedClient("http://127.0.0.1", handler)
+				released := make(chan struct{})
+				if wait == "gate" {
+					client.gate <- struct{}{}
+					go func() {
+						time.Sleep(90 * time.Second)
+						<-client.gate
+						close(released)
+					}()
+				} else {
+					assertProbeCooldown(t, client)
+					close(released)
+				}
+				begin := time.Now()
+				err := client.Probe(t.Context())
+				elapsed := time.Since(begin)
+				<-released
+				if err != nil || elapsed != 90*time.Second {
+					t.Fatalf("probe after %s waited %v: %v", wait, elapsed, err)
+				}
+			})
+		})
+	}
+}
+
+func TestClientCooldownWaitUsesCallerCancellation(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := clockedClient("http://127.0.0.1", cooldownOnce("90"))
+		assertProbeCooldown(t, client)
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		timer := time.AfterFunc(45*time.Second, cancel)
+		defer timer.Stop()
+		begin := time.Now()
+		if err := client.Probe(ctx); !errors.Is(err, context.Canceled) || time.Since(begin) != 45*time.Second {
+			t.Fatalf("cooldown wait ended after %v with %v, want caller cancellation at 45s", time.Since(begin), err)
+		}
+	})
+}
+
+func TestClientEOFRetryHasFreshTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := clockedClient("http://127.0.0.1", func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(20 * time.Second)
+			w.WriteHeader(http.StatusOK)
+		})
+		baseTransport := client.http.Transport
+		attempts := 0
+		client.http.Transport = interruptedRetryTransport(func(req *http.Request) (*http.Response, error) {
+			attempts++
+			if attempts == 1 {
+				time.Sleep(20 * time.Second)
+				return nil, io.EOF
+			}
+			return baseTransport.RoundTrip(req)
+		})
+		begin := time.Now()
+		if err := client.Probe(t.Context()); err != nil || time.Since(begin) != 40*time.Second || attempts != 2 {
+			t.Fatalf("EOF retry ended after %v with %d attempts: %v", time.Since(begin), attempts, err)
+		}
+	})
+}
+
 func TestCancellationTimeoutAndRateLimit(t *testing.T) {
 	var requests atomic.Int32
 	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -476,7 +590,7 @@ func TestCancellationTimeoutAndRateLimit(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, err := limited.Cover(t.Context(), limited.base.String()+"/poster"); err != nil {
+			if err := limited.Probe(t.Context()); err != nil {
 				t.Error(err)
 			}
 		}()
@@ -485,11 +599,132 @@ func TestCancellationTimeoutAndRateLimit(t *testing.T) {
 	if len(starts) != 3 || starts[2].Sub(starts[0]) < 60*time.Millisecond {
 		t.Fatalf("requests not rate limited: %v", starts)
 	}
-	limited.nextRequest = time.Now().Add(time.Minute)
+	limited.currentRate().retryUntil = time.Now().Add(time.Minute)
 	ctx, cancel = context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
 	if _, err := limited.Cover(ctx, limited.base.String()+"/poster"); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("rate wait not cancelled: %v", err)
+	}
+}
+
+func TestCoverBurstAndRefill(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := New("http://127.0.0.1")
+		start := func(cover bool) {
+			t.Helper()
+			if err := client.waitForRate(t.Context(), client.currentRate(), cover, nil); err != nil {
+				t.Fatal(err)
+			}
+		}
+		begin := time.Now()
+		start(false)
+		for range 6 {
+			start(true)
+		}
+		if elapsed := time.Since(begin); elapsed != 0 {
+			t.Fatalf("first six covers had to wait %v after a catalog request", elapsed)
+		}
+		for extra := range 2 {
+			start(true)
+			if elapsed, want := time.Since(begin), time.Duration(extra+1)*750*time.Millisecond; elapsed != want {
+				t.Fatalf("extra cover %d started at %v, want %v", extra+1, elapsed, want)
+			}
+		}
+		start(false)
+		if elapsed := time.Since(begin); elapsed != 1500*time.Millisecond {
+			t.Fatalf("cover admissions delayed a document request until %v", elapsed)
+		}
+		start(false)
+		if elapsed := time.Since(begin); elapsed != 3*time.Second {
+			t.Fatalf("document request started at %v, want 3 seconds", elapsed)
+		}
+		time.Sleep(time.Minute)
+		afterIdle := time.Now()
+		for range 6 {
+			start(true)
+		}
+		if elapsed := time.Since(afterIdle); elapsed != 0 {
+			t.Fatalf("idle cover budget did not refill: waited %v", elapsed)
+		}
+	})
+}
+
+func TestCoverResumesAtPacedRateAfterBackoff(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := New("http://127.0.0.1")
+		begin := time.Now()
+		client.deferRate(client.currentRate(), begin, 90*time.Second, time.Minute)
+		client.deferRate(client.currentRate(), begin.Add(time.Second), 15*time.Second, time.Minute)
+		for index, want := range []time.Duration{90 * time.Second, 90*time.Second + 750*time.Millisecond} {
+			if err := client.waitForRate(t.Context(), client.currentRate(), true, nil); err != nil {
+				t.Fatal(err)
+			}
+			if elapsed := time.Since(begin); elapsed != want {
+				t.Fatalf("cover %d after backoff started at %v, want %v", index+1, elapsed, want)
+			}
+		}
+	})
+}
+
+func TestQueuedCoverHonorsAccessBackoff(t *testing.T) {
+	for _, kind := range []string{"forbidden", "rate limited", "challenge", "retry after"} {
+		t.Run(kind, func(t *testing.T) {
+			var requests atomic.Int32
+			firstStarted, releaseFirst := make(chan struct{}), make(chan struct{})
+			client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				if r.URL.Path != "/first" {
+					_, _ = w.Write([]byte("\x89PNG\r\n\x1a\nimage"))
+					return
+				}
+				close(firstStarted)
+				select {
+				case <-releaseFirst:
+				case <-r.Context().Done():
+					return
+				}
+				switch kind {
+				case "forbidden":
+					w.WriteHeader(http.StatusForbidden)
+				case "rate limited":
+					w.WriteHeader(http.StatusTooManyRequests)
+				case "challenge":
+					_, _ = w.Write([]byte("<title>Just a moment</title>"))
+				case "retry after":
+					w.Header().Set("Retry-After", "60")
+					w.WriteHeader(http.StatusServiceUnavailable)
+				}
+			})
+			client.coverInterval = 120 * time.Millisecond
+			client.currentRate().coverRefill = time.Now().Add(client.coverBurstWindow())
+			ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
+			defer cancel()
+			results := make(chan error, 1)
+			go func() {
+				_, err := client.Cover(ctx, client.Origin()+"/first")
+				results <- err
+			}()
+			select {
+			case <-firstStarted:
+			case <-ctx.Done():
+				t.Fatal("first cover did not start")
+			}
+			queued := make(chan error, 1)
+			go func() {
+				_, err := client.Cover(ctx, client.Origin()+"/queued")
+				queued <- err
+			}()
+			close(releaseFirst)
+			if err := <-results; !errors.Is(err, ErrChallenge) {
+				var status *HTTPError
+				if !errors.As(err, &status) {
+					t.Fatalf("first cover did not report an access error: %v", err)
+				}
+			}
+			if err := <-queued; !errors.Is(err, context.DeadlineExceeded) || requests.Load() != 1 {
+				t.Fatalf("queued cover ignored access backoff: requests=%d err=%v", requests.Load(), err)
+			}
+		})
 	}
 }
 

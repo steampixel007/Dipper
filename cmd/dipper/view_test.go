@@ -124,7 +124,7 @@ func TestUIBrowseOlderSeasonSearchAndUnknownDay(t *testing.T) {
 	}
 }
 
-func TestUICatalogLoadingAndFailureHideStaleCatalog(t *testing.T) {
+func TestUICatalogKeepsSameKeyRowsWhileRefreshing(t *testing.T) {
 	for _, failed := range []bool{false, true} {
 		t.Run(fmt.Sprint(failed), func(t *testing.T) {
 			s := uiFixture(t, "browse")
@@ -134,13 +134,9 @@ func TestUICatalogLoadingAndFailureHideStaleCatalog(t *testing.T) {
 				s.SourceLoading = true
 			}
 			tt := ui.NewTester(s.view, 1320, 860)
-			if failed {
-				uiRequireText(t, tt, "来源返回 HTTP 503", "重试加载")
-			} else {
-				uiRequireText(t, tt, "正在加载番剧目录")
-			}
-			if tt.HasText(s.Catalog[0].Title) {
-				t.Fatal("stale catalog must not be selectable during load or failure")
+			uiRequireText(t, tt, s.Catalog[0].Title)
+			if tt.HasText("正在加载番剧目录") {
+				t.Fatal("same-key refresh replaced usable rows with a full-page loader")
 			}
 		})
 	}
@@ -1440,9 +1436,7 @@ func TestUICoverInFlightShowsLoadingIndicator(t *testing.T) {
 	url := s.Catalog[0].Cover
 	saved := covers[url]
 	delete(covers, url)
-	loadingCovers[url] = true
 	t.Cleanup(func() {
-		delete(loadingCovers, url)
 		if saved != nil {
 			covers[url] = saved
 		}

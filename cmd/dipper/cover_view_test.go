@@ -45,9 +45,10 @@ func TestUICoverShowsWholePosterWithoutStretching(t *testing.T) {
 					url := t.Name()
 					covers[url] = ui.NewBitmap(poster)
 					t.Cleanup(func() { delete(covers, url) })
+					var state State
 					tt := ui.NewTester(func(c *ui.Context) {
 						installTheme(c, dark)
-						cover(c, Anime{Cover: url}, float32(size[0]), float32(size[1]))
+						state.featuredCover(c, Anime{Cover: url}, float32(size[0]), float32(size[1]))
 					}, size[0], size[1])
 					frame := tt.Image()
 					scale := min(float32(size[0])/float32(w), float32(size[1])/float32(h))
@@ -111,9 +112,6 @@ func absChannel(a, b uint8) int {
 func TestUICoverLoadingShowsNineBlocks(t *testing.T) {
 	s := uiFixture(t, "browse")
 	s.Catalog[0].Cover = t.Name()
-	url := s.Catalog[0].Cover
-	loadingCovers[url] = true
-	t.Cleanup(func() { delete(loadingCovers, url) })
 	tt := ui.NewTester(s.view, 1320, 860)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
 	r, ok := tt.Find("正在加载封面")
@@ -159,7 +157,6 @@ func TestUICoverLoadingShowsNineBlocks(t *testing.T) {
 	if !bytes.Equal(before, tt.Image().Pix) {
 		t.Error("loading cover moves despite the system reduce-motion preference")
 	}
-	delete(loadingCovers, url)
 	tt.Frame()
 	if _, ok := tt.Find("正在加载封面"); !ok {
 		t.Error("missing cover stopped showing the loading indicator")
@@ -167,12 +164,12 @@ func TestUICoverLoadingShowsNineBlocks(t *testing.T) {
 }
 
 func TestUICoverMissingBitmapKeepsLoading(t *testing.T) {
-	uiFixture(t, "following")
 	for _, size := range [][2]int{{180, 245}, {52, 72}, {68, 94}} {
 		t.Run(fmt.Sprintf("%dx%d", size[0], size[1]), func(t *testing.T) {
 			a := Anime{Cover: t.Name()}
+			var state State
 			tt := ui.NewTester(func(c *ui.Context) {
-				cover(c, a, float32(size[0]), float32(size[1]))
+				state.featuredCover(c, a, float32(size[0]), float32(size[1]))
 			}, size[0], size[1])
 			if _, ok := tt.Find("正在加载封面"); !ok {
 				t.Fatal("cover URL without a bitmap shows the bird instead of loading")
