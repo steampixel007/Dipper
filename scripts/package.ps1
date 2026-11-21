@@ -32,7 +32,7 @@ try {
         # MyGo supplies its own linker flags; keep the full tag independently of Apple's numeric bundle version.
         [IO.File]::WriteAllText($versionPath, "package main`n`nfunc init() { version = `"$Version`" }`n")
         $env:CGO_ENABLED = '0'
-        go run github.com/egoist/mygo/cmd/mygo build -platform $Platform -skip-notarize
+        go tool mygo build -platform $Platform -skip-notarize
         if ($LASTEXITCODE) { throw 'MyGo packaging failed' }
     } finally {
         $env:CGO_ENABLED = $originalCgo

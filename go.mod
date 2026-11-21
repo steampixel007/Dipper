@@ -2,6 +2,8 @@ module github.com/steampixel007/Dipper
 
 go 1.27.3
 
+tool github.com/egoist/mygo/cmd/mygo
+
 require (
 	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/anacrolix/generics v0.2.0
@@ -13,6 +15,7 @@ require (
 )
 
 require (
+	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/RoaringBitmap/roaring/v2 v2.16.0 // indirect
 	github.com/alecthomas/atomic v0.1.0-alpha2 // indirect
 	github.com/anacrolix/btree v0.1.1 // indirect
@@ -37,6 +40,7 @@ require (
 	github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/cloudflare/circl v1.6.2 // indirect
 	github.com/coder/websocket v1.8.15 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
@@ -51,6 +55,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
+	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
@@ -82,7 +87,9 @@ require (
 	github.com/rs/dnscache v0.0.0-20211102005908-e0241e321417 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/tidwall/btree v1.8.1 // indirect
+	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
+	go.digitalxero.dev/rpm v0.3.4 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.45.0 // indirect
