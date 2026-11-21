@@ -167,7 +167,6 @@ type State struct {
 	Group                    int
 	ChoosingGroup            bool
 	GroupSearch              string
-	SummaryOpen              bool
 	Rule                     Rule
 	Checked                  map[string]bool
 	Editing                  bool
@@ -195,6 +194,7 @@ type State struct {
 	SourceRoutes             []sourceRoute
 	SourceFailed             bool
 	CatalogScroll            ui.ScrollState
+	browseDetail             *browseDetail
 	ResourceScroll           ui.ScrollState
 	FollowScroll             ui.ScrollState
 	DownloadScroll           ui.ScrollState
@@ -707,6 +707,5 @@ func (s *State) changeSeason(delta int) {
 	}
 	s.Year = fmt.Sprint(year)
 	s.Season = seasons[idx]
-	s.CatalogScroll = ui.ScrollState{}
 	s.refreshCatalog()
 }

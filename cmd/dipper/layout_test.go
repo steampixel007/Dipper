@@ -95,7 +95,6 @@ func TestTypographyDialogsRemainScrollableAtMinimumWindow(t *testing.T) {
 	}{
 		{name: "help/light", page: "detail", title: "怎么追番", action: "关闭指南", prepare: func(state *State) { state.Help = true }},
 		{name: "help/dark", page: "detail", title: "怎么追番", action: "关闭指南", dark: true, prepare: func(state *State) { state.Help = true }},
-		{name: "summary", page: "detail", title: "星海旅记", action: "关闭", prepare: func(state *State) { state.SummaryOpen = true }},
 		{name: "remove", page: "downloads", title: "删除任务和文件？", action: "保留任务", prepare: func(state *State) {
 			state.RemovePrompt, state.RemoveID = true, state.Downloads[0].ID
 		}},
@@ -108,11 +107,6 @@ func TestTypographyDialogsRemainScrollableAtMinimumWindow(t *testing.T) {
 			state := layoutFixture(t, tc.page)
 			tc.prepare(state)
 			state.SourceError = longBody
-			if state.SummaryOpen {
-				anime := state.anime(state.AnimeID)
-				anime.Summary = longBody
-				state.KnownAnime[anime.ID] = anime
-			}
 			tester := ui.NewTester(state.view, 1040, 720)
 			tester.SetDark(tc.dark)
 			tester.SetPreferences(ui.Preferences{TextScale: 2, ReduceMotion: true})

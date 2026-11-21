@@ -492,7 +492,8 @@ func TestUIBrowseCardOpensFollowedResourceList(t *testing.T) {
 	title := s.KnownAnime[s.AnimeID].Title
 	wantID := s.Subscriptions[0].ID
 	uiClick(t, tt, "查看 "+title)
-	if s.Page != "detail" || !s.ViewResources || !s.Backfill || s.EditID != wantID || s.DetailReturn != "browse" {
+	uiClick(t, tt, "查看资源")
+	if s.Page != "detail" || !s.ViewResources || !s.Backfill || s.EditID != wantID || s.DetailReturn != browseDetailReturn {
 		t.Fatalf("followed anime state: page=%q view=%v backfill=%v edit=%q return=%q", s.Page, s.ViewResources, s.Backfill, s.EditID, s.DetailReturn)
 	}
 }

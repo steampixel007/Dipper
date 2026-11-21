@@ -61,8 +61,20 @@ func renderScreens(dir string) error {
 	for _, screen := range []struct {
 		name, page string
 		configure  func(*State)
+		narrow     bool
+		hover      bool
 	}{
 		{name: "01-browse", page: "browse"},
+		{name: "09-anime-summary", page: "browse", configure: func(s *State) {
+			s.Subscriptions = nil
+			s.IntroHidden = true
+			s.openBrowseDetail(s.Catalog[0])
+		}},
+		{name: "16-browse-detail-narrow", page: "browse", narrow: true, configure: func(s *State) {
+			s.IntroHidden = true
+			s.openBrowseDetail(s.Catalog[0])
+		}},
+		{name: "17-browse-hover", page: "browse", hover: true, configure: func(s *State) { s.IntroHidden = true }},
 		{name: "02-filter", page: "detail", configure: func(s *State) { s.setWord("1080p", wordWant) }},
 		{name: "03-following", page: "following"},
 		{name: "14-following-check-failure", page: "following", configure: func(s *State) {
@@ -98,8 +110,14 @@ func renderScreens(dir string) error {
 			s.TrayAvailable = true
 			s.ClosePrompt = true
 		}},
-		{name: "09-anime-summary", page: "detail", configure: func(s *State) { s.SummaryOpen = true }},
-		{name: "10-group-picker", page: "detail", configure: func(s *State) { s.ChoosingGroup = true }},
+		{name: "10-group-picker", page: "detail", configure: func(s *State) {
+			s.Subscriptions = nil
+			s.openBrowseDetail(s.Catalog[0])
+			s.DetailReturn = browseDetailReturn
+			s.Group = -1
+			s.ResourceList = nil
+			s.Checked = nil
+		}},
 		{name: "12-seed-settings", page: "settings", configure: func(s *State) { s.Seed = "30 分钟" }},
 	} {
 		for _, appearance := range []string{appearanceLight, appearanceDark} {
@@ -108,8 +126,23 @@ func renderScreens(dir string) error {
 			if screen.configure != nil {
 				screen.configure(s)
 			}
-			tt := ui.NewTester(s.view, 1320, 860)
+			width, height := 1320, 860
+			if screen.narrow {
+				width, height = 1040, 720
+			}
+			tt := ui.NewTester(s.view, width, height)
+			if screen.narrow {
+				tt.SetPreferences(ui.Preferences{TextScale: 2, ReduceMotion: true})
+			}
 			tt.Advance(500 * time.Millisecond)
+			if screen.hover {
+				poster, found := tt.Find("查看 " + s.Catalog[0].Title)
+				if !found || poster.W <= 0 || poster.H <= 0 {
+					return fmt.Errorf("render %s: poster has no rendered bounds", screen.name)
+				}
+				tt.Move(poster.X+poster.W/2, poster.Y+poster.H/2)
+				tt.Advance(200 * time.Millisecond)
+			}
 			name := screen.name
 			if appearance == appearanceDark {
 				name += "-dark"

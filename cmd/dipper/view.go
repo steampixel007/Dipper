@@ -126,6 +126,7 @@ const (
 )
 
 const topbarHeight float32 = 64
+const sidebarWidth float32 = 204
 
 func cover(c *ui.Context, a Anime, w, h float32) {
 	coverWithRadius(c, a, w, h, coverRadius)
@@ -196,14 +197,20 @@ func (s *State) view(c *ui.Context) {
 			})
 		})
 	})
+	if s.Page == "browse" && s.browseDetail != nil {
+		if browseDetailWidth(c) == 0 {
+			s.browseDetailDialog(c)
+		} else {
+			c.OnShortcut(0, ui.KeyEscape, s.closeBrowseDetail)
+		}
+	}
 	s.cancelDialog(c)
 	s.removeDialog(c)
 	s.helpDialog(c)
-	s.summaryDialog(c)
 	s.closeDialog(c)
 	s.filesDialog(c)
 	s.softwareUpdateDialog(c)
-	if s.Page == "detail" && !s.Help && !s.SummaryOpen && !s.ClosePrompt {
+	if s.Page == "detail" && !s.Help && !s.ClosePrompt {
 		c.OnShortcut(ui.Ctrl, ui.KeyZ, s.undoFilter)
 		c.OnShortcut(ui.Ctrl, ui.KeyY, s.redoFilter)
 		c.OnShortcut(ui.Ctrl|ui.Shift, ui.KeyZ, s.redoFilter)
@@ -216,7 +223,7 @@ func (s *State) view(c *ui.Context) {
 func (s *State) sidebar(c *ui.Context) {
 	_, height := c.Size()
 	pal := colors(c)
-	ui.Scroll(c.Key("sidebar-scroll")).Width(204).FillHeight().
+	ui.Scroll(c.Key("sidebar-scroll")).Width(sidebarWidth).FillHeight().
 		Background(pal.chrome).
 		BorderWidth(0, 1, 0, 0).BorderColor(pal.line).Children(func() {
 		ui.Column(c).MinHeight(height).Padding(24, 14, 16).Gap(8).Children(func() {
@@ -316,12 +323,25 @@ func (s *State) topbar(c *ui.Context) {
 }
 
 func (s *State) browse(c *ui.Context) {
+	windowWidth, _ := c.Size()
+	detailWidth := float32(0)
+	if s.browseDetail != nil {
+		detailWidth = browseDetailWidth(c)
+	}
+	ui.Row(c).FillWidth().Grow(1).MinHeight(0).Children(func() {
+		s.browseCatalog(c, windowWidth-sidebarWidth-detailWidth, detailWidth > 0)
+		if detailWidth > 0 {
+			ui.Column(c).Width(detailWidth).Shrink(0).FillHeight().MinHeight(0).
+				Background(colors(c).paper).BorderWidth(0, 0, 0, 1).BorderColor(colors(c).line).
+				Children(func() { s.browseDetailContent(c, s.browseDetail) })
+		}
+	})
+}
+
+func (s *State) browseCatalog(c *ui.Context, width float32, split bool) {
 	pal := colors(c)
-	ui.Column(c).Grow(1).MinHeight(0).Padding(24, 28, 0).Children(func() {
-		ui.Column(c).Gap(8).Margin(0, 0, 18, 0).Children(func() {
-			ui.Text(c, s.Year+" 年"+s.Season+"季番剧").FontSize(textSize(c, textTitle)).FontWeight(600).TextColor(pal.ink).ContentTransition(ui.ContentTransition{Animation: &contentMotion})
-			caption(c, "选好番剧和版本，新更新会自动下载。")
-		})
+	ui.Column(c).Width(width).Shrink(0).FillHeight().MinHeight(0).Padding(24, 28, 0).Children(func() {
+		ui.Text(c, s.Year+" 年"+s.Season+"季番剧").FontSize(textSize(c, textTitle)).FontWeight(600).TextColor(pal.ink).Margin(0, 0, 18, 0).ContentTransition(ui.ContentTransition{Animation: &contentMotion})
 		if s.SourceError != "" {
 			ui.Row(c).Wrap().Gap(controlGap).Margin(0, 0, 14, 0).Children(func() {
 				quiet(c, "catalog-error-previous", "上一季", func() { s.changeSeason(-1) })
@@ -331,12 +351,11 @@ func (s *State) browse(c *ui.Context) {
 			s.empty(c, "来源暂时无法连接", s.SourceError, "重试加载", s.refreshCatalog)
 			return
 		}
-		s.browseToolbar(c)
+		s.browseToolbar(c, split)
 		s.browseDays(c)
 		if !s.IntroHidden {
 			ui.Row(c.Key("beginner-hint")).Wrap().Padding(8, 12).Gap(8).Radius(controlRadius).Background(pal.chrome).Margin(0, 0, 16, 0).Transition(ui.ElementTransition{Duration: 160 * time.Millisecond, Ease: spectrumEase, Exit: &ui.Motion{Collapse: true}, Size: true}).Children(func() {
-				ui.Text(c, "第一次追番？").FontSize(textSize(c, textBody)).FontWeight(600)
-				ui.Text(c, "选字幕组，确认一次，后续自动更新。").FontSize(textSize(c, textCaption)).TextColor(pal.muted).Grow(1)
+				ui.Text(c, "第一次追番？").FontSize(textSize(c, textBody)).FontWeight(600).Grow(1)
 				quiet(c, "intro-help", "了解怎么追", func() { s.Help = true }).TextColor(pal.ink).FontSize(textSize(c, textCaption))
 				iconButton(c, "dismiss-intro", "收起新手提示", "close", func() { s.IntroHidden = true; s.save() }).Disabled(s.Busy)
 			})
@@ -356,15 +375,21 @@ func (s *State) browse(c *ui.Context) {
 					title = "暂无番剧"
 					body = "当前季度或星期暂无番剧，试试切换季度或查看全部星期。"
 				}
-				s.empty(c, title, body, "清除筛选", func() { s.Search = ""; s.Day = -1 })
+				s.empty(c, title, body, "清除筛选", func() { s.Search = ""; s.Day = -1; s.resetBrowseScroll() })
 			} else {
-				width, _ := c.Size()
-				cols, cardWidth := gridColumns(width)
-				ui.Scroll(c.Key("catalog")).TrackScroll(&s.CatalogScroll).Grow(1).MinHeight(0).Padding(0, 0, 24).Children(func() {
+				cols, cardWidth := gridColumns(width + sidebarWidth)
+				key, scroll := "catalog", &s.CatalogScroll
+				if split {
+					key, scroll = "catalog-split", &s.browseDetail.catalogScroll
+				}
+				ui.Scroll(c.Key(key)).TrackScroll(scroll).Grow(1).MinHeight(0).Padding(0, 0, 24).Children(func() {
 					ui.Grid(c).Columns(cols).GapX(18).GapY(24).Children(func() {
 						for _, a := range filtered {
-							anime := a
-							s.animeCard(c, anime, cardWidth)
+							card := s.animeCard(c, a, cardWidth)
+							if split && s.browseDetail.anchorID == a.ID {
+								card.ScrollIntoView()
+								s.browseDetail.anchorID = ""
+							}
 						}
 					})
 				})
@@ -373,8 +398,12 @@ func (s *State) browse(c *ui.Context) {
 	})
 }
 
-func (s *State) browseToolbar(c *ui.Context) {
+func (s *State) browseToolbar(c *ui.Context, split bool) {
 	pal := colors(c)
+	searchWidth := max(float32(220), textSize(c, textBody)*16)
+	if split {
+		searchWidth = max(180, textSize(c, textBody)*13)
+	}
 	ui.Box(c).FillWidth().Margin(0, 0, 12, 0).Children(func() {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(10).Children(func() {
 			iconButton(c, "prev-season", "上一季", "back", func() { s.changeSeason(-1) })
@@ -389,16 +418,16 @@ func (s *State) browseToolbar(c *ui.Context) {
 					} else if b.Hovered() {
 						b.TextColor(pal.ink)
 					}
-					tactile(b).Children(func() { ui.Text(c, q+"季") }).OnClick(func() { s.Season = q; s.CatalogScroll = ui.ScrollState{}; s.refreshCatalog() })
+					tactile(b).Children(func() { ui.Text(c, q+"季") }).OnClick(func() { s.Season = q; s.refreshCatalog() })
 				}
 			})
 			iconButton(c, "next-season", "下一季", "next", func() { s.changeSeason(1) })
 			ui.Spacer(c)
-			if ui.TextInput(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(max(220, textSize(c, textBody)*16)).MinHeight(inputHeight(c)).Radius(controlRadius).Background(pal.paper).Changed() {
-				s.CatalogScroll = ui.ScrollState{}
+			if ui.TextInput(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(searchWidth).MinHeight(inputHeight(c)).Radius(controlRadius).Background(pal.paper).Changed() {
+				s.resetBrowseScroll()
 			}
 			if strings.TrimSpace(s.Search) != "" {
-				quiet(c, "clear-browse-search", "清除搜索", func() { s.Search = "" }).Padding(4, 8).FontSize(textSize(c, textCaption)).TextColor(pal.blue)
+				quiet(c, "clear-browse-search", "清除搜索", func() { s.Search = ""; s.resetBrowseScroll() }).Padding(4, 8).FontSize(textSize(c, textCaption)).TextColor(pal.blue)
 			}
 		})
 	})
@@ -427,7 +456,7 @@ func (s *State) browseDays(c *ui.Context) {
 					painter.Fill(ui.Rect{X: r.X + 10, Y: r.Y + r.H - 2, W: r.W - 20, H: 2}, pal.blue, 1)
 				}
 			})
-			tactile(b).Children(func() { ui.Text(c, label) }).OnClick(func() { s.Day = day; s.CatalogScroll = ui.ScrollState{} })
+			tactile(b).Children(func() { ui.Text(c, label) }).OnClick(func() { s.Day = day; s.resetBrowseScroll() })
 		}
 		ui.Spacer(c)
 		caption(c, "来源：蜜柑计划")
@@ -436,9 +465,11 @@ func (s *State) browseDays(c *ui.Context) {
 	})
 }
 
-func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
+func (s *State) animeCard(c *ui.Context, a Anime, width float32) ui.Element {
 	pal := colors(c)
 	b := ui.ButtonBase(c.Key("anime-" + a.ID)).Label("查看 " + a.Title).Width(width).Column().Justify(ui.Start).Gap(10).Padding(0).AlignItems(ui.Stretch).Radius(browseCoverRadius).Cursor(ui.CursorPointer)
+	selected := s.browseDetail != nil && s.browseDetail.anime.ID == a.ID
+	b.Expanded(selected)
 	pose := ui.Pose{}
 	if b.Hovered() {
 		pose.Y = -2
@@ -447,42 +478,40 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) {
 		pose.Y = 0
 	}
 	b.AnimatePose(pose, contentMotion)
-	b.Children(func() {
+	return b.Children(func() {
 		ui.Box(c).Radius(browseCoverRadius).
 			Shadow(0, 2, 6, -2, pal.cardShadow).Children(func() {
 			posterCover(c, a, width)
-			for _, sub := range s.Subscriptions {
-				if sub.AnimeID == a.ID {
-					ui.Text(c, "已追番").FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(pal.ink).Background(pal.paper).Border(1, pal.line).Radius(4).Padding(3, 7).Absolute().Top(8).Left(8)
-					break
-				}
+			if s.isFollowingAnime(a.ID) {
+				ui.Text(c, "已追番").FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(pal.ink).Background(pal.paper).Border(1, pal.line).Radius(4).Padding(3, 7).Absolute().Top(8).Left(8)
+			}
+			if selected {
+				ui.Box(c).Absolute().Top(0).Bottom(0).Left(0).Right(0).Radius(browseCoverRadius).Border(2, pal.blue)
+			}
+			if b.Hovered() || b.FocusVisible() {
+				ui.Row(c).Absolute().Bottom(6).Left(6).Right(6).Center().Gap(6).
+					Padding(8, 4).Radius(6).Background(pal.paper).TextColor(pal.ink).Children(func() {
+					ui.Text(c, "查看详情").FontSize(textSize(c, textBody)).FontWeight(600)
+					icon(c, "next")
+				})
 			}
 		})
 		ui.Column(c).Gap(4).Children(func() {
 			ui.Text(c, a.Title).FontSize(textSize(c, textBody)).FontWeight(600).LineHeight(1.4).TextColor(pal.ink)
 			ui.Row(c).Wrap().Gap(6).Children(func() {
+				completed := s.completedDownloads(a.ID)
 				if s.Day == -1 {
 					ui.Text(c, dayName(a.Day)).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
-					ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline)
-				}
-				label := "选择版本"
-				for _, sub := range s.Subscriptions {
-					if sub.AnimeID == a.ID {
-						label = "查看资源"
-						break
+					if completed > 0 {
+						ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline)
 					}
 				}
-				hint := ui.Text(c, label).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
-				if b.Hovered() {
-					hint.TextColor(pal.blue)
-				}
-				if n := s.completedDownloads(a.ID); n > 0 {
-					ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline)
-					ui.Textf(c, "已完成 %d 个下载", n).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
+				if completed > 0 {
+					ui.Textf(c, "已完成 %d 个下载", completed).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
 				}
 			})
 		})
-	}).OnClick(func() { s.openFollowedResources(a.ID, "browse") })
+	}).OnClick(func() { s.openBrowseDetail(a) })
 }
 func dayName(d int) string {
 	if d < 0 || d > 6 {
@@ -515,6 +544,9 @@ func (s *State) enterPage(page string) {
 	if s.Page == page {
 		return
 	}
+	if s.Page != "detail" || s.DetailReturn != browseDetailReturn || page != "browse" {
+		s.closeBrowseDetail()
+	}
 	s.Page = page
 	s.LibraryMenuOpen = false
 	switch page {
@@ -541,7 +573,7 @@ func (s *State) detail(c *ui.Context) {
 				ui.Column(c).Padding(14, 28, 24).Gap(20).Children(func() {
 					s.detailHeader(c, a)
 					ui.Divider(c).Background(colors(c).line)
-					s.detailOptions(c, a, true)
+					s.detailOptions(c)
 					s.detailPreview(c, true)
 					s.detailFooter(c, true)
 				})
@@ -553,7 +585,7 @@ func (s *State) detail(c *ui.Context) {
 			ui.Divider(c).Background(colors(c).line)
 			ui.Row(c).Grow(1).MinHeight(0).Gap(0).Children(func() {
 				ui.Scroll(c.Key("detail-options")).Width(306).FillHeight().Padding(22, 22, 24, 28).BorderWidth(0, 1, 0, 0).BorderColor(colors(c).line).Children(func() {
-					s.detailOptions(c, a, false)
+					s.detailOptions(c)
 				})
 				s.detailPreview(c, false)
 			})
@@ -577,6 +609,8 @@ func (s *State) detailHeader(c *ui.Context, a Anime) {
 			} else if s.DetailReturn == "downloads" {
 				backLabel = "返回下载"
 				backPage = "downloads"
+			} else if s.DetailReturn == browseDetailReturn {
+				backLabel = "返回番剧详情"
 			}
 			iconButton(c, "back-browse", backLabel, "back", func() { s.enterPage(backPage) })
 			quiet(c, "back-list", backLabel, func() { s.enterPage(backPage) }).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted)
@@ -630,15 +664,9 @@ func (s *State) detailGroups(c *ui.Context) {
 	}
 }
 
-func (s *State) detailOptions(c *ui.Context, a Anime, groupFirst bool) {
+func (s *State) detailOptions(c *ui.Context) {
 	ui.Column(c).Gap(14).Children(func() {
-		if groupFirst {
-			s.detailGroups(c)
-			s.animeSummary(c, a)
-		} else {
-			s.animeSummary(c, a)
-			s.detailGroups(c)
-		}
+		s.detailGroups(c)
 		if s.detailReady() {
 			ui.Divider(c).Background(colors(c).line).Margin(2, 0)
 			heading(c, "你想要什么版本")
