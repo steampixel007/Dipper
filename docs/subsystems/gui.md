@@ -197,9 +197,11 @@ back button returns to downloads.
 The synopsis is shown in browse details. The group and resource pages keep the
 compact anime header and start their options with the subtitle group.
 Loading, unavailable and missing descriptions have distinct copy in browse
-details. Catalog and core state refreshes retain a loaded synopsis, while a
-successful detail response is authoritative. `anime_summary_test.go` checks
-the rendering boundary and `browse_detail_test.go` checks the return path.
+details. A synopsis loaded from the active browse request stays available when
+switching posters or reopening the panel. Catalog and core state refreshes
+retain a loaded synopsis, while a successful group-page detail response is
+authoritative. `anime_summary_test.go` checks the rendering boundary and
+`browse_detail_test.go` checks the return path and synopsis reuse.
 
 
 The browse page search matches the follow search: typing resets the catalog

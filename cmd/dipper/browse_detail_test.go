@@ -105,7 +105,7 @@ func TestUIBrowseDetailAtNarrowWidth(t *testing.T) {
 	}
 }
 
-func TestBrowseSummaryIgnoresObsoleteResponses(t *testing.T) {
+func TestBrowseSummaryCachesOnlyActiveResponse(t *testing.T) {
 	body, err := os.ReadFile(filepath.Join("..", "..", "internal", "source", "testdata", "bangumi-4071.html"))
 	if err != nil {
 		t.Fatal(err)
@@ -144,17 +144,43 @@ func TestBrowseSummaryIgnoresObsoleteResponses(t *testing.T) {
 	if state.browseDetail.anime != state.Catalog[0] || state.browseDetail.loading {
 		t.Fatal("old source response overwrote the replacement synopsis")
 	}
-	state.openBrowseDetail(anime)
-	result()()
-	if state.browseDetail.loading || state.browseDetail.failed || state.browseDetail.anime.Summary == "" {
-		t.Fatal("active request did not load the synopsis from the captured detail page")
+	if state.anime(anime.ID).Summary != "" {
+		t.Fatal("switching posters cached an obsolete synopsis")
 	}
-	state.openBrowseDetail(state.Catalog[0])
 	state.openBrowseDetail(anime)
 	outdated = result()
 	state.closeBrowseDetail()
 	outdated()
 	if state.browseDetail != nil {
 		t.Fatal("a late source response reopened closed details")
+	}
+	if state.anime(anime.ID).Summary != "" {
+		t.Fatal("closing the panel cached an obsolete synopsis")
+	}
+
+	state.openBrowseDetail(anime)
+	updated := anime
+	updated.Title, updated.Day = "更新后的番剧标题", 3
+	state.KnownAnime[anime.ID] = updated
+	result()()
+	summary := state.browseDetail.anime.Summary
+	if state.browseDetail.loading || state.browseDetail.failed || summary == "" {
+		t.Fatal("active request did not load the synopsis from the captured detail page")
+	}
+	state.openBrowseDetail(state.Catalog[0])
+	state.openBrowseDetail(anime)
+	if state.browseDetail.loading || state.browseDetail.anime.Summary != summary {
+		state.closeBrowseDetail()
+		t.Fatal("switching back did not reuse the loaded synopsis")
+	}
+	state.closeBrowseDetail()
+	state.openBrowseDetail(anime)
+	if state.browseDetail.loading || state.browseDetail.anime.Summary != summary {
+		state.closeBrowseDetail()
+		t.Fatal("reopening the panel did not reuse the loaded synopsis")
+	}
+	updated.Summary = summary
+	if got := state.anime(anime.ID); got != updated {
+		t.Fatalf("caching a synopsis changed newer anime metadata: got %+v, want %+v", got, updated)
 	}
 }

@@ -77,6 +77,14 @@ func (s *State) loadBrowseSummary(detail *browseDetail) {
 			detail.loading = false
 			detail.failed = err != nil
 			detail.anime.Summary = result.Anime.Summary
+			if err == nil && detail.anime.Summary != "" {
+				known, ok := s.KnownAnime[id]
+				if !ok {
+					known = detail.anime
+				}
+				known.Summary = detail.anime.Summary
+				s.KnownAnime[id] = known
+			}
 		})
 	}()
 }
