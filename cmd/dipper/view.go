@@ -38,7 +38,10 @@ var (
 	covers   = map[string]*ui.Bitmap{}
 )
 
-var brandLogo *ui.SVG
+var (
+	brandLogo *ui.SVG
+	brandApp  *ui.Bitmap
+)
 
 var iconPaths = map[string]string{
 	"browse":    `<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>`,
@@ -64,6 +67,10 @@ var icons = map[string]*ui.SVG{}
 
 func loadImages() {
 	brandLogo = ui.MustParseSVG(brandSVG)
+	var err error
+	if brandApp, err = ui.DecodeBitmap(brandIconPNG); err != nil {
+		panic("decode app icon: " + err.Error())
+	}
 	for name, path := range iconPaths {
 		icons[name] = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">` + path + `</svg>`))
 	}
@@ -241,7 +248,7 @@ func (s *State) sidebar(c *ui.Context) {
 		BorderWidth(0, 1, 0, 0).BorderColor(pal.line).Children(func() {
 		ui.Column(c).MinHeight(height).Padding(24, 14, 16).Gap(8).Children(func() {
 			ui.Row(c).Gap(10).Padding(0, 4, 20).Children(func() {
-				ui.Box(c).Size(40, 40).Radius(controlRadius).Background(colors(c).brandWash).Center().Children(func() { ui.Image(c, brandLogo).Size(32, 32) })
+				ui.Image(c, brandApp).Size(40, 40)
 				ui.Text(c, "Dipper").FontSize(textSize(c, textSection)).FontWeight(600).TextColor(colors(c).ink).Grow(1).MinWidth(0)
 			})
 			for _, nav := range []struct{ id, label string }{{"browse", "浏览番剧"}, {"following", "我的追番"}, {"downloads", "下载"}} {

@@ -499,14 +499,14 @@ fixed contain frame.
 
 ## Brand marks
 
-The bird logo shows in four places: the window icon and the tray icon (PNG
-copies embedded from `cmd/dipper/assets/`, set in `main.go`), and the sidebar
-chip and the cover fallback (`assets/dipper.svg` parsed in `loadImages`,
-rendered through `ui.Image` in its own colors). The tray carries two cuts —
-ink on a light taskbar, paper on a dark one — and `main.go` follows the
-taskbar's appearance between them. The Windows executable also carries the
-tile icon as a resource (`dipper_windows_*.syso`, made by `build/icon/gen.go`),
-which the taskbar and Explorer read before any window sets its own. The assets
+The bird logo shows in four places: the window and sidebar use the circular app
+badge (`assets/dipper-icon.png`); the tray uses two transparent cuts; and the
+cover fallback uses the transparent mark (`assets/dipper.svg`). The PNGs are
+embedded from `cmd/dipper/assets/`; `main.go` sets the window icon and follows
+the taskbar's appearance between the tray cuts. The Windows executable also
+carries the tile icon as a resource (`dipper_windows_*.syso`, made by
+`build/icon/gen.go`), which the taskbar and Explorer read before any window
+sets its own. The assets
 are copies of the masters in `build/icon/`; regenerate them with
 `build/icon/gen.go` and keep the copies in step, as [DESIGN.md](../../DESIGN.md)
 records.

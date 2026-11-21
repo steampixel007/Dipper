@@ -38,6 +38,22 @@ func TestUISidebarUsesSharedSelectionWash(t *testing.T) {
 	}
 }
 
+func TestUISidebarUsesAppBadge(t *testing.T) {
+	for _, appearance := range []string{appearanceLight, appearanceDark} {
+		t.Run(appearance, func(t *testing.T) {
+			state := uiFixture(t, "browse")
+			state.Appearance = appearance
+			tester := ui.NewTester(state.view, 1040, 720)
+			tester.SetPreferences(ui.Preferences{ReduceMotion: true})
+			pixel := color.NRGBAModel.Convert(tester.Image().At(28, 30)).(color.NRGBA)
+			want := color.NRGBA{R: 207, G: 226, B: 255, A: 255}
+			if pixel != want {
+				t.Errorf("sidebar badge fill=%v, want %v from the app icon", pixel, want)
+			}
+		})
+	}
+}
+
 func TestUIChromeStaysNeutralAcrossThemes(t *testing.T) {
 	for _, appearance := range []string{appearanceLight, appearanceDark} {
 		t.Run(appearance, func(t *testing.T) {
