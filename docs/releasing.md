@@ -1,8 +1,9 @@
 # Releasing Dipper
 
-Pushing a version tag runs `.github/workflows/release.yml`. It validates the tag,
-runs the existing Windows, macOS and Linux checks, builds archives and installers,
-and publishes a GitHub Release with generated release notes and `SHA256SUMS`.
+Pushing a version tag runs `.github/workflows/release.yml`. It validates the tag
+and its release notes, runs the Windows, macOS and Linux checks, builds archives
+and installers, and publishes a GitHub Release with the prepared notes and
+`SHA256SUMS`.
 No manual publishing step or additional secret is required; only the publishing
 job receives `contents: write` through the built-in `GITHUB_TOKEN`.
 
@@ -64,22 +65,39 @@ replace its downloads. Publish corrections under a new version.
 
 ## Release notes
 
-GitHub uses pull request titles in the generated release notes. Before merging
-a pull request that will appear there, format its title as
-`type(scope): English / 简体中文`. Both halves must describe the same change.
-This also applies to Dependabot pull requests.
+Review the changes from the previous published stable tag to the commit you
+intend to release. Group related changes into entries that explain what users
+will notice. Include any breaking changes and required upgrade steps.
 
-For example, use
-`fix(gui): Show full posters without cropping or empty margins / 完整显示原始海报，避免裁剪和留白`.
+Commit `docs/releases/<tag>.md` in the release preparation pull request. Use
+the complete tag, including the `v` prefix and any prerelease suffix or build
+metadata. Write the full English changelog first, followed by the Simplified
+Chinese changelog with the same entries in the same order.
+
+```markdown
+## Changelog
+
+- Show full posters without cropping.
+
+## 更新日志
+
+- 完整显示海报，避免裁剪。
+```
+
+The workflow reads the notes from the tagged commit and uses the Markdown as
+the GitHub Release body. Missing or blank notes fail validation before checks
+or builds start.
 
 ## Publish a version
 
-The tagged commit must contain the release workflow. Merge the intended changes
-first, then select the version yourself. For example, from the repository root:
+Choose an unused version and merge the intended changes and release notes.
+The tagged commit must contain both the release workflow and the notes for that
+tag. From the repository root, verify the notes at the target before tagging:
 
 ```powershell
 git fetch origin --tags
 git log -1 --oneline origin/main
+git show origin/main:docs/releases/v0.1.0.md
 git tag -a v0.1.0 origin/main -m "Release v0.1.0"
 git push origin v0.1.0
 ```
