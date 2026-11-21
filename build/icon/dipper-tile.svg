@@ -1,17 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <title>Dipper app icon: the bird on a blueWash tile</title>
-  <rect width="256" height="256" rx="58" fill="#f5f9ff"/>
-  <g transform="translate(34,10) scale(0.735)">
-    <circle cx="106" cy="98" r="40" fill="#000000"/>
-    <path fill="#000000" d="M130 110 C158 110 182 132 182 160 C182 188 158 210 130 210 C102 210 78 188 78 160 C78 132 102 110 130 110 Z"/>
-    <path fill="#000000" d="M74 104 L44 114 L78 122 C76.5 116 75 110 74 104 Z"/>
-    <path fill="#000000" d="M167 149 L211 111 A9 9 0 0 1 223 123 L186 166 C180 163 172 157 167 149 Z"/>
-    <path fill="#ffffff" d="M84 118 Q110 130 138 114 C150 120 156 136 154 152 C152 168 144 180 134 186 C123 191 108 190 97 187 C88 184 84 181 82 174 C79 166 80 150 82 138 C84 128 84 122 84 118 Z"/>
-    <circle cx="104" cy="94" r="7.5" fill="#ffffff"/>
-    <circle cx="106" cy="95" r="3" fill="#000000"/>
-    <g stroke="#3b63fb" stroke-width="9" stroke-linecap="round" fill="none">
-      <path d="M56 231 L96 227 M112 230 L142 227 M154 229 L172 227"/>
-      <path d="M78 247 L104 244 M118 246 L144 244"/>
-    </g>
+  <title>Dipper app icon: the bird on a pale-blue circular badge</title>
+  <circle cx="128" cy="128" r="128" fill="#cfe2ff"/>
+  <g transform="translate(128 122) scale(1.14) translate(-131.5 -134)">
+    <circle cx="106" cy="98" r="40" fill="#071018"/>
+    <path fill="#071018" d="M130 110 C158 110 182 132 182 160 C182 188 158 210 130 210 C102 210 78 188 78 160 C78 132 102 110 130 110 Z"/>
+    <path fill="#071018" d="M74 104 L44 114 L78 122 C76.5 116 75 110 74 104 Z"/>
+    <path fill="#071018" d="M167 149 L211 111 A9 9 0 0 1 223 123 L186 166 C180 163 172 157 167 149 Z"/>
+    <path fill="#ffffff" d="M86 120 Q109 131 135 116 C147 122 152 135 151 147 C150 160 144 170 135 175 C124 180 111 178 101 174 C92 170 87 162 85 153 C83 143 84 130 86 120 Z"/>
+    <circle cx="104" cy="94" r="8" fill="#ffffff"/>
   </g>
+  <path d="M60 222 C76 213 92 213 108 222 C124 231 140 231 156 222 C172 213 188 213 204 222" stroke="#2f6bff" stroke-width="15" stroke-linecap="round" fill="none"/>
 </svg>
