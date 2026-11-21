@@ -158,9 +158,10 @@ Weekdays sit directly below. Inputs and buttons share a visual height.
 ### Posters
 
 The entire poster tile is clickable, including its title and metadata. Browse
-opens group selection or existing resources; My Follows opens the episode
-library. Keep artwork large and metadata subordinate. Use the same radius,
-image sizing and hover behavior in both grids.
+opens a synopsis alongside the grid, with a centered dialog at narrow widths.
+The poster shows 查看详情 on hover or keyboard focus. My Follows opens the
+episode library. Keep artwork large and metadata subordinate. Use the same
+radius and image sizing in both grids.
 Align each tile's content to the top of its grid row. Wrapped titles and
 metadata can increase the row height, but must not shift neighboring posters
 downward.
@@ -211,14 +212,18 @@ selection, contrast and all actions. Theme changes must not reset text scale.
 
 ## Page recipes
 
-1. **Browse:** season title and one-line purpose, compact filters, weekday tabs,
+1. **Browse:** season title, compact filters, weekday tabs,
    dismissible first-use guidance, poster grid. Guidance uses a quiet neutral
    strip without a decorative icon. Search and filters remain visible while
    posters scroll; changing a filter follows the existing scroll contract.
-2. **Choose and follow:** anime header, release-group choice, understandable
+   The synopsis shows the cover, title, update day, and follow status. Its body
+   scrolls independently. 选择字幕组 or 查看资源 opens the existing setup or
+   resource page. Back restores the synopsis at the same reading position.
+2. **Choose and follow:** compact anime header, release-group choice, understandable
    title-word filters, resource preview, confirmation. Inclusion says “只要”;
    exclusion says “不要”. Undo and redo preserve their existing behavior.
-   Matching counts and selected download counts stay distinguishable.
+   Matching counts and selected download counts stay distinguishable. The
+   synopsis lives in browse details.
 3. **My Follows:** title, search and add action, follow count, poster grid.
    Check failures sort first and remain actionable. The main click watches;
    management remains secondary.

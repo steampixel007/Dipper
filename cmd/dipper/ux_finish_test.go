@@ -57,26 +57,6 @@ func TestUXFilesDialogCloseStaysReachableAtLargeText(t *testing.T) {
 	}
 }
 
-func TestUXSummaryDialogCloseStaysReachableAtLargeText(t *testing.T) {
-	s := uiFixture(t, "detail")
-	anime := s.anime(s.AnimeID)
-	anime.Summary = strings.Repeat("星海旅记的故事从一个遥远的星球开始，旅人沿着失落的星图寻找回家的路。", 30)
-	s.KnownAnime[anime.ID] = anime
-	s.SummaryOpen = true
-
-	tt := ui.NewTester(s.view, 1040, 720)
-	tt.SetPreferences(ui.Preferences{TextScale: 2, ReduceMotion: true})
-	uiScrollTo(t, tt, "简介来自蜜柑计划")
-	closeBounds, found := tt.Find("关闭")
-	if !found || closeBounds.W <= 0 || closeBounds.H <= 0 {
-		t.Fatalf("footer close has no rendered bounds after scrolling: %+v found=%v", closeBounds, found)
-	}
-	uiClick(t, tt, "关闭")
-	if s.SummaryOpen {
-		t.Fatal("footer close left the summary dialog open")
-	}
-}
-
 func TestUXDetailLargeTextKeepsCommitReachable(t *testing.T) {
 	s, _, updates, _ := submissionFixture(t, false)
 	s.KnownAnime[s.AnimeID] = Anime{ID: s.AnimeID, Title: strings.Repeat("星海旅记与失落星图的旅程", 4)}

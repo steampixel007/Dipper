@@ -84,7 +84,6 @@ func (s *State) currentSeason() {
 	s.setCurrentSeason()
 	s.Day = -1
 	s.Search = ""
-	s.CatalogScroll = ui.ScrollState{}
 	s.refreshCatalog()
 }
 
@@ -97,6 +96,8 @@ func fromAnime(a source.Anime) Anime {
 }
 
 func (s *State) refreshCatalog() {
+	s.closeBrowseDetail()
+	s.CatalogScroll = ui.ScrollState{}
 	if s.Source == nil {
 		return
 	}
@@ -364,7 +365,6 @@ func (s *State) openAnime(id, from string) {
 	s.ResourceList = nil
 	s.ChoosingGroup = false
 	s.GroupSearch = ""
-	s.SummaryOpen = false
 	s.Rule = Rule{}
 	s.Checked = map[string]bool{}
 	s.EditID = ""

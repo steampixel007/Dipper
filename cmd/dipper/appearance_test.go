@@ -138,7 +138,7 @@ func TestAppearanceBusySettingsIgnoreRadioClicks(t *testing.T) {
 
 func TestAppearanceRenderedPagesUseDarkSurfacesAndReadableText(t *testing.T) {
 	for _, page := range []struct{ id, heading, caption string }{
-		{"browse", "2025 年春季番剧", "选好番剧和版本，新更新会自动下载。"},
+		{"browse", "2025 年春季番剧", "来源：蜜柑计划"},
 		{"detail", "可下载资源", "周一，来源：蜜柑计划"},
 		{"following", "我的追番", "添加追番"},
 		{"downloads", "下载", "总下载速度"},

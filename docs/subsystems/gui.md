@@ -19,6 +19,7 @@ components, and interaction conventions are specified in
 | `main.go` | Process start: single instance, data directory, engine and core construction, the window |
 | `model.go` | `State`, `Saved`, the update loop, and the helpers that turn core types into UI types |
 | `view.go` | The pages: browse, detail, following, episodes, downloads, settings |
+| `browse_detail.go` | Browse synopsis, its independent source request, and responsive panel |
 | `core_ui.go` | The bridge to `core`: subscriptions, tasks, settings |
 | `source_ui.go` | The bridge to `source`: catalog, detail, history, covers |
 | `software_update_ui.go` | The software update settings card, release dialog, and update lifecycle |
@@ -184,19 +185,23 @@ The detail page runs in one of two modes, distinguished by `Backfill`:
   match, and confirm. Existing matches are selected by default.
 - **Backfill** — pick releases from an existing subscription's history to
   download now, without changing the rule.
-Browse cards mark followed anime with a 已追番 badge and, when the anime
-has finished transfers, an 已下载 N 个资源 progress badge beside it using the
-follow card's completed-count semantics. Opening an anime that already has a follow (from the browse grid or the downloads
-page) goes straight into that follow's resource list; 重新选版本 in the header
-switches back to the subscribe mode for the same anime, and the back button
-returns to the page the request came from.
+Browse cards mark followed anime with a 已追番 badge and show the number of
+completed downloads. Clicking a card opens its synopsis. The catalog reflows
+beside the right panel on wide windows and stays full width behind a centered
+dialog on narrow windows. Switching cards cancels the previous synopsis request.
+The panel retains its reading position when returning from group selection or
+resources. Closing it restores the full-width catalog's scroll position.
+The downloads page can open a followed anime's resource list directly. Its
+back button returns to downloads.
 
-Above the subtitle groups, a four-line synopsis preview opens a scrollable
-reading dialog. Opening or closing it preserves resource selection, filter
-drafts and scroll position. Loading, unavailable and missing descriptions have
-distinct copy. Catalog and core state refreshes retain a loaded synopsis, while a
-successful detail response is authoritative. Opening another anime closes the
-reading dialog. `anime_summary_test.go` checks the rendering and interaction.
+The synopsis is shown in browse details. The group and resource pages keep the
+compact anime header and start their options with the subtitle group.
+Loading, unavailable and missing descriptions have distinct copy in browse
+details. A synopsis loaded from the active browse request stays available when
+switching posters or reopening the panel. Catalog and core state refreshes
+retain a loaded synopsis, while a successful group-page detail response is
+authoritative. `anime_summary_test.go` checks the rendering boundary and
+`browse_detail_test.go` checks the return path and synopsis reuse.
 
 
 The browse page search matches the follow search: typing resets the catalog
@@ -432,8 +437,8 @@ checks, regression evidence, and remaining native boundaries.
 ## Rendering
 
 Browse cards show their weekday only under the all-days filter. Selecting a
-weekday hides that repeated label and its separator, while keeping the resource
-action and download status.
+weekday hides the repeated label and its separator while keeping download
+status. The 查看详情 hint appears on hover and keyboard focus.
 
 `ui_render.go` holds a fixed sample state used to render each page's layout
 without a live source or database. It is how a layout change is checked in

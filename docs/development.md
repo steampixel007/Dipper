@@ -86,7 +86,7 @@ public-network downloads.
 | [02-filter.png](assets/ui/02-filter.png) | Title-word selection and release preview |
 | [03-following.png](assets/ui/03-following.png) | Saved follows and the episode-library entry |
 | [04-downloads.png](assets/ui/04-downloads.png) | Transfer progress and controls |
-| [09-anime-summary.png](assets/ui/09-anime-summary.png) | Full synopsis in a reading dialog |
+| [09-anime-summary.png](assets/ui/09-anime-summary.png) | Synopsis in the browse side panel |
 | [10-group-picker.png](assets/ui/10-group-picker.png) | Subtitle-group search and release counts |
 | [11-view-resources.png](assets/ui/11-view-resources.png) | Resource entry and manual backfill |
 | [12-seed-settings.png](assets/ui/12-seed-settings.png) | Seeding-duration choice |

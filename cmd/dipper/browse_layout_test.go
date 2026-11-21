@@ -24,10 +24,10 @@ func TestUIBrowseCardWeekdayOnlyInAllDays(t *testing.T) {
 			if got, want := tester.HasText(dayName(anime.Day)), day == -1; got != want {
 				t.Fatalf("card weekday visible = %v, want %v for day filter %d", got, want, day)
 			}
-			if got, want := tester.HasText("·"), day == -1; got != want {
-				t.Fatalf("weekday separator visible = %v, want %v for day filter %d", got, want, day)
+			if tester.HasText("·") || tester.HasText("选择版本") || tester.HasText("查看详情") {
+				t.Fatalf("unexpected idle card metadata: %q", tester.Texts())
 			}
-			uiRequireText(t, tester, anime.Title, "选择版本")
+			uiRequireText(t, tester, anime.Title)
 		})
 	}
 }
