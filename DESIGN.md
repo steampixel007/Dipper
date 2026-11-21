@@ -44,28 +44,30 @@ page-specific themes.
 
 ### Color
 
-Keep roughly 90–95% of application chrome neutral, excluding poster artwork.
-Blue identifies selection, focus and primary actions. Green means success or
-active following, amber means attention, and red means error or destructive
-action. Include a readable label with every status color.
+Use low-chroma slate neutrals for application chrome so poster artwork carries
+the strongest color. Use a blue wash for selected navigation and filters, a
+solid blue fill for primary actions, and blue outlines for focus. Excluded title
+words and cover placeholders use recessed neutral surfaces. Green means
+success or active following, amber means a retryable issue or attention, and
+red means a blocking error or destructive action. Include a readable label
+with every status color.
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `canvas` | `#FAFAF9` | `#141618` | Window and page ground |
-| `chrome` | `#F0F1EF` | `#1B1D20` | Opaque navigation rail |
-| `paper` | `#FFFFFF` | `#202326` | Inputs, selected segments, panels and dialogs |
-| `sunken` | `#EBEDEA` | `#191C1F` | Quiet segmented-control well |
-| `ink` | `#222725` | `#ECEFED` | Body text and titles |
-| `muted` | `#626963` | `#B4BBB5` | Secondary text |
-| `blue` | `#285EA8` | `#9EC3F5` | Primary action, focus and links |
-| `blueHover` | `#204F91` | `#B6D2F8` | Primary hover |
-| `bluePressed` | `#194177` | `#87ADE1` | Primary press |
-| `blueWash` | `#EAF1FA` | `#233247` | Selection and inclusion |
-| `accentText` | `#FFFFFF` | `#162331` | Text on primary buttons |
-| `green` / `greenWash` | `#287250` / `#EBF5EF` | `#8BCDA8` / `#20372A` | Following and success |
-| `amber` / `amberWash` | `#8B590E` / `#FBF2E1` | `#E7BD7C` / `#3B301F` | Retry and attention |
-| `avoidInk` / `avoidWash` | `#685E55` / `#F1EEEA` | `#C5BAB0` / `#322D28` | Excluded title words |
-| `errorInk` / `errorWash` | `#B73731` / `#FCEDEB` | `#F5A6A0` / `#3D2727` | Failure and deletion |
+| `canvas` | `#F7F8FA` | `#171A1F` | Window and page ground |
+| `chrome` | `#EDF0F4` | `#1D2229` | Opaque navigation rail |
+| `paper` | `#FFFFFF` | `#252B33` | Inputs, selected segments, panels and dialogs |
+| `sunken` | `#E6EAF0` | `#1B2027` | Recessed controls and cover placeholders |
+| `ink` | `#222B37` | `#E8EDF4` | Body text and titles |
+| `muted` | `#526071` | `#B1BDCC` | Secondary text |
+| `blue` | `#285994` | `#96B9EC` | Primary action, focus and links |
+| `blueHover` | `#234D80` | `#AFCAF2` | Primary hover |
+| `bluePressed` | `#1C406C` | `#83A9DF` | Primary press |
+| `blueWash` | `#E1EBF8` | `#293B53` | Selected navigation, filters and inclusion |
+| `accentText` | `#FFFFFF` | `#182535` | Text on primary buttons |
+| `green` / `greenWash` | `#28664F` / `#E9F2EE` | `#9BCDB6` / `#263A34` | Following and success |
+| `amber` / `amberWash` | `#7D541E` / `#F7EFE2` | `#E2BF89` / `#3A3228` | Retry and attention |
+| `errorInk` / `errorWash` | `#A63C38` / `#F8ECEC` | `#F0AAA8` / `#3D2B30` | Blocking errors and deletion |
 
 `line`, `outline` and `hoverLine` are neutral separators, control outlines and
 hover outlines, respectively. Use stronger outlines and persistent focus rings
@@ -73,10 +75,11 @@ under the high-contrast preference. Text must meet 4.5:1 contrast against its
 actual surface in both themes.
 
 The app icon is a circular pale-blue badge (`#CFE2FF`) carrying the ink bird
-(`#071018`) over one blue wave (`#2F6BFF`). The in-app and tray marks stay
-transparent so they sit on any surface; do not recolor the bird to match the
-accent. Missing covers use the transparent mark; loading covers use the existing
-loading treatment.
+(`#071018`) over one blue wave (`#2F6BFF`). The sidebar uses that badge so the
+in-app identity matches the window and shortcut. Tray marks stay transparent
+so they sit on any surface; do not recolor the bird to match the accent. The
+cover fallback uses the transparent mark on the recessed `sunken` surface;
+loading covers use a neutral `muted` indicator on the same surface.
 
 ### Typography
 

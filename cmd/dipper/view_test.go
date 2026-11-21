@@ -1381,10 +1381,7 @@ func TestUIRenderScreensOffline(t *testing.T) {
 	}
 }
 
-// countDark counts pixels below a luminance of 120 in a region of the last
-// frame; inkOnly keeps only near-neutral dark pixels, which the blue of the
-// letter fallback and of the loading indicator never matches.
-func countDark(tt *ui.Tester, x0, y0, x1, y1 int, inkOnly bool) int {
+func countBrandInk(tt *ui.Tester, x0, y0, x1, y1 int) int {
 	img := tt.Image()
 	b := img.Bounds()
 	n := 0
@@ -1392,9 +1389,7 @@ func countDark(tt *ui.Tester, x0, y0, x1, y1 int, inkOnly bool) int {
 		for x := max(x0, b.Min.X); x < min(x1, b.Max.X); x++ {
 			cr, cg, cb, _ := img.At(x, y).RGBA()
 			r, g, bl := int(cr>>8), int(cg>>8), int(cb>>8)
-			lum := 0.299*float64(r) + 0.587*float64(g) + 0.114*float64(bl)
-			spread := max(r, g, bl) - min(r, g, bl)
-			if lum < 120 && (!inkOnly || spread < 40) {
+			if max(r, g, bl) < 60 {
 				n++
 			}
 		}
@@ -1417,14 +1412,14 @@ func TestUIBrandMarkReplacesLetterPlaceholders(t *testing.T) {
 	if !ok {
 		t.Fatal("wordmark missing")
 	}
-	if chip := countDark(tt, int(word.X)-50, int(word.Y)-10, int(word.X)-10, int(word.Y+word.H)+10, false); chip < 100 || chip > 500 {
+	if chip := countBrandInk(tt, int(word.X)-50, int(word.Y)-10, int(word.X)-10, int(word.Y+word.H)+10); chip < 100 || chip > 500 {
 		t.Errorf("sidebar chip dark pixels = %d; want the bird at reading scale on a wash, not a solid square (100-500)", chip)
 	}
 	title, ok := tt.Find("星海旅记")
 	if !ok {
 		t.Fatal("cover-less card title missing")
 	}
-	if n := countDark(tt, int(title.X)-20, int(title.Y)-210, int(title.X)+140, int(title.Y)-8, true); n < 30 {
+	if n := countBrandInk(tt, int(title.X)-20, int(title.Y)-210, int(title.X)+140, int(title.Y)-8); n < 30 {
 		t.Errorf("cover fallback ink pixels = %d; want the bird mark, not a blue letter (>=30)", n)
 	}
 }
@@ -1449,7 +1444,7 @@ func TestUICoverInFlightShowsLoadingIndicator(t *testing.T) {
 	if !ok {
 		t.Fatal("card title missing")
 	}
-	if n := countDark(tt, int(title.X)-20, int(title.Y)-210, int(title.X)+140, int(title.Y)-8, true); n != 0 {
+	if n := countBrandInk(tt, int(title.X)-20, int(title.Y)-210, int(title.X)+140, int(title.Y)-8); n != 0 {
 		t.Errorf("bird fallback painted over a loading cover (%d ink pixels)", n)
 	}
 }

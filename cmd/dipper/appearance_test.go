@@ -239,7 +239,7 @@ func requirePaletteContrast(t *testing.T, dark bool) {
 			{"warning action", p.amber, p.paper},
 			{"warning chrome", p.amber, p.chrome},
 			{"include", p.blue, p.blueWash},
-			{"exclude", p.avoidInk, p.avoidWash},
+			{"excluded title words", p.muted, p.sunken},
 			{"success", p.green, p.greenWash},
 			{"warning", p.amber, p.amberWash},
 			{"error", p.errorInk, p.errorWash},
