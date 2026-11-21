@@ -62,6 +62,16 @@ ordering. Do not use metadata alone to represent an upgrade. A published version
 identifies one source snapshot and its release assets: never move its tag or
 replace its downloads. Publish corrections under a new version.
 
+## Release notes
+
+GitHub uses pull request titles in the generated release notes. Before merging
+a pull request that will appear there, format its title as
+`type(scope): English / 简体中文`. Both halves must describe the same change.
+This also applies to Dependabot pull requests.
+
+For example, use
+`fix(gui): Show full posters without cropping or empty margins / 完整显示原始海报，避免裁剪和留白`.
+
 ## Publish a version
 
 The tagged commit must contain the release workflow. Merge the intended changes
