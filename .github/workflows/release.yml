@@ -21,8 +21,12 @@ jobs:
     outputs:
       version: ${{ steps.tag.outputs.version }}
       prerelease: ${{ steps.tag.outputs.prerelease }}
+      notes_file: ${{ steps.tag.outputs.notes_file }}
     steps:
-      - name: Validate version tag
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate version tag and release notes
         id: tag
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -34,6 +38,12 @@ jobs:
             echo 'Expected a version tag such as v1.2.3 or v1.2.3-rc.1' >&2
             exit 1
           fi
+          notes_file="docs/releases/${RELEASE_TAG}.md"
+          if [[ ! -f "$notes_file" ]] || ! grep -q '[^[:space:]]' "$notes_file"; then
+            echo "Expected non-empty release notes at $notes_file" >&2
+            exit 1
+          fi
+          echo "notes_file=$notes_file" >> "$GITHUB_OUTPUT"
           version="${RELEASE_TAG#v}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [[ "${version%%+*}" == *-* ]]; then
@@ -168,6 +178,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
+          NOTES_FILE: ${{ needs.version.outputs.notes_file }}
           PRERELEASE: ${{ needs.version.outputs.prerelease }}
         run: |
           flags=()
@@ -175,6 +186,6 @@ jobs:
             flags+=(--prerelease --latest=false)
           fi
           gh release create "$RELEASE_TAG" dist/* \
-            --verify-tag --title "Dipper $RELEASE_TAG" --generate-notes \
+            --verify-tag --title "Dipper $RELEASE_TAG" --notes-file "$NOTES_FILE" \
             --draft "${flags[@]}"
           gh release edit "$RELEASE_TAG" --draft=false "${flags[@]}"
