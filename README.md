@@ -1,190 +1,80 @@
 <div align="center">
 
-<img src="cmd/dipper/assets/dipper-icon.png" width="104" height="104" alt="Dipper's white-throated dipper over blue rushing water">
+<img src="cmd/dipper/assets/dipper-icon.png" width="88" height="88" alt="Dipper app icon">
 
 # Dipper
 
 **English** &nbsp;·&nbsp; [简体中文](README.zh-CN.md)
 
-### Pick your anime. Leave the updates to Dipper.
-
-Browse the season, choose the version you like, and bring new episodes home.<br>
-A native desktop app with automatic following and a built-in downloader.
+Dipper is a desktop app for following anime. Browse Mikan by season, pick a fansub group and version, and Dipper's built-in downloader fetches new matches while the app is running.
 
 [![Checks](https://github.com/steampixel007/Dipper/actions/workflows/check.yml/badge.svg)](https://github.com/steampixel007/Dipper/actions/workflows/check.yml)
 [![Go](https://img.shields.io/badge/Go-1.27.3-3b63fb?logo=go&logoColor=white)](go.mod)
 [![License: MIT](https://img.shields.io/badge/License-MIT-3b63fb.svg)](LICENSE)
 [![Native UI](https://img.shields.io/badge/UI-MyGo_Native-3b63fb)](https://github.com/egoist/mygo)
 
-**[Download](https://github.com/steampixel007/Dipper/releases/latest)** &nbsp;·&nbsp; **[Get started](#get-started)** &nbsp;·&nbsp; **[User guide](docs/usage.md)** &nbsp;·&nbsp; **[Development](docs/development.md)** &nbsp;·&nbsp; **[Feedback](https://github.com/steampixel007/Dipper/issues)**
-
-<br>
+**[Download Dipper](https://github.com/steampixel007/Dipper/releases/latest)** &nbsp;·&nbsp; [Get started](#get-started) &nbsp;·&nbsp; [User guide](docs/usage.md) &nbsp;·&nbsp; [Report an issue](https://github.com/steampixel007/Dipper/issues)
 
 <a href="docs/assets/screenshots/01-browse.png">
-  <img src="docs/assets/screenshots/01-browse.png" width="960" alt="Dipper's seasonal anime catalog, with cover artwork, season selection, search, and weekday filters">
+  <img src="docs/assets/screenshots/01-browse.png" width="960" alt="Dipper's browse page with anime covers, season selection, title search, and weekday filters">
 </a>
 
-<sub>Captured from Dipper running on Windows with the real Mikan autumn 2025 catalog. Screenshots taken on November 8, 2026.</sub>
+<sub>Windows screenshot of the fall 2025 Mikan catalog.</sub>
 
 </div>
 
 ## Get started
 
-Download Dipper from this repository's **[Releases](https://github.com/steampixel007/Dipper/releases/latest)**.
-Expand **Assets** and choose the file for your computer. You do not need Git or
-Go. The filenames below are from `v0.1.3`, checked on November 8, 2026; later
-releases use their own version number.
+Open the [download page](https://github.com/steampixel007/Dipper/releases/latest), expand **Assets**, and look for a filename ending in the suffix for your computer.
 
-| Your computer | Download | Install and open |
+| Your computer | Filename suffix | How to open Dipper |
 | --- | --- | --- |
-| Windows x64 (Intel or AMD) | `dipper_0.1.3_windows_amd64_setup.exe` | Open the installer, then launch Dipper from the Start menu. |
-| Mac with Apple silicon (M series) | `dipper_0.1.3_darwin_arm64.dmg` | Open the disk image, drag Dipper to Applications, then open it there. |
-| Mac with an Intel processor | `dipper_0.1.3_darwin_amd64.dmg` | Open the disk image, drag Dipper to Applications, then open it there. |
-| Debian / Ubuntu Linux x64 | `dipper_0.1.3_linux_amd64.deb` | Install with your package manager, then open Dipper from the applications menu. [Install command and archive alternatives](docs/usage.md#install). |
+| Windows x64 (Intel or AMD) | `_windows_amd64_setup.exe` | Run the installer, then open Dipper from the Start menu. |
+| Mac with Apple silicon | `_darwin_arm64.tar.gz` | Extract the archive, move Dipper to Applications, and open it there. |
+| Mac with an Intel processor | `_darwin_amd64.dmg` | Open the DMG, drag Dipper to Applications, and open it there. |
+| Debian or Ubuntu x64 | `_linux_amd64.deb` | Install the package, then open Dipper from the applications menu. |
 
-On a Mac, **Apple menu → About This Mac** identifies the chip or processor
-([Apple's guide](https://support.apple.com/en-us/116943)).
-Choose an application download, rather than GitHub's **Source code** archives.
+Dipper's interface is in Chinese. On a Mac, check your chip under **Apple menu → About This Mac**. For install-free packages, first-launch warnings, or in-app updates, see [Installation](docs/usage.md#install) and [Software updates](docs/usage.md#software-updates).
 
-Windows packages have no publisher certificate. macOS packages use ad-hoc
-signing without Apple notarization; the system may block the first launch.
-See the [installation notes](docs/usage.md#install) if that happens.
-Clean-machine installation and native macOS/Linux first launch have not been
-validated in this documentation update.
+## Follow a series
 
-In-app updates arrive with the next release: Settings gains a **软件更新**
-(Software update) section, and Dipper will check for a stable release at most
-once a day after startup. Installed and extracted Windows copies, macOS apps,
-and Linux archive/DEB installations share the download and **重启更新**
-(Restart and update) flow. Automatic downloads are optional. See
-[software updates](docs/usage.md#software-updates) for authorization and
-verification boundaries.
-
-Once Dipper opens (the interface is currently in Chinese):
-
-1. **Browse a series.** In **浏览番剧**, choose a season or weekday, or search
-   the selected season by title.
-2. **Choose a group and filter releases.** Open the series, choose a fansub
-   group, then use title words such as `1080p` to include or exclude releases.
-   Check the matching list before continuing.
-3. **Download and follow it.** Keep the existing releases you want selected,
-   then choose **下载并追番** (Download and follow). Dipper checks for matching
-   updates while running.
-4. **Watch an episode.** Open **我的追番**, click the series poster to enter its
-   episode library, and choose **播放** beside a completed download. Playback
-   opens your system's associated media player; install one if needed.
-
-Files go to `Dipper` under your system's Videos folder by default. Change the
-destination in Settings. See the [user guide](docs/usage.md) for file locations
-and follow management.
-
-## From finding a show to following it
-
-Dipper keeps the whole journey in one window: the Mikan catalog, fansub
-releases, version selection, and downloads to your computer. Start with a show;
-there is no feed URL to paste or regular expression to write.
-
-- **Find something to follow.** Browse by season and weekday, or search the
-  current season by title.
-- **Choose your version in plain words.** Pick a fansub group, then click words
-  such as `1080p` or `HEVC` to include or exclude them. See matching releases
-  while choosing what to download.
-- **Let new episodes arrive.** While Dipper is running, it checks your follows
-  every 15 minutes and downloads new matching releases. Check immediately
-  whenever you like.
-- **Keep control of your files.** Pause or resume downloads, retry a failure,
-  open the destination folder, and stop sharing from the same app.
-
-Built with Go and [MyGo Native UI](https://github.com/egoist/mygo). No browser,
-Node.js, or separate download client is needed to run it. The interface is
-currently in Chinese.
-
-## Pick the release you actually want
-
-Click a title word and choose **只要** (include), **不要** (exclude), or
-**不限** (any). Matching counts and release selections update beside your
-choices, and undo lets you try another combination.
+1. Open **浏览番剧** (Browse) to find a series by season or weekday, or search the selected season by title.
+2. Choose a fansub group. Click a word in a release title, such as `1080p`, and choose **只要** (include), **不要** (exclude), or **不限** (any). The matching list updates as you go.
+3. Leave the releases you want now checked and click **下载并追番** (Download and follow). Unchecking a release skips that download and keeps your rule for future releases.
 
 <a href="docs/assets/screenshots/02-filter.png">
-  <img src="docs/assets/screenshots/02-filter.png" width="960" alt="Real 桜都字幕组 releases for Spy x Family season 3, filtered to 1080p and simplified Chinese, with existing downloads unchecked">
+  <img src="docs/assets/screenshots/02-filter.png" width="960" alt="Filtering Spy x Family season 3 releases to 1080p and simplified Chinese">
 </a>
 
-Existing matches are selected by default. Uncheck anything you do not want
-this time; your future matching rule stays separate from that selection.
-Later, you can fetch older releases without changing the rule.
+Dipper checks for new releases every 15 minutes while it runs and downloads the ones that match your rule. You can also check manually or download older releases later.
 
-## Follow along, without losing track
+## Watch downloaded episodes
 
-Open a poster in My Follows to see its episode library and play completed
-downloads. Use the library's **···** menu to view resources or manage the follow.
-Downloads are grouped by series and fansub group, each group with one progress
-bar and the next action beside every task.
+In **我的追番** (My Follows), click a series poster to open its episode library. Click **播放** (Play) on a completed download to open it in your system's media player. Downloads go to the `Dipper` folder under Videos by default. You can change that location in Settings.
 
 <a href="docs/assets/screenshots/03-following.png">
-  <img src="docs/assets/screenshots/03-following.png" width="960" alt="My Follows in the running Windows app, with real Ranma 1/2 and Spy x Family subscriptions">
+  <img src="docs/assets/screenshots/03-following.png" width="960" alt="My Follows on Windows, showing posters for Ranma 1/2 and Spy x Family">
 </a>
 
-<sub>These saved follows were paused after capture setup. No episodes were downloaded for the screenshots.</sub>
-
-On Windows and Linux, you can keep following and downloading in the tray when
-you close the window. On macOS, closing the window keeps Dipper running in the
-Dock. Quitting the app stops background activity.
+On Windows and Linux, you can close the window and leave Dipper running in the tray. On macOS, closing the window leaves it running in the Dock. Quitting Dipper stops checks and downloads. [Manage follows and downloads](docs/usage.md#manage-follows-and-downloads)
 
 ## Development
 
-To work on Dipper, build from source with the Go version pinned in [go.mod](go.mod).
+Dipper uses Go and [MyGo Native UI](https://github.com/egoist/mygo). Clone the repository and run these commands from its root with the Go version in [go.mod](go.mod).
 
-**Windows · PowerShell**
+| Platform | Build and test | Run |
+| --- | --- | --- |
+| Windows (PowerShell) | `powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Test` | `.\bin\dipper.exe` |
+| macOS or Linux | `sh scripts/build.sh --test` | `./bin/dipper` |
 
-```powershell
-git clone https://github.com/steampixel007/Dipper.git
-cd Dipper
-powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Test
-.\bin\dipper.exe
-```
+[Development guide](docs/development.md) · [Architecture](docs/architecture.md) · [Subsystems](docs/subsystems/README.md) · [Design](DESIGN.md) · [Contributing](CONTRIBUTING.md) · [Build checks](https://github.com/steampixel007/Dipper/actions/workflows/check.yml)
 
-**macOS / Linux · Shell**
+## About the name
 
-```sh
-git clone https://github.com/steampixel007/Dipper.git
-cd Dipper
-sh scripts/build.sh --test
-./bin/dipper
-```
-
-See the [development guide](docs/development.md) for graphics and tray runtime
-dependencies, build options, and verification boundaries.
-
-## A little bird, a rushing torrent
-
-Dipper is named after the white-throated dipper (河乌), a small songbird that
-dives into rushing mountain streams and returns with what it came for.
-Here, the torrents bring back anime.
+Dipper is named after the white-throated dipper (河乌), a small songbird that dives into rushing mountain streams. Here, the torrents bring back anime.
 
 ## License
 
-Dipper is released under the [MIT License](LICENSE). You may use, modify, and
-redistribute it, including commercially, as long as the copyright and license
-notice are included with the software.
+Dipper's original code and documentation are under the [MIT License](LICENSE). Keep the copyright and license notices when redistributing. The license does not grant trademark rights to the Dipper name or logo. See the [third-party notices](THIRD-PARTY.md) for third-party components and Mikan sample data and artwork.
 
-Third-party components keep their own licenses; see the
-[third-party notices](THIRD-PARTY.md). The MIT License does not grant trademark
-rights in the Dipper name or logo. Some sample data and artwork come from Mikan
-and are not covered by the MIT License.
-
-Contributions are accepted under the MIT License with a Developer Certificate
-of Origin sign-off; see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## More about Dipper
-
-| | |
-| :-- | :-- |
-| [User guide](docs/usage.md) | Following, downloads, background behavior, and where your files live |
-| [Development](docs/development.md) | Build scripts, diagnostic flags, icons, and verification boundaries |
-| [Design system](DESIGN.md) | The bird, colors, controls, and interaction principles |
-| [Architecture](docs/architecture.md) | How the native app, source, core, and downloader fit together |
-| [Subsystems](docs/subsystems/README.md) | Implementation contracts and what their tests prove |
-| [License](LICENSE) | MIT license for Dipper's original code and documentation |
-| [Third-party notices](THIRD-PARTY.md) | Licenses of bundled Go modules and sample artwork |
-| [Contributing](CONTRIBUTING.md) | How to submit a change and sign off |
-| [Report an issue](https://github.com/steampixel007/Dipper/issues) | Bugs, questions, and feature ideas |
+Contributions require a Developer Certificate of Origin sign-off. See [Contributing](CONTRIBUTING.md).

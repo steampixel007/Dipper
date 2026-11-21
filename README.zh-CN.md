@@ -1,138 +1,80 @@
 <div align="center">
 
-<img src="cmd/dipper/assets/dipper-icon.png" width="104" height="104" alt="蓝色湍流上方的河乌，Dipper 的应用图标">
+<img src="cmd/dipper/assets/dipper-icon.png" width="88" height="88" alt="Dipper 的河乌图标">
 
 # Dipper
 
 [English](README.md) &nbsp;·&nbsp; **简体中文**
 
-### 挑好想看的番，更新交给 Dipper。
-
-浏览当季新番，选好喜欢的版本，让新一集自动下载到电脑。<br>
-原生桌面应用，支持自动追番，内置下载器。
+Dipper 是一款桌面追番工具。在蜜柑目录里找番，选好字幕组和版本，Dipper 运行时就会用内置下载器把符合条件的新资源下载到电脑。
 
 [![检查状态](https://github.com/steampixel007/Dipper/actions/workflows/check.yml/badge.svg)](https://github.com/steampixel007/Dipper/actions/workflows/check.yml)
 [![Go](https://img.shields.io/badge/Go-1.27.3-3b63fb?logo=go&logoColor=white)](go.mod)
 [![开源许可：MIT](https://img.shields.io/badge/License-MIT-3b63fb.svg)](LICENSE)
 [![原生界面](https://img.shields.io/badge/UI-MyGo_Native-3b63fb)](https://github.com/egoist/mygo)
 
-**[下载 Dipper](https://github.com/steampixel007/Dipper/releases/latest)** &nbsp;·&nbsp; **[开始使用](#开始使用)** &nbsp;·&nbsp; **[使用指南（英文）](docs/usage.md)** &nbsp;·&nbsp; **[开发指南（英文）](docs/development.md)** &nbsp;·&nbsp; **[问题反馈](https://github.com/steampixel007/Dipper/issues)**
-
-<br>
+**[下载 Dipper](https://github.com/steampixel007/Dipper/releases/latest)** &nbsp;·&nbsp; [开始使用](#开始使用) &nbsp;·&nbsp; [使用指南（英文）](docs/usage.md) &nbsp;·&nbsp; [问题反馈](https://github.com/steampixel007/Dipper/issues)
 
 <a href="docs/assets/screenshots/01-browse.png">
-  <img src="docs/assets/screenshots/01-browse.png" width="960" alt="Dipper 新番目录：封面、季度选择、标题搜索与星期筛选">
+  <img src="docs/assets/screenshots/01-browse.png" width="960" alt="Dipper 的番剧浏览页，可以查看封面、切换季度、搜索番名和按星期筛选">
 </a>
 
-<sub>Windows 实机截图，展示蜜柑的真实 2025 年秋季目录。拍摄于 2026 年 11 月 8 日。</sub>
+<sub>Windows 实机截图，展示蜜柑 2025 年秋季番剧目录。</sub>
 
 </div>
 
 ## 开始使用
 
-前往本仓库的 **[Releases 下载页](https://github.com/steampixel007/Dipper/releases/latest)**，展开 **Assets**，选择适合电脑的安装包，无需安装 Git 或 Go。下表列出的是 2026 年 11 月 8 日核实的 `v0.1.3` 文件名；后续版本的文件名会使用对应的版本号。
+打开[下载页](https://github.com/steampixel007/Dipper/releases/latest)，展开 **Assets**，按文件名后缀选适合你电脑的安装包。
 
-| 你的电脑 | 下载文件 | 安装与打开 |
+| 你的电脑 | 文件名后缀 | 怎么打开 |
 | --- | --- | --- |
-| Windows x64（Intel 或 AMD） | `dipper_0.1.3_windows_amd64_setup.exe` | 打开安装程序，完成后从开始菜单启动 Dipper。 |
-| Apple 芯片 Mac（M 系列） | `dipper_0.1.3_darwin_arm64.dmg` | 打开磁盘映像，把 Dipper 拖入“应用程序”，再从那里打开。 |
-| Intel 芯片 Mac | `dipper_0.1.3_darwin_amd64.dmg` | 打开磁盘映像，把 Dipper 拖入“应用程序”，再从那里打开。 |
-| Debian / Ubuntu Linux x64 | `dipper_0.1.3_linux_amd64.deb` | 使用系统的软件包管理器安装，再从应用菜单打开。[安装命令与压缩包用法（英文）](docs/usage.md#install)。 |
+| Windows x64（Intel 或 AMD） | `_windows_amd64_setup.exe` | 运行安装程序，再从开始菜单打开 Dipper。 |
+| Apple 芯片 Mac | `_darwin_arm64.tar.gz` | 解压后把 Dipper 拖进「应用程序」，再从那里打开。 |
+| Intel 芯片 Mac | `_darwin_amd64.dmg` | 打开 DMG，把 Dipper 拖进「应用程序」，再从那里打开。 |
+| Debian 或 Ubuntu x64 | `_linux_amd64.deb` | 安装软件包，再从应用菜单打开 Dipper。 |
 
-Mac 用户可以在 **苹果菜单 → 关于本机** 中查看芯片或处理器，参见 [Apple 说明](https://support.apple.com/zh-cn/116943)。请选择上表中的应用安装包；下载页的 **Source code** 是源码包。
+Dipper 使用中文界面。Mac 用户可以在「苹果菜单 → 关于本机」查看芯片。免安装版和首次启动提示见[安装指南（英文）](docs/usage.md#install)，应用内更新见[软件更新（英文）](docs/usage.md#software-updates)。
 
-Windows 安装包没有发布者证书；macOS 安装包使用临时签名，未经 Apple 公证，首次打开时可能被系统拦截。处理方式见[安装说明（英文）](docs/usage.md#install)。本次文档更新未验证全新系统安装，也未完成 macOS / Linux 原生环境的首次启动验收。
+## 追一部番
 
-下一个版本起可以在应用内更新：设置里会新增**软件更新**，Dipper 启动后每天最多检查一次稳定版本。Windows 安装版和免安装版、macOS 应用、Linux 压缩包和 DEB 安装版都可下载后点击**重启更新**，也可开启自动下载。应用所在目录需要可写；只有 DEB 安装包升级会请求系统授权。旧版本需要先升级到包含该能力的版本。macOS / Linux 的原生更新验收边界见[软件更新（英文）](docs/usage.md#software-updates)。
-
-打开 Dipper 后：
-
-1. **找到想看的番。** 在“浏览番剧”中按季度、星期浏览，或搜索当前季度的番名。
-2. **选字幕组，筛选资源。** 打开番剧，选好字幕组，再点击 `1080p` 等标题词，选择“只要”或“不要”，查看哪些资源符合条件。
-3. **下载并追番。** 保留这次想下载的资源勾选，点击“下载并追番”。Dipper 运行期间会自动检查符合条件的新资源。
-4. **进剧集库观看。** 打开“我的追番”，点击番剧海报进入剧集库，找到已下载完成的资源，点击“播放”。视频会交给系统关联的播放器打开；尚未安装播放器时，需要先安装。
-
-文件默认保存到系统“视频”文件夹下的 `Dipper` 目录，可在设置中修改下载位置。文件位置与追番管理详见[使用指南（英文）](docs/usage.md)。
-
-## 从发现新番到自动追更
-
-Dipper 把蜜柑目录、字幕组发布记录、版本选择和本地下载放在同一个窗口里。从选一部番开始，无需粘贴订阅地址，也不用编写正则表达式。
-
-- **找到想追的番。** 按季度、星期浏览，或在当前季度内搜索番名。
-- **用看得懂的词选版本。** 先选字幕组，再点击 `1080p`、`HEVC` 等标题词，选择包含或排除；勾选时就能看到匹配的发布记录。
-- **让新一集自动到来。** Dipper 运行期间，每 15 分钟检查一次追番，自动下载符合条件的新发布；也可以随时手动检查。
-- **下载由你掌控。** 暂停、继续、失败重试、打开下载文件夹和停止分享，都能在应用中完成。
-
-使用 Go 和 [MyGo Native UI](https://github.com/egoist/mygo) 构建。运行时无需浏览器、Node.js 或额外的下载客户端。当前界面为中文。
-
-## 选中真正想要的版本
-
-点击标题里的词，选择 **只要**、**不要** 或 **不限**。匹配数量与发布记录会随之更新，也可以撤销操作，试试其他组合。
+1. 打开「浏览番剧」，按季度或星期找番，也可以搜索当前季度的番名。
+2. 选一个字幕组，再点发布标题里的词，比如 `1080p`，选择「只要」「不要」或「不限」。列表会随筛选条件更新。
+3. 勾好这次想下载的资源，点击「下载并追番」。取消勾选会跳过对应资源的本次下载，今后的筛选条件照样保留。
 
 <a href="docs/assets/screenshots/02-filter.png">
-  <img src="docs/assets/screenshots/02-filter.png" width="960" alt="间谍过家家 第三季的真实字幕组发布记录：筛选 1080p、简体内嵌，本次不下载已有资源">
+  <img src="docs/assets/screenshots/02-filter.png" width="960" alt="在间谍过家家第三季的发布列表中筛选 1080p、简体内嵌资源">
 </a>
 
-已有的匹配记录默认勾选。不想这次下载的内容，取消勾选即可；这次的下载选择与今后的匹配规则相互独立。之后也可以补下旧集，无需改动规则。
+Dipper 运行时每 15 分钟检查一次新资源，符合条件就自动下载。你也可以手动检查，或之后再补下旧集。
 
-## 追番与下载，进展一目了然
+## 看已经下载的剧集
 
-在“我的追番”中点击海报，就能进入剧集库，播放已下载完成的资源。查看资源、修改条件等管理操作放在剧集库的 **···** 菜单中。下载按番剧和字幕组分组，每组一条总进度，每个任务旁都有下一步操作。
+打开「我的追番」，点番剧海报进入剧集库。对下载完成的资源点「播放」，Dipper 会用系统关联的播放器打开。下载默认保存在系统「视频」文件夹下的 `Dipper` 目录，可以在设置里更改。
 
 <a href="docs/assets/screenshots/03-following.png">
-  <img src="docs/assets/screenshots/03-following.png" width="960" alt="Windows 实机中的我的追番：已保存乱马1/2 第二季和间谍过家家 第三季的真实追番">
+  <img src="docs/assets/screenshots/03-following.png" width="960" alt="Windows 实机的我的追番页面，展示乱马 1/2 和间谍过家家的海报">
 </a>
 
-<sub>图中的追番在拍摄准备完成后已暂停，拍摄过程中没有下载剧集。</sub>
-
-在 Windows 和 Linux 上，关闭窗口后可以让 Dipper 留在托盘，继续追番和下载。在 macOS 上，关闭窗口后 Dipper 会继续在 Dock 中运行。退出应用会停止后台活动。
+在 Windows 和 Linux 上，关闭窗口后可以让 Dipper 留在托盘继续运行。在 macOS 上，关闭窗口后应用仍在 Dock 中运行。退出 Dipper 会停止检查和下载。[管理追番与下载（英文）](docs/usage.md#manage-follows-and-downloads)
 
 ## 开发
 
-参与开发时，使用 [go.mod](go.mod) 指定的 Go 版本从源码构建。
+Dipper 用 Go 和 [MyGo Native UI](https://github.com/egoist/mygo) 构建。克隆仓库后，使用 [go.mod](go.mod) 指定的 Go 版本，在仓库根目录运行以下命令。
 
-**Windows · PowerShell**
+| 平台 | 构建并测试 | 启动 |
+| --- | --- | --- |
+| Windows（PowerShell） | `powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Test` | `.\bin\dipper.exe` |
+| macOS 或 Linux | `sh scripts/build.sh --test` | `./bin/dipper` |
 
-```powershell
-git clone https://github.com/steampixel007/Dipper.git
-cd Dipper
-powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Test
-.\bin\dipper.exe
-```
+[开发指南](docs/development.md) · [架构](docs/architecture.md) · [子系统](docs/subsystems/README.md) · [设计](DESIGN.md) · [贡献指南](CONTRIBUTING.md) · [构建检查](https://github.com/steampixel007/Dipper/actions/workflows/check.yml)
 
-**macOS / Linux · Shell**
+## 名字的来历
 
-```sh
-git clone https://github.com/steampixel007/Dipper.git
-cd Dipper
-sh scripts/build.sh --test
-./bin/dipper
-```
-
-原生图形及托盘运行依赖、构建选项与验证范围见[开发指南（英文）](docs/development.md)。
-
-## 一只小鸟，一道湍流
-
-Dipper 得名于河乌（white-throated dipper）：一种会潜入湍急山溪、带回食物的小型鸣禽。在这里，torrent 带回的是你想看的番。
+Dipper 的名字来自河乌（white-throated dipper），一种会潜入湍急山溪觅食的小型鸣禽。在这里，torrent 带回的是你想看的番。
 
 ## 开源许可
 
-Dipper 以 [MIT 许可证](LICENSE) 开源。你可以使用、修改和再分发，包括商业使用，只需随软件保留版权声明和许可证声明。
+Dipper 的原创代码和文档采用 [MIT 许可证](LICENSE)。再分发时需保留版权和许可证声明。许可证不授予 Dipper 名称或标志的商标权。第三方组件、蜜柑示例数据和封面图另见[第三方声明](THIRD-PARTY.md)。
 
-第三方组件仍适用各自的许可证；见[第三方声明](THIRD-PARTY.md)。MIT 许可证不授予 “Dipper” 名称或标志的商标权。部分示例数据与封面图来自 Mikan，不在 MIT 许可范围内。
-
-贡献将以 MIT 许可证接受，并需在每次提交中签署 Developer Certificate of Origin；见[贡献指南（英文）](CONTRIBUTING.md)。
-
-## 进一步了解 Dipper
-
-| 文档与入口 | 内容 |
-| :-- | :-- |
-| [使用指南（英文）](docs/usage.md) | 追番、下载、后台运行与文件存放位置 |
-| [开发指南（英文）](docs/development.md) | 构建脚本、诊断参数、图标与验证范围 |
-| [设计系统（英文）](DESIGN.md) | 河乌、配色、控件与交互原则 |
-| [架构说明（英文）](docs/architecture.md) | 原生应用、数据源、核心逻辑和下载器如何协作 |
-| [子系统文档（英文）](docs/subsystems/README.md) | 实现约定与各项测试的验证范围 |
-| [开源许可](LICENSE) | Dipper 原创代码与文档的 MIT 许可证 |
-| [第三方声明](THIRD-PARTY.md) | 内置 Go 模块与示例图片的许可证 |
-| [贡献指南（英文）](CONTRIBUTING.md) | 如何提交改动与签署 DCO |
-| [问题反馈](https://github.com/steampixel007/Dipper/issues) | 缺陷、疑问与功能建议 |
+提交贡献时需签署 Developer Certificate of Origin（DCO）。详见[贡献指南（英文）](CONTRIBUTING.md)。
