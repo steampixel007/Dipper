@@ -2,9 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
-	"crypto/sha256"
-	"fmt"
 	"image"
 	"image/png"
 	"net/http"
@@ -12,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/steampixel007/Dipper/internal/core"
 	"github.com/steampixel007/Dipper/internal/downloader"
@@ -40,6 +36,7 @@ func TestPreferencesUseConfigDirectory(t *testing.T) {
 }
 
 func TestCoverUsesCacheDirectory(t *testing.T) {
+	resetCoverCache(t)
 	root := t.TempDir()
 	s := newState(filepath.Join(root, "data"))
 	s.CoverDir = filepath.Join(root, "cache", "covers")
@@ -53,22 +50,15 @@ func TestCoverUsesCacheDirectory(t *testing.T) {
 	}))
 	defer server.Close()
 	s.Source = source.New(server.URL)
-	s.Ctx = context.Background()
-	s.Update = func(fn func()) { fn() }
+	updates := coverUpdates(t, s)
 	url := server.URL + "/cover.png"
-	key := fmt.Sprintf("%x", sha256.Sum256([]byte(url)))
-	s.loadCovers(s.Ctx, []source.Anime{{Cover: url}})
+	key := coverCacheKey(url)
+	s.coverLoader.visible = []string{url}
+	s.syncCovers()
+	awaitCoverUpdate(t, updates, func() bool { return cachedCover(url) != nil })
 	path := filepath.Join(s.CoverDir, key)
-	deadline := time.After(5 * time.Second)
-	for {
-		if _, err := os.Stat(path); err == nil {
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("cover not cached at %s", path)
-		case <-time.After(10 * time.Millisecond):
-		}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("cover not cached at %s: %v", path, err)
 	}
 	if _, err := os.Stat(filepath.Join(s.Dir, "covers", key)); !os.IsNotExist(err) {
 		t.Fatalf("cover unexpectedly cached in data directory: %v", err)

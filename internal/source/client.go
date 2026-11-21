@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -60,23 +61,35 @@ func (e *HTTPError) Error() string {
 	return fmt.Sprintf("mikan: HTTP %d from %s", e.StatusCode, e.URL)
 }
 
-// Client is safe for concurrent use. Requests share a cancellable rate limit.
-// Reuse one Client for catalog, subscriptions and covers to preserve that limit.
+// Client is safe for concurrent use. Reuse one Client to share transport
+// admission across callers while pacing and server-requested cooldowns stay
+// isolated per origin.
 type Client struct {
-	mu          sync.RWMutex
-	base        *url.URL
-	initErr     error
-	http        *http.Client
-	gate        chan struct{}
-	nextRequest time.Time
-	interval    time.Duration
-	timeout     time.Duration
-	initialTake int
-	maxTake     int
+	mu            sync.RWMutex
+	base          *url.URL
+	initErr       error
+	http          *http.Client
+	gate          chan struct{}
+	coverGate     chan struct{}
+	rateMu        sync.Mutex
+	rates         map[string]*originRate
+	interval      time.Duration
+	coverInterval time.Duration
+	timeout       time.Duration
+	initialTake   int
+	maxTake       int
+}
+
+type originRate struct {
+	retryUntil   time.Time
+	nextDocument time.Time
+	coverRefill  time.Time
 }
 
 // DefaultOrigin is the public Mikan origin used unless the user picks a route.
-const DefaultOrigin = "https://mikanime.tv"
+const DefaultOrigin = "https://mikanani.me"
+
+const MaxConcurrentCovers = 6
 
 // New uses DefaultOrigin when baseURL is empty. Invalid origins surface as
 // method errors, preserving a constructor that does not require error handling.
@@ -88,9 +101,12 @@ func New(baseURL string) *Client {
 	c := &Client{
 		base: u, initErr: err,
 		http: &http.Client{
-			Timeout: 30 * time.Second,
 			Transport: &http.Transport{
-				Proxy: proxy.Func,
+				Proxy:               proxy.Func,
+				ForceAttemptHTTP2:   true,
+				MaxIdleConns:        2 * MaxConcurrentCovers,
+				MaxIdleConnsPerHost: MaxConcurrentCovers + 2,
+				IdleConnTimeout:     90 * time.Second,
 			},
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				if len(via) >= 5 {
@@ -100,7 +116,9 @@ func New(baseURL string) *Client {
 				return err
 			},
 		},
-		gate: make(chan struct{}, 1), interval: 1500 * time.Millisecond,
+		gate: make(chan struct{}, 1), coverGate: make(chan struct{}, MaxConcurrentCovers),
+		rates:    make(map[string]*originRate),
+		interval: 1500 * time.Millisecond, coverInterval: 750 * time.Millisecond,
 		timeout: 30 * time.Second, initialTake: 1000, maxTake: 128000,
 	}
 	return c
@@ -112,9 +130,10 @@ func (c *Client) target() (*url.URL, error) {
 	return c.base, c.initErr
 }
 
-// Retarget points the client at another origin. The rate limit, transport and
-// in-flight requests stay shared, so switching must not multiply the request
-// rate or abandon a request already inside the limit.
+// Retarget points the client at another origin. Transport admission stays
+// shared so switching cannot multiply concurrency, and each origin keeps its
+// own pacing and cooldown state; a request already queued for the old origin
+// keeps that origin's state until the caller cancels it.
 func (c *Client) Retarget(baseURL string) error {
 	u, err := httpURL(baseURL)
 	if err != nil {
@@ -143,6 +162,41 @@ func httpURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
+func originKey(u *url.URL) string {
+	scheme := strings.ToLower(u.Scheme)
+	host := strings.ToLower(u.Hostname())
+	port := u.Port()
+	if (scheme == "http" && port == "80") || (scheme == "https" && port == "443") {
+		port = ""
+	}
+	if port != "" {
+		host = net.JoinHostPort(host, port)
+	} else if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	return scheme + "://" + host
+}
+
+func (c *Client) rateFor(u *url.URL) *originRate {
+	key := originKey(u)
+	c.rateMu.Lock()
+	defer c.rateMu.Unlock()
+	rate := c.rates[key]
+	if rate == nil {
+		rate = &originRate{}
+		c.rates[key] = rate
+	}
+	return rate
+}
+
+func (c *Client) currentRate() *originRate {
+	u, err := c.target()
+	if err != nil || u == nil {
+		return &originRate{}
+	}
+	return c.rateFor(u)
+}
+
 func (c *Client) endpoint(path string, query url.Values) (string, error) {
 	base, err := c.target()
 	if err != nil {
@@ -153,22 +207,21 @@ func (c *Client) endpoint(path string, query url.Values) (string, error) {
 }
 
 func (c *Client) get(ctx context.Context, rawURL string, limit int64) ([]byte, *url.URL, error) {
+	return c.getWithStart(ctx, rawURL, limit, false, nil)
+}
+
+func (c *Client) getWithStart(ctx context.Context, rawURL string, limit int64, cover bool, start func() bool) ([]byte, *url.URL, error) {
 	if _, err := c.target(); err != nil {
 		return nil, nil, err
 	}
-	if _, err := httpURL(rawURL); err != nil {
+	u, err := httpURL(rawURL)
+	if err != nil {
 		return nil, nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer cancel()
-	select {
-	case c.gate <- struct{}{}:
-		defer func() { <-c.gate }()
-	case <-ctx.Done():
-		return nil, nil, ctx.Err()
-	}
+	rate := c.rateFor(u)
 	for attemptsLeft := 2; ; attemptsLeft-- {
-		body, finalURL, err := c.getOnce(ctx, rawURL, limit)
+		body, finalURL, err := c.getOnce(ctx, rate, rawURL, limit, cover, start)
+		start = nil
 		if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 			return body, finalURL, err
 		}
@@ -181,37 +234,107 @@ func (c *Client) get(ctx context.Context, rawURL string, limit int64) ([]byte, *
 	}
 }
 
-func (c *Client) getOnce(ctx context.Context, rawURL string, limit int64) ([]byte, *url.URL, error) {
-	if delay := time.Until(c.nextRequest); delay > 0 {
+func (c *Client) waitForRate(ctx context.Context, rate *originRate, cover bool, start func() bool) error {
+	for {
+		c.rateMu.Lock()
+		if err := ctx.Err(); err != nil {
+			c.rateMu.Unlock()
+			return err
+		}
+		next := rate.nextDocument
+		if cover {
+			next = rate.coverRefill.Add(-c.coverBurstWindow())
+		}
+		if rate.retryUntil.After(next) {
+			next = rate.retryUntil
+		}
+		now := time.Now()
+		delay := next.Sub(now)
+		if delay <= 0 {
+			if start != nil && !start() {
+				c.rateMu.Unlock()
+				return context.Canceled
+			}
+			if cover {
+				if now.After(rate.coverRefill) {
+					rate.coverRefill = now
+				}
+				rate.coverRefill = rate.coverRefill.Add(c.coverInterval)
+			} else {
+				rate.nextDocument = now.Add(c.interval)
+			}
+			c.rateMu.Unlock()
+			return nil
+		}
+		c.rateMu.Unlock()
 		timer := time.NewTimer(delay)
-		defer timer.Stop()
 		select {
 		case <-timer.C:
 		case <-ctx.Done():
-			return nil, nil, ctx.Err()
+			timer.Stop()
+			return ctx.Err()
 		}
 	}
-	if err := ctx.Err(); err != nil {
+}
+
+func (c *Client) coverBurstWindow() time.Duration {
+	return (MaxConcurrentCovers - 1) * c.coverInterval
+}
+
+func (c *Client) deferRate(rate *originRate, now time.Time, retryAfter, coverBackoff time.Duration) {
+	c.rateMu.Lock()
+	defer c.rateMu.Unlock()
+	if until := now.Add(retryAfter); retryAfter > 0 && until.After(rate.retryUntil) {
+		rate.retryUntil = until
+	}
+	if retryAfter > 0 || coverBackoff > 0 {
+		resume := now.Add(coverBackoff)
+		if rate.retryUntil.After(resume) {
+			resume = rate.retryUntil
+		}
+		if refill := resume.Add(c.coverBurstWindow()); refill.After(rate.coverRefill) {
+			rate.coverRefill = refill
+		}
+	}
+}
+
+func (c *Client) getOnce(ctx context.Context, rate *originRate, rawURL string, limit int64, cover bool, start func() bool) ([]byte, *url.URL, error) {
+	if err := c.waitForRate(ctx, rate, cover, start); err != nil {
 		return nil, nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	gate := c.gate
+	if cover {
+		gate = c.coverGate
+	}
+	select {
+	case gate <- struct{}{}:
+		defer func() { <-gate }()
+	case <-ctx.Done():
+		return nil, nil, ctx.Err()
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 	req.Header.Set("User-Agent", "Dipper/0.1 (Mikan public source reader)")
 	req.Header.Set("Accept", "text/html,application/rss+xml,application/xml,image/*;q=0.9,*/*;q=0.5")
-	c.nextRequest = time.Now().Add(c.interval)
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("mikan: GET %s: %w", rawURL, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
-		if until := time.Now().Add(retryAfter); until.After(c.nextRequest) {
-			c.nextRequest = until
+		now := time.Now()
+		retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"), now)
+		status := &HTTPError{StatusCode: resp.StatusCode, URL: resp.Request.URL.String(), RetryAfter: retryAfter}
+		var backoff time.Duration
+		if cover {
+			backoff = CoverRetryDelay(status)
 		}
-		return nil, nil, &HTTPError{StatusCode: resp.StatusCode, URL: resp.Request.URL.String(), RetryAfter: retryAfter}
+		c.deferRate(rate, now, retryAfter, backoff)
+		return nil, nil, status
 	}
 	if resp.ContentLength > limit {
 		return nil, nil, ErrResponseTooLarge
@@ -224,9 +347,29 @@ func (c *Client) getOnce(ctx context.Context, rawURL string, limit int64) ([]byt
 		return nil, nil, ErrResponseTooLarge
 	}
 	if challenge(body) {
+		if cover {
+			c.deferRate(rate, time.Now(), 0, CoverRetryDelay(ErrChallenge))
+		}
 		return nil, nil, ErrChallenge
 	}
 	return body, resp.Request.URL, nil
+}
+
+func CoverRetryDelay(err error) time.Duration {
+	var status *HTTPError
+	if errors.As(err, &status) {
+		if status.StatusCode == http.StatusTooManyRequests || status.StatusCode == http.StatusForbidden {
+			return max(time.Minute, status.RetryAfter)
+		}
+		if status.StatusCode >= http.StatusInternalServerError {
+			return max(2*time.Second, status.RetryAfter)
+		}
+		return status.RetryAfter
+	}
+	if errors.Is(err, ErrChallenge) {
+		return time.Minute
+	}
+	return 0
 }
 
 func parseRetryAfter(value string, now time.Time) time.Duration {
@@ -253,7 +396,14 @@ func challenge(body []byte) bool {
 // Cover returns encoded image bytes; decoding and caching belong to the caller.
 // Image requests and redirects accept only HTTP(S). Bodies are limited to 5 MiB.
 func (c *Client) Cover(ctx context.Context, imageURL string) ([]byte, error) {
-	body, _, err := c.get(ctx, OriginalCoverURL(imageURL), 5<<20)
+	return c.CoverWhenReady(ctx, imageURL, nil)
+}
+
+// CoverWhenReady calls start after the shared limiter admits the first request.
+// Returning false skips the request without spending a rate-limit interval.
+// The callback must not block or call back into the client.
+func (c *Client) CoverWhenReady(ctx context.Context, imageURL string, start func() bool) ([]byte, error) {
+	body, _, err := c.getWithStart(ctx, OriginalCoverURL(imageURL), 5<<20, true, start)
 	if err != nil {
 		return nil, err
 	}

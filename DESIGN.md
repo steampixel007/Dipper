@@ -74,9 +74,12 @@ hover outlines, respectively. Use stronger outlines and persistent focus rings
 under the high-contrast preference. Text must meet 4.5:1 contrast against its
 actual surface in both themes.
 
-The logo keeps its existing assets and a pale neutral `brandWash` (`#E8ECF1`
-in both themes). Keep artwork in its original colors. A missing cover displays
-the logo, while a loading cover displays the loading indicator.
+The app icon is a circular pale-blue badge (`#CFE2FF`) carrying the ink bird
+(`#071018`) over one blue wave (`#2F6BFF`). The in-app and tray marks stay
+transparent so they sit on any surface; do not recolor the bird to match the
+accent. The logo keeps a pale neutral `brandWash` (`#E8ECF1` in both themes).
+Missing covers place the transparent mark on the recessed `sunken` surface;
+loading covers use a neutral `muted` indicator on the same surface.
 
 ### Typography
 

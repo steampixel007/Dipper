@@ -33,14 +33,9 @@ var brandTrayPNG []byte
 //go:embed assets/dipper-tray-dark.png
 var brandTrayDarkPNG []byte
 
-// Cover loading and rendering touch these maps from different goroutines, so
-// access is guarded instead of relying on the UI thread alone.
 var (
 	coversMu sync.Mutex
 	covers   = map[string]*ui.Bitmap{}
-
-	// Cover URLs whose load is in flight; loadCovers sets and clears them.
-	loadingCovers = map[string]bool{}
 )
 
 var brandLogo *ui.SVG
@@ -128,33 +123,48 @@ const (
 const topbarHeight float32 = 64
 const sidebarWidth float32 = 204
 
-func cover(c *ui.Context, a Anime, w, h float32) {
-	coverWithRadius(c, a, w, h, coverRadius)
+func (s *State) featuredCover(c *ui.Context, a Anime, w, h float32) {
+	key := coverURL(a.Cover)
+	if key != "" {
+		s.coverLoader.featured = append(s.coverLoader.featured, key)
+	}
+	drawCover(c, cachedCover(key), key != "", coverCanLoad(s.coverLoader.stages[key]), w, h, coverRadius)
 }
 
-func posterCover(c *ui.Context, a Anime, width float32) {
+func (s *State) posterCover(c *ui.Context, tile ui.Element, a Anime, width float32) {
+	key := coverURL(a.Cover)
+	visible := tile.InView()
+	if key != "" && visible {
+		s.coverLoader.visible = append(s.coverLoader.visible, key)
+	} else if key != "" && tile.InViewMargin(coverLookbehind, 0, coverLookahead, 0) {
+		s.coverLoader.nearby = append(s.coverLoader.nearby, key)
+	}
 	height := width * 1.36
-	coversMu.Lock()
-	bitmap := covers[a.Cover]
-	coversMu.Unlock()
-	if bitmap != nil {
+	bitmap := cachedCover(key)
+	if ratio := s.coverLoader.ratios[key]; ratio > 0 {
+		height = width * ratio
+	} else if bitmap != nil {
 		imageWidth, imageHeight := bitmap.Size()
 		if imageWidth > 0 && imageHeight > 0 {
 			height = width * float32(imageHeight) / float32(imageWidth)
 		}
 	}
-	coverWithRadius(c, a, width, height, browseCoverRadius)
+	showLoading := (visible || s.Source == nil) && coverCanLoad(s.coverLoader.stages[key])
+	drawCover(c, bitmap, key != "", showLoading, width, height, browseCoverRadius)
 }
 
-func coverWithRadius(c *ui.Context, a Anime, w, h, radius float32) {
-	coversMu.Lock()
-	b := covers[a.Cover]
-	coversMu.Unlock()
+func coverCanLoad(stage coverStage) bool {
+	return stage != coverMiss && stage != coverFailed
+}
+
+func drawCover(c *ui.Context, b *ui.Bitmap, hasURL, showLoading bool, w, h, radius float32) {
 	if b != nil {
 		ui.Image(c, b).Size(w, h).Fit(ui.Contain).Background(colors(c).sunken).Radius(radius)
-	} else if a.Cover != "" {
+	} else if hasURL {
 		ui.Box(c).Size(w, h).Radius(radius).Clip().Background(colors(c).sunken).Center().Children(func() {
-			loading.Blocks(c, loading.Options{Size: 26, Color: colors(c).muted}).Label("正在加载封面")
+			if showLoading {
+				loading.Blocks(c, loading.Options{Size: 26, Color: colors(c).muted}).Label("正在加载封面")
+			}
 		})
 	} else {
 		size := min(w, h) * 0.62
@@ -163,6 +173,9 @@ func coverWithRadius(c *ui.Context, a Anime, w, h, radius float32) {
 }
 
 func (s *State) view(c *ui.Context) {
+	loader := &s.coverLoader
+	loader.featured, loader.visible, loader.nearby = loader.featured[:0], loader.visible[:0], loader.nearby[:0]
+	defer s.syncCovers()
 	installTheme(c, s.darkAppearance(c.Theme().Dark))
 	if s.ReduceEffects || c.Preferences().ReduceMotion {
 		c.DisableAnimations()
@@ -177,7 +190,7 @@ func (s *State) view(c *ui.Context) {
 				ui.Text(c, s.SaveError).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk).Background(colors(c).errorWash).Padding(8, 24)
 			}
 			s.softwareNotice(c)
-			ui.Box(c.Key("page-host")).Grow(1).MinHeight(0).FillWidth().Clip().Children(func() {
+			ui.Box(c.Key("page-host")).Grow(1).MinHeight(0).FillWidth().Children(func() {
 				ui.Column(c.Key("page-" + s.Page)).Fill().Transition(pageTransition).Children(func() {
 					switch s.Page {
 					case "detail":
@@ -342,7 +355,7 @@ func (s *State) browseCatalog(c *ui.Context, width float32, split bool) {
 	pal := colors(c)
 	ui.Column(c).Width(width).Shrink(0).FillHeight().MinHeight(0).Padding(24, 28, 0).Children(func() {
 		ui.Text(c, s.Year+" 年"+s.Season+"季番剧").FontSize(textSize(c, textTitle)).FontWeight(600).TextColor(pal.ink).Margin(0, 0, 18, 0).ContentTransition(ui.ContentTransition{Animation: &contentMotion})
-		if s.SourceError != "" {
+		if s.SourceError != "" && !s.catalogFromDisk && len(s.Catalog) == 0 {
 			ui.Row(c).Wrap().Gap(controlGap).Margin(0, 0, 14, 0).Children(func() {
 				quiet(c, "catalog-error-previous", "上一季", func() { s.changeSeason(-1) })
 				quiet(c, "catalog-error-next", "下一季", func() { s.changeSeason(1) })
@@ -353,6 +366,12 @@ func (s *State) browseCatalog(c *ui.Context, width float32, split bool) {
 		}
 		s.browseToolbar(c, split)
 		s.browseDays(c)
+		if s.SourceError != "" && len(s.Catalog) > 0 {
+			ui.Row(c).Wrap().Gap(controlGap).Margin(0, 0, 14, 0).Children(func() {
+				ui.Text(c, "正在显示上次加载的番剧").FontSize(textSize(c, textBody)).TextColor(pal.ink)
+				quiet(c, "catalog-cache-retry", "重试加载", s.refreshCatalog)
+			})
+		}
 		if !s.IntroHidden {
 			ui.Row(c.Key("beginner-hint")).Wrap().Padding(8, 12).Gap(8).Radius(controlRadius).Background(pal.chrome).Margin(0, 0, 16, 0).Transition(ui.ElementTransition{Duration: 160 * time.Millisecond, Ease: spectrumEase, Exit: &ui.Motion{Collapse: true}, Size: true}).Children(func() {
 				ui.Text(c, "第一次追番？").FontSize(textSize(c, textBody)).FontWeight(600).Grow(1)
@@ -360,7 +379,7 @@ func (s *State) browseCatalog(c *ui.Context, width float32, split bool) {
 				iconButton(c, "dismiss-intro", "收起新手提示", "close", func() { s.IntroHidden = true; s.save() }).Disabled(s.Busy)
 			})
 		}
-		if s.SourceLoading {
+		if s.SourceLoading && !s.catalogFromDisk && len(s.Catalog) == 0 {
 			pageLoading(c, "正在加载番剧目录…")
 		} else {
 			var filtered []Anime
@@ -481,7 +500,7 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) ui.Element {
 	return b.Children(func() {
 		ui.Box(c).Radius(browseCoverRadius).
 			Shadow(0, 2, 6, -2, pal.cardShadow).Children(func() {
-			posterCover(c, a, width)
+			s.posterCover(c, b, a, width)
 			if s.isFollowingAnime(a.ID) {
 				ui.Text(c, "已追番").FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(pal.ink).Background(pal.paper).Border(1, pal.line).Radius(4).Padding(3, 7).Absolute().Top(8).Left(8)
 			}
@@ -536,7 +555,6 @@ func pageLoading(c *ui.Context, text string) {
 	ui.Column(c).Grow(1).Center().Gap(14).Children(func() { caption(c, text) })
 }
 
-// enterPage switches pages and reloads covers the switch may have evicted.
 func (s *State) enterPage(page string) {
 	if page == "downloads" {
 		s.DownloadHistory = false
@@ -549,10 +567,6 @@ func (s *State) enterPage(page string) {
 	}
 	s.Page = page
 	s.LibraryMenuOpen = false
-	switch page {
-	case "browse", "following", "episodes":
-		s.loadCovers(s.Ctx, s.pageCoverRows(page))
-	}
 }
 
 func (s *State) empty(c *ui.Context, title, body, button string, action func()) {
@@ -616,7 +630,7 @@ func (s *State) detailHeader(c *ui.Context, a Anime) {
 			quiet(c, "back-list", backLabel, func() { s.enterPage(backPage) }).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted)
 		})
 		ui.Row(c).Wrap().Gap(controlGap).AlignItems(ui.Start).Children(func() {
-			cover(c, a, 52, 72)
+			s.featuredCover(c, a, 52, 72)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(7).Children(func() {
 				ui.Text(c, a.Title).FontSize(textSize(c, textTitle)).FontWeight(600)
 				caption(c, dayName(a.Day)+"，来源：蜜柑计划")
@@ -1377,7 +1391,7 @@ func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
 	tile.Children(func() {
 		ui.Box(c).Radius(browseCoverRadius).
 			Shadow(0, 2, 6, -2, pal.cardShadow).Children(func() {
-			posterCover(c, a, width)
+			s.posterCover(c, tile, a, width)
 			ui.Column(c).Absolute().Top(8).Left(8).Right(8).Gap(4).AlignItems(ui.Start).Children(func() {
 				if sub.CheckFailed {
 					badge(c, "检查失败", colors(c).amber, colors(c).amberWash)

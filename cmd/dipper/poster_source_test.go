@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/steampixel007/Dipper/internal/source"
@@ -41,7 +39,6 @@ func TestLoadCoversShowsOriginalPosterThroughGridAndCache(t *testing.T) {
 					w.Write(original)
 				}))
 				defer server.Close()
-				state.Ctx = t.Context()
 				state.Source = source.New(server.URL)
 				state.IntroHidden = true
 				anime := state.Catalog[0]
@@ -58,27 +55,27 @@ func TestLoadCoversShowsOriginalPosterThroughGridAndCache(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				updates := make(chan func(), 1)
-				state.Update = func(update func()) { updates <- update }
+				updates := coverUpdates(t, state)
 				tester := ui.NewTester(state.view, 1304, 891)
+				key := coverURL(anime.Cover)
 				for attempt := range 2 {
-					coversMu.Lock()
-					delete(covers, anime.Cover)
-					coversMu.Unlock()
-					state.loadCovers(context.Background(), []source.Anime{{ID: anime.ID, Cover: anime.Cover}})
-					select {
-					case update := <-updates:
-						update()
-					case <-time.After(5 * time.Second):
-						t.Fatal("poster did not finish loading")
+					if attempt > 0 {
+						state.enterPage("settings")
+						tester.Frame()
+						coversMu.Lock()
+						delete(covers, key)
+						coversMu.Unlock()
+						if state.coverLoader.keep[key] {
+							t.Fatal("poster remained requested after leaving the page")
+						}
+						state.enterPage(page)
+						tester.Frame()
 					}
-					bitmap := covers[anime.Cover]
-					if bitmap == nil {
-						t.Fatal("poster was not decoded")
-					}
+					awaitCoverUpdate(t, updates, func() bool { return cachedCover(key) != nil })
+					bitmap := cachedCover(key)
 					width, height := bitmap.Size()
-					if width != 1086 || height != 1536 {
-						t.Fatalf("poster was cropped before rendering: decoded %dx%d, want original 1086x1536 (reload %d)", width, height, attempt)
+					if width != 362 || height != 512 {
+						t.Fatalf("decoded poster = %dx%d, want proportional 362x512 (reload %d)", width, height, attempt)
 					}
 					tester.Frame()
 					label := "查看 " + anime.Title
@@ -95,6 +92,10 @@ func TestLoadCoversShowsOriginalPosterThroughGridAndCache(t *testing.T) {
 				}
 				if got := requests.Load(); got != 1 {
 					t.Fatalf("original poster should be fetched once then restored from disk, got %d requests", got)
+				}
+				data, err := os.ReadFile(filepath.Join(state.CoverDir, coverCacheKey(key)))
+				if err != nil || !bytes.Equal(data, original) {
+					t.Fatalf("disk cache did not preserve the original artwork: %v", err)
 				}
 				if cached {
 					data, err := os.ReadFile(thumbnailPath)

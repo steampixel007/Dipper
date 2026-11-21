@@ -9,8 +9,8 @@ import (
 func (s *State) libraryHero(c *ui.Context, sub Subscription) {
 	anime := s.anime(sub.AnimeID)
 	_, height := c.Size()
-	ui.Row(c).Padding(12, 28, 16).Gap(16).AlignItems(ui.Start).Children(func() {
-		cover(c, anime, 88, 124)
+	ui.Row(c).Padding(12, 28, 16).Gap(20).AlignItems(ui.Start).Children(func() {
+		s.featuredCover(c, anime, 88, 124)
 		ui.Scroll(c.Key("library-hero")).Grow(1).MinWidth(0).MaxHeight(height * .4).Children(func() {
 			ui.Column(c).Gap(8).Children(func() {
 				ui.Text(c, anime.Title).FontSize(textSize(c, textTitle)).FontWeight(600)

@@ -164,6 +164,11 @@ func TestUXSourceErrorLargeTextKeepsRetryVisible(t *testing.T) {
 	if bounds.Y < 0 || bounds.Y+bounds.H > 720 {
 		t.Fatalf("retry action is outside the window: %+v", bounds)
 	}
+	if _, ok := tt.Find(s.Catalog[0].Title); !ok {
+		t.Fatalf("cached catalog row disappeared under the source error; texts=%q", tt.Texts())
+	}
+	s.Catalog = nil
+	tt.Frame()
 	for _, stale := range []string{"来源：蜜柑计划", "周一", "全部"} {
 		if _, ok := tt.Find(stale); ok {
 			t.Fatalf("catalog controls remain visible under the source error: %q", stale)

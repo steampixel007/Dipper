@@ -23,7 +23,7 @@ components, and interaction conventions are specified in
 | `core_ui.go` | The bridge to `core`: subscriptions, tasks, settings |
 | `source_ui.go` | The bridge to `source`: catalog, detail, history, covers |
 | `software_update_ui.go` | The software update settings card, release dialog, and update lifecycle |
-| `covers.go` | Cover image loading and its cache |
+| `covers.go`, `cover_disk.go` | Cover demand, decoding, and memory and disk caches |
 | `appearance.go` | Fonts, sizing, theme values |
 | `proxy_ui.go` | The settings-page proxy card and the auto-mode description |
 | `window_ui.go` | Close/quit choices, remembered preferences, and the window/background settings card |
@@ -100,7 +100,8 @@ The Mikan origin is a saved preference, not core state: the window tests a new
 origin with one catalog probe before committing it, rolls the client back on
 failure, and applies the saved origin at startup. The preference stores the
 ASCII origin URL, never the Chinese label, so rewording the label does not
-reset a user's choice.
+reset a user's choice. Line two (`mikanani.me`) is the default when there is no
+saved origin. An explicit `--source` takes precedence at startup.
 
 Each async load has a revision and a cancel pair:
 
@@ -451,40 +452,50 @@ network access.
 
 ## Covers
 
-`covers.go` loads a cover on a background goroutine and decodes it on the UI
-thread, because the bitmap cache belongs to that thread. The source's cover
-URLs carry width and height parameters that crop, rather than merely resize, a
-portrait poster into a square catalog thumbnail. `source.OriginalCoverURL`
-removes them before the request, so the cache and the grids receive complete
-artwork. The disk file
-is named by the SHA-256 of that normalized URL and cached under
-`State.CoverDir` (the system cache directory by default, or `--data/covers`
-when explicitly configured), so a thumbnail written by an older version is not
-reused as the original. A cover whose load is in flight is marked in
-`loadingCovers`, set when the load is scheduled and cleared on decode, on
-failure, and for the rest when the load's context is cancelled. The flag keeps
-a second `loadCovers` call from fetching the same URL again. A card with a
-cover URL shows a Blocks indicator until its bitmap is available, including
-after a failed load; only a card without a cover URL shows the bird mark.
-Starting or refreshing the catalog also loads saved subscription covers from
-disk or the source, using the application context so a season change or
-unavailable catalog cannot cancel their restoration. A later catalog refresh
-retries missing covers. Browse and following posters take their height from
-the decoded image's ratio, so the whole image shows without cropping,
-letterboxing or unused surface. Bounded detail thumbnails keep their fixed
-contain frame. `blueWash` is the box for the loading and no-cover states.
+The browse page restores the last successful catalog from `catalog.json`
+under the data directory only when the source origin, year, and season match.
+It refreshes in the background. If the refresh fails, cached rows remain
+available with a retry action. Older requests cannot replace a newer view.
 
-Both caches are capped. The in-memory bitmap cache keeps the
-`coverCacheCap` most recently used covers; eviction runs when a load starts
-and again when each decoded bitmap is admitted, so a finished load cannot
-leave the cache over its cap. Eviction never drops a cover the rows of the
-current page (`pageCoverRows`) are still showing. A page switch goes through
-`enterPage`, which reloads the new page's evicted covers with the
-application context, so revisiting 我的追番 or the catalog never leaves a
-spinner for a cover the disk cache still has. The on-disk cache keeps its
-total payload within `coverDiskCap` by deleting the oldest files first, never
-a file the current rows just used, so the folder stops growing with every
-anime ever browsed; an evicted file re-fetches from the source.
+The view registers detail posters first, then visible grid posters, then grid
+posters up to 900 DIPs above or below the scroll viewport. MyGo
+reevaluates the viewport after layout and scrolling. The scheduler deduplicates demand by original
+URL and withdraws queued requests that leave the demand range or yield to a
+higher priority. A started download can finish into disk cache after scrolling
+away. It is canceled when no covers are wanted or when a newly visible cover
+needs a full download slot and the started download is outside the demand
+range. Up to six disk probes are scheduled while at most two covers decode at
+once, independently of up to six cover downloads. At most one cover waits for
+request admission so a newly visible cover can move ahead of a queued
+prefetch. Up to five offscreen downloads use idle slots after visible requests
+have been admitted, leaving a slot available for new visible demand. The UI
+thread keeps finished bitmaps in the bounded memory cache even if they finish
+just after scrolling away.
+Saved subscriptions use the application context and can render their covers
+while the catalog is unavailable.
+
+The source limiter lets the first visible cache misses fill all six download
+slots without waiting for document pacing. After the initial budget is
+spent, it restores one start every 750 milliseconds. `403`, `429`, and
+challenge responses pause cover downloads for at least one minute. A longer
+`Retry-After` takes precedence. Warm hits continue during the pause. Visible
+covers with a URL animate while loading and use a static placeholder on
+failure. Revisiting the demand range or refreshing the catalog allows another
+attempt. Cards without a cover URL use the bird mark.
+
+`source.OriginalCoverURL` strips the server's crop parameters. The encoded
+original is stored by normalized URL hash under `State.CoverDir` (the system
+cache directory by default, or `--data/covers` when explicitly configured).
+That key separates complete artwork from older cropped entries. The disk
+cache indexes existing files on the first write and trims the oldest accesses
+above 96 MiB. Disk reads update recency in memory and persist it at most
+hourly per file.
+
+Large non-JPEG bitmaps are scaled proportionally to a 512-pixel long edge.
+JPEGs retain MyGo's EXIF orientation handling. The bitmap LRU targets 128 MiB
+of estimated pixel storage and keeps the current demand resident. Grid cards
+retain the decoded aspect ratio across bitmap eviction. Detail slots keep a
+fixed contain frame.
 
 ## Brand marks
 

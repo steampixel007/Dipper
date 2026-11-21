@@ -25,9 +25,11 @@ sh scripts/build.sh --test --render
 The native output is `bin/dipper`; run it as `./bin/dipper`. Add `--cross-compile` to also build Linux amd64, macOS arm64/amd64, and Windows amd64 binaries. Cross-compilation verifies that the code builds, while launching or rendering requires MyGo's system graphics and tray runtime dependencies on the host.
 
 Brand icons: `go run build/icon/gen.go all build/icon/dist` regenerates the
-tray cuts (light and dark), the tile app icon, and `dipper.ico` from the SVG
+tray cuts (light and dark), the circular app icon, and `dipper.ico` from the SVG
 masters in `build/icon/`. The generator is dependency-free and embeds the same
-geometry as the masters. The app embeds its own copies — refresh them with
+geometry as the masters. The 16 and 24px app images drop the water and enlarge
+the bird so the eye and bill survive Windows' smallest icon sizes. The app
+embeds its own copies — refresh them with
 `go run build/icon/gen.go app 256 cmd/dipper/assets/dipper-icon.png` and
 `go run build/icon/gen.go tray 32 cmd/dipper/assets/dipper-tray.png` and
 `go run build/icon/gen.go tray -dark 32 cmd/dipper/assets/dipper-tray-dark.png`;

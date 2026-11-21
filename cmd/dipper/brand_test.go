@@ -11,6 +11,13 @@ import (
 	"testing"
 )
 
+func TestAppIconHasSolidWhiteEye(t *testing.T) {
+	icon := decodeIconPNG(t, brandIconPNG)
+	if got := color.NRGBAModel.Convert(icon.At(99, 78)); got != (color.NRGBA{R: 255, G: 255, B: 255, A: 255}) {
+		t.Errorf("the app icon eye must be solid white, got %v", got)
+	}
+}
+
 func TestTrayIconFollowsTaskbarAppearance(t *testing.T) {
 	light := decodeIconPNG(t, brandTrayPNG)
 	dark := decodeIconPNG(t, brandTrayDarkPNG)
@@ -44,7 +51,7 @@ func decodeIconPNG(t *testing.T, b []byte) image.Image {
 	t.Helper()
 	img, err := png.Decode(bytes.NewReader(b))
 	if err != nil {
-		t.Fatalf("decode tray icon: %v", err)
+		t.Fatalf("decode icon: %v", err)
 	}
 	return img
 }

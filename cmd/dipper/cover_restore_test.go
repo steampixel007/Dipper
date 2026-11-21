@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/steampixel007/Dipper/internal/core"
@@ -26,6 +24,7 @@ func TestStartupRestoresFollowingCover(t *testing.T) {
 	}{{name: "cached", cached: true}, {name: "download"}, {name: "retry", failFirst: true}} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := uiFixture(t, "following")
+			resetCoverCache(t)
 			poster, err := assets.ReadFile("assets/" + s.Catalog[0].Cover)
 			if err != nil {
 				t.Fatal(err)
@@ -44,15 +43,9 @@ func TestStartupRestoresFollowingCover(t *testing.T) {
 				http.Error(w, "catalog unavailable", http.StatusServiceUnavailable)
 			}))
 			defer server.Close()
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			s.Ctx = ctx
 			s.Source = source.New(server.URL)
 			url := server.URL + "/saved.jpg?width=400&height=560&format=webp"
-			t.Cleanup(func() {
-				delete(covers, url)
-				delete(loadingCovers, url)
-			})
+			key := coverURL(url)
 			path := filepath.Join(s.CoverDir, fmt.Sprintf("%x", sha256.Sum256([]byte(source.OriginalCoverURL(url)))))
 			if tc.cached {
 				if err := os.MkdirAll(s.CoverDir, 0755); err != nil {
@@ -67,57 +60,32 @@ func TestStartupRestoresFollowingCover(t *testing.T) {
 				Subscriptions: []core.Subscription{{ID: "saved", Anime: core.Anime{ID: "4075"}, Group: core.Group{ID: "370", Name: "字幕组"}}},
 			}
 			s.project(state, nil)
-			updates := make(chan func())
-			s.Update = func(fn func()) {
-				select {
-				case updates <- fn:
-				case <-ctx.Done():
-				}
-			}
-			s.refreshCatalog()
-			if !loadingCovers[url] {
-				t.Fatal("startup did not schedule the saved subscription cover")
-			}
-			// Changing seasons cancels the catalog request, not a saved cover.
+			updates := coverUpdates(t, s)
 			s.refreshCatalog()
 			tt := ui.NewTester(s.view, 1320, 860)
+			if !s.coverLoader.keep[key] {
+				t.Fatal("first layout did not schedule the saved subscription cover")
+			}
+			s.refreshCatalog()
 			if _, ok := tt.Find("正在加载封面"); !ok {
 				t.Fatal("restored subscription has no loading indicator")
 			}
-			deadline := time.NewTimer(10 * time.Second)
-			defer deadline.Stop()
-			poll := time.NewTicker(10 * time.Millisecond)
-			defer poll.Stop()
 			if tc.failFirst {
-				for loadingCovers[url] || s.SourceLoading {
-					select {
-					case fn := <-updates:
-						fn()
-					case <-deadline.C:
-						t.Fatal("failed cover request did not finish")
-					}
-				}
+				awaitCoverUpdate(t, updates, func() bool { return s.coverLoader.stages[key] == coverMiss && !s.SourceLoading })
 				tt.Frame()
-				if _, ok := tt.Find("正在加载封面"); !ok {
-					t.Fatal("failed cover request replaced the loading indicator with the bird")
+				if _, ok := tt.Find("正在加载封面"); ok {
+					t.Fatal("failed cover request still animates")
 				}
-				if covers[url] != nil {
-					t.Fatal("failed request unexpectedly produced a cover")
+				if cachedCover(key) != nil || len(s.coverLoader.fetching) != 0 || coverRequests.Load() != 1 {
+					t.Fatal("an unavailable cover was loaded or retried during its backoff")
 				}
 				s.refreshCatalog()
+				tt.Frame()
 			}
-			for {
-				data, err := os.ReadFile(path)
-				if covers[url] != nil && !s.SourceLoading && err == nil && bytes.Equal(data, poster) {
-					break
-				}
-				select {
-				case fn := <-updates:
-					fn()
-				case <-poll.C:
-				case <-deadline.C:
-					t.Fatalf("saved cover not restored: bitmap=%v catalogLoading=%v catalogError=%q cacheError=%v", covers[url] != nil, s.SourceLoading, s.SourceError, err)
-				}
+			awaitCoverUpdate(t, updates, func() bool { return cachedCover(key) != nil && !s.SourceLoading })
+			data, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(data, poster) {
+				t.Fatalf("saved cover missing from disk cache: %v", err)
 			}
 			if s.SourceError == "" {
 				t.Error("test did not exercise an unavailable catalog")

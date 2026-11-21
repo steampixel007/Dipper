@@ -127,7 +127,7 @@ func (s *State) browseDetailContent(c *ui.Context, detail *browseDetail) {
 		ui.Scroll(c.Key("browse-summary-scroll")).TrackScroll(&detail.summaryScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Padding(0, 24, 24).Gap(20).Children(func() {
 				ui.Row(c).Gap(14).AlignItems(ui.Start).Children(func() {
-					cover(c, anime, 68, 96)
+					s.featuredCover(c, anime, 68, 96)
 					ui.Column(c).Grow(1).MinWidth(0).Gap(6).Children(func() {
 						ui.Text(c, anime.Title).FontSize(textSize(c, textSection)).FontWeight(600).TextColor(pal.ink)
 						caption(c, dayName(anime.Day))

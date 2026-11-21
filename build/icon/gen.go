@@ -1,5 +1,6 @@
 // Icon generator. Everything Dipper shows is drawn from one bird: a chubby
-// dipper crouched over rushing water, white bib flush against its front edge.
+// dipper crouched over a single rushing wave, white bib flush against its
+// front edge.
 // The same geometry lives in the SVG masters beside this file; change the bird
 // once, in both places, and regenerate. No dependencies, CGO-free.
 //
@@ -29,19 +30,9 @@ type pt struct{ x, y float64 }
 type affine struct{ a, b, c, d, e, f float64 }
 
 func xfID() affine                      { return affine{1, 0, 0, 1, 0, 0} }
-func xfScale(s float64) affine          { return affine{s, 0, 0, s, 0, 0} }
 func xfTranslate(tx, ty float64) affine { return affine{1, 0, 0, 1, tx, ty} }
-
-// mul returns n∘m: apply m first, then n.
-func (m affine) mul(n affine) affine {
-	return affine{
-		n.a*m.a + n.c*m.b,
-		n.b*m.a + n.d*m.b,
-		n.a*m.c + n.c*m.d,
-		n.b*m.c + n.d*m.d,
-		n.a*m.e + n.c*m.f + n.e,
-		n.b*m.e + n.d*m.f + n.f,
-	}
+func xfScaleAt(s, cx, cy, tx, ty float64) affine {
+	return affine{s, 0, 0, s, tx - cx*s, ty - cy*s}
 }
 
 func (m affine) apply(p pt) pt {
@@ -86,18 +77,6 @@ func capsule(a, b pt, r float64) func(pt) bool {
 		bx, by := b.x-a.x, b.y-a.y
 		t := clamp((ax*bx+ay*by)/(bx*bx+by*by), 0, 1)
 		dx, dy := ax-bx*t, ay-by*t
-		return dx*dx+dy*dy <= r*r
-	}
-}
-
-func roundRect(x, y, w, h, r float64) func(pt) bool {
-	return func(p pt) bool {
-		if p.x < x || p.x > x+w || p.y < y || p.y > y+h {
-			return false
-		}
-		cx := clamp(p.x, x+r, x+w-r)
-		cy := clamp(p.y, y+r, y+h-r)
-		dx, dy := p.x-cx, p.y-cy
 		return dx*dx+dy*dy <= r*r
 	}
 }
@@ -162,14 +141,13 @@ func arcPts(a, b pt, r float64, n int) []pt {
 
 func bibPts() []pt {
 	var p []pt
-	p = append(p, pt{84, 118})
-	p = append(p, quad(pt{84, 118}, pt{110, 130}, pt{138, 114}, 12)...)
-	p = append(p, cubic(pt{138, 114}, pt{150, 120}, pt{156, 136}, pt{154, 152}, 12)...)
-	p = append(p, cubic(pt{154, 152}, pt{152, 168}, pt{144, 180}, pt{134, 186}, 12)...)
-	p = append(p, cubic(pt{134, 186}, pt{123, 191}, pt{108, 190}, pt{97, 187}, 12)...)
-	p = append(p, cubic(pt{97, 187}, pt{88, 184}, pt{84, 181}, pt{82, 174}, 12)...)
-	p = append(p, cubic(pt{82, 174}, pt{79, 166}, pt{80, 150}, pt{82, 138}, 12)...)
-	p = append(p, cubic(pt{82, 138}, pt{84, 128}, pt{84, 122}, pt{84, 118}, 12)...)
+	p = append(p, pt{86, 120})
+	p = append(p, quad(pt{86, 120}, pt{109, 131}, pt{135, 116}, 12)...)
+	p = append(p, cubic(pt{135, 116}, pt{147, 122}, pt{152, 135}, pt{151, 147}, 12)...)
+	p = append(p, cubic(pt{151, 147}, pt{150, 160}, pt{144, 170}, pt{135, 175}, 12)...)
+	p = append(p, cubic(pt{135, 175}, pt{124, 180}, pt{111, 178}, pt{101, 174}, 12)...)
+	p = append(p, cubic(pt{101, 174}, pt{92, 170}, pt{87, 162}, pt{85, 153}, 12)...)
+	p = append(p, cubic(pt{85, 153}, pt{83, 143}, pt{84, 130}, pt{86, 120}, 12)...)
 	return p
 }
 
@@ -190,19 +168,19 @@ func billPts(small bool) []pt {
 	return append(p, cubic(pt{78, 122}, pt{76.5, 116}, pt{75, 110}, pt{74, 104}, 6)...)
 }
 
-var waterStrokes = [][2]pt{
-	{{56, 231}, {96, 227}},
-	{{112, 230}, {142, 227}},
-	{{154, 229}, {172, 227}},
-	{{78, 247}, {104, 244}},
-	{{118, 246}, {144, 244}},
+func waterPts() []pt {
+	p := []pt{{60, 222}}
+	p = append(p, cubic(pt{60, 222}, pt{76, 213}, pt{92, 213}, pt{108, 222}, 16)...)
+	p = append(p, cubic(pt{108, 222}, pt{124, 231}, pt{140, 231}, pt{156, 222}, 16)...)
+	p = append(p, cubic(pt{156, 222}, pt{172, 213}, pt{188, 213}, pt{204, 222}, 16)...)
+	return p
 }
 
 var (
-	colInk   = [4]float64{0, 0, 0, 1}
+	colInk   = hexColor(0x07, 0x10, 0x18)
 	colPaper = [4]float64{1, 1, 1, 1}
-	colBlue  = hexColor(0x3b, 0x63, 0xfb)
-	colWash  = hexColor(0xf5, 0xf9, 0xff)
+	colBlue  = hexColor(0x2f, 0x6b, 0xff)
+	colBadge = hexColor(0xcf, 0xe2, 0xff)
 )
 
 func hexColor(r, g, b uint8) [4]float64 {
@@ -216,12 +194,7 @@ type op struct {
 	xf    affine
 }
 
-type birdVariant struct {
-	pupil     bool
-	billSmall bool
-}
-
-func birdOps(x affine, v birdVariant, dark bool) []op {
+func birdOps(x affine, smallBill, dark bool) []op {
 	body := colInk
 	detail := colPaper
 	if dark {
@@ -230,58 +203,59 @@ func birdOps(x affine, v birdVariant, dark bool) []op {
 	ops := []op{
 		{ellipse(106, 98, 40, 40), body, false, x},
 		{ellipse(130, 160, 52, 50), body, false, x},
-		{poly(billPts(v.billSmall)), body, false, x},
+		{poly(billPts(smallBill)), body, false, x},
 		{poly(tailPts()), body, false, x},
 	}
 	if dark {
 		ops = append(ops,
 			op{poly(bibPts()), [4]float64{}, true, x},
-			op{ellipse(104, 94, 7.5, 7.5), [4]float64{}, true, x})
+			op{ellipse(104, 94, 8, 8), [4]float64{}, true, x})
 	} else {
 		ops = append(ops,
 			op{poly(bibPts()), detail, false, x},
-			op{ellipse(104, 94, 7.5, 7.5), detail, false, x})
-		if v.pupil {
-			r := 3.0
-			if v.billSmall {
-				r = 0 // the small cut drops the pupil
-			}
-			if r > 0 {
-				ops = append(ops, op{ellipse(106, 95, r, r), colInk, false, x})
-			}
-		}
+			op{ellipse(104, 94, 8, 8), detail, false, x})
 	}
 	return ops
 }
 
-func waterOps(x affine, ink bool) []op {
-	c := colBlue
-	if ink {
-		c = colInk
-	}
-	var ops []op
-	for _, s := range waterStrokes {
-		ops = append(ops, op{capsule(s[0], s[1], 4.5), c, false, x})
+func waterOps(x affine) []op {
+	p := waterPts()
+	ops := make([]op, 0, len(p)-1)
+	for i := 1; i < len(p); i++ {
+		ops = append(ops, op{capsule(p[i-1], p[i], 7.5), colBlue, false, x})
 	}
 	return ops
 }
 
-func appOps() []op {
-	ops := []op{{roundRect(0, 0, 256, 256, 58), colWash, false, xfID()}}
-	x := xfTranslate(34, 10).mul(xfScale(0.735))
-	ops = append(ops, birdOps(x, birdVariant{pupil: true}, false)...)
-	return append(ops, waterOps(x, false)...)
+func appFullOps() []op {
+	ops := []op{{ellipse(128, 128, 128, 128), colBadge, false, xfID()}}
+	x := xfScaleAt(1.14, 131.5, 134, 128, 122)
+	ops = append(ops, birdOps(x, false, false)...)
+	return append(ops, waterOps(xfID())...)
+}
+
+func appSmallOps() []op {
+	ops := []op{{ellipse(128, 128, 128, 128), colBadge, false, xfID()}}
+	x := xfScaleAt(1.22, 131.5, 134, 128, 128)
+	return append(ops, birdOps(x, true, false)...)
+}
+
+func appOpsFor(size int) []op {
+	if size <= 24 {
+		return appSmallOps()
+	}
+	return appFullOps()
 }
 
 func symbolOps() []op {
 	x := xfTranslate(-5, -26)
-	ops := birdOps(x, birdVariant{pupil: true}, false)
-	return append(ops, waterOps(x, false)...)
+	ops := birdOps(x, false, false)
+	return append(ops, waterOps(x)...)
 }
 
 func trayOps(dark bool) []op {
-	x := xfTranslate(128, 128).mul(xfScale(1.02)).mul(xfTranslate(-131.5, -134))
-	return birdOps(x, birdVariant{billSmall: true}, dark)
+	x := xfScaleAt(1.02, 131.5, 134, 128, 128)
+	return birdOps(x, true, dark)
 }
 
 // render rasterizes the ops into a size×size image with 4× supersampling
@@ -363,11 +337,11 @@ func savePNG(path string, size int, ops []op) error {
 }
 
 // saveICO writes a Vista-style ICO: one PNG-embedded image per size.
-func saveICO(path string, sizes []int, ops func() []op) error {
+func saveICO(path string, sizes []int, ops func(int) []op) error {
 	var pngs [][]byte
 	for _, s := range sizes {
 		var b bytes.Buffer
-		if err := png.Encode(&b, render(s, ops())); err != nil {
+		if err := png.Encode(&b, render(s, ops(s))); err != nil {
 			return err
 		}
 		pngs = append(pngs, b.Bytes())
@@ -427,7 +401,7 @@ func saveSyso(path, arch string) error {
 	_ = binary.Write(&group, binary.LittleEndian, [3]uint16{0, 1, uint16(len(sizes))})
 	for i, size := range sizes {
 		var b bytes.Buffer
-		if err := png.Encode(&b, render(size, appOps())); err != nil {
+		if err := png.Encode(&b, render(size, appOpsFor(size))); err != nil {
 			return err
 		}
 		id := uint16(i + 1)
@@ -559,7 +533,8 @@ func main() {
 		if len(os.Args) != 4 {
 			usage()
 		}
-		if err := savePNG(os.Args[3], atoi(os.Args[2]), appOps()); err != nil {
+		size := atoi(os.Args[2])
+		if err := savePNG(os.Args[3], size, appOpsFor(size)); err != nil {
 			fatal(err)
 		}
 	case "symbol":
@@ -586,7 +561,7 @@ func main() {
 		if len(os.Args) != 3 {
 			usage()
 		}
-		if err := saveICO(os.Args[2], []int{16, 24, 32, 48, 64, 128, 256}, appOps); err != nil {
+		if err := saveICO(os.Args[2], []int{16, 24, 32, 48, 64, 128, 256}, appOpsFor); err != nil {
 			fatal(err)
 		}
 	case "syso":
@@ -606,10 +581,10 @@ func main() {
 			run  func(string) error
 		}{
 			{"symbol-512.png", func(p string) error { return savePNG(p, 512, symbolOps()) }},
-			{"app-512.png", func(p string) error { return savePNG(p, 512, appOps()) }},
-			{"app-256.png", func(p string) error { return savePNG(p, 256, appOps()) }},
+			{"app-512.png", func(p string) error { return savePNG(p, 512, appFullOps()) }},
+			{"app-256.png", func(p string) error { return savePNG(p, 256, appFullOps()) }},
 			{"dipper.ico", func(p string) error {
-				return saveICO(p, []int{16, 24, 32, 48, 64, 128, 256}, appOps)
+				return saveICO(p, []int{16, 24, 32, 48, 64, 128, 256}, appOpsFor)
 			}},
 		}
 		for _, size := range []int{16, 20, 24, 32} {
