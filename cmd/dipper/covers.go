@@ -216,6 +216,9 @@ func (s *State) pumpCovers() {
 	if fetch == "" {
 		return
 	}
+	if !loader.isVisible(fetch) && loader.hasPendingVisible() {
+		return
+	}
 	if delay := time.Until(loader.pauseUntil); delay > 0 {
 		for key, flight := range loader.fetching {
 			if !loader.keep[key] && flight.start.CompareAndSwap(coverQueued, coverWithdrawn) {
@@ -274,6 +277,23 @@ func (s *State) pumpCovers() {
 		return
 	}
 	s.fetchCover(fetch)
+}
+
+// hasPendingVisible reports whether a visible cover still needs the next
+// admission. A queued visible flight may not have reached the source limiter
+// yet, so allowing a prefetch to join it can let the prefetch win the slot.
+func (loader *coverLoader) hasPendingVisible() bool {
+	for _, keys := range [][]string{loader.featured, loader.visible} {
+		for _, key := range keys {
+			if cachedCover(key) != nil || loader.stages[key] == coverFailed {
+				continue
+			}
+			if flight := loader.fetching[key]; flight == nil || flight.start.Load() == coverQueued {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (s *State) probeCover(key string) {

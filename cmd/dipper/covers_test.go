@@ -531,6 +531,22 @@ func TestCoverVisibleOvertakesQueuedPrefetch(t *testing.T) {
 	}
 }
 
+func TestCoverPrefetchWaitsForQueuedVisible(t *testing.T) {
+	resetCoverCache(t)
+	state := uiFixture(t, "browse")
+	state.Source = source.New("http://127.0.0.1:1")
+	coverUpdates(t, state)
+	state.coverLoader.visible = []string{"visible"}
+	state.coverLoader.wanted = []string{"visible", "near"}
+	state.coverLoader.keep = map[string]bool{"visible": true, "near": true}
+	state.coverLoader.stages = map[string]coverStage{"near": coverMiss}
+	state.coverLoader.fetching = map[string]*coverFlight{"visible": {}}
+	state.pumpCovers()
+	if flight := state.coverLoader.fetching["near"]; flight != nil {
+		t.Fatal("a prefetch was scheduled while a visible cover still waited for admission")
+	}
+}
+
 func TestCoverRateLimitLeavesWarmHitsAvailable(t *testing.T) {
 	resetCoverCache(t)
 	state := uiFixture(t, "browse")
