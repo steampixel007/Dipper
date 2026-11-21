@@ -136,7 +136,8 @@ separate downloader to run. Playback uses your system's associated media player.
    poster. The library lists its downloads and their states.
 6. **Play:** choose **播放** beside a completed download. Dipper opens a media
    file in your associated player; install or associate a player if needed.
-   A release may contain multiple files, which can also be opened from its folder.
+   Use the folder icon to open the download folder. For a release with multiple
+   files, choose **更多 → 查看文件** to select a file.
 
 ## Manage follows and downloads
 

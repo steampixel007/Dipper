@@ -69,3 +69,42 @@ func TestUIEpisodeLibraryEmptyOffersTheResourceView(t *testing.T) {
 		t.Fatalf("empty library state: page=%q view=%v backfill=%v", s.Page, s.ViewResources, s.Backfill)
 	}
 }
+
+func TestUIEpisodeLibraryKeepsPlaybackBesideEpisodeDetails(t *testing.T) {
+	for _, viewport := range []struct {
+		name          string
+		width, height int
+	}{
+		{"normal", 1320, 860},
+		{"minimum-width", 1040, 860},
+		{"minimum-height", 1320, 720},
+		{"minimum-window", 1040, 720},
+	} {
+		for _, appearance := range []string{appearanceLight, appearanceDark} {
+			t.Run(viewport.name+"/"+appearance, func(t *testing.T) {
+				s := uiFixture(t, "episodes")
+				s.LibraryID = s.Subscriptions[0].ID
+				s.Appearance = appearance
+				episode := s.Downloads[2]
+				episode.Episode = "05"
+				s.Downloads = []Download{episode}
+				tester := ui.NewTester(s.view, viewport.width, viewport.height)
+				for _, scale := range []float32{1, 2} {
+					tester.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
+					label, labelFound := tester.Find("第 5 集")
+					title, titleFound := tester.Find(episode.Title)
+					play, playFound := tester.Find("播放 " + episode.ID)
+					if !labelFound || !titleFound || !playFound {
+						t.Fatalf("text scale %.1f: missing episode details or playback", scale)
+					}
+					if play.X <= label.X || play.Y >= title.Y+title.H || play.Y+play.H <= label.Y {
+						t.Errorf("text scale %.1f: playback is detached from the episode details: episode=%+v title=%+v play=%+v", scale, label, title, play)
+					}
+					if play.H < 40 || play.X+play.W > float32(viewport.width) || play.Y+play.H > float32(viewport.height) {
+						t.Errorf("text scale %.1f: playback target is too small or outside the window: %+v", scale, play)
+					}
+				}
+			})
+		}
+	}
+}

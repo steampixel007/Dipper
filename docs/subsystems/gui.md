@@ -35,17 +35,18 @@ components, and interaction conventions are specified in
 
 `appearance.go` owns both palettes and motion; `typography.go` owns type sizes
 and control geometry. `view.go` composes them without introducing another color
-system. Opaque neutral canvas, sidebar and paper surfaces surround the artwork.
-Blue marks actions and focus; semantic colors mark actual status. There are no
-ambient gradients or translucent materials.
+system. Opaque slate-neutral canvas, sidebar and paper surfaces surround the
+artwork. Navigation and filters share the blue selection wash. Blue marks
+primary actions and focus, while semantic colors mark actual status. Recessed
+neutral surfaces hold blank and loading covers.
 
 The top bar occupies a fixed 64 DIP slot with an opaque canvas background and
 no divider. Page content is clipped below it; `uiScrollTo` relies on that slot.
 Browse filters sit directly on the page, with weekdays below. Poster radii
 share the 8 DIP cover token and use one quiet shadow. Navigation counts share
 the label row at normal text size and move below the label when text is enlarged.
-`visual_system_test.go` verifies rendered neutral chrome, count alignment and
-clickable navigation at normal and doubled text size.
+`visual_system_test.go` verifies rendered neutral chrome, selected navigation,
+count alignment and clickable navigation at normal and doubled text size.
 
 Browse and follow tiles use the column width and each loaded image's original
 ratio to determine poster height. This keeps the complete artwork visible
@@ -283,13 +284,16 @@ The whole tile is a button that opens the follow's episode library, so the
 poster is the large target and the tile carries no separate play shortcut:
 watching goes through the library's episode list.
 
-The episode library (`episodes` page) is a follow's watch view: a large hero
-(poster, title, status badges, completed-download count, and the failure row
+The episode library (`episodes` page) is a follow's watch view with a compact header
+(poster, title, follow status, completed-download count, and the failure row
 when the last check failed) above the episode list, so the follow is
 recognizable before the rows. It lists that anime's downloads sorted by
-episode number, marks each transfer's state, and offers 播放 beside completed
-transfers, so watching does not go through the release list. Releases without
-a parsed episode number sort last, labeled 未识别集数. The library is reached
+episode number. A divider separates each row, and the episode number, transfer
+state, and release title wrap beside the actions. Completed transfers show a
+primary 播放 button, a folder icon with a tooltip, and a 更多 menu for file
+selection and removal. Failed, paused, and stopped transfers offer recovery
+in the same action area. Releases without a parsed episode number sort last,
+labeled 未识别集数. The library is reached
 from the follow tile and stays per-run state: it follows one subscription ID,
 and rule editing or release picking stay on the resource view reached through
 查看资源.
@@ -495,14 +499,14 @@ fixed contain frame.
 
 ## Brand marks
 
-The bird logo shows in four places: the window icon and the tray icon (PNG
-copies embedded from `cmd/dipper/assets/`, set in `main.go`), and the sidebar
-chip and the cover fallback (`assets/dipper.svg` parsed in `loadImages`,
-rendered through `ui.Image` in its own colors). The tray carries two cuts —
-ink on a light taskbar, paper on a dark one — and `main.go` follows the
-taskbar's appearance between them. The Windows executable also carries the
-tile icon as a resource (`dipper_windows_*.syso`, made by `build/icon/gen.go`),
-which the taskbar and Explorer read before any window sets its own. The assets
+The bird logo shows in four places: the window and sidebar use the circular app
+badge (`assets/dipper-icon.png`); the tray uses two transparent cuts; and the
+cover fallback uses the transparent mark (`assets/dipper.svg`). The PNGs are
+embedded from `cmd/dipper/assets/`; `main.go` sets the window icon and follows
+the taskbar's appearance between the tray cuts. The Windows executable also
+carries the tile icon as a resource (`dipper_windows_*.syso`, made by
+`build/icon/gen.go`), which the taskbar and Explorer read before any window
+sets its own. The assets
 are copies of the masters in `build/icon/`; regenerate them with
 `build/icon/gen.go` and keep the copies in step, as [DESIGN.md](../../DESIGN.md)
 records.
