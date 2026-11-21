@@ -59,22 +59,20 @@ func followingSourceServer(t *testing.T) (*httptest.Server, func()) {
 	}))
 	coverURLs := []string{}
 	for _, match := range regexp.MustCompile(`(?:background-image:\s*url\(|(?:data-src|src)=)["']?([^"'\s>]+)`).FindAllStringSubmatch(string(detailBody), -1) {
-		coverURLs = append(coverURLs, server.URL+html.UnescapeString(match[1]))
+		coverURLs = append(coverURLs, coverURL(server.URL+html.UnescapeString(match[1])))
 	}
 	coversMu.Lock()
 	for _, coverURL := range coverURLs {
 		covers[coverURL] = covers["3887.jpg"]
-		loadingCovers[coverURL] = true
 	}
 	coversMu.Unlock()
 	cleanup := func() {
+		server.Close()
 		coversMu.Lock()
 		defer coversMu.Unlock()
 		for _, coverURL := range coverURLs {
 			delete(covers, coverURL)
-			delete(loadingCovers, coverURL)
 		}
-		server.Close()
 	}
 	return server, cleanup
 }

@@ -1,11 +1,15 @@
 package source
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
+	"time"
 )
 
 func TestRetargetRejectsInvalidOrigin(t *testing.T) {
@@ -50,4 +54,82 @@ func TestRetargetConcurrentWithRequests(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+func TestRetargetIsolatesCooldownWithQueuedRequest(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		const oldOrigin = "http://127.0.0.1:8001"
+		const newOrigin = "http://127.0.0.1:8002"
+		client := clockedClient(oldOrigin, func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Host == "127.0.0.1:8001" {
+				w.Header().Set("Retry-After", "90")
+				w.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		})
+		var status *HTTPError
+		if _, err := client.Cover(t.Context(), oldOrigin+"/poster"); !errors.As(err, &status) || status.RetryAfter != 90*time.Second {
+			t.Fatalf("old cover did not establish cooldown: %v", err)
+		}
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		queued := make(chan error, 1)
+		go func() { queued <- client.Probe(ctx) }()
+		synctest.Wait()
+		if err := client.Retarget(newOrigin); err != nil {
+			t.Fatal(err)
+		}
+		begin := time.Now()
+		if err := client.Probe(t.Context()); err != nil || time.Since(begin) != 0 {
+			t.Fatalf("new origin probe waited %v: %v", time.Since(begin), err)
+		}
+		cancel()
+		if err := <-queued; !errors.Is(err, context.Canceled) {
+			t.Fatalf("old queued request = %v, want caller cancellation", err)
+		}
+	})
+}
+
+func TestRetargetPreservesPreviouslyUsedDestinationCooldown(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		const original = "http://127.0.0.1:8001"
+		client := clockedClient(original, cooldownOnce("90"))
+		assertProbeCooldown(t, client)
+		for _, target := range []string{"http://127.0.0.1:8002", original} {
+			if err := client.Retarget(target); err != nil {
+				t.Fatal(err)
+			}
+		}
+		begin := time.Now()
+		if err := client.Probe(t.Context()); err != nil || time.Since(begin) != 90*time.Second {
+			t.Fatalf("return to previous origin waited %v: %v", time.Since(begin), err)
+		}
+	})
+}
+
+func TestRetargetPreservesPacingForEquivalentAndInvalidOrigins(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		const origin = "http://localhost"
+		client := clockedClient(origin, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		if err := client.Probe(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		if err := client.Retarget("http://LOCALHOST:80/"); err != nil {
+			t.Fatal(err)
+		}
+		begin := time.Now()
+		if err := client.Probe(t.Context()); err != nil || time.Since(begin) != 1500*time.Millisecond {
+			t.Fatalf("equivalent origin probe waited %v: %v", time.Since(begin), err)
+		}
+		if err := client.Retarget("file:///invalid"); err == nil {
+			t.Fatal("invalid Retarget succeeded")
+		}
+		begin = time.Now()
+		if err := client.Probe(t.Context()); err != nil || time.Since(begin) != 1500*time.Millisecond {
+			t.Fatalf("probe after invalid Retarget waited %v: %v", time.Since(begin), err)
+		}
+	})
 }

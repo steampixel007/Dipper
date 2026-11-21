@@ -56,7 +56,13 @@ func TestClientRetriesInterruptedResponse(t *testing.T) {
 func TestClientInterruptedRetryRespectsCancellationAndRateLimit(t *testing.T) {
 	for _, cancelRequest := range []bool{false, true} {
 		t.Run(fmt.Sprintf("cancel=%t", cancelRequest), func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
+			var ctx context.Context
+			var cancel context.CancelFunc
+			if cancelRequest {
+				ctx, cancel = context.WithCancel(t.Context())
+			} else {
+				ctx, cancel = context.WithTimeout(t.Context(), time.Second)
+			}
 			defer cancel()
 			var requests atomic.Int32
 			client := testClient(t, func(w http.ResponseWriter, r *http.Request) {

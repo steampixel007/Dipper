@@ -96,29 +96,37 @@ func TestSourceRouteFailureRollsBackAndKeepsChoice(t *testing.T) {
 	}
 }
 
+func TestSourceRouteDefaultsToLineTwo(t *testing.T) {
+	const origin = "https://mikanani.me"
+	const label = "线路二（默认）：mikanani.me"
+	s := newState(t.TempDir())
+	s.Source = source.New("")
+	if s.SourceRoute != label || s.Source.Origin() != origin || s.sourceOrigin(s.SourceRoute) != origin {
+		t.Fatalf("initial route = %q origin = %q, want %q at %q", s.SourceRoute, s.Source.Origin(), label, origin)
+	}
+	if err := s.loadPreferences(); err != nil {
+		t.Fatal(err)
+	}
+	if s.SourceRoute != label || s.Source.Origin() != origin {
+		t.Fatalf("route without preferences = %q origin = %q, want %q at %q", s.SourceRoute, s.Source.Origin(), label, origin)
+	}
+}
+
 func TestSourceRoutePreferenceRoundTrip(t *testing.T) {
+	const origin = "https://mikanime.tv"
 	dir := t.TempDir()
 	path := filepath.Join(dir, "preferences.json")
-	if err := os.WriteFile(path, []byte(`{"SourceOrigin":"https://mikanani.me"}`), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(`{"SourceOrigin":"`+origin+`"}`), 0644); err != nil {
 		t.Fatal(err)
 	}
-	good := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(routeCatalogMarkup)) }))
-	defer good.Close()
 	s := newState(dir)
-	s.SourceRoutes = []sourceRoute{{Label: "线路一", Origin: "https://mikanime.tv"}, {Label: "线路二", Origin: "https://mikanani.me"}}
-	s.SourceRoute = s.SourceRoutes[0].Label
-	s.Source = source.New(good.URL)
-	// Retarget to the saved origin, then save and reload like startup does.
-	var pref preferences
-	if b, err := os.ReadFile(path); err == nil {
-		if err := json.Unmarshal(b, &pref); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := s.Source.Retarget(pref.SourceOrigin); err != nil {
+	s.Source = source.New("")
+	if err := s.loadPreferences(); err != nil {
 		t.Fatal(err)
 	}
-	s.SourceRoute = s.sourceLabel(pref.SourceOrigin)
+	if s.SourceRoute != s.SourceRoutes[0].Label || s.Source.Origin() != origin {
+		t.Fatalf("saved route = %q origin = %q, want line one at %q", s.SourceRoute, s.Source.Origin(), origin)
+	}
 	if err := s.savePreferences(); err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +138,7 @@ func TestSourceRoutePreferenceRoundTrip(t *testing.T) {
 	if err := json.Unmarshal(b, &saved); err != nil {
 		t.Fatal(err)
 	}
-	if saved.SourceOrigin != "https://mikanani.me" {
+	if saved.SourceOrigin != origin {
 		t.Fatalf("saved origin = %q", saved.SourceOrigin)
 	}
 }

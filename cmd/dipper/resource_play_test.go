@@ -42,10 +42,13 @@ func TestUIResourceRowShowsDownloadState(t *testing.T) {
 
 func TestUIResourceRowPlayOpensDownloadedRelease(t *testing.T) {
 	s := uiFixture(t, "detail")
-	played := ""
+	played := make(chan string, 1)
 	engine := &playTestEngine{files: []string{filepath.Join(s.Root, "星海旅记", "episode.mkv")}}
 	s.Engine = engine
-	s.PlayFile = func(path string) error { played = path; return nil }
+	s.PlayFile = func(path string) error {
+		played <- path
+		return nil
+	}
 	updates := make(chan func(), 2)
 	s.Update = func(fn func()) { updates <- fn }
 	s.Downloads[0].Progress = 1
@@ -56,15 +59,17 @@ func TestUIResourceRowPlayOpensDownloadedRelease(t *testing.T) {
 	uiClick(t, tt, "播放")
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
-	for played == "" && s.SaveError == "" {
+	var path string
+	for path == "" && s.SaveError == "" {
 		select {
+		case path = <-played:
 		case fn := <-updates:
 			fn()
 		case <-deadline.C:
 			t.Fatal("play did not open a file")
 		}
 	}
-	if played != filepath.Join(s.Root, "星海旅记", "episode.mkv") {
-		t.Fatalf("played %q, want the downloaded episode", played)
+	if path != filepath.Join(s.Root, "星海旅记", "episode.mkv") {
+		t.Fatalf("played %q, want the downloaded episode", path)
 	}
 }

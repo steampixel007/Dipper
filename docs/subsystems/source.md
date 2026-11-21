@@ -5,7 +5,7 @@ RSS feeds, and parses them into the types `core` consumes.
 
 ## What it owns
 
-- HTTP access to the source, with one shared rate limit.
+- HTTP access to the source, with shared concurrency and per-origin pacing.
 - Turning HTML and RSS into `Anime`, `Group` and `Resource`.
 - Deciding when a response is unusable, and saying why.
 
@@ -39,25 +39,36 @@ is different from `0`.
 
 ## The client
 
-One `Client` is shared by the catalog, subscriptions and covers, because the
-rate limit lives on it. Reusing one client is what keeps the app inside the
-source's tolerance; constructing one per call would multiply the request rate.
+One `Client` is shared by the catalog, subscriptions and covers. Reusing one
+client shares transport admission and the cover slot budget; pacing and
+server-requested cooldowns are tracked per origin.
+`New` uses `https://mikanani.me` (line two) when no origin is supplied.
 The client's transport resolves its proxy through `internal/proxy`, so the
 setting chosen in the window applies to catalog, history, RSS and cover
 requests alike; loopback addresses stay direct.
-`Retarget` swaps the origin under the client's lock while keeping the same
-rate limit, transport and in-flight requests, so switching lines does not
-multiply the request rate either.
+`Retarget` swaps the origin under the client's lock while keeping shared
+transport admission and in-flight requests, so switching lines does not
+multiply the request rate. Each origin keeps its own pacing and cooldown state.
 
-`get` takes a single-slot `gate` channel for its whole request, then waits until
-`nextRequest` before sending, and sets `nextRequest` to now plus 1500 ms. Every
-request therefore lands at least 1.5 s after the previous one started, across all
-callers.
+Document reads use a single slot for the whole operation and start at least
+1.5 seconds apart. Cover reads use six separate slots and can start up to six
+attempts immediately when the budget is full. Each cover attempt spends one
+start, and the budget restores one every 750 milliseconds up to six.
+Both request types honor `Retry-After`. A cover `403`, `429`, or challenge also
+pauses covers for at least one minute. At the end of a cooldown, one cover can
+start immediately, with the remaining starts replenished at the normal pace.
+The limiter rechecks its deadline after waiting so a response arriving during
+the wait can defer the next attempt.
+
+`CoverWhenReady` lets the UI withdraw a queued cover when a higher-priority
+cover needs the slot. Its non-blocking callback runs at admission, after the
+slot and interval wait but before spending a start from the cover budget.
 
 An EOF while receiving headers or reading the body gets one retry. Both attempts
-share the gate, the 30-second operation timeout and the rate limit; an incomplete
-body is closed and discarded before retrying. If either attempt encounters an
-EOF and its context has already ended, the operation returns the context error.
+share transport admission, the 30-second operation timeout and per-origin
+pacing; an incomplete body is closed and discarded before retrying. If either
+attempt encounters an EOF and its context has already ended, the operation
+returns the context error.
 HTTP statuses, challenges and parsing failures do not trigger this retry.
 
 Redirects are followed at most five times, and every redirect target must still
@@ -76,7 +87,9 @@ square size would undo this at the last step.
 
 A non-200 response becomes `HTTPError`, carrying `RetryAfter` parsed from the
 header in either its seconds or its HTTP-date form. `RetryAfter` is pushed into
-`nextRequest` so the next request waits it out instead of hammering.
+the origin's pacing state so later requests wait it out. For covers, a `403`,
+`429`, or challenge also defers new cover attempts for at least a minute, even
+if the response carries no `Retry-After`. The longest pending deadline wins.
 
 ## The challenge check
 
@@ -140,14 +153,15 @@ Points a change is expected to prove:
 - A challenge page is `ErrChallenge`, not `ErrStructure`.
 - A redirect to a non-HTTP scheme is refused.
 - A `Content-Length` larger than the cap is refused before reading.
-- `Retry-After` in both forms moves `nextRequest` forward.
+- `Retry-After` in both forms moves the origin's pacing and cooldown forward.
 - An omitted size parses as zero, and zero is distinguishable from a real zero.
 - A grouped size parses like its ungrouped spelling, and malformed grouping is
   refused rather than silently read as a different number.
 
 ## Invariants a change must preserve
 
-- One `Client` is shared; the rate limit is per client, not per call.
+- One `Client` is shared; pacing is per origin and concurrency is per client,
+  not per call.
 - Every request URL is validated as absolute HTTP(S) with no userinfo.
 - A body cap is enforced against both the declared and the actual length.
 - A challenge is never reported as a parse failure, and a parse failure is never
