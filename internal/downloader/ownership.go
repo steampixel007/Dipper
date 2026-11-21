@@ -26,6 +26,31 @@ type fileClaim struct {
 	Files  []ownedFile `json:"files"`
 }
 
+// FileConflictError reports a permanent collision with another task's claim.
+type FileConflictError struct {
+	Owner string
+	Path  string
+	Err   error
+}
+
+func (e *FileConflictError) Error() string {
+	return fmt.Sprintf("%v; owner task %s", e.Err, e.Owner)
+}
+
+func (e *FileConflictError) Unwrap() error   { return e.Err }
+func (e *FileConflictError) Permanent() bool { return true }
+func (e *FileConflictError) ConflictPath() string {
+	return e.Path
+}
+
+type pathCollisionError struct {
+	path string
+}
+
+func (e *pathCollisionError) Error() string {
+	return fmt.Sprintf("colliding file path %q", e.path)
+}
+
 type ownership struct {
 	mu     sync.Mutex
 	path   string
@@ -109,7 +134,7 @@ func validateClaims(claims []fileClaim) error {
 				key := strings.ToLower(name)
 				isFile := index == len(parts)-1
 				if prior, ok := used[key]; ok && (prior.name != name || prior.file || isFile) {
-					return fmt.Errorf("colliding file path %q", name)
+					return &pathCollisionError{path: prior.name}
 				}
 				used[key] = pathUse{name, isFile}
 			}
@@ -119,13 +144,28 @@ func validateClaims(claims []fileClaim) error {
 }
 
 func (o *ownership) conflicts(id string, claim fileClaim) error {
-	claims := []fileClaim{claim}
-	for otherID, other := range o.claims {
-		if otherID != id {
-			claims = append(claims, other)
+	if err := validateClaims([]fileClaim{claim}); err != nil {
+		return err
+	}
+	owners := make([]string, 0, len(o.claims))
+	for owner := range o.claims {
+		if owner != id {
+			owners = append(owners, owner)
 		}
 	}
-	return validateClaims(claims)
+	sort.Strings(owners)
+	for _, owner := range owners {
+		err := validateClaims([]fileClaim{claim, o.claims[owner]})
+		if err == nil {
+			continue
+		}
+		var collision *pathCollisionError
+		if errors.As(err, &collision) {
+			return &FileConflictError{Owner: owner, Path: collision.path, Err: err}
+		}
+		return err
+	}
+	return nil
 }
 
 func (o *ownership) save() error {

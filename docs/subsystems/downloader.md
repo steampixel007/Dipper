@@ -143,7 +143,9 @@ for the task's metadata paths and lengths. Claims stay reserved while paused or
 stopped and across restarts. A different task cannot claim the same file or a
 file/directory prefix, even with different casing. Shared admission also refuses
 an existing unclaimed payload instead of silently adopting it. Replaying the
-same task requires its manifest to agree with its claim.
+same task requires its manifest to agree with its claim. A collision with
+another task returns a permanent `FileConflictError` naming that owner and the
+colliding path, so core can skip the duplicate instead of retrying it.
 
 Path safety is enforced per component, not per path:
 

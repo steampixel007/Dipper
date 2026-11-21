@@ -29,6 +29,14 @@ type fakeDownloader struct {
 	removeHook func(string) error
 }
 
+type fakeFileConflict struct {
+	path string
+}
+
+func (e fakeFileConflict) Error() string        { return "colliding file path " + e.path }
+func (e fakeFileConflict) Permanent() bool      { return true }
+func (e fakeFileConflict) ConflictPath() string { return e.path }
+
 func (d *fakeDownloader) Ensure(task DownloadTask) error {
 	d.mu.Lock()
 	d.calls = append(d.calls, task)
@@ -297,6 +305,46 @@ func TestDurableOutboxFailureRetriesEvenWithEmptyFeed(t *testing.T) {
 	}
 	if d2.count() != 1 {
 		t.Fatal("accepted intent submitted twice")
+	}
+}
+
+func TestPermanentFileConflictSkipsDuplicateWithoutRetry(t *testing.T) {
+	a := resource("a", 1, "1080p")
+	conflictPath := filepath.Join("downloads", "anime", "group", "episode.mkv")
+	d := &fakeDownloader{}
+	d.setHook(func(DownloadTask) error {
+		return fmt.Errorf("add torrent: error opening torrent storage: %w", fakeFileConflict{path: conflictPath})
+	})
+	c := openTest(t, filepath.Join(t.TempDir(), "state.db"), Options{Downloader: d})
+	sub, err := c.CreateSubscription(context.Background(), anime, group, Rule{}, []Resource{a}, []string{a.ID})
+	if err == nil || !strings.Contains(err.Error(), conflictPath) {
+		t.Fatalf("creation error = %v, want the conflicting path", err)
+	}
+	sub = current(t, c, sub.ID)
+	item, ok := sub.Items[a.ID]
+	if !ok || item.Status != ItemSkipped || !item.Read {
+		t.Fatalf("conflicting item was not skipped and read: %+v", sub.Items)
+	}
+	if !strings.Contains(item.Reason, "目标文件已被其他下载任务占用，已跳过重复资源") || !strings.Contains(item.Reason, conflictPath) {
+		t.Fatalf("conflict reason = %q, want the skipped duplicate and its path", item.Reason)
+	}
+	if !item.NextRetry.IsZero() {
+		t.Fatalf("skipped item still has a retry deadline: %v", item.NextRetry)
+	}
+	tasks, err := c.ListTasks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tasks) != 1 || tasks[0].Accepted || !tasks[0].NextRetry.IsZero() ||
+		!strings.Contains(tasks[0].LastError, conflictPath) {
+		t.Fatalf("conflicting task did not remain visible as a permanent skip: %+v", tasks)
+	}
+	calls := d.count()
+	if err := c.RetryPending(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if d.count() != calls {
+		t.Fatalf("retry resubmitted the permanent conflict: calls %d -> %d", calls, d.count())
 	}
 }
 

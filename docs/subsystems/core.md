@@ -92,7 +92,7 @@ next subscription check, the next pending-item retry, the next failed-task
 retry, or `Interval`, and is woken early by `signal` after any mutation.
 
 `backoff` doubles from `RetryBase` up to `RetryMax`. Both a failed check and a
-failed submission use it.
+failed submission use it. A permanent file conflict is not retried.
 
 ## The outbox
 
@@ -117,7 +117,9 @@ Then, for each task record not yet accepted, it calls `Downloader.Ensure` and
 writes the result back to the task and to every pending item sharing its hash.
 The downloader contract in `types.go` is the reason this can be retried:
 `Ensure` must be idempotent by hash and must durably accept the task before
-returning nil.
+returning nil. A permanent collision with another task's file claim marks the
+matching items skipped and read, clears their retry deadlines, and preserves the
+owner's file; the task record remains for visibility and deletion.
 
 ## Using it
 
@@ -316,6 +318,8 @@ Points a change is expected to prove:
 - A re-download that arrives while a removal is in flight, or after a failed
   removal left its tombstone, survives: it is submitted and recovery does not
   remove it.
+- A permanent file conflict leaves the owner's file intact, marks the duplicate
+  item skipped and read without a retry deadline, and does not resubmit it.
 - Two subscriptions pointing at the same hash submit one task, and both items
   end up downloaded.
 - An item selected explicitly is downloaded even when an earlier item with the

@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+type permanentConflict interface {
+	Permanent() bool
+	ConflictPath() string
+}
+
 func (c *Core) PreviewDirectory(anime Anime) (string, error) {
 	if strings.TrimSpace(anime.ID) == "" {
 		return "", errors.New("anime ID is required")
@@ -864,6 +869,13 @@ func (c *Core) flush(ctx context.Context, onlyID string, replay, force bool) err
 			cleanup()
 			return err
 		}
+		var conflictPath string
+		var permanent bool
+		var conflict permanentConflict
+		if submitErr != nil && errors.As(submitErr, &conflict) && conflict.Permanent() {
+			permanent = true
+			conflictPath = conflict.ConflictPath()
+		}
 		err = c.transaction(deliveryCtx, func(tx *sql.Tx, s *diskState) error {
 			latest, err := taskByHash(ctx, tx, task.Hash)
 			if err != nil {
@@ -871,14 +883,26 @@ func (c *Core) flush(ctx context.Context, onlyID string, replay, force bool) err
 			}
 			latest.Attempts++
 			if submitErr != nil {
-				latest.LastError = submitErr.Error()
-				latest.NextRetry = c.opts.Now().Add(c.backoff(latest.Attempts))
+				if permanent {
+					latest.LastError = "目标文件已被其他下载任务占用，已跳过重复资源"
+					if conflictPath != "" {
+						latest.LastError += "：" + conflictPath
+					}
+					latest.NextRetry = time.Time{}
+				} else {
+					latest.LastError = submitErr.Error()
+					latest.NextRetry = c.opts.Now().Add(c.backoff(latest.Attempts))
+				}
 				for id, sub := range s.Subscriptions {
 					if sub.Paused {
 						continue
 					}
 					for key, item := range sub.Items {
 						if item.Hash == task.Hash && item.Status == ItemPending {
+							if permanent {
+								item.Read = true
+								item.Status = ItemSkipped
+							}
 							item.Reason = latest.LastError
 							item.LastError = latest.LastError
 							item.Attempts = latest.Attempts
