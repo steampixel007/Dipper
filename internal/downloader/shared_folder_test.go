@@ -217,8 +217,17 @@ func TestSharedFolderCollisionsAndLateMetadata(t *testing.T) {
 		t.Fatalf("same hash replay was not idempotent: %v", err)
 	}
 	collision := layoutTask(t, second, task.Folder)
-	if err := engine.Ensure(collision); err == nil {
+	err := engine.Ensure(collision)
+	if err == nil {
 		t.Fatal("second hash was allowed to overwrite a paused owner's file")
+	}
+	var conflict *FileConflictError
+	if !errors.As(err, &conflict) {
+		t.Fatalf("collision error is not a permanent file conflict: %v", err)
+	}
+	if conflict.Owner != task.ID || conflict.Path != filepath.Join(task.Folder, "episode.mkv") {
+		t.Fatalf("collision names owner %q and path %q, want %q and %q",
+			conflict.Owner, conflict.Path, task.ID, filepath.Join(task.Folder, "episode.mkv"))
 	}
 	checkFiles(t, first, task.Folder)
 	if err := engine.Close(); err != nil {
