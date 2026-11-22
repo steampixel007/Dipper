@@ -101,6 +101,8 @@ var (
 	releaseTextNormalizer      = strings.NewReplacer("【", "[", "】", "]", "_", " ")
 )
 
+var releasePrefixedEpisodeRange = regexp.MustCompile(`(?i)\bep?\s*\d{1,4}\s*[-~]\s*(?:ep?\s*)?\d{1,4}\b`)
+
 func releaseLanguage(text string) SubtitleLanguage {
 	text = releaseSizeGB.ReplaceAllString(text, " ")
 	if releaseNoChineseSubtitles.MatchString(text) {
@@ -140,7 +142,7 @@ func ParseReleaseVersion(title string) ReleaseVersion {
 	}
 	var version ReleaseVersion
 	version.Language = releaseLanguage(text)
-	version.Collection = releaseCollection.MatchString(text)
+	version.Collection = releaseCollection.MatchString(text) || releasePrefixedEpisodeRange.MatchString(text)
 	version.HDR = releaseHDR.MatchString(text)
 	for _, match := range releaseResolution.FindAllStringSubmatch(text, -1) {
 		height, _ := strconv.Atoi(match[1] + match[2])
@@ -174,13 +176,7 @@ func ParseReleaseVersion(title string) ReleaseVersion {
 		*field.value = value
 		version.Ambiguous = version.Ambiguous || ambiguous
 	}
-	var audio []string
-	for _, label := range releaseAudio {
-		if label.pattern.MatchString(text) {
-			audio = append(audio, label.value)
-		}
-	}
-	version.Audio = strings.Join(audio, "+")
+	version.Audio = releaseAudioValue(text)
 	for _, label := range releaseSource {
 		if label.pattern.MatchString(text) {
 			version.Source = label.value
@@ -222,8 +218,31 @@ func ReleaseWordMeaning(word string) string {
 			}
 		}
 	}
-	if releaseCollection.MatchString(text) {
+	if releaseCollection.MatchString(text) || releasePrefixedEpisodeRange.MatchString(text) {
 		return "包含多集的发布"
 	}
 	return "含义未识别"
+}
+
+func releaseAudioValue(text string) string {
+	remaining := text
+	var values []string
+	for _, label := range releaseAudio {
+		matches := label.pattern.FindAllStringIndex(remaining, -1)
+		if len(matches) == 0 {
+			continue
+		}
+		values = append(values, label.value)
+		var rest strings.Builder
+		rest.Grow(len(remaining))
+		last := 0
+		for _, match := range matches {
+			rest.WriteString(remaining[last:match[0]])
+			rest.WriteByte(' ')
+			last = match[1]
+		}
+		rest.WriteString(remaining[last:])
+		remaining = rest.String()
+	}
+	return strings.Join(values, "+")
 }

@@ -52,7 +52,8 @@ func TestReleaseCorpusAnnotations(t *testing.T) {
 		{"one-episode", "227", "466", "[BIG5][全1话][1280X720P]", ReleaseVersion{Height: 720, Language: SubtitleTraditional, Source: "BD", Container: "MP4"}},
 		{"sources-and-reversed-codecs", "3298", "583", "[1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]", ReleaseVersion{Height: 1080, Language: SubtitleTraditional, Source: "WEB-DL", Video: "AVC", Audio: "AAC", Container: "MP4"}},
 		{"underscore-audio-and-revision", "3298", "622", "[x265_EAC3][简繁内封][v2]", ReleaseVersion{Language: both, Source: "WEBRip", Video: "HEVC", Audio: "EAC3", Subtitles: "内封"}},
-		{"separated-scripts-and-audio-tracks", "3522", "202", "[简 / 繁] (1080p CR H.264 AAC2.0+DDP2.0 SRTx2)", ReleaseVersion{Height: 1080, Language: both, Video: "AVC", Audio: "AAC+EAC3"}},
+		{"separated-scripts-and-audio-tracks", "3522", "202", "EP01~EP10", ReleaseVersion{Height: 1080, Language: both, Video: "AVC", Audio: "AAC+EAC3", Collection: true}},
+		{"single-episode-audio-tracks", "3522", "202", "EP12 END", ReleaseVersion{Height: 1080, Language: both, Video: "AVC", Audio: "AAC+EAC3"}},
 		{"nonstandard-height", "3536", "34", "BIG5 AVC_aac 816p", ReleaseVersion{Height: 816, Language: SubtitleTraditional, Video: "AVC", Audio: "AAC"}},
 		{"ambiguous-dual-resolution", "3640", "202", "[01-24][818P][820P][Bilibili][WEB-DL][AVC AAC][中文版&日语版]", ReleaseVersion{Height: 820, Ambiguous: true, Collection: true, Source: "WEB-DL", Video: "AVC", Audio: "AAC"}},
 		{"external-subs", "3449", "370", "[01-12 合集][WebRip 1080p HEVC-10bit AAC][简繁外挂字幕]", ReleaseVersion{Height: 1080, Language: both, Video: "HEVC", Audio: "AAC", BitDepth: 10, Source: "WEBRip", Subtitles: "外挂", Collection: true}},
@@ -150,5 +151,43 @@ func TestReleaseCorpusSeasonEpisodes(t *testing.T) {
 	}
 	if count < 40 {
 		t.Fatalf("corpus season episodes = %d, want at least 40", count)
+	}
+}
+
+func TestReleaseVersionAudioAliases(t *testing.T) {
+	for _, title := range []string{
+		"[Group] Show - 01 [1080p AVC EAC3]",
+		"[Group] Show - 01 [1080p AVC E-AC3]",
+		"[Group] Show - 01 [1080p AVC E-AC-3]",
+		"[Group] Show - 01 [1080p AVC DD+2.0]",
+	} {
+		if got := ParseReleaseVersion(title).Audio; got != "EAC3" {
+			t.Errorf("ParseReleaseVersion(%q).Audio = %q, want EAC3", title, got)
+		}
+	}
+	for _, test := range []struct {
+		title string
+		want  string
+	}{
+		{"[Group] Show - 01 [1080p AVC EAC3+AC3]", "EAC3+AC3"},
+		{"[Group] Show - 01 [1080p AVC DDP2.0+AC3]", "EAC3+AC3"},
+	} {
+		if got := ParseReleaseVersion(test.title).Audio; got != test.want {
+			t.Errorf("ParseReleaseVersion(%q).Audio = %q, want %q", test.title, got, test.want)
+		}
+	}
+}
+
+func TestReleaseVersionEpisodePrefixedCollections(t *testing.T) {
+	for _, title := range []string{
+		"[Group] Show - EP01~EP10 [1080p AVC AAC]",
+		"[Group] Show - EP14-EP20 [1080p AVC AAC]",
+	} {
+		if !ParseReleaseVersion(title).Collection {
+			t.Errorf("ParseReleaseVersion(%q).Collection = false, want true", title)
+		}
+	}
+	if got := ParseReleaseVersion("[Group] Show - EP07 [1080p AVC AAC]").Collection; got {
+		t.Error("single prefixed episode was classified as a collection")
 	}
 }
