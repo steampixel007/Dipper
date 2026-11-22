@@ -146,25 +146,15 @@ func main() {
 	proxy.Configure(settings.ProxyMode, settings.ProxyURL)
 	trackersPath := filepath.Join(paths.DataDir, "trackers.json")
 	savedList := trackers.Load(trackersPath)
-	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(paths.DataDir, "engine"), UploadLimit: settings.UploadLimitBytes, SeedTarget: seedDuration(settings.SeedMinutes), RatioTarget: core.SeedRatioTarget(settings.SeedRatio), ExtraTrackers: core.ParseTrackers(settings.ExtraTrackers), RemoteTrackers: savedList.URLs})
+	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(paths.DataDir, "engine"), DownloadLimit: settings.DownloadLimit, UploadLimit: settings.EffectiveUploadLimit(), SeedTarget: settings.EffectiveSeedDuration(), RatioTarget: settings.EffectiveSeedRatio(), ExtraTrackers: settings.ActiveExtraTrackers(), RemoteTrackers: savedList.URLs})
 	if err != nil {
 		failStartup(fmt.Errorf("无法打开下载状态：%w", err))
 		return
 	}
 	defer engine.Close()
 	adapter.engine = engine
-	if savedList.Stale(time.Now()) {
-		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			list, err := trackers.Refresh(ctx, trackersPath, time.Now(), trackers.FetchHTTP)
-			if err != nil {
-				slog.Warn("tracker list refresh failed", "err", err)
-			}
-			engine.SetRemoteTrackers(list.URLs)
-		}()
-	}
 	s := newAppState(ctx, paths.DataDir, src, kernel, engine)
+	s.trackerAutomatic = savedList.URLs
 	s.ConfigDir = paths.ConfigDir
 	s.CoverDir = paths.CoverDir
 	mygo.Power.OnSuspend(func() { engine.SetSuspended(true) })
@@ -224,6 +214,33 @@ func main() {
 				})
 			}
 		}
+		if savedList.Stale(time.Now()) {
+			go func() {
+				refreshCtx, stop := context.WithTimeout(ctx, 30*time.Second)
+				defer stop()
+				list, err := trackers.Refresh(refreshCtx, trackersPath, time.Now(), trackers.FetchHTTP)
+				if err != nil {
+					slog.Warn("tracker list refresh failed", "err", err)
+				}
+				s.Update(func() {
+					s.trackerAutomatic = list.URLs
+					engine.SetRemoteTrackers(list.URLs)
+				})
+			}()
+		}
+		s.refreshTrackerSubscriptions()
+		go func() {
+			ticker := time.NewTicker(time.Hour)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					s.Update(s.refreshTrackerSubscriptions)
+				}
+			}
+		}()
 		showMain := func() {
 			win.Show()
 			if win.IsMinimized() {

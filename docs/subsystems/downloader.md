@@ -8,7 +8,7 @@ done its job. It implements `core.Downloader`, whose contract is in
 
 - The BT client, its per-task lifecycle, and resume across restarts.
 - Where a task's files live and how pieces map onto them.
-- The transfer policy: when seeding stops.
+- The download queue and the seeding stop policy.
 - The shared upload limit.
 - The built-in tracker list, the automatically refreshed public list, and the
   per-task seeding-time target.
@@ -22,6 +22,7 @@ done its job. It implements `core.Downloader`, whose contract is in
 | `ownership.go` | Durable per-task file claims, shared-folder collision checks and per-file cleanup |
 | `safety_windows.go`, `safety_other.go` | Reparse-point and hard-link checks for payload files |
 | `policy.go` | `policyState`: byte counters, seeding time, and the stop decision |
+| `queue.go` | Download slot allocation, task order, and idle rotation |
 | `trackers.go` | The public tracker list appended to every admitted task |
 | `../../internal/trackers` | Fetching, validating and caching the remote public tracker list |
 | `platform_windows.go`, `platform_other.go` | The platform-specific pieces of the engine |
@@ -86,6 +87,10 @@ a refresh succeeds, and a refresh that fails, returns an oversized body, or
 carries one line that is not an announce URL is rejected wholesale, keeping the
 previous cache. `SetRemoteTrackers` replaces the remote tier with the same
 reconciliation `SetExtraTrackers` applies to the user tier.
+The user tier combines manual addresses with cached members of enabled list
+subscriptions and removes duplicates. The application checks for stale
+subscriptions at startup and hourly, refreshes them after 24 hours, and retains
+the last successful list when a refresh fails.
 `SetExtraTrackers` replaces the user tier rather than only adding to it:
 `reconciledTiers` keeps each torrent's own metadata tiers, strips the
 previously applied user URLs and the built-ins, and re-appends the current
@@ -102,10 +107,23 @@ does not stop a transfer that already started.
 
 ## Task states
 
-`Snapshot.Status` is one of `metadata`, `downloading`, `seeding`, `paused`,
+`Snapshot.Status` is one of `queued`, `metadata`, `downloading`, `seeding`, `paused`,
 `stopped`, `completed`, `error`. `completed` means the policy stopped it;
 `Complete` is a separate field saying the files have been verified whole. A
 snapshot reports speeds in bytes per second and `Progress` in 0–1.
+
+The engine permits three concurrent payload downloads by default. It fills
+slots in admission order and saves that order in the task checkpoint, using
+the existing stored order for older checkpoints. Waiting torrents may resolve
+metadata but cannot transfer payload. Completing, pausing, stopping, failing,
+or removing a task frees its slot. Resuming a paused or stopped task, or
+retrying a failed task, enters at the tail. Seeding uses no download slot.
+
+A settings change takes effect immediately. Lowering the limit sends the
+newer downloads back to waiting with their pieces intact. If a waiting task
+can take its place, an active download with ten observed online minutes
+without progress moves to the tail. Offline time, suspension and missed
+sampling windows do not count toward those minutes.
 
 Only v1 and hybrid torrents that carry a v1 hash are accepted. A v2-only
 torrent is refused with an error.

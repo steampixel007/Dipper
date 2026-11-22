@@ -83,6 +83,24 @@ func TestUIDownloadsFinishedSharingDoesNotLeakIntoSearchOrCounts(t *testing.T) {
 	}
 }
 
+func TestUIDownloadsFiltersQueuedTasks(t *testing.T) {
+	s := uiFixture(t, "downloads")
+	s.project(core.State{Tasks: []core.TaskRecord{
+		{Task: core.DownloadTask{Hash: "running", AnimeID: s.AnimeID, Resource: core.Resource{Title: "正在下载的资源"}}},
+		{Task: core.DownloadTask{Hash: "waiting", AnimeID: s.AnimeID, Resource: core.Resource{Title: "正在排队的资源"}}},
+	}}, []downloader.Snapshot{
+		{ID: "running", Status: downloader.StatusDownloading, Progress: .5},
+		{ID: "waiting", Status: downloader.StatusQueued, Progress: .2},
+	})
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiRequireText(t, tt, "下载中 1", "排队中 1")
+	uiClick(t, tt, "排队中 1")
+	uiRequireText(t, tt, "正在排队的资源", "排队中")
+	if tt.HasText("正在下载的资源") || s.DownloadFilter != downloadsQueued {
+		t.Fatalf("queue filter did not isolate waiting tasks: %q", tt.Texts())
+	}
+}
+
 func TestUIDownloadsFinishedSharingRemainsPlayableInLibrary(t *testing.T) {
 	s := uiFixture(t, "downloads")
 	s.LibraryID = s.Subscriptions[0].ID

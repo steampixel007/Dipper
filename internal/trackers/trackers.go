@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/steampixel007/Dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/proxy"
 )
 
 const (
@@ -27,7 +28,7 @@ const (
 	MaxBytes = 64 << 10
 	// MaxTrackers rejects a polluted response wholesale; the real list stays
 	// far below it.
-	MaxTrackers = 200
+	MaxTrackers = core.MaxTrackersPerList
 	// RefreshAfter is how long a saved list stays trusted.
 	RefreshAfter = 24 * time.Hour
 )
@@ -71,6 +72,21 @@ func (l List) Stale(now time.Time) bool {
 
 // Fetcher downloads one URL and returns its body.
 type Fetcher func(ctx context.Context, url string) ([]byte, error)
+
+func ReadSubscription(ctx context.Context, address string, fetch Fetcher) (core.TrackerList, error) {
+	if !core.ValidTrackerListURL(address) {
+		return core.TrackerList{}, fmt.Errorf("invalid tracker list URL")
+	}
+	body, err := fetch(ctx, address)
+	if err != nil {
+		return core.TrackerList{}, err
+	}
+	urls, err := Parse(body)
+	if err != nil {
+		return core.TrackerList{}, err
+	}
+	return core.TrackerList{URL: address, Trackers: urls, FetchedAt: time.Now()}, nil
+}
 
 // Parse validates a fetched list body wholesale: every non-blank line must
 // be an announce URL and the response must stay within bounds. One bad line
@@ -125,12 +141,18 @@ func Refresh(ctx context.Context, path string, now time.Time, fetch Fetcher) (Li
 }
 
 // FetchHTTP downloads one URL with a bounded response.
+var httpClient = func() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = proxy.Func
+	return &http.Client{Transport: transport, Timeout: 15 * time.Second}
+}()
+
 func FetchHTTP(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

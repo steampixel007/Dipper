@@ -30,8 +30,9 @@ import (
 )
 
 type Config struct {
-	DataDir     string
-	UploadLimit int64 // Bytes per second; zero selects the default 1 MiB/s, negative means unlimited.
+	DataDir       string
+	UploadLimit   int64 // Bytes per second; zero selects the default 1 MiB/s, negative means unlimited.
+	DownloadLimit int
 	// SeedTarget is the seeding-time stop target: positive minutes, or -1 to
 	// seed without a time limit (the ratio target still applies). Zero and
 	// any other negative value select the default one hour.
@@ -85,6 +86,7 @@ type DownloadedFile struct {
 }
 
 const (
+	StatusQueued      = "queued"
 	StatusMetadata    = "metadata"
 	StatusDownloading = "downloading"
 	StatusSeeding     = "seeding"
@@ -131,6 +133,9 @@ type entry struct {
 	err           error
 	appliedExtra  []string
 	appliedRemote []string
+	queueOrder    uint64
+	transfer      transferMode
+	idleDownload  time.Duration
 }
 
 type Engine struct {
@@ -157,6 +162,8 @@ type Engine struct {
 	checkpointErr  error
 	ownership      *ownership
 	removals       map[string]*entry
+	downloadLimit  int
+	queueTail      uint64
 }
 
 func New(config Config) (*Engine, error) {
@@ -182,6 +189,7 @@ func newEngine(config Config, configure func(*torrent.ClientConfig)) (_ *Engine,
 		ratio = 1
 	}
 	e := &Engine{dir: dir, tasks: make(map[string]*entry), removals: make(map[string]*entry), done: make(chan struct{}), now: time.Now, awake: awakeTime, online: networkAvailable, seedTarget: config.SeedTarget, ratioTarget: ratio, extraTrackers: normalizeTrackers(config.ExtraTrackers), remoteTrackers: normalizeTrackers(config.RemoteTrackers)}
+	e.downloadLimit = effectiveDownloadLimit(config.DownloadLimit)
 	e.ctx, e.cancel = context.WithCancel(context.Background())
 	defer func() {
 		if err != nil {
@@ -255,6 +263,7 @@ func newEngine(config Config, configure func(*torrent.ClientConfig)) (_ *Engine,
 			task.err = startErr
 		}
 	}
+	e.scheduleLocked(false)
 	go e.run()
 	return e, nil
 }
@@ -363,12 +372,13 @@ func (e *Engine) Ensure(task Task) error {
 		return err
 	}
 	e.tasks[j.ID] = j
+	e.enqueueLocked(j)
 	if err = e.saveLocked(); err != nil {
 		delete(e.tasks, j.ID)
 		j.torrent.Drop()
 		return err
 	}
-	e.enableLocked(j)
+	e.scheduleLocked(false)
 	return nil
 }
 
@@ -492,11 +502,7 @@ func (e *Engine) startLocked(j *entry, ctx context.Context) error {
 		spec.PeerAddrs = append(spec.PeerAddrs, magnet.PeerAddrs...)
 		spec.Trackers = append(spec.Trackers, magnet.Trackers...)
 	}
-	if err = e.addLocked(j, spec); err != nil {
-		return err
-	}
-	e.enableLocked(j)
-	return nil
+	return e.addLocked(j, spec)
 }
 
 func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
@@ -581,18 +587,6 @@ func (e *Engine) saveMetadataLocked(j *entry) error {
 	return nil
 }
 
-func (e *Engine) enableLocked(j *entry) {
-	if e.closed || j.torrent == nil || j.err != nil || j.Policy.Paused || j.Policy.ManuallyStopped || j.Policy.AutoStopped {
-		return
-	}
-	j.torrent.AllowDataDownload()
-	j.torrent.AllowDataUpload()
-	if j.torrent.Info() != nil && !j.requested {
-		j.torrent.DownloadAll()
-		j.requested = true
-	}
-}
-
 func (e *Engine) Pause(id string) error  { return e.changeIntent(id, "pause") }
 func (e *Engine) Resume(id string) error { return e.changeIntent(id, "resume") }
 
@@ -612,17 +606,21 @@ func (e *Engine) changeIntent(id, action string) error {
 		return ErrNotFound
 	}
 	e.sampleLocked(j, e.now(), e.awake(), e.isOnlineLocked())
-	old := j.Policy
+	defer e.scheduleLocked(false)
+	old, oldOrder := j.Policy, j.queueOrder
 	switch action {
 	case "pause":
 		j.Policy.Paused = true
 	case "stop":
 		j.Policy.ManuallyStopped = true
 	case "resume":
+		if old.Paused || old.ManuallyStopped || j.err != nil {
+			e.enqueueLocked(j)
+		}
 		j.Policy.Paused, j.Policy.ManuallyStopped = false, false
 	}
 	if err := e.saveLocked(); err != nil {
-		j.Policy = old
+		j.Policy, j.queueOrder = old, oldOrder
 		return err
 	}
 	if action != "resume" {
@@ -635,7 +633,6 @@ func (e *Engine) changeIntent(id, action string) error {
 			return err
 		}
 	}
-	e.enableLocked(j)
 	return nil
 }
 
@@ -649,6 +646,7 @@ func (e *Engine) detachLocked(j *entry) error {
 	j.Policy.UploadedBytes += counterDelta(j.previous.up, stats.BytesWrittenData.Int64())
 	j.Policy.DownloadedBytes += counterDelta(j.previous.down, stats.BytesReadData.Int64())
 	j.torrent = nil
+	j.transfer, j.idleDownload = transferWaiting, 0
 	j.previous = observation{}
 	j.upSpeed, j.downSpeed = 0, 0
 	return metaErr
@@ -677,15 +675,18 @@ func (e *Engine) Remove(id string) error {
 		return ErrNotFound
 	}
 	detachErr := e.detachLocked(j)
+	defer e.scheduleLocked(false)
 	if err := e.restoreClaim(j); err != nil && !ignorableRestoreClaim(j, err) {
-		return errors.Join(detachErr, err)
+		j.err = errors.Join(detachErr, err)
+		return j.err
 	}
 	delete(e.tasks, id)
 	e.removals[id] = j
 	if err := e.saveLocked(); err != nil {
 		delete(e.removals, id)
 		e.tasks[id] = j
-		return errors.Join(detachErr, err)
+		j.err = errors.Join(detachErr, err)
+		return j.err
 	}
 	if err := errors.Join(detachErr, e.cleanupLocked(j)); err != nil {
 		return errors.Join(ErrRemoveCleanup, err)
@@ -837,6 +838,7 @@ func (e *Engine) SetNetworkAvailable(available bool) {
 	e.network = &available
 	for _, j := range e.tasks {
 		j.previous.eligible = false
+		j.previous.downloadEligible = false
 	}
 }
 
@@ -866,6 +868,7 @@ func (e *Engine) SetSuspended(suspended bool) {
 	e.suspended = suspended
 	for _, j := range e.tasks {
 		j.previous.eligible = false
+		j.previous.downloadEligible = false
 	}
 }
 
@@ -894,6 +897,7 @@ func (e *Engine) run() {
 				for _, j := range e.tasks {
 					e.sampleLocked(j, now, awake, online)
 				}
+				e.scheduleLocked(online)
 				e.checkpointErr = e.saveLocked()
 			}
 			e.mu.Unlock()
@@ -906,6 +910,7 @@ func (e *Engine) sampleLocked(j *entry, now time.Time, awake time.Duration, onli
 		return
 	}
 	t := j.torrent
+	previousBytes := j.CompletedBytes
 	if failure := j.failure.Load(); failure != nil {
 		j.err = failure.err
 	}
@@ -919,10 +924,16 @@ func (e *Engine) sampleLocked(j *entry, now time.Time, awake time.Duration, onli
 	stats := t.Stats()
 	cur := observation{at: now, awake: awake, up: stats.BytesWrittenData.Int64(), down: stats.BytesReadData.Int64()}
 	cur.eligible = j.Complete && online && !e.suspended && !j.Policy.Paused && !j.Policy.ManuallyStopped && !j.Policy.AutoStopped && j.err == nil
+	cur.downloadEligible = j.transfer == transferDownloading && !j.Complete && online && !e.suspended
+	if j.CompletedBytes > previousBytes || counterDelta(j.previous.down, cur.down) > 0 {
+		j.idleDownload = 0
+	} else if j.previous.downloadEligible && cur.downloadEligible {
+		j.idleDownload += observedTime(j.previous, cur)
+	}
 	j.Policy.SeedTarget = e.seedTarget
 	j.Policy.RatioTarget = e.ratioTarget
 	j.Policy.observe(j.previous, cur, j.Complete, j.TotalBytes)
-	if dt := now.Sub(j.previous.at).Seconds(); dt > 0 {
+	if dt := now.Sub(j.previous.at).Seconds(); dt > 0 && j.transfer != transferWaiting {
 		j.downSpeed = int64(float64(counterDelta(j.previous.down, cur.down)) / dt)
 		j.upSpeed = int64(float64(counterDelta(j.previous.up, cur.up)) / dt)
 	}
@@ -931,9 +942,7 @@ func (e *Engine) sampleLocked(j *entry, now time.Time, awake time.Duration, onli
 		if err := e.detachLocked(j); err != nil {
 			j.err = err
 		}
-		return
 	}
-	e.enableLocked(j)
 }
 
 // PlayableFiles lists the files of a finished task that can be opened by the
@@ -1056,6 +1065,8 @@ func (e *Engine) Snapshot() []Snapshot {
 			s.Status = StatusError
 		case j.Complete:
 			s.Status = StatusSeeding
+		case j.torrent != nil && j.transfer == transferWaiting:
+			s.Status = StatusQueued
 		case j.TotalBytes > 0:
 			s.Status = StatusDownloading
 		}
@@ -1133,6 +1144,7 @@ func (e *Engine) load() error {
 			}
 		}
 		j := &entry{savedTask: saved}
+		e.enqueueLocked(j)
 		j.appliedExtra = saved.AppliedExtra
 		j.appliedRemote = saved.AppliedRemote
 		e.tasks[saved.ID] = j
@@ -1158,13 +1170,12 @@ func (e *Engine) load() error {
 
 func (e *Engine) saveLocked() error {
 	state := checkpoint{Version: 2, Tasks: make([]savedTask, 0, len(e.tasks))}
-	for _, j := range e.tasks {
+	for _, j := range e.orderedTasksLocked() {
 		saved := j.savedTask
 		saved.AppliedExtra = j.appliedExtra
 		saved.AppliedRemote = j.appliedRemote
 		state.Tasks = append(state.Tasks, saved)
 	}
-	sort.Slice(state.Tasks, func(i, j int) bool { return state.Tasks[i].ID < state.Tasks[j].ID })
 	for _, j := range e.removals {
 		state.Removing = append(state.Removing, j.savedTask)
 	}

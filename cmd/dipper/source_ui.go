@@ -24,8 +24,8 @@ type sourceRoute struct {
 }
 
 var defaultSourceRoutes = []sourceRoute{
-	{Label: "线路一：mikanime.tv", Origin: "https://mikanime.tv"},
-	{Label: "线路二（默认）：mikanani.me", Origin: "https://mikanani.me"},
+	{Label: "线路一（默认）：mikanani.me", Origin: source.DefaultOrigin},
+	{Label: "线路二：mikanime.tv", Origin: "https://mikanime.tv"},
 }
 
 func (s *State) routeLabels() []string {
@@ -56,15 +56,14 @@ func (s *State) sourceLabel(origin string) string {
 
 func newState(dir string) *State {
 	s := &State{Dir: dir, ConfigDir: dir, Platform: runtime.GOOS, Appearance: appearanceLight, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes, SoftwareAuto: true, SoftwareClient: update.NewClient(), SoftwareExecutable: os.Executable, OpenSoftwareFile: update.OpenDownloaded}
-	s.Seed = "1 小时"
-	s.SeedRatio = "1:1"
 	if dir != "" {
 		s.CoverDir = filepath.Join(dir, "covers")
 	}
 	s.Update = func(fn func()) { fn() }
 	s.setCurrentSeason()
 	s.Root, s.SaveError = initialDownloadRoot()
-	s.Upload = "1 MiB/s"
+	s.downloadLimitDraft = downloadLimitText(s.DownloadLimit)
+	s.loadTransferLimits(core.Settings{UploadLimitBytes: 1024 * 1024})
 	s.SourceRoute = s.sourceLabel(source.DefaultOrigin)
 	return s
 }

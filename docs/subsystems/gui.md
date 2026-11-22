@@ -132,8 +132,8 @@ reading forever. `TestUIFilesDialogScopesResultsToTask`,
 page is a function over `State` in `view.go`; a page never calls `core` directly,
 it calls the bridge in `core_ui.go` or `source_ui.go`.
 
-The downloads page offers one transfer action per task state: pause during a
-download, resume while paused or stopped before completion, retry on failure,
+The downloads page offers one transfer action per task state: pause while
+downloading or queued, resume while paused or stopped before completion, retry on failure,
 or stop seeding after completion. A row that is actively
 downloading also shows its estimated remaining time, derived from the
 remaining size and the current speed, and hides the estimate whenever the
@@ -165,7 +165,11 @@ its subscription still exists and keeps its own scroll position; management
 uses the same file, playback, deletion, and redownload handlers as the queue and
 episode library. The back action restores the current queue, while entering the
 downloads page from navigation always returns to it. Batch download controls
-appear only when there is a download to pause or a task to resume.
+appear only when there is a download to pause or a task to resume. Batch pause
+also pauses queued tasks, which have their own 排队中 filter and badge.
+Settings → Download accepts a whole number from 1 to 10 for simultaneous
+tasks and defaults to 3. Enter or Save applies a valid count independently
+of the transfer limits and Tracker settings.
 `downloads_active_test.go` covers visibility, counts, search, live completion,
 and retained library playback, including a later file in a batch and confirmed
 deletion or redownload through the library. `download_history_test.go` covers
@@ -211,9 +215,10 @@ scroll to the top and a non-empty search offers 清除搜索 beside the input.
 Year, season, and search share one band above a text-only weekday row, so the
 poster grid keeps the visual weight; `browse_layout_test.go` pins that
 hierarchy and the 200% text-scale bounds.
-The year picker ends at the current calendar year. Next-season navigation is
-disabled at that year's autumn in both the toolbar and the source-error
-recovery row. Historical autumns still advance to the following winter.
+Browse navigation runs from autumn 2013 through autumn of the current year.
+Both source routes return the autumn 2013 catalog and an empty response for
+the advertised spring 2012 entry. Selecting 2013 opens autumn. The toolbar
+and source-error recovery actions disable arrows that would leave this range.
 The following page searches saved follows by anime title, subtitle group, or a
 word the saved rule requires; the count line reports how many follow tiles match
 and offers a clear action, and an empty result offers a way to clear the search. Cards whose last RSS check failed
@@ -347,14 +352,21 @@ Re-selecting the current group closes the picker without resetting the release
 scroll position; selecting another group resets it for the new history.
 Search remains clearable if a later source refresh leaves zero or one group.
 
-The settings page has a proxy card: a three-way choice (自动 / 关闭 / 自定义),
-the address auto mode currently follows, and a 测试 button that saves the
-current values and then probes the source origin. Test feedback and the
-in-flight flag are per-run state, not settings.
+The proxy card shows the active connection mode. Selecting 自定义 opens an
+address and optional credentials editor. Save applies the draft and stores
+it in the local database. 测试 probes the source origin with a separate
+transport configured for the current selection. Test feedback and the
+in-flight flag are per-run state.
 
-The sharing card's 追加 Tracker input is followed by a caption listing the
-engine's built-in announce URLs (`downloader.BuiltinTrackers`), so users can see what
-Dipper appends to every task without reading the source.
+The upload and sharing card accepts numeric limits for upload bandwidth, seeding
+minutes, and share ratio. Each limit has its own unlimited toggle and keeps its
+last finite value. Explicit save applies the complete transfer draft.
+
+The network and proxy card opens a tracker manager. It shows manual announce
+addresses, subscribed text lists, and the read-only automatic and built-in
+lists. A new subscription previews the parsed addresses before it enters the
+draft. Saving the draft persists it and reconciles the downloader's user tier.
+Closing the dialog discards the draft.
 
 ## Startup
 

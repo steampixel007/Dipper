@@ -41,11 +41,11 @@ func TestSettingsValidateSeedRatioAndTrackers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings.SeedRatio = "4:1"
+	settings.SeedRatio = "0:1"
 	if err := c.SetSettings(settings); err == nil {
-		t.Fatal("unknown seed ratio label was accepted")
+		t.Fatal("zero seed ratio was accepted")
 	}
-	settings.SeedRatio = "2:1"
+	settings.SeedRatio = "2.75:1"
 	settings.ExtraTrackers = "ftp://nope/announce"
 	if err := c.SetSettings(settings); err == nil {
 		t.Fatal("unparsable tracker line was accepted")
@@ -58,7 +58,7 @@ func TestSettingsValidateSeedRatioAndTrackers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.SeedRatio != "2:1" || got.ExtraTrackers != "udp://a.example.com:1337/announce" {
+	if got.SeedRatio != "2.75:1" || got.EffectiveSeedRatio() != 2.75 || got.ExtraTrackers != "udp://a.example.com:1337/announce" {
 		t.Fatalf("settings roundtrip lost seed options: %+v", got)
 	}
 }

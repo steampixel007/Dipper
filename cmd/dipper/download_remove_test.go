@@ -99,6 +99,7 @@ func (*removalTestEngine) Pause(string) error          { return fmt.Errorf("unex
 func (*removalTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
 func (*removalTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
 func (*removalTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
+func (*removalTestEngine) SetDownloadLimit(int)        {}
 func (*removalTestEngine) SetSeedTarget(time.Duration) {}
 func (*removalTestEngine) SetRatioTarget(float64)      {}
 func (*removalTestEngine) SetExtraTrackers([]string)   {}

@@ -31,10 +31,11 @@ type policyState struct {
 }
 
 type observation struct {
-	at       time.Time
-	awake    time.Duration
-	up, down int64
-	eligible bool
+	at               time.Time
+	awake            time.Duration
+	up, down         int64
+	eligible         bool
+	downloadEligible bool
 }
 
 func (p *policyState) target() time.Duration {
@@ -50,15 +51,21 @@ func (p *policyState) target() time.Duration {
 func (p *policyState) observe(prev, cur observation, complete bool, size int64) {
 	p.UploadedBytes += counterDelta(prev.up, cur.up)
 	p.DownloadedBytes += counterDelta(prev.down, cur.down)
-	wall := cur.at.UnixNano() - prev.at.UnixNano()
-	dt := cur.awake - prev.awake
-	// A missed sampling window cannot establish continuous network availability.
-	if prev.eligible && cur.eligible && wall > 0 && wall <= int64(3*time.Second) && dt > 0 && dt <= 3*time.Second {
-		p.SeedingTime = min(p.target(), p.SeedingTime+dt)
+	if elapsed := observedTime(prev, cur); prev.eligible && cur.eligible && elapsed > 0 {
+		p.SeedingTime = min(p.target(), p.SeedingTime+elapsed)
 	}
 	if complete && !p.Paused && !p.ManuallyStopped && p.reached(size) {
 		p.AutoStopped = true
 	}
+}
+
+func observedTime(prev, cur observation) time.Duration {
+	wall := cur.at.UnixNano() - prev.at.UnixNano()
+	delta := cur.awake - prev.awake
+	if wall <= 0 || wall > int64(3*time.Second) || delta <= 0 || delta > 3*time.Second {
+		return 0
+	}
+	return delta
 }
 
 // ratio is the effective share-ratio multiple; zero disables the ratio stop.

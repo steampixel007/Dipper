@@ -46,7 +46,7 @@ func TestUIBrowseNextSeasonStopsAtCurrentYear(t *testing.T) {
 	if state.Year != fmt.Sprint(year) || state.Season != "秋" {
 		t.Errorf("season handler crossed into a future year: %s %s", state.Year, state.Season)
 	}
-	if years := catalogYears(fmt.Sprint(year + 1)); len(years) == 0 || years[0] != fmt.Sprint(year) {
+	if years := catalogYears(); len(years) == 0 || years[0] != fmt.Sprint(year) {
 		t.Errorf("year picker does not start at the current year: %v", years)
 	}
 }
