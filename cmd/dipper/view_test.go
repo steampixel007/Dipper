@@ -1087,15 +1087,16 @@ type playTestEngine struct{ files []string }
 func (*playTestEngine) Snapshot() []downloader.Snapshot {
 	return []downloader.Snapshot{{ID: "render-download-3", Progress: 1}}
 }
-func (*playTestEngine) Pause(string) error          { return fmt.Errorf("unexpected pause") }
-func (*playTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
-func (*playTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
-func (*playTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
-func (*playTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
-func (*playTestEngine) SetDownloadLimit(int)        {}
-func (*playTestEngine) SetSeedTarget(time.Duration) {}
-func (*playTestEngine) SetRatioTarget(float64)      {}
-func (*playTestEngine) SetExtraTrackers([]string)   {}
+func (*playTestEngine) Pause(string) error                    { return fmt.Errorf("unexpected pause") }
+func (*playTestEngine) Resume(string) error                   { return fmt.Errorf("unexpected resume") }
+func (*playTestEngine) Stop(string) error                     { return fmt.Errorf("unexpected stop") }
+func (*playTestEngine) Remove(string) error                   { return fmt.Errorf("unexpected removal") }
+func (*playTestEngine) SetUploadLimit(int64) error            { return fmt.Errorf("unexpected upload limit") }
+func (*playTestEngine) SetDownloadLimit(int)                  {}
+func (*playTestEngine) SetSeedTarget(time.Duration)           {}
+func (*playTestEngine) SetRatioTarget(float64)                {}
+func (*playTestEngine) SetTrackerSettings([]string, []string) {}
+func (*playTestEngine) SetRemoteTrackers([]string)            {}
 
 func (e *playTestEngine) PlayableFiles(string) ([]string, error) {
 	if e.files == nil {
@@ -1202,15 +1203,16 @@ type filesTestEngine struct{ files []downloader.DownloadedFile }
 func (*filesTestEngine) Snapshot() []downloader.Snapshot {
 	return []downloader.Snapshot{{ID: "render-download-3", Progress: 1}}
 }
-func (*filesTestEngine) Pause(string) error          { return fmt.Errorf("unexpected pause") }
-func (*filesTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
-func (*filesTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
-func (*filesTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
-func (*filesTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
-func (*filesTestEngine) SetDownloadLimit(int)        {}
-func (*filesTestEngine) SetSeedTarget(time.Duration) {}
-func (*filesTestEngine) SetRatioTarget(float64)      {}
-func (*filesTestEngine) SetExtraTrackers([]string)   {}
+func (*filesTestEngine) Pause(string) error                    { return fmt.Errorf("unexpected pause") }
+func (*filesTestEngine) Resume(string) error                   { return fmt.Errorf("unexpected resume") }
+func (*filesTestEngine) Stop(string) error                     { return fmt.Errorf("unexpected stop") }
+func (*filesTestEngine) Remove(string) error                   { return fmt.Errorf("unexpected removal") }
+func (*filesTestEngine) SetUploadLimit(int64) error            { return fmt.Errorf("unexpected upload limit") }
+func (*filesTestEngine) SetDownloadLimit(int)                  {}
+func (*filesTestEngine) SetSeedTarget(time.Duration)           {}
+func (*filesTestEngine) SetRatioTarget(float64)                {}
+func (*filesTestEngine) SetTrackerSettings([]string, []string) {}
+func (*filesTestEngine) SetRemoteTrackers([]string)            {}
 
 func (*filesTestEngine) PlayableFiles(string) ([]string, error) {
 	return nil, fmt.Errorf("unexpected play")
@@ -1398,7 +1400,7 @@ func TestUISettingsShowSeedAdvancedOptions(t *testing.T) {
 	s := uiFixture(t, "settings")
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiScrollTo(t, tt, "分享率上限")
-	uiRequireText(t, tt, "分享率上限", "分享率上限不限", "保存限额", "管理 Tracker")
+	uiRequireText(t, tt, "分享率上限", "分享率上限不限", "保存限额")
 	if s.SeedRatio != "1:1" {
 		t.Fatalf("default seed ratio = %q, want 1:1", s.SeedRatio)
 	}

@@ -43,6 +43,15 @@ func validateTrackerLists(lists []TrackerList) error {
 	return nil
 }
 
+func validateDisabledTrackers(addresses []string) error {
+	for _, address := range addresses {
+		if address == "" || trackerURL(address) != address {
+			return &TrackerError{Line: address}
+		}
+	}
+	return nil
+}
+
 func (s Settings) ActiveExtraTrackers() []string {
 	urls := ParseTrackers(s.ExtraTrackers)
 	seen := make(map[string]bool)

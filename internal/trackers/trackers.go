@@ -1,6 +1,6 @@
 // Package trackers keeps a fresh copy of a curated public tracker list for
 // the download engine. The list is advisory: every failure falls back to the
-// cached copy, and the engine's built-in trackers cover the first run.
+// cached copy.
 package trackers
 
 import (
@@ -39,8 +39,7 @@ type List struct {
 	FetchedAt time.Time `json:"fetched_at"`
 }
 
-// Load reads the cached list. A missing or unreadable cache is an empty
-// list: the built-in trackers carry the first run.
+// Load reads the cached list. A missing or unreadable cache is an empty list.
 func Load(path string) List {
 	b, err := os.ReadFile(path)
 	if err != nil {

@@ -187,6 +187,8 @@ func (s *State) loadSaved() error {
 	s.downloadLimitDraft = downloadLimitText(s.DownloadLimit)
 	s.loadTransferLimits(state.Settings)
 	s.ExtraTrackers = state.Settings.ExtraTrackers
+	s.DisabledTrackers = state.Settings.DisabledTrackers
+	s.AutomaticTrackersDisabled = state.Settings.AutomaticTrackersDisabled
 	s.TrackerLists = state.Settings.TrackerLists
 	s.ProxyMode = proxyModeIndex(state.Settings.ProxyMode)
 	s.proxyActiveMode = s.ProxyMode

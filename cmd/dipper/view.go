@@ -2125,6 +2125,8 @@ func (s *State) settings(c *ui.Context) {
 					}).FontSize(textSize(c, textCaption)).Disabled(s.Busy || s.PickFolder == nil)
 				})
 				caption(c, "只影响新追番；已有番剧仍保存在原文件夹。")
+				ui.Divider(c).Background(colors(c).line)
+				s.trackerSettings(c)
 			})
 			ui.Column(c).Gap(14).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
 				heading(c, "番剧来源")
@@ -2148,8 +2150,6 @@ func (s *State) settings(c *ui.Context) {
 			ui.Column(c).Gap(14).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
 				heading(c, "网络与代理")
 				s.proxySettings(c)
-				ui.Divider(c).Background(colors(c).line)
-				s.trackerSettings(c)
 			})
 			s.windowSettings(c)
 			s.softwareUpdateSettings(c)

@@ -2,29 +2,25 @@ package main
 
 import (
 	"fmt"
+	"net/url"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/steampixel007/Dipper/internal/core"
-	"github.com/steampixel007/Dipper/internal/downloader"
+	"github.com/steampixel007/Dipper/internal/trackers"
 )
 
 func (s *State) trackerSettings(c *ui.Context) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(16).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(200).Gap(5).Children(func() {
-			ui.Text(c, "下载连接").FontSize(textSize(c, textBody))
-			parts := []string{"默认连接已开启"}
-			if count := len(core.ParseTrackers(s.ExtraTrackers)); count > 0 {
-				parts = append(parts, fmt.Sprintf("%d 个手动地址", count))
-			}
-			if count := len(s.TrackerLists); count > 0 {
-				parts = append(parts, fmt.Sprintf("%d 个订阅列表", count))
-			}
-			caption(c, strings.Join(parts, " · "))
+			ui.Text(c, "查找下载来源").FontSize(textSize(c, textBody))
+			caption(c, "下载时，Dipper 会用这些地址查找正在分享文件的人。平时保留默认设置即可。")
 		})
-		secondary(c, "manage-trackers", "管理 Tracker", s.openTrackerManager).Disabled(s.Busy)
+		secondary(c, "manage-trackers", "管理地址", s.openTrackerManager).Disabled(s.Busy)
 	})
 }
 
@@ -36,20 +32,23 @@ func (s *State) trackerDialog(c *ui.Context) {
 	cancel := func() { s.trackerManagerOpen, s.trackerManager = false, nil }
 	ui.DialogBase(c, &s.trackerManagerOpen, func(backdrop, panel ui.Element) {
 		backdrop.Background(colors(c).scrim).Transition(fadeTransition)
-		dialogContentWithFooter(c, panel, "tracker-content", 720, func() {
-			heading(c, "管理下载连接")
-			caption(c, "Tracker 帮助找到可以下载或分享文件的人。Dipper 已提供默认地址，也支持添加你自己的地址。")
-			s.manualTrackerSection(c, draft)
-			s.trackerSubscriptionSection(c, draft)
-			s.automaticTrackerSection(c, draft)
-		}, func() {
-			if draft.message != "" {
-				ink := colors(c).muted
-				if draft.failed {
-					ink = colors(c).errorInk
-				}
-				ui.Text(c, draft.message).FontSize(textSize(c, textCaption)).TextColor(ink).Grow(1).MinWidth(0)
+		dialogContentWithFooter(c, panel, "tracker-content-"+draft.selectedList, 720, func() {
+			if draft.selectedList != "" {
+				s.trackerListDetails(c, draft)
+				return
 			}
+			heading(c, "查找下载来源")
+			caption(c, "这些地址也叫 Tracker。下载时，Dipper 通过它们查找正在分享文件的人。")
+			s.trackerSubscriptionSection(c, draft)
+			s.manualTrackerSection(c, draft)
+		}, func() {
+			message, ink := draft.message, colors(c).muted
+			if message == "" {
+				message = "保存后，新任务会使用这份设置。已有任务会在重开 Dipper 后完全应用。"
+			} else if draft.failed {
+				ink = colors(c).errorInk
+			}
+			ui.Text(c, message).FontSize(textSize(c, textCaption)).TextColor(ink).Grow(1).MinWidth(0)
 			secondary(c, "cancel-trackers", "取消", cancel)
 			primary(c, "save-trackers", "保存修改", func() { s.saveTrackerManager(draft) }).
 				Disabled(s.Core == nil || s.Busy || draft.reading || draft.editing != "")
@@ -69,10 +68,10 @@ func (s *State) manualTrackerSection(c *ui.Context, draft *trackerManagerDraft) 
 	locked := draft.reading || draft.editing != ""
 	trackerSection(c, func() {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(10).Children(func() {
-			ui.Text(c, "手动添加的服务器").FontSize(textSize(c, textBody)).FontWeight(600).Grow(1)
-			secondary(c, "add-tracker-server", "添加服务器", func() { draft.edit("manual", -1, "") }).Disabled(locked)
+			ui.Text(c, "手动添加的地址").FontSize(textSize(c, textBody)).FontWeight(600).Grow(1)
+			secondary(c, "add-tracker-server", "添加地址", func() { draft.edit("manual", -1, "") }).Disabled(locked)
 		})
-		caption(c, "手头有一个或多个 Tracker 地址时使用。")
+		caption(c, "有人发给你一个 Tracker 地址时，可以在这里添加。")
 		if len(draft.manual) == 0 && draft.editing != "manual" {
 			caption(c, "还没有手动添加的地址。")
 		}
@@ -82,7 +81,7 @@ func (s *State) manualTrackerSection(c *ui.Context, draft *trackerManagerDraft) 
 				continue
 			}
 			key := "tracker-server-" + strconv.Itoa(index)
-			ui.Row(c.Key(key)).AlignItems(ui.Center).Gap(10).Children(func() {
+			ui.Row(c.Key(key)).Wrap().AlignItems(ui.Center).Gap(10).Children(func() {
 				trackerAddress(c, address)
 				ui.PopoverMenuButton(c.Key(key+"-menu"), "管理", func(menu *ui.Menu) {
 					if menu.Item("编辑").Chosen() {
@@ -91,10 +90,13 @@ func (s *State) manualTrackerSection(c *ui.Context, draft *trackerManagerDraft) 
 					if menu.Item("复制地址").Disabled(s.CopyText == nil).Chosen() {
 						s.CopyText(address)
 					}
-					if menu.Item("移除").Chosen() {
+					if menu.Item("删除").Chosen() {
 						draft.manual = slices.Delete(draft.manual, index, index+1)
 					}
-				}).Label(fmt.Sprintf("管理服务器 %d", index+1)).Disabled(locked)
+				}).Label("管理 " + address).Disabled(locked)
+				if slices.Contains(draft.disabled, address) {
+					secondary(c, "restore", "添加回来", func() { draft.setAddressRemoved(address, false) }).Label("添加回来 " + address).Disabled(locked)
+				}
 			})
 		}
 		if draft.editing == "manual" && draft.editIndex < 0 {
@@ -104,8 +106,8 @@ func (s *State) manualTrackerSection(c *ui.Context, draft *trackerManagerDraft) 
 }
 
 func (s *State) manualTrackerEditor(c *ui.Context, draft *trackerManagerDraft) {
-	caption(c, "每行一个地址，支持 UDP、HTTP、HTTPS、WS 和 WSS。")
-	ui.TextArea(c.Key("tracker-server-input"), &draft.input).Label("服务器地址").
+	caption(c, "可一次粘贴多个地址，每行一个。")
+	ui.TextArea(c.Key("tracker-server-input"), &draft.input).Label("下载来源地址").
 		Placeholder("udp://tracker.example.net:1337/announce").FillWidth().Height(76)
 	label := "添加到列表"
 	if draft.editIndex >= 0 {
@@ -121,15 +123,35 @@ func (s *State) trackerSubscriptionSection(c *ui.Context, draft *trackerManagerD
 	locked := draft.reading || draft.editing != ""
 	trackerSection(c, func() {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(10).Children(func() {
-			ui.Text(c, "订阅的列表").FontSize(textSize(c, textBody)).FontWeight(600).Grow(1)
-			secondary(c, "add-tracker-list", "订阅列表", func() { draft.edit("list", -1, "") }).Disabled(locked)
+			ui.Text(c, "在线清单").FontSize(textSize(c, textBody)).FontWeight(600).Grow(1)
+			secondary(c, "add-tracker-list", "订阅清单", func() { draft.edit("list", -1, "") }).Disabled(locked)
 		})
-		caption(c, "有一份在线地址清单时，只需添加清单链接。Dipper 会定期更新。")
+		caption(c, "一份清单可以包含多个地址。订阅后，Dipper 会定期更新。")
+		trackerListRow(c.Key(automaticTrackerList), draft, automaticTrackerList, "Dipper 推荐清单", "自动更新 · 来自 XIU2", s.trackerAutomatic.URLs, draft.automaticOff)
+		ui.Divider(c).Background(colors(c).line)
 		if len(draft.lists) == 0 && draft.editing != "list" {
-			caption(c, "还没有订阅列表。")
+			caption(c, "还没有自己订阅的清单。有清单链接时，可以点「订阅清单」。")
 		}
-		for index, list := range draft.lists {
-			s.trackerSubscriptionRow(c, draft, index, list, locked)
+		if len(draft.lists) > 0 && draft.editing != "list" {
+			browser := &draft.listBrowser
+			if len(draft.lists) > 4 || browser.query != "" {
+				trackerSearch(c.Key("search-lists"), browser, "搜索清单", "按名称或链接搜索")
+			}
+			var matching []core.TrackerList
+			for _, list := range draft.lists {
+				if browser.matches(list.URL) {
+					matching = append(matching, list)
+				}
+			}
+			start, end, pages := browser.bounds(len(matching), 4)
+			for _, list := range matching[start:end] {
+				name, host := trackerListName(list.URL)
+				trackerListRow(c.Key(list.URL), draft, list.URL, name, host, list.Trackers, list.Disabled)
+			}
+			if len(matching) == 0 {
+				caption(c, "没有找到匹配的清单。")
+			}
+			trackerPagination(c.Key("list-pages"), browser, pages, fmt.Sprintf("%d 份清单", len(matching)), "清单")
 		}
 		if draft.editing == "list" {
 			s.trackerSubscriptionEditor(c, draft)
@@ -137,49 +159,162 @@ func (s *State) trackerSubscriptionSection(c *ui.Context, draft *trackerManagerD
 	})
 }
 
-func (s *State) trackerSubscriptionRow(c *ui.Context, draft *trackerManagerDraft, index int, list core.TrackerList, locked bool) {
-	key := "tracker-list-" + strconv.Itoa(index)
-	ui.Column(c.Key(key)).Gap(5).Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(10).Children(func() {
-			trackerAddress(c, list.URL)
-			open := "查看地址"
-			if draft.expanded[list.URL] {
-				open = "收起地址"
+func trackerListName(address string) (name, source string) {
+	parsed, err := url.Parse(address)
+	if err != nil || parsed.Host == "" {
+		return address, ""
+	}
+	name = path.Base(strings.TrimSuffix(parsed.Path, "/"))
+	if name == "." || name == "/" {
+		return parsed.Host, ""
+	}
+	return name, parsed.Host + strings.TrimSuffix(parsed.EscapedPath(), "/")
+}
+
+func trackerListRow(c *ui.Context, draft *trackerManagerDraft, key, title, source string, addresses []string, removed bool) {
+	ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
+		ui.Column(c).MinWidth(0).Grow(1).Gap(3).Children(func() {
+			ui.Text(c, title).FontSize(textSize(c, textBody)).FontWeight(600).MaxLines(1)
+			count := fmt.Sprintf("%d 个地址", trackerAddressCount(draft, addresses))
+			if removed {
+				count = "已删除"
 			}
-			secondary(c, key+"-details", open, func() { draft.expanded[list.URL] = !draft.expanded[list.URL] })
-			ui.PopoverMenuButton(c.Key(key+"-menu"), "管理", func(menu *ui.Menu) {
-				if menu.Item("立即更新").Chosen() {
-					s.readTrackerList(draft, index)
-				}
-				toggle := "停用"
-				if list.Disabled {
-					toggle = "启用"
-				}
-				if menu.Item(toggle).Chosen() {
-					draft.lists[index].Disabled = !list.Disabled
-				}
-				if menu.Item("复制列表链接").Disabled(s.CopyText == nil).Chosen() {
-					s.CopyText(list.URL)
-				}
-				if menu.Item("移除订阅").Chosen() {
-					draft.lists = slices.Delete(draft.lists, index, index+1)
-				}
-			}).Label(fmt.Sprintf("管理订阅 %d", index+1)).Disabled(locked)
+			if source != "" {
+				count += " · " + source
+			}
+			ui.Text(c, count).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted).MaxLines(1)
 		})
-		status := "已启用"
-		if list.Disabled {
-			status = "已停用"
+		label := "查看地址"
+		if removed {
+			label = "查看清单"
 		}
-		caption(c, fmt.Sprintf("%s · %d 个地址 · 上次更新 %s", status, len(list.Trackers), list.FetchedAt.Local().Format("2006-01-02 15:04")))
-		if draft.expanded[list.URL] {
-			trackerAddressList(c, list.Trackers)
+		accessible := key
+		if key == automaticTrackerList {
+			accessible = title
 		}
+		secondary(c, "details", label, func() { draft.selectList(key) }).Label("查看 " + accessible).
+			Disabled(draft.reading || draft.editing != "")
 	})
 }
 
+func trackerAddressCount(draft *trackerManagerDraft, addresses []string) int {
+	count := 0
+	for _, address := range addresses {
+		if !slices.Contains(draft.disabled, address) {
+			count++
+		}
+	}
+	return count
+}
+
+func trackerSearch(c *ui.Context, browser *trackerBrowser, label, placeholder string) {
+	ui.TextInput(c, &browser.query).Label(label).Placeholder(placeholder).MinHeight(inputHeight(c)).FillWidth().
+		OnChange(func() { browser.page = 0 })
+}
+
+func trackerPagination(c *ui.Context, browser *trackerBrowser, pages int, count, label string) {
+	if pages <= 1 {
+		return
+	}
+	ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, fmt.Sprintf("第 %d / %d 页 · %s", browser.page+1, pages, count)).
+			FontSize(textSize(c, textCaption)).TextColor(colors(c).muted).Grow(1)
+		secondary(c, "previous", "上一页", func() { browser.page-- }).Label(label + "上一页").Disabled(browser.page == 0)
+		secondary(c, "next", "下一页", func() { browser.page++ }).Label(label + "下一页").Disabled(browser.page+1 == pages)
+	})
+}
+
+func (s *State) trackerListDetails(c *ui.Context, draft *trackerManagerDraft) {
+	key := draft.selectedList
+	index := slices.IndexFunc(draft.lists, func(list core.TrackerList) bool { return list.URL == key })
+	var title string
+	var list core.TrackerList
+	switch {
+	case key == automaticTrackerList:
+		title = "Dipper 推荐清单"
+		list = core.TrackerList{URL: trackers.FallbackURL, Trackers: s.trackerAutomatic.URLs, FetchedAt: s.trackerAutomatic.FetchedAt, Disabled: draft.automaticOff}
+	case index >= 0:
+		list = draft.lists[index]
+		title, _ = trackerListName(list.URL)
+	default:
+		return
+	}
+	ui.Row(c).Wrap().Gap(10).Children(func() {
+		secondary(c, "back-to-lists", "返回下载来源", func() { draft.selectList("") }).Disabled(draft.reading)
+	})
+	heading(c, title)
+	if list.URL != "" {
+		ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+			trackerAddress(c, list.URL)
+			secondary(c, "copy-list-url", "复制链接", func() { s.CopyText(list.URL) }).Disabled(s.CopyText == nil)
+		})
+		caption(c, trackerListUpdated(list.FetchedAt))
+		ui.Row(c).Wrap().Gap(8).Children(func() {
+			if index >= 0 {
+				secondary(c, "refresh-list", "立即更新", func() { s.readTrackerList(draft, index) }).Disabled(draft.reading)
+				if list.Disabled {
+					secondary(c, "add-back-list", "添加清单", func() { draft.lists[index].Disabled = false })
+				}
+				secondary(c, "remove-list", "删除订阅", func() {
+					draft.lists = slices.Delete(draft.lists, index, index+1)
+					draft.selectList("")
+				}).Disabled(draft.reading)
+			}
+			if key == automaticTrackerList {
+				label := "删除推荐清单"
+				if list.Disabled {
+					label = "添加回来"
+				}
+				secondary(c, "change-automatic-list", label, func() { draft.automaticOff = !draft.automaticOff })
+			}
+		})
+	}
+	if list.Disabled {
+		caption(c, "这份清单已删除。添加回来后，里面的地址可用于查找下载来源。")
+	}
+	if len(list.Trackers) == 0 {
+		caption(c, "还没有获取到地址。Dipper 仍可使用其他下载来源。")
+		return
+	}
+	caption(c, "删除地址会从所有补充清单中移除它。下载任务自带的地址会保留。")
+	removedCount := len(list.Trackers) - trackerAddressCount(draft, list.Trackers)
+	if removedCount > 0 || draft.showRemoved {
+		ui.Row(c).Children(func() {
+			label := fmt.Sprintf("已删除的地址（%d）", removedCount)
+			if draft.showRemoved {
+				label = "查看现有地址"
+			}
+			secondary(c, "show-removed", label, func() {
+				draft.showRemoved = !draft.showRemoved
+				draft.addressBrowser = trackerBrowser{}
+			})
+		})
+	}
+	var addresses []string
+	for _, address := range list.Trackers {
+		if slices.Contains(draft.disabled, address) == draft.showRemoved {
+			addresses = append(addresses, address)
+		}
+	}
+	trackerAddressPage(c.Key("list-addresses"), &draft.addressBrowser, addresses, func(c *ui.Context, address string) {
+		label := "删除"
+		if draft.showRemoved {
+			label = "添加回来"
+		}
+		secondary(c, "change-address", label, func() { draft.setAddressRemoved(address, !draft.showRemoved) }).Label(label + " " + address)
+	})
+}
+
+func trackerListUpdated(fetchedAt time.Time) string {
+	if fetchedAt.IsZero() {
+		return "尚未更新"
+	}
+	return "上次更新 " + fetchedAt.Local().Format("2006-01-02 15:04")
+}
+
 func (s *State) trackerSubscriptionEditor(c *ui.Context, draft *trackerManagerDraft) {
-	caption(c, "粘贴 HTTP 或 HTTPS 文本列表链接，每行应有一个 Tracker 地址。")
-	ui.TextInput(c.Key("tracker-list-input"), &draft.input).Label("在线列表链接").
+	caption(c, "粘贴以 http:// 或 https:// 开头的清单链接。先预览，确认读到的地址后再订阅。")
+	ui.TextInput(c.Key("tracker-list-input"), &draft.input).Label("在线清单链接").
 		Placeholder("https://lists.example.net/trackers.txt").FillWidth().MinHeight(inputHeight(c)).
 		Disabled(draft.reading).OnChange(func() {
 		draft.preview = core.TrackerList{}
@@ -187,15 +322,14 @@ func (s *State) trackerSubscriptionEditor(c *ui.Context, draft *trackerManagerDr
 	}).OnSubmit(func() { s.readTrackerList(draft, -1) })
 	if draft.preview.URL != "" {
 		current := core.Settings{ExtraTrackers: strings.Join(draft.manual, "\n"), TrackerLists: draft.lists}
-		existing := append(current.ActiveExtraTrackers(), s.trackerAutomatic...)
-		existing = append(existing, downloader.BuiltinTrackers()...)
+		existing := append(current.ActiveExtraTrackers(), activeAutomaticTrackers(s.trackerAutomatic, draft.automaticOff)...)
 		known := make(map[string]bool, len(existing))
 		for _, address := range existing {
 			known[address] = true
 		}
 		duplicates := 0
 		for _, address := range draft.preview.Trackers {
-			if known[address] {
+			if known[address] && !slices.Contains(draft.disabled, address) {
 				duplicates++
 			}
 		}
@@ -212,46 +346,37 @@ func (s *State) trackerSubscriptionEditor(c *ui.Context, draft *trackerManagerDr
 		secondary(c, "cancel-tracker-list", "取消编辑", func() { draft.edit("", -1, "") }).Disabled(draft.reading)
 	})
 	if draft.preview.URL != "" {
-		trackerAddressList(c, draft.preview.Trackers)
+		trackerAddressPage(c.Key("preview-addresses"), &draft.previewBrowser, draft.preview.Trackers, nil)
 	}
 }
 
-func (s *State) automaticTrackerSection(c *ui.Context, draft *trackerManagerDraft) {
-	trackerSection(c, func() {
-		ui.Text(c, "Dipper 自动提供的地址").FontSize(textSize(c, textBody)).FontWeight(600)
-		builtins := downloader.BuiltinTrackers()
-		caption(c, fmt.Sprintf("在线列表 %d 个 · 内置备用 %d 个", len(s.trackerAutomatic), len(builtins)))
-		ui.Row(c).Wrap().Gap(8).Children(func() {
-			label := "查看在线列表"
-			if draft.automatic {
-				label = "收起在线列表"
+func trackerAddressPage(c *ui.Context, browser *trackerBrowser, addresses []string, action func(*ui.Context, string)) {
+	const pageSize = 8
+	if len(addresses) > pageSize || browser.query != "" {
+		trackerSearch(c.Key("search"), browser, "搜索地址", "按域名或地址搜索")
+	}
+	var matching []string
+	for _, address := range addresses {
+		if browser.matches(address) {
+			matching = append(matching, address)
+		}
+	}
+	start, end, pages := browser.bounds(len(matching), pageSize)
+	for _, address := range matching[start:end] {
+		row := c.Key(address)
+		ui.Row(row).AlignItems(ui.Center).Gap(10).Children(func() {
+			trackerAddress(row, address)
+			if action != nil {
+				action(row, address)
 			}
-			secondary(c, "tracker-automatic", label, func() { draft.automatic = !draft.automatic })
-			label = "查看内置地址"
-			if draft.builtin {
-				label = "收起内置地址"
-			}
-			secondary(c, "tracker-builtin", label, func() { draft.builtin = !draft.builtin })
 		})
-		if draft.automatic {
-			if len(s.trackerAutomatic) == 0 {
-				caption(c, "尚未取得在线列表，内置地址仍可使用。")
-			} else {
-				caption(c, "XIU2 精选列表")
-				trackerAddressList(c, s.trackerAutomatic)
-			}
+	}
+	if len(matching) == 0 {
+		label := "这里还没有地址。"
+		if browser.query != "" {
+			label = "没有找到匹配的地址。"
 		}
-		if draft.builtin {
-			caption(c, "内置备用地址")
-			trackerAddressList(c, builtins)
-		}
-	})
-}
-
-func trackerAddressList(c *ui.Context, addresses []string) {
-	ui.Column(c).Gap(4).Children(func() {
-		for _, address := range addresses {
-			ui.Text(c, address).FontSize(textSize(c, textCaption)).Selectable().MinWidth(0)
-		}
-	})
+		caption(c, label)
+	}
+	trackerPagination(c.Key("pages"), browser, pages, fmt.Sprintf("%d 个地址", len(matching)), "地址")
 }

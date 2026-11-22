@@ -170,6 +170,14 @@ also pauses queued tasks, which have their own 排队中 filter and badge.
 Settings → Download accepts a whole number from 1 to 10 for simultaneous
 tasks and defaults to 3. Enter or Save applies a valid count independently
 of the transfer limits and Tracker settings.
+Settings → Network and Proxy explains what download-source addresses do and
+opens a manager for online lists and manual entries. The XIU2 recommended
+list is the sole default supplemental source.
+Each online list has a detail view with its link, last update, and addresses.
+Search and pagination keep the overview and address details usable with many
+entries. Deleting an address from a list removes it from the current view.
+It can be added back from the deleted-address view. The recommended list can
+also be deleted and added back as a whole. Edits take effect on Save.
 `downloads_active_test.go` covers visibility, counts, search, live completion,
 and retained library playback, including a later file in a batch and confirmed
 deletion or redownload through the library. `download_history_test.go` covers
@@ -362,10 +370,12 @@ The upload and sharing card accepts numeric limits for upload bandwidth, seeding
 minutes, and share ratio. Each limit has its own unlimited toggle and keeps its
 last finite value. Explicit save applies the complete transfer draft.
 
-The network and proxy card opens a tracker manager. It shows manual announce
-addresses, subscribed text lists, and the read-only automatic and built-in
-lists. A new subscription previews the parsed addresses before it enters the
-draft. Saving the draft persists it and reconciles the downloader's user tier.
+The Network and Proxy card explains how supplemental addresses help find people
+sharing files and opens the address manager. The manager lets users delete
+and add back the recommended list, and add or delete their own addresses and
+list subscriptions. Individual exclusions apply across supplemental sources.
+A new subscription previews its parsed addresses before it enters the draft.
+Saving persists the draft and reconciles supplemental tiers on active tasks.
 Closing the dialog discards the draft.
 
 ## Startup

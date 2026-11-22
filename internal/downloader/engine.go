@@ -42,11 +42,12 @@ type Config struct {
 	// 1:1.
 	RatioTarget float64
 	// ExtraTrackers are user-configured announce URLs appended after the
-	// task's own tiers and before the built-in public trackers.
+	// task's own tiers.
 	ExtraTrackers []string
 	// RemoteTrackers are announce URLs from the automatically refreshed
-	// public list, appended after the user tier and before the built-ins.
-	RemoteTrackers []string
+	// public list, appended after the user tier.
+	RemoteTrackers   []string
+	DisabledTrackers []string
 }
 
 type Task struct {
@@ -112,6 +113,7 @@ type savedTask struct {
 	Complete       bool        `json:"complete"`
 	AppliedExtra   []string    `json:"applied_extra,omitempty"`
 	AppliedRemote  []string    `json:"applied_remote,omitempty"`
+	AppliedBuiltin []string    `json:"applied_builtin,omitempty"`
 }
 
 type checkpoint struct {
@@ -122,48 +124,48 @@ type checkpoint struct {
 
 type entry struct {
 	savedTask
-	torrent       *torrent.Torrent
-	failure       atomic.Pointer[taskFailure]
-	generation    atomic.Uint64
-	previous      observation
-	metadataSaved bool
-	requested     bool
-	downSpeed     int64
-	upSpeed       int64
-	err           error
-	appliedExtra  []string
-	appliedRemote []string
-	queueOrder    uint64
-	transfer      transferMode
-	idleDownload  time.Duration
+	torrent         *torrent.Torrent
+	failure         atomic.Pointer[taskFailure]
+	generation      atomic.Uint64
+	previous        observation
+	metadataSaved   bool
+	requested       bool
+	downSpeed       int64
+	upSpeed         int64
+	err             error
+	appliedTrackers trackerTiers
+	queueOrder      uint64
+	transfer        transferMode
+	idleDownload    time.Duration
 }
 
 type Engine struct {
-	mu             sync.Mutex
-	client         *torrent.Client
-	completion     storage.PieceCompletion
-	limiter        *rate.Limiter
-	dir            string
-	tasks          map[string]*entry
-	ctx            context.Context
-	cancel         context.CancelFunc
-	done           chan struct{}
-	closed         bool
-	closeErr       error
-	suspended      bool
-	network        *bool
-	now            func() time.Time
-	awake          func() time.Duration
-	online         func() bool
-	seedTarget     time.Duration
-	ratioTarget    float64
-	extraTrackers  []string
-	remoteTrackers []string
-	checkpointErr  error
-	ownership      *ownership
-	removals       map[string]*entry
-	downloadLimit  int
-	queueTail      uint64
+	mu               sync.Mutex
+	client           *torrent.Client
+	completion       storage.PieceCompletion
+	limiter          *rate.Limiter
+	dir              string
+	tasks            map[string]*entry
+	ctx              context.Context
+	cancel           context.CancelFunc
+	done             chan struct{}
+	closed           bool
+	closeErr         error
+	suspended        bool
+	network          *bool
+	now              func() time.Time
+	awake            func() time.Duration
+	online           func() bool
+	seedTarget       time.Duration
+	ratioTarget      float64
+	extraTrackers    []string
+	remoteTrackers   []string
+	disabledTrackers []string
+	checkpointErr    error
+	ownership        *ownership
+	removals         map[string]*entry
+	downloadLimit    int
+	queueTail        uint64
 }
 
 func New(config Config) (*Engine, error) {
@@ -188,7 +190,7 @@ func newEngine(config Config, configure func(*torrent.ClientConfig)) (_ *Engine,
 	if ratio != seedRatioUnlimited && ratio <= 0 {
 		ratio = 1
 	}
-	e := &Engine{dir: dir, tasks: make(map[string]*entry), removals: make(map[string]*entry), done: make(chan struct{}), now: time.Now, awake: awakeTime, online: networkAvailable, seedTarget: config.SeedTarget, ratioTarget: ratio, extraTrackers: normalizeTrackers(config.ExtraTrackers), remoteTrackers: normalizeTrackers(config.RemoteTrackers)}
+	e := &Engine{dir: dir, tasks: make(map[string]*entry), removals: make(map[string]*entry), done: make(chan struct{}), now: time.Now, awake: awakeTime, online: networkAvailable, seedTarget: config.SeedTarget, ratioTarget: ratio, extraTrackers: normalizeTrackers(config.ExtraTrackers), remoteTrackers: normalizeTrackers(config.RemoteTrackers), disabledTrackers: normalizeTrackers(config.DisabledTrackers)}
 	e.downloadLimit = effectiveDownloadLimit(config.DownloadLimit)
 	e.ctx, e.cancel = context.WithCancel(context.Background())
 	defer func() {
@@ -485,6 +487,10 @@ func (e *Engine) startLocked(j *entry, ctx context.Context) error {
 	var spec *torrent.TorrentSpec
 	if err == nil {
 		spec, err = decodeSpec(b)
+		if err == nil {
+			previous := trackerTiers{user: j.AppliedExtra, remote: j.AppliedRemote, legacyBuiltin: j.AppliedBuiltin}
+			spec.Trackers, _ = reconciledTiers(spec.Trackers, previous, trackerTiers{}, nil)
+		}
 	} else if errors.Is(err, os.ErrNotExist) {
 		spec, err = sourceSpec(ctx, j.Task)
 	}
@@ -509,7 +515,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 	if err := validateIdentity(j.ID, spec); err != nil {
 		return err
 	}
-	tiers, injectedUser, injectedRemote := reconciledTiers(spec.Trackers, j.appliedExtra, e.extraTrackers, j.appliedRemote, e.remoteTrackers)
+	tiers, injected := e.trackerTiersLocked(spec.Trackers, trackerTiers{})
 	spec.Trackers = tiers
 	for _, other := range e.tasks {
 		if other == j {
@@ -536,7 +542,7 @@ func (e *Engine) addLocked(j *entry, spec *torrent.TorrentSpec) error {
 		return failure.err
 	}
 	j.torrent, j.err, j.requested, j.metadataSaved = t, nil, false, false
-	j.appliedExtra, j.appliedRemote = injectedUser, injectedRemote
+	j.appliedTrackers = injected
 	j.InfoHash = t.InfoHash().HexString()
 	j.Complete = false
 	j.previous = observation{at: e.now(), awake: e.awake()}
@@ -584,6 +590,7 @@ func (e *Engine) saveMetadataLocked(j *entry) error {
 		return fmt.Errorf("save torrent metadata: %w", err)
 	}
 	j.metadataSaved = true
+	j.AppliedExtra, j.AppliedRemote, j.AppliedBuiltin = j.appliedTrackers.user, j.appliedTrackers.remote, nil
 	return nil
 }
 
@@ -809,23 +816,27 @@ func (e *Engine) SetRatioTarget(target float64) {
 	}
 }
 
-// SetExtraTrackers replaces the user tracker tier and announces new URLs to
-// running tasks; every admission also merges the tier into the spec.
-func (e *Engine) SetExtraTrackers(trackers []string) {
-	trackers = normalizeTrackers(trackers)
+func (e *Engine) SetTrackerSettings(extra, disabled []string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.extraTrackers = trackers
+	e.extraTrackers = normalizeTrackers(extra)
+	e.disabledTrackers = normalizeTrackers(disabled)
+	e.updateTrackersLocked()
+}
+
+func (e *Engine) trackerTiersLocked(current [][]string, previous trackerTiers) ([][]string, trackerTiers) {
+	configured := trackerTiers{user: e.extraTrackers, remote: e.remoteTrackers}
+	return reconciledTiers(current, previous, configured, e.disabledTrackers)
+}
+
+func (e *Engine) updateTrackersLocked() {
 	for _, j := range e.tasks {
 		if j.torrent == nil {
-			// A detached task keeps its provenance; the next admission
-			// reconciles the saved metadata against the new tier.
 			continue
 		}
-		previous := j.appliedExtra
-		tiers, injected, _ := reconciledTiers(j.torrent.Metainfo().AnnounceList, previous, trackers, j.appliedRemote, e.remoteTrackers)
+		tiers, injected := e.trackerTiersLocked(j.torrent.Metainfo().AnnounceList, j.appliedTrackers)
 		j.torrent.ModifyTrackers(tiers)
-		j.appliedExtra = injected
+		j.appliedTrackers = injected
 		j.metadataSaved = false
 	}
 }
@@ -846,20 +857,10 @@ func (e *Engine) SetNetworkAvailable(available bool) {
 // announces new URLs to running tasks; every admission also merges the tier
 // into the spec.
 func (e *Engine) SetRemoteTrackers(trackers []string) {
-	trackers = normalizeTrackers(trackers)
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.remoteTrackers = trackers
-	for _, j := range e.tasks {
-		if j.torrent == nil {
-			continue
-		}
-		previous := j.appliedRemote
-		tiers, _, injected := reconciledTiers(j.torrent.Metainfo().AnnounceList, j.appliedExtra, e.extraTrackers, previous, trackers)
-		j.torrent.ModifyTrackers(tiers)
-		j.appliedRemote = injected
-		j.metadataSaved = false
-	}
+	e.remoteTrackers = normalizeTrackers(trackers)
+	e.updateTrackersLocked()
 }
 
 func (e *Engine) SetSuspended(suspended bool) {
@@ -1120,7 +1121,7 @@ func (e *Engine) load() error {
 	if err = json.Unmarshal(b, &state); err != nil {
 		return fmt.Errorf("corrupt download checkpoint: %w", err)
 	}
-	if state.Version != 1 && state.Version != 2 {
+	if state.Version != 1 && state.Version != 2 && state.Version != 3 {
 		return fmt.Errorf("unsupported download checkpoint version %d", state.Version)
 	}
 	for _, saved := range state.Tasks {
@@ -1143,10 +1144,11 @@ func (e *Engine) load() error {
 				return errors.New("checkpoint task folders overlap")
 			}
 		}
+		if state.Version < 3 {
+			saved.AppliedBuiltin = legacyBuiltinTrackers
+		}
 		j := &entry{savedTask: saved}
 		e.enqueueLocked(j)
-		j.appliedExtra = saved.AppliedExtra
-		j.appliedRemote = saved.AppliedRemote
 		e.tasks[saved.ID] = j
 	}
 	for _, saved := range state.Removing {
@@ -1169,12 +1171,9 @@ func (e *Engine) load() error {
 }
 
 func (e *Engine) saveLocked() error {
-	state := checkpoint{Version: 2, Tasks: make([]savedTask, 0, len(e.tasks))}
+	state := checkpoint{Version: 3, Tasks: make([]savedTask, 0, len(e.tasks))}
 	for _, j := range e.orderedTasksLocked() {
-		saved := j.savedTask
-		saved.AppliedExtra = j.appliedExtra
-		saved.AppliedRemote = j.appliedRemote
-		state.Tasks = append(state.Tasks, saved)
+		state.Tasks = append(state.Tasks, j.savedTask)
 	}
 	for _, j := range e.removals {
 		state.Removing = append(state.Removing, j.savedTask)

@@ -76,8 +76,10 @@ type Settings struct {
 	SeedRatioUnlimited bool   `json:",omitempty"`
 	// ExtraTrackers is the raw user tracker text, one announce URL per line;
 	// whitespace, commas and semicolons also separate entries.
-	ExtraTrackers string        `json:",omitempty"`
-	TrackerLists  []TrackerList `json:",omitempty"`
+	ExtraTrackers             string        `json:",omitempty"`
+	TrackerLists              []TrackerList `json:",omitempty"`
+	DisabledTrackers          []string      `json:",omitempty"`
+	AutomaticTrackersDisabled bool          `json:",omitempty"`
 }
 
 type TrackerList struct {

@@ -61,13 +61,14 @@ func (*resumeTestEngine) DownloadFiles(string) ([]downloader.DownloadedFile, err
 func (*resumeTestEngine) PlayableFiles(string) ([]string, error) {
 	return nil, fmt.Errorf("unexpected play")
 }
-func (*resumeTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
-func (*resumeTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
-func (*resumeTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
-func (*resumeTestEngine) SetDownloadLimit(int)        {}
-func (*resumeTestEngine) SetSeedTarget(time.Duration) {}
-func (*resumeTestEngine) SetRatioTarget(float64)      {}
-func (*resumeTestEngine) SetExtraTrackers([]string)   {}
+func (*resumeTestEngine) Stop(string) error                     { return fmt.Errorf("unexpected stop") }
+func (*resumeTestEngine) Remove(string) error                   { return fmt.Errorf("unexpected removal") }
+func (*resumeTestEngine) SetUploadLimit(int64) error            { return fmt.Errorf("unexpected upload limit") }
+func (*resumeTestEngine) SetDownloadLimit(int)                  {}
+func (*resumeTestEngine) SetSeedTarget(time.Duration)           {}
+func (*resumeTestEngine) SetRatioTarget(float64)                {}
+func (*resumeTestEngine) SetTrackerSettings([]string, []string) {}
+func (*resumeTestEngine) SetRemoteTrackers([]string)            {}
 
 func TestUIDownloadTransferActionChangesIntentOnce(t *testing.T) {
 	for _, tc := range []struct {

@@ -146,7 +146,12 @@ func main() {
 	proxy.Configure(settings.ProxyMode, settings.ProxyURL)
 	trackersPath := filepath.Join(paths.DataDir, "trackers.json")
 	savedList := trackers.Load(trackersPath)
-	engine, err := downloader.New(downloader.Config{DataDir: filepath.Join(paths.DataDir, "engine"), DownloadLimit: settings.DownloadLimit, UploadLimit: settings.EffectiveUploadLimit(), SeedTarget: settings.EffectiveSeedDuration(), RatioTarget: settings.EffectiveSeedRatio(), ExtraTrackers: settings.ActiveExtraTrackers(), RemoteTrackers: savedList.URLs})
+	engine, err := downloader.New(downloader.Config{
+		DataDir: filepath.Join(paths.DataDir, "engine"), DownloadLimit: settings.DownloadLimit,
+		UploadLimit: settings.EffectiveUploadLimit(), SeedTarget: settings.EffectiveSeedDuration(),
+		RatioTarget: settings.EffectiveSeedRatio(), ExtraTrackers: settings.ActiveExtraTrackers(),
+		RemoteTrackers: activeAutomaticTrackers(savedList, settings.AutomaticTrackersDisabled), DisabledTrackers: settings.DisabledTrackers,
+	})
 	if err != nil {
 		failStartup(fmt.Errorf("无法打开下载状态：%w", err))
 		return
@@ -154,7 +159,7 @@ func main() {
 	defer engine.Close()
 	adapter.engine = engine
 	s := newAppState(ctx, paths.DataDir, src, kernel, engine)
-	s.trackerAutomatic = savedList.URLs
+	s.trackerAutomatic = savedList
 	s.ConfigDir = paths.ConfigDir
 	s.CoverDir = paths.CoverDir
 	mygo.Power.OnSuspend(func() { engine.SetSuspended(true) })
@@ -214,20 +219,7 @@ func main() {
 				})
 			}
 		}
-		if savedList.Stale(time.Now()) {
-			go func() {
-				refreshCtx, stop := context.WithTimeout(ctx, 30*time.Second)
-				defer stop()
-				list, err := trackers.Refresh(refreshCtx, trackersPath, time.Now(), trackers.FetchHTTP)
-				if err != nil {
-					slog.Warn("tracker list refresh failed", "err", err)
-				}
-				s.Update(func() {
-					s.trackerAutomatic = list.URLs
-					engine.SetRemoteTrackers(list.URLs)
-				})
-			}()
-		}
+		s.refreshAutomaticTrackerList()
 		s.refreshTrackerSubscriptions()
 		go func() {
 			ticker := time.NewTicker(time.Hour)
@@ -237,7 +229,10 @@ func main() {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					s.Update(s.refreshTrackerSubscriptions)
+					s.Update(func() {
+						s.refreshAutomaticTrackerList()
+						s.refreshTrackerSubscriptions()
+					})
 				}
 			}
 		}()

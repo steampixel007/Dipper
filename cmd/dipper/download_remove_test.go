@@ -95,14 +95,15 @@ func (*removalTestEngine) DownloadFiles(string) ([]downloader.DownloadedFile, er
 func (*removalTestEngine) PlayableFiles(string) ([]string, error) {
 	return nil, fmt.Errorf("unexpected play")
 }
-func (*removalTestEngine) Pause(string) error          { return fmt.Errorf("unexpected pause") }
-func (*removalTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
-func (*removalTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
-func (*removalTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
-func (*removalTestEngine) SetDownloadLimit(int)        {}
-func (*removalTestEngine) SetSeedTarget(time.Duration) {}
-func (*removalTestEngine) SetRatioTarget(float64)      {}
-func (*removalTestEngine) SetExtraTrackers([]string)   {}
+func (*removalTestEngine) Pause(string) error                    { return fmt.Errorf("unexpected pause") }
+func (*removalTestEngine) Resume(string) error                   { return fmt.Errorf("unexpected resume") }
+func (*removalTestEngine) Stop(string) error                     { return fmt.Errorf("unexpected stop") }
+func (*removalTestEngine) SetUploadLimit(int64) error            { return fmt.Errorf("unexpected upload limit") }
+func (*removalTestEngine) SetDownloadLimit(int)                  {}
+func (*removalTestEngine) SetSeedTarget(time.Duration)           {}
+func (*removalTestEngine) SetRatioTarget(float64)                {}
+func (*removalTestEngine) SetTrackerSettings([]string, []string) {}
+func (*removalTestEngine) SetRemoteTrackers([]string)            {}
 
 func removalFixture(t *testing.T, engine *removalTestEngine) (*State, *ui.Tester, core.Subscription, string, chan func()) {
 	t.Helper()

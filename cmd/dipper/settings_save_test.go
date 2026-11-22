@@ -58,12 +58,13 @@ type downloadLimitTestEngine struct {
 	limit int
 }
 
-func (engine *downloadLimitTestEngine) SetDownloadLimit(limit int) { engine.limit = limit }
-func (*downloadLimitTestEngine) SetUploadLimit(int64) error        { return nil }
-func (*downloadLimitTestEngine) SetSeedTarget(time.Duration)       {}
-func (*downloadLimitTestEngine) SetRatioTarget(float64)            {}
-func (*downloadLimitTestEngine) SetExtraTrackers([]string)         {}
-func (*downloadLimitTestEngine) Snapshot() []downloader.Snapshot   { return nil }
+func (engine *downloadLimitTestEngine) SetDownloadLimit(limit int)     { engine.limit = limit }
+func (*downloadLimitTestEngine) SetUploadLimit(int64) error            { return nil }
+func (*downloadLimitTestEngine) SetSeedTarget(time.Duration)           {}
+func (*downloadLimitTestEngine) SetRatioTarget(float64)                {}
+func (*downloadLimitTestEngine) SetTrackerSettings([]string, []string) {}
+func (*downloadLimitTestEngine) SetRemoteTrackers([]string)            {}
+func (*downloadLimitTestEngine) Snapshot() []downloader.Snapshot       { return nil }
 
 func TestUISettingsDownloadLimitKeepsIndependentSettings(t *testing.T) {
 	const manual = "udp://manual.example:1337/announce"
@@ -81,7 +82,7 @@ func TestUISettingsDownloadLimitKeepsIndependentSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	lists := []core.TrackerList{{URL: "https://lists.example/trackers.txt", Trackers: []string{replacement}}}
-	if err := s.saveTrackerSettings(manual, lists); err != nil {
+	if err := s.saveTrackerSettings(manual, lists, nil, false); err != nil {
 		t.Fatal(err)
 	}
 	s.TransferLimits.duration.value = "37"
@@ -109,7 +110,7 @@ func TestUISettingsDownloadLimitKeepsIndependentSettings(t *testing.T) {
 		t.Fatalf("saving concurrency changed tracker settings or the duration draft: %+v, draft=%+v", settings, s.TransferLimits)
 	}
 	s.saveTransferLimits()
-	if err := s.saveTrackerSettings(replacement, lists); err != nil {
+	if err := s.saveTrackerSettings(replacement, lists, nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := kernel.Close(); err != nil {

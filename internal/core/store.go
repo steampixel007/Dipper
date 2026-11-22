@@ -328,6 +328,9 @@ func (c *Core) UpdateSettings(ctx context.Context, settings Settings) error {
 	if err := validateTrackerLists(settings.TrackerLists); err != nil {
 		return err
 	}
+	if err := validateDisabledTrackers(settings.DisabledTrackers); err != nil {
+		return err
+	}
 
 	root, err := filepath.Abs(settings.DownloadRoot)
 	if err != nil {

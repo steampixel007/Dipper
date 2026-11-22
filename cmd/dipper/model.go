@@ -94,37 +94,39 @@ const (
 )
 
 type Saved struct {
-	Root                 string
-	DownloadLimit        int
-	downloadLimitDraft   string
-	downloadLimitNotice  string
-	downloadLimitError   bool
-	Upload               string
-	Seed                 string
-	SeedRatio            string
-	TransferLimits       transferLimits
-	ExtraTrackers        string
-	TrackerLists         []core.TrackerList
-	ProxyMode            int
-	ProxyURL             string
-	ProxyAuto            string
-	ProxyFeedback        string
-	ProxyTesting         bool
-	proxyActiveMode      int
-	proxyActiveAddress   string
-	proxyUsername        string
-	proxyPassword        string
-	SourceRoute          string
-	Subscriptions        []Subscription
-	Downloads            []Download
-	IntroHidden          bool
-	ReduceEffects        bool
-	Appearance           string
-	CloseBehavior        string
-	SoftwareAuto         bool
-	SoftwareAutoDownload bool
-	SoftwarePending      *softwarePending
-	SoftwareCheckedAt    time.Time
+	Root                      string
+	DownloadLimit             int
+	downloadLimitDraft        string
+	downloadLimitNotice       string
+	downloadLimitError        bool
+	Upload                    string
+	Seed                      string
+	SeedRatio                 string
+	TransferLimits            transferLimits
+	ExtraTrackers             string
+	TrackerLists              []core.TrackerList
+	DisabledTrackers          []string
+	AutomaticTrackersDisabled bool
+	ProxyMode                 int
+	ProxyURL                  string
+	ProxyAuto                 string
+	ProxyFeedback             string
+	ProxyTesting              bool
+	proxyActiveMode           int
+	proxyActiveAddress        string
+	proxyUsername             string
+	proxyPassword             string
+	SourceRoute               string
+	Subscriptions             []Subscription
+	Downloads                 []Download
+	IntroHidden               bool
+	ReduceEffects             bool
+	Appearance                string
+	CloseBehavior             string
+	SoftwareAuto              bool
+	SoftwareAutoDownload      bool
+	SoftwarePending           *softwarePending
+	SoftwareCheckedAt         time.Time
 }
 type downloadEngine interface {
 	Snapshot() []downloader.Snapshot
@@ -138,7 +140,8 @@ type downloadEngine interface {
 	SetDownloadLimit(int)
 	SetSeedTarget(time.Duration)
 	SetRatioTarget(float64)
-	SetExtraTrackers([]string)
+	SetTrackerSettings(extra, disabled []string)
+	SetRemoteTrackers([]string)
 }
 
 var _ downloadEngine = (*downloader.Engine)(nil)
@@ -173,57 +176,58 @@ type State struct {
 	catalogDisk                                        catalogDisk
 
 	Saved
-	Catalog                  []Anime
-	Page                     string
-	Year                     string
-	Season                   string
-	Day                      int
-	Search                   string
-	FollowSearch             string
-	AnimeID                  string
-	Group                    int
-	ChoosingGroup            bool
-	GroupSearch              string
-	Rule                     Rule
-	Checked                  map[string]bool
-	Editing                  bool
-	Keyword, AnyDraft        string
-	WordOpen, ShowAliases    bool
-	WordAnchor               string
-	UndoFilters, RedoFilters []FilterEdit
-	UndoSaved                *Subscription
-	FilterFeedback           string
-	Help, Suggestions        bool
-	CancelPrompt             bool
-	CancelID                 string
-	RemovePrompt             bool
-	RemoveID                 string
-	DownloadFilter           DownloadFilter
-	SuggestedResource        Resource
-	OnlyMatches              bool
-	OnlyDownloaded           bool
-	OnlyNew                  bool
-	EpisodeFilter            string
-	EpisodeFilterScroll      float32
-	Notice, SaveError        string
-	SourceTesting            bool
-	SourceRouteError         string
-	SourceRoutes             []sourceRoute
-	SourceFailed             bool
-	trackerManagerOpen       bool
-	trackerManager           *trackerManagerDraft
-	trackerAutomatic         []string
-	trackerRefreshRunning    bool
-	trackerFetcher           trackers.Fetcher
-	CatalogScroll            ui.ScrollState
-	browseDetail             *browseDetail
-	ResourceScroll           ui.ScrollState
-	FollowScroll             ui.ScrollState
-	DownloadScroll           ui.ScrollState
-	DownloadHistory          bool
-	DownloadHistoryScroll    ui.ScrollState
-	DownloadFilterLast       DownloadFilter
-	DownloadSearch           string
+	Catalog                        []Anime
+	Page                           string
+	Year                           string
+	Season                         string
+	Day                            int
+	Search                         string
+	FollowSearch                   string
+	AnimeID                        string
+	Group                          int
+	ChoosingGroup                  bool
+	GroupSearch                    string
+	Rule                           Rule
+	Checked                        map[string]bool
+	Editing                        bool
+	Keyword, AnyDraft              string
+	WordOpen, ShowAliases          bool
+	WordAnchor                     string
+	UndoFilters, RedoFilters       []FilterEdit
+	UndoSaved                      *Subscription
+	FilterFeedback                 string
+	Help, Suggestions              bool
+	CancelPrompt                   bool
+	CancelID                       string
+	RemovePrompt                   bool
+	RemoveID                       string
+	DownloadFilter                 DownloadFilter
+	SuggestedResource              Resource
+	OnlyMatches                    bool
+	OnlyDownloaded                 bool
+	OnlyNew                        bool
+	EpisodeFilter                  string
+	EpisodeFilterScroll            float32
+	Notice, SaveError              string
+	SourceTesting                  bool
+	SourceRouteError               string
+	SourceRoutes                   []sourceRoute
+	SourceFailed                   bool
+	trackerManagerOpen             bool
+	trackerManager                 *trackerManagerDraft
+	trackerAutomatic               trackers.List
+	automaticTrackerRefreshRunning bool
+	trackerRefreshRunning          bool
+	trackerFetcher                 trackers.Fetcher
+	CatalogScroll                  ui.ScrollState
+	browseDetail                   *browseDetail
+	ResourceScroll                 ui.ScrollState
+	FollowScroll                   ui.ScrollState
+	DownloadScroll                 ui.ScrollState
+	DownloadHistory                bool
+	DownloadHistoryScroll          ui.ScrollState
+	DownloadFilterLast             DownloadFilter
+	DownloadSearch                 string
 	// CollapsedDownloads hides one anime's download rows on the downloads
 	// page; the choice is per-session.
 	CollapsedDownloads         map[string]bool
