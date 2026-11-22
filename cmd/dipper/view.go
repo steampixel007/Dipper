@@ -56,6 +56,9 @@ var iconPaths = map[string]string{
 	"check":     `<path d="m5 12 4 4L19 6"/>`,
 	"search":    `<circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/>`,
 	"close":     `<path d="m6 6 12 12M6 18 18 6"/>`,
+	"minimize":  `<path d="M5 12h14"/>`,
+	"maximize":  `<rect x="5" y="5" width="14" height="14" rx="1"/>`,
+	"restore":   `<path d="M8 8h11v11H8zM5 16V5h11"/>`,
 	"pause":     `<path d="M8 5v14M16 5v14"/>`,
 	"play":      `<path d="m8 4 12 8-12 8z"/>`,
 	"clock":     `<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`,
@@ -109,6 +112,16 @@ func iconButton(c *ui.Context, key, label, name string, action func()) ui.Elemen
 	b := ui.ButtonBase(c.Key(key)).Label(label).Tooltip(label).Size(36, 36).Shrink(0).Center().Radius(controlRadius).Cursor(ui.CursorPointer)
 	if b.Hovered() {
 		b.Background(colors(c).line)
+	}
+	return tactile(b).Children(func() { icon(c, name) }).OnClick(action)
+}
+func windowControl(c *ui.Context, key, label, name string, danger bool, action func()) ui.Element {
+	b := ui.ButtonBase(c.Key(key)).Label(label).Tooltip(label).Size(46, 32).Shrink(0).Center().Cursor(ui.CursorPointer).TextColor(colors(c).ink)
+	if b.Hovered() {
+		b.Background(colors(c).line)
+		if danger {
+			b.Background(ui.Hex("#c42b1c")).TextColor(ui.Hex("#ffffff"))
+		}
 	}
 	return tactile(b).Children(func() { icon(c, name) }).OnClick(action)
 }
@@ -335,11 +348,42 @@ func (s *State) topbar(c *ui.Context) {
 		}
 	}
 	bar := c.TitleBar()
-	ui.Row(c).MinHeight(topbarHeight).Shrink(0).Padding(12, bar.Right+24, 12, 28).Gap(12).
+	rightPadding := bar.Right + 24
+	if s.CustomWindowControls {
+		rightPadding = 0
+	}
+	ui.Row(c).MinHeight(topbarHeight).Shrink(0).Padding(12, rightPadding, 12, 28).Gap(12).
 		Background(pal.canvas).
 		DragWindow().Children(func() {
 		ui.Text(c, names[s.Page]).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(pal.ink).MinWidth(0).Grow(1)
 		iconButton(c, "top-help", "打开追番指南", "help", func() { s.Help = true })
+		if s.CustomWindowControls {
+			maximized := s.WindowIsMaximized != nil && s.WindowIsMaximized()
+			ui.Row(c).Shrink(0).Gap(0).Children(func() {
+				windowControl(c, "window-minimize", "最小化窗口", "minimize", false, func() {
+					if s.WindowMinimize != nil {
+						s.WindowMinimize()
+					}
+				})
+				maximizeLabel, maximizeIcon := "最大化窗口", "maximize"
+				if maximized {
+					maximizeLabel, maximizeIcon = "还原窗口", "restore"
+				}
+				maximize := windowControl(c, "window-maximize", maximizeLabel, maximizeIcon, false, func() {
+					if s.WindowMaximize != nil {
+						s.WindowMaximize()
+					}
+				})
+				if !maximized {
+					maximize.MaximizeButton()
+				}
+				windowControl(c, "window-close", "关闭窗口", "close", true, func() {
+					if s.WindowClose != nil {
+						s.WindowClose()
+					}
+				})
+			})
+		}
 	})
 }
 
@@ -680,10 +724,13 @@ func (s *State) detailOptions(c *ui.Context) {
 		s.detailGroups(c)
 		if s.detailReady() {
 			ui.Divider(c).Background(colors(c).line).Margin(2, 0)
-			heading(c, "你想要什么版本")
-			if s.Suggestions {
+			if s.VersionSetup {
+				s.versionOptions(c)
+			} else if s.Suggestions {
+				heading(c, "你想要什么版本")
 				s.titlePreferences(c)
 			} else {
+				heading(c, "你想要什么版本")
 				s.ruleEditor(c)
 			}
 		}
@@ -705,7 +752,7 @@ func (s *State) detailPreview(c *ui.Context, embedded bool) {
 				badge(c, "只看"+episodeLabel(s.EpisodeFilter), colors(c).blue, colors(c).blueWash)
 				quiet(c, "clear-episode-filter", "清除", func() { s.toggleEpisodeFilter(s.EpisodeFilter) }).FontSize(textSize(c, textCaption)).Padding(3, 0).TextColor(colors(c).blue)
 			}
-			if s.detailReady() {
+			if s.detailReady() && (!s.VersionSetup || !s.TitleSetup) {
 				ui.Checkbox(c.Key("only-matches"), &s.OnlyMatches, "只看匹配").FontSize(textSize(c, textBody))
 				ui.Checkbox(c.Key("only-downloaded"), &s.OnlyDownloaded, "只看已有任务").FontSize(textSize(c, textBody))
 				if s.ViewResources && s.EditID != "" && (s.OnlyNew || s.hasNewRelease()) {
@@ -719,6 +766,8 @@ func (s *State) detailPreview(c *ui.Context, embedded bool) {
 			s.empty(c, "字幕组加载失败", s.DetailError, "重试加载", s.refreshDetail)
 		} else if len(s.Groups) == 0 {
 			s.empty(c, "暂无字幕组", "来源尚未提供这部番剧的字幕组信息。", "重新加载", s.refreshDetail)
+		} else if !s.hasGroup() && s.GroupCountLoading {
+			pageLoading(c, "正在比较各字幕组的资源数量，也可以直接选择字幕组。")
 		} else if !s.hasGroup() {
 			pageLoading(c, "先选择一个字幕组，即可预览发布资源。")
 		} else if s.HistoryLoading {
@@ -874,14 +923,22 @@ func (s *State) quickFilter(c *ui.Context) {
 }
 
 func (s *State) preview(c *ui.Context, embedded bool) {
-	s.quickFilter(c)
-	n, eps, _ := s.matchSummary()
-	var matches []Resource
-	for _, r := range s.resources() {
-		if ok, _ := decide(r.Title, s.Rule); ok {
-			matches = append(matches, r)
+	manual := s.VersionSetup && s.TitleSetup
+	if s.VersionSetup {
+		if manual {
+			caption(c, "点原标题里的词，看含义和筛选结果。")
+		} else {
+			s.versionSummary(c)
+			if s.Rule.Version == nil {
+				return
+			}
 		}
+	} else {
+		s.quickFilter(c)
 	}
+	n, eps, _ := s.matchSummary()
+	matches := s.matchingResources()
+	choices, byEpisode := s.episodeChoices(matches)
 	ui.Row(c).Wrap().Gap(8).Children(func() {
 		ui.Textf(c, "匹配 %d 条", n).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(colors(c).blue).ContentTransition(ui.ContentTransition{Numeric: true, Animation: &contentMotion})
 		caption(c, fmt.Sprintf("覆盖 %d 集，%s", eps, resourceSizes(matches)))
@@ -895,17 +952,21 @@ func (s *State) preview(c *ui.Context, embedded bool) {
 	if s.FilterFeedback != "" {
 		ui.Text(c, s.FilterFeedback).FontSize(textSize(c, textCaption)).TextColor(colors(c).ink).ContentTransition(ui.ContentTransition{Animation: &contentMotion})
 	}
-	if len(s.Rule.All) == 0 && len(s.Rule.Any) == 0 {
+	if (!manual || hasTitleConditions(s.Rule)) && s.Rule.Version == nil && len(s.Rule.All) == 0 && len(s.Rule.Any) == 0 {
 		if len(s.Rule.None) == 0 {
 			caption(c, "还没限制版本，这组全部资源都会匹配。")
 		} else {
 			caption(c, "只排除写出这些词的标题。标题没写的，也会匹配。")
 		}
 	}
-	if s.Backfill || s.ViewResources {
+	if manual {
+		caption(c, "只追后续更新，按标题里的实际写法匹配。")
+	} else if s.Backfill || s.ViewResources {
 		caption(c, "勾选要下载的资源。筛选不会修改追番条件。")
 	} else if s.Editing {
 		caption(c, "调整条件只影响以后发布的资源；已经看过或跳过的不会自动下载。")
+	} else if s.selectsOnePerEpisode() {
+		caption(c, "每集默认选一份。同集有多个资源时，可以换一个。")
 	} else {
 		caption(c, "匹配的已有资源默认全选。取消勾选可跳过这次下载，不影响以后自动下载。")
 	}
@@ -916,15 +977,17 @@ func (s *State) preview(c *ui.Context, embedded bool) {
 		}
 		ui.Text(c, message).FontSize(textSize(c, textCaption)).TextColor(colors(c).amber).Padding(10).Background(colors(c).amberWash).Radius(controlRadius)
 	}
-	if !s.Editing {
+	if !s.Editing && !manual {
 		selected, _ := s.selected()
-		all := n > 0 && len(selected) == n
+		all := len(choices) > 0 && len(selected) == len(choices)
+		label := "全选匹配资源"
+		if s.selectsOnePerEpisode() {
+			label = "全选符合条件的集数"
+		}
 		ui.Row(c).Children(func() {
-			ui.Checkbox(c.Key("select-all"), &all, "全选匹配资源").FontSize(textSize(c, textBody)).Disabled(n == 0).OnChange(func() {
-				for _, r := range s.resources() {
-					if ok, _ := decide(r.Title, s.Rule); ok {
-						s.Checked[r.ID] = all
-					}
+			ui.Checkbox(c.Key("select-all"), &all, label).FontSize(textSize(c, textBody)).Disabled(n == 0).OnChange(func() {
+				for _, resource := range choices {
+					s.setResourceChecked(resource, all)
 				}
 			})
 			ui.Spacer(c)
@@ -940,11 +1003,15 @@ func (s *State) preview(c *ui.Context, embedded bool) {
 			visible := 0
 			for _, r := range s.previewResources() {
 				res := r
-				ok, _ := decide(res.Title, s.Rule)
-				if s.OnlyMatches && !ok {
+				ok, _ := matchResource(res, s.Rule)
+				if !manual && s.OnlyMatches && !ok {
 					continue
 				}
 				if s.EpisodeFilter != "" && res.Episode != s.EpisodeFilter {
+					continue
+				}
+				if choice, exists := byEpisode[res.Episode]; exists && s.EpisodeFilter == "" &&
+					!s.OnlyDownloaded && choice.ID != res.ID {
 					continue
 				}
 				if s.OnlyDownloaded {
@@ -956,7 +1023,7 @@ func (s *State) preview(c *ui.Context, embedded bool) {
 					continue
 				}
 				visible++
-				s.resourceRow(c, res)
+				s.resourceRow(c, res, byEpisode[res.Episode].ID == res.ID)
 			}
 			if visible == 0 && len(s.previewResources()) > 0 {
 				s.empty(c, "没有符合筛选的资源", "试试清除筛选，看看这个字幕组的全部资源。", "清除筛选", s.clearPreviewFilters)
@@ -1029,13 +1096,13 @@ func (s *State) downloadForResource(r Resource) (Download, int, bool) {
 	return Download{}, 0, false
 }
 
-func (s *State) resourceRow(c *ui.Context, r Resource) {
-	ok, reason := decide(r.Title, s.Rule)
+func (s *State) resourceRow(c *ui.Context, r Resource, episodeChoice bool) {
+	ok, reason := matchResource(r, s.Rule)
 	ui.Column(c.Key("resource-"+r.ID)).Padding(12, 0).Gap(7).BorderWidth(0, 0, 1, 0).BorderColor(colors(c).line).Transition(rowTransition).Children(func() {
 		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
 			on := s.Checked[r.ID] && ok
-			if !s.Editing {
-				ui.Checkbox(c.Key("pick-"+r.ID), &on, "").Label("选择 " + r.ID).Disabled(!ok).OnChange(func() { s.Checked[r.ID] = on })
+			if !s.Editing && !(s.VersionSetup && s.TitleSetup) {
+				ui.Checkbox(c.Key("pick-"+r.ID), &on, "").Label("选择 " + r.ID).Disabled(!ok).OnChange(func() { s.setResourceChecked(r, on) })
 			}
 			ui.Text(c, episodeLabel(r.Episode)).FontSize(textSize(c, textBody)).FontWeight(600)
 			if s.isNewRelease(r.Title) {
@@ -1047,10 +1114,19 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 			if count := s.duplicates(r.Episode); count > 1 && ok {
 				ep := r.Episode
 				fg, bg := colors(c).amber, colors(c).amberWash
+				label := fmt.Sprintf("本集匹配 %d 条", count)
 				if s.EpisodeFilter == r.Episode {
 					fg, bg = colors(c).blue, colors(c).blueWash
 				}
-				quiet(c, "filter-episode-"+r.Episode, fmt.Sprintf("本集匹配 %d 条", count), func() { s.toggleEpisodeFilter(ep) }).FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(fg).Background(bg).Radius(4).Padding(3, 7)
+				if s.selectsOnePerEpisode() {
+					label = fmt.Sprintf("本集匹配 %d 个版本 · 换一个", count)
+					if s.EpisodeFilter == ep {
+						label = "返回全部集数"
+					}
+				}
+				if !s.selectsOnePerEpisode() || episodeChoice {
+					quiet(c, "filter-episode-"+r.ID, label, func() { s.toggleEpisodeFilter(ep) }).FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(fg).Background(bg).Radius(4).Padding(3, 7)
+				}
 			}
 			if d, idx, found := s.downloadForResource(r); found {
 				switch {
@@ -1083,24 +1159,30 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 				caption(c, "大小未知")
 			}
 		})
-		ui.Text(c, r.Title).FontSize(textSize(c, textBody)).LineHeight(1.6).Selectable().TextColor(colors(c).ink)
+		if s.VersionSetup && s.TitleSetup {
+			s.originalTitle(c, r)
+		} else {
+			ui.Text(c, r.Title).FontSize(textSize(c, textBody)).LineHeight(1.6).Selectable().TextColor(colors(c).ink)
+		}
 		published := r.Published
 		if published == "" {
 			published = "发布时间未知"
 		}
 		caption(c, published)
-		ui.Row(c).Wrap().Gap(4).Children(func() {
-			for i, word := range r.Tokens {
-				s.tagChip(c, fmt.Sprintf("tag-%s-%d", r.ID, i), word)
-			}
-			ui.Spacer(c)
-			quiet(c, "suggest-"+r.ID, "按此资源筛选", func() {
-				s.WordOpen = false
-				s.SuggestedResource = r
-				s.Suggestions = true
-				s.ResourceScroll = ui.ScrollState{}
-			}).Label("按此资源筛选 "+r.ID).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Padding(3, 0)
-		})
+		if !s.VersionSetup {
+			ui.Row(c).Wrap().Gap(4).Children(func() {
+				for i, word := range r.Tokens {
+					s.tagChip(c, fmt.Sprintf("tag-%s-%d", r.ID, i), word)
+				}
+				ui.Spacer(c)
+				quiet(c, "suggest-"+r.ID, "按此资源筛选", func() {
+					s.WordOpen = false
+					s.SuggestedResource = r
+					s.Suggestions = true
+					s.ResourceScroll = ui.ScrollState{}
+				}).Label("按此资源筛选 "+r.ID).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Padding(3, 0)
+			})
+		}
 		col := colors(c).green
 		if !ok {
 			col = colors(c).muted
@@ -1138,6 +1220,11 @@ func (s *State) detailFooter(c *ui.Context, embedded bool) {
 					}
 					if !s.detailReady() {
 						title = "请先加载字幕组和资源"
+					} else if !s.canSaveDetailRule() {
+						title = "选好版本后即可追番"
+						if s.TitleSetup {
+							title = "添加标题条件后即可追番"
+						}
 					}
 					ui.Text(c, title).FontSize(textSize(c, textBody)).FontWeight(600)
 					if plan.Incomplete+plan.Completed+plan.Failed > 0 {
@@ -1169,14 +1256,18 @@ func (s *State) detailFooter(c *ui.Context, embedded bool) {
 				if s.Editing {
 					quiet(c, "begin-backfill", "下载已有资源", s.beginBackfill).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Disabled(!s.detailReady() || s.Busy)
 				}
-				primary(c, "start-follow", label, s.commit).Disabled(!s.detailReady() || s.Busy || (s.Backfill && len(resources) == 0))
+				primary(c, "start-follow", label, s.commit).Disabled(!s.canSaveDetailRule() || s.Busy || (s.Backfill && len(resources) == 0))
 			})
 			if s.Backfill {
 				if sub, ok := s.subscription(s.EditID); ok && sub.Paused {
 					caption(c, "追番已暂停；现在只会排队，恢复追番后开始下载。")
 				}
 			} else if !s.Editing && !s.ViewResources && textScale(c) <= 1 {
-				caption(c, "以后发布的资源会按这些标题条件自动下载。")
+				if s.Rule.Version != nil {
+					caption(c, "以后发布的同版本资源会自动下载。")
+				} else if !s.VersionSetup {
+					caption(c, "以后发布的资源会按这些标题条件自动下载。")
+				}
 			}
 		})
 	}
@@ -2229,7 +2320,7 @@ func (s *State) helpDialog(c *ui.Context) {
 				ui.Text(c, "怎么追番").FontSize(textSize(c, textTitle)).FontWeight(600).Grow(1).MinWidth(0)
 				iconButton(c, "close-help", "关闭指南", "close", func() { s.Help = false })
 			})
-			for i, step := range []struct{ title, body string }{{"找到想看的番剧", "按季度和星期浏览，点海报打开番剧。"}, {"选择字幕组和版本", "用标题里的「1080p」「简日内嵌」等词挑选。"}, {"开启追番", "以后发布的资源会自动下载。在「我的追番」点海报，从剧集库播放下载完成的剧集。"}} {
+			for i, step := range []struct{ title, body string }{{"找到想看的番剧", "按季度和星期浏览，点海报打开番剧。"}, {"选择观看版本", "按画质、字幕和文件大小挑选，也可以按原标题追番。"}, {"开启追番", "以后发布的资源会自动下载。在「我的追番」点海报，从剧集库播放下载完成的剧集。"}} {
 				ui.Row(c).Gap(14).AlignItems(ui.Start).Children(func() {
 					ui.Textf(c, "%d", i+1).FontSize(textSize(c, textSection)).FontWeight(600).TextColor(colors(c).blue).Background(colors(c).blueWash).Padding(7, 12).Radius(20)
 					ui.Column(c).Grow(1).MinWidth(0).Gap(6).Children(func() { ui.Text(c, step.title).FontSize(textSize(c, textBody)).FontWeight(600); caption(c, step.body) })

@@ -19,6 +19,7 @@ in. It has no UI dependency: the window calls it, it never calls the window.
 | `store.go` | `Core`, SQLite open and schema, the in-memory `diskState`, transactions, directory naming |
 | `engine.go` | `CreateSubscription`, `Check`, `DownloadExisting`, `UpdateRule`, `SetPaused`, `RemoveSubscription`, `RemoveTask`, `DeleteTask`, `ResetTask`, `RetryPending`, the scheduler and `flush` |
 | `rules.go` | `Normalize`, `NormalizeRule`, `Match`, `ParseEpisode`, `SuggestWords` |
+| `release_version.go` | Normalized version fields and explanations for literal release-title terms |
 | `tags.go` | `ReleaseTags`: recognized resolution, codec, container, source, audio, subtitle (compound and standalone), version and collection (合集/全集) labels; every emitted word is a literal substring of the title |
 | `hash.go` | `ResourceHash`, `resolveHash`, the bencode reader that derives a torrent's v1 info hash |
 | `download_root.go`, `video_*.go` | The default download root per platform |
@@ -62,7 +63,15 @@ empty while `Item.Status` is `pending`.
 
 ## Matching
 
-`Match` normalizes the title and the rule, then applies three groups in order:
+`Match` checks a saved `Version`, when present, against the normalized release
+fields parsed from the title. Those fields form one signature, including
+unmarked fields. Equivalent spellings share a signature, and a missing or
+changed field can put a release outside that version. The resource preview
+reuses the cached parse of the title. Future RSS checks use the same parser
+and comparison.
+
+`Match` also normalizes the title and the keyword rule, then applies three
+groups in order:
 
 - `All` — every word must appear.
 - `None` — no word may appear.
@@ -76,6 +85,14 @@ words, not spelling variants.
 
 `ParseEpisode`, `SuggestWords` and `ReleaseTags` are for the window, not for matching. An
 episode number is never part of identity.
+
+`testdata/mikan-release-titles.tsv` contains 2,709 distinct release titles
+across 18 Mikan anime pages and 59 source group IDs. It combines 1,194
+titles collected from public detail pages with entries from existing source
+probe snapshots. The fixture keeps the anime ID, group ID and title. The
+coverage test reports field presence for this corpus, and the annotation test
+checks specific real-world formats. Ambiguous signatures and collections
+remain available in the original-title workflow.
 
 ## Revision and cancellation
 

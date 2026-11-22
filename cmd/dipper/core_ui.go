@@ -43,9 +43,11 @@ func coreResources(rows []source.Resource) []core.Resource {
 }
 
 func coreRule(r Rule) core.Rule {
-	return core.Rule{All: slices.Clone(r.All), None: slices.Clone(r.None), Any: r.Any}
+	return core.Rule{All: slices.Clone(r.All), None: slices.Clone(r.None), Any: r.Any, Version: r.Version}
 }
-func uiRule(r core.Rule) Rule { return cloneRule(Rule{All: r.All, None: r.None, Any: r.Any}) }
+func uiRule(r core.Rule) Rule {
+	return cloneRule(Rule{All: r.All, None: r.None, Any: r.Any, Version: r.Version})
+}
 
 type preferences struct {
 	IntroHidden   bool
@@ -440,7 +442,7 @@ func (s *State) targetFolder() string {
 }
 
 func (s *State) commit() {
-	if s.Core == nil || s.Busy || !s.detailReady() {
+	if s.Core == nil || s.Busy || !s.canSaveDetailRule() {
 		return
 	}
 	plan := s.planSubmission()
@@ -537,6 +539,10 @@ func (s *State) beginBackfill() {
 	}
 	s.Backfill = true
 	s.Editing = false
+	s.VersionSetup = false
+	s.TitleSetup = false
+	s.Rule.Version = nil
+	s.OnlyMatches = false
 	s.Checked = map[string]bool{}
 	for _, r := range s.resources() {
 		s.Checked[r.ID] = false

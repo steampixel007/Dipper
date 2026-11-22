@@ -191,6 +191,25 @@ func TestRulesAndSuggestions(t *testing.T) {
 	}
 }
 
+func TestParseEpisodeSeasonAndEpisode(t *testing.T) {
+	cases := map[string]string{
+		"[Nix-Raws] 极致软弱千金小姐 / Yowaki MAX Reijou Nano ni Ratsuwan Konyakusha-sama no Kake S01E07 [CR WEB-DL1080p AVC AAC][简繁内封]": "7",
+		"[Nix-Raws] Show S1E7 [1080p]":       "7",
+		"[Nix-Raws] Show S01 E07 [1080p]":    "7",
+		"[Nix-Raws] Show S01.E07.5 [1080p]":  "7.5",
+		"[Nix-Raws] Show S01E07v2 [1080p]":   "7",
+		"[Nix-Raws] Show S01E07-E08 [1080p]": "7",
+		"[Nix-Raws] Show Season 1 [1080p]":   "",
+		"[Nix-Raws] Show S01 [1080p]":        "",
+		"[Nix-Raws] Show [1080p][2026]":      "",
+	}
+	for title, want := range cases {
+		if got := ParseEpisode(title); got != want {
+			t.Errorf("ParseEpisode(%q) = %q, want %q", title, got, want)
+		}
+	}
+}
+
 func TestHTTPFeedGlobalHashDedupAndDifferentReleases(t *testing.T) {
 	a := resource("source-a", 1, "Show - 01 1080p")
 	alias := resource("different-source-id", 1, "Show - 01 1080p")

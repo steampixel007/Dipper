@@ -25,9 +25,10 @@ type Resource struct {
 }
 
 type Rule struct {
-	All  []string
-	None []string
-	Any  [][]string
+	All     []string
+	None    []string
+	Any     [][]string
+	Version *ReleaseVersion `json:",omitempty"`
 }
 
 type MatchResult struct {

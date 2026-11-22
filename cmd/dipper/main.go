@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -206,7 +207,32 @@ func main() {
 		slog.Info("stopped", "version", version)
 	})
 	mygo.App.WhenReady(func() {
-		win := mygo.NewWindow(mygo.WindowOptions{Title: "Dipper · 自动追番", Width: 1320, Height: 900, MinWidth: 1040, MinHeight: 720, TitleBarStyle: mygo.TitleBarHidden, TitleBarHeight: 64, BackgroundColor: windowBackground(), Content: ui.View(s.view)})
+		customWindowControls := runtime.GOOS == "windows"
+		s.CustomWindowControls = customWindowControls
+		var win *mygo.Window
+		if customWindowControls {
+			s.WindowMinimize = func() {
+				if win != nil {
+					win.Minimize()
+				}
+			}
+			s.WindowMaximize = func() {
+				if win != nil {
+					win.ToggleMaximize()
+					win.Invalidate()
+				}
+			}
+			s.WindowClose = func() {
+				if win != nil {
+					win.Close()
+				}
+			}
+			s.WindowIsMaximized = func() bool { return win != nil && win.IsMaximized() }
+		}
+		win = mygo.NewWindow(mygo.WindowOptions{Title: "Dipper · 自动追番", Width: 1320, Height: 900, MinWidth: 1040, MinHeight: 720, TitleBarStyle: mygo.TitleBarHidden, TitleBarHeight: 64, HideWindowButtons: customWindowControls, BackgroundColor: windowBackground(), Content: ui.View(s.view)})
+		win.OnResize(func() {
+			win.Invalidate()
+		})
 		if err := win.SetIcon(brandIconPNG); err != nil {
 			slog.Warn("window icon", "error", err)
 		}

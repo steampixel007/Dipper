@@ -80,7 +80,22 @@ func renderScreens(dir string) error {
 			s.openBrowseDetail(s.Catalog[0])
 		}},
 		{name: "17-browse-hover", page: "browse", hover: true, configure: func(s *State) { s.IntroHidden = true }},
-		{name: "02-filter", page: "detail", configure: func(s *State) { s.setWord("1080p", wordWant) }},
+		{name: "02-filter", page: "detail", configure: func(s *State) {
+			s.Subscriptions, s.Downloads = nil, nil
+			s.ResourceList = append(s.ResourceList, Resource{
+				ID: "render-resource-1v2", Title: "[回归测试组甲] 星海旅记 - 01v2 [1080p][简日内嵌][HEVC].mkv",
+				Episode: "01", Published: "2025-04-08 12:00", MB: 492, Tokens: []string{"1080p", "简日内嵌", "HEVC"},
+			})
+			s.setupVersions()
+			s.Platform, s.CustomWindowControls = "windows", true
+			s.WindowIsMaximized = func() bool { return false }
+		}},
+		{name: "22-original-title", page: "detail", configure: func(s *State) {
+			s.Subscriptions, s.Downloads = nil, nil
+			s.setupVersions()
+			s.switchVersionMode(true)
+			s.ActiveTitleRow, s.ActiveTitleWord = s.ResourceList[0].ID, "简日内嵌"
+		}},
 		{name: "03-following", page: "following"},
 		{name: "14-following-check-failure", page: "following", configure: func(s *State) {
 			s.Subscriptions[1].CheckFailed = true
@@ -111,9 +126,10 @@ func renderScreens(dir string) error {
 			})
 		}},
 		{name: "08-close-window", page: "browse", configure: func(s *State) {
-			s.Platform = "windows"
+			s.Platform, s.CustomWindowControls = "windows", true
 			s.TrayAvailable = true
 			s.ClosePrompt = true
+			s.WindowIsMaximized = func() bool { return false }
 		}},
 		{name: "10-group-picker", page: "detail", configure: func(s *State) {
 			s.Subscriptions = nil

@@ -13,6 +13,9 @@ type submissionPlan struct {
 
 func (s *State) planSubmission() submissionPlan {
 	var plan submissionPlan
+	if s.VersionSetup && s.TitleSetup && !s.Backfill {
+		return plan
+	}
 	hashes := make(map[string]string, len(s.History))
 	for _, resource := range coreResources(s.History) {
 		if hash, err := core.ResourceHash(resource); err == nil {
@@ -31,7 +34,7 @@ func (s *State) planSubmission() submissionPlan {
 	}
 	seen := make(map[string]bool)
 	for _, resource := range s.resources() {
-		matches, _ := decide(resource.Title, s.Rule)
+		matches, _ := matchResource(resource, s.Rule)
 		if !matches || !s.Checked[resource.ID] {
 			continue
 		}

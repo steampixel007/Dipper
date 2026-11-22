@@ -196,7 +196,18 @@ cover these distinctions.
 
 The detail page runs in one of two modes, distinguished by `Backfill`:
 - **Subscribe** — choose a group and a rule, preview which existing releases
-  match, and confirm. Existing matches are selected by default.
+  match, and confirm. A new setup defaults to the group with the most releases
+  in its full history. Pending counts leave the group picker usable. An explicit
+  choice or an existing follow takes precedence.
+  Choose a subtitle language to constrain recommendations, then prioritize
+  picture quality, compatibility, or known typical release size. The initial
+  download selects one matching release per recognized episode, preferring
+  explicit revisions then the later publish date. The episode row can reveal
+  alternatives and replace that choice. Releases with an unknown episode
+  remain individually selectable. The original-title
+  workflow shows full titles with clickable terms, explanations, and preview
+  counts for inclusion and exclusion. It applies the keyword rule to future
+  releases and supports saving a rule with zero historical matches.
 - **Backfill** — pick releases from an existing subscription's history to
   download now, without changing the rule.
 Browse cards mark followed anime with a 已追番 badge. Clicking a card opens
@@ -335,7 +346,21 @@ releases are matched against.
 
 The resource preview renders rows in episode order: numeric ascending (so 第 10 集 follows 第 2 集), releases without an episode last, and ties keep their publish order. The stored resource list keeps publish order; sorting is a render concern only.
 
-When several releases share an episode, each row shows a 本集匹配 N 条 badge that is also a button: clicking it narrows the preview to that episode, clicking the active episode's badge or the 清除 chip above the list clears the filter. The filter is per session — opening another anime or choosing another subtitle group resets it — and it only hides rows in the preview, never the stored list or what a subscription matches.
+In the initial version setup with a version rule, the preview collapses
+releases to one per parsed episode. The chosen release is the explicit
+revision (`01v2` over `01`) and then the newest publish time; unexplained
+rows stay independent. A 本集匹配 N 个版本 · 换一个 control opens every matching
+release for that episode, and choosing one replaces the episode's current
+choice instead of adding a second download. Backfill and the followed
+resource view keep one row per release because every download there is an
+explicit manual choice.
+
+When several releases share an episode, each row also shows a badge that is
+a button: clicking it narrows the preview to that episode, clicking the
+active episode's badge or the 清除 chip above the list clears the filter.
+The filter is per session — opening another anime or choosing another
+subtitle group resets it — and it only hides rows in the preview, never the
+stored list or what a subscription matches.
 
 Beside 只看匹配, a 只看已有任务 checkbox hides preview rows that have
 no download in the library, whatever the download state — including failed
