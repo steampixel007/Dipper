@@ -85,7 +85,7 @@ func (p policyState) reached(size int64) bool {
 	if denominator == 0 {
 		denominator = size
 	}
-	if denominator > 0 && p.UploadedBytes >= int64(float64(denominator)*p.ratio()) && p.ratio() > 0 {
+	if ratio := p.ratio(); denominator > 0 && ratio > 0 && float64(p.UploadedBytes) >= float64(denominator)*ratio {
 		return true
 	}
 	return p.SeedingTime >= p.target()

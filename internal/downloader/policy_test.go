@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -122,5 +123,16 @@ func TestPolicyUnlimitedRatioStopsOnlyOnSeedingTime(t *testing.T) {
 	p := policyState{DownloadedBytes: 100, UploadedBytes: 5000, RatioTarget: seedRatioUnlimited}
 	if p.reached(0) {
 		t.Fatal("an unlimited ratio target stopped on uploaded bytes")
+	}
+}
+
+func TestPolicyLargeRatioDoesNotOverflow(t *testing.T) {
+	p := policyState{DownloadedBytes: 1 << 30, RatioTarget: 1e10}
+	if p.reached(0) {
+		t.Fatal("a large ratio stopped sharing before any upload")
+	}
+	p.UploadedBytes = math.MaxInt64
+	if p.reached(0) {
+		t.Fatal("a large ratio stopped before its exact threshold")
 	}
 }
