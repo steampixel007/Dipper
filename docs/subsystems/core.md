@@ -191,6 +191,9 @@ The default upload limit is 1 MiB/s. A saved limit of zero means unlimited, and
 the UI adapter must translate that to the downloader's unlimited value: core
 persists the setting, the UI applies it to the running downloader.
 
+`Settings.DownloadLimit` persists a choice from 1 to 10 simultaneous
+downloads. An omitted or zero value selects the engine default of 3.
+
 Proxy settings live in `Settings` beside the upload limit: `ProxyMode` is one
 of `auto`, `direct` or `custom`, and `ProxyURL` is the address `custom` uses.
 `auto` reads `*_PROXY` and then the system proxy (Internet Options on

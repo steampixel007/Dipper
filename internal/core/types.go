@@ -57,22 +57,36 @@ type DownloadTask struct {
 	Context         context.Context `json:"-"`
 }
 
+const MaxDownloadLimit = 10
+
 type Settings struct {
 	DownloadRoot     string
 	UploadLimitBytes int64
-	// SeedMinutes is the seeding-time target: zero means seed without a time
-	// limit (the ratio target still applies), negative means the default.
-	SeedMinutes int64 `json:",omitempty"`
+	UploadUnlimited  bool `json:",omitempty"`
+	DownloadLimit    int  `json:",omitempty"`
+	// Zero selects the default hour. The legacy value -1 has no time limit.
+	SeedMinutes       int64 `json:",omitempty"`
+	SeedTimeUnlimited bool  `json:",omitempty"`
 	// ProxyMode is one of the proxy package's mode constants; ProxyURL is
 	// the address ProxyMode "custom" uses.
 	ProxyMode string `json:",omitempty"`
 	ProxyURL  string `json:",omitempty"`
-	// SeedRatio is the share-ratio stop target: one of SeedRatioOptions or
-	// empty for the default 1:1.
-	SeedRatio string `json:",omitempty"`
+	// SeedRatio stores the stop multiple as x:1, or empty for the default 1:1.
+	SeedRatio          string `json:",omitempty"`
+	SeedRatioUnlimited bool   `json:",omitempty"`
 	// ExtraTrackers is the raw user tracker text, one announce URL per line;
 	// whitespace, commas and semicolons also separate entries.
-	ExtraTrackers string `json:",omitempty"`
+	ExtraTrackers             string        `json:",omitempty"`
+	TrackerLists              []TrackerList `json:",omitempty"`
+	DisabledTrackers          []string      `json:",omitempty"`
+	AutomaticTrackersDisabled bool          `json:",omitempty"`
+}
+
+type TrackerList struct {
+	URL       string
+	Disabled  bool `json:",omitempty"`
+	Trackers  []string
+	FetchedAt time.Time
 }
 
 type Options struct {

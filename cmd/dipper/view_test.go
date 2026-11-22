@@ -48,19 +48,27 @@ func uiClick(t *testing.T, tt *ui.Tester, label string) {
 
 func uiScrollTo(t *testing.T, tt *ui.Tester, label string) {
 	t.Helper()
-	r, ok := tt.Find(label)
-	if !ok {
-		t.Fatalf("missing scroll target %q", label)
-	}
 	bounds := tt.Image().Bounds()
 	height := float32(bounds.Dy())
-	if r.W <= 0 || r.H <= 0 || r.Y < 64 || r.Y+r.H > height {
-		tt.Scroll(float32(bounds.Dx())*.6, height/2, 0, r.Y-80)
+	var r ui.Rect
+	for attempt := 0; attempt < 6; attempt++ {
+		var ok bool
 		r, ok = tt.Find(label)
-		if !ok || r.W <= 0 || r.H <= 0 || r.Y < 64 || r.Y+r.H > height {
-			t.Fatalf("scroll target %q remains outside content viewport: %+v", label, r)
+		if !ok {
+			t.Fatalf("missing scroll target %q", label)
 		}
+		if r.W > 0 && r.H > 0 && r.Y >= 64 && r.Y+r.H <= height {
+			return
+		}
+		dy := r.Y - 80
+		if r.Y <= 64 {
+			dy = -height / 2
+		} else if dy < 1 {
+			dy = height / 2
+		}
+		tt.Scroll(float32(bounds.Dx())*.6, height/2, 0, dy)
 	}
+	t.Fatalf("scroll target %q remains outside content viewport: %+v", label, r)
 }
 
 func uiRequireText(t *testing.T, tt *ui.Tester, texts ...string) {
@@ -97,13 +105,9 @@ func TestUIViewPagesAndWindowSizes(t *testing.T) {
 
 func TestUIBrowseOlderSeasonSearchAndUnknownDay(t *testing.T) {
 	s := uiFixture(t, "browse")
-	s.Year = "1999"
+	s.Year = "2014"
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiRequireText(t, tt, "1999 年春季番剧", s.Catalog[0].Title, "更新时间未知")
-	years := catalogYears(s.Year)
-	if !slices.Contains(years, "2000") || !slices.Contains(years, "1999") || !slices.Contains(years, strconv.Itoa(time.Now().Year())) {
-		t.Fatalf("year selector omitted current or historical year: %v", years)
-	}
+	uiRequireText(t, tt, "2014 年春季番剧", s.Catalog[0].Title, "更新时间未知")
 	uiClick(t, tt, "搜索番剧")
 	tt.Type("星海")
 	uiRequireText(t, tt, s.Catalog[0].Title)
@@ -111,16 +115,86 @@ func TestUIBrowseOlderSeasonSearchAndUnknownDay(t *testing.T) {
 		t.Fatal("search did not filter catalog")
 	}
 	uiClick(t, tt, "上一季")
-	if s.Year != "1999" || s.Season != "冬" {
+	if s.Year != "2014" || s.Season != "冬" {
 		t.Fatalf("previous season: %s %s", s.Year, s.Season)
 	}
 	uiClick(t, tt, "上一季")
-	if s.Year != "1998" || s.Season != "秋" {
+	if s.Year != "2013" || s.Season != "秋" {
 		t.Fatalf("season did not cross year: %s %s", s.Year, s.Season)
 	}
 	uiClick(t, tt, "回到当季")
 	if s.Year != strconv.Itoa(time.Now().Year()) || s.Season != seasons[(int(time.Now().Month())-1)/3] || s.Search != "" || s.Day != -1 {
 		t.Fatal("current season must use the clock and clear filters")
+	}
+}
+
+func TestUIBrowseSeasonBounds(t *testing.T) {
+	currentYear := strconv.Itoa(time.Now().Year())
+	for _, boundary := range []struct {
+		name, year, blocked, allowed, nextYear, nextSeason string
+		delta                                              int
+	}{
+		{"earliest", "2013", "上一季", "下一季", "2014", "冬", -1},
+		{"latest", currentYear, "下一季", "上一季", currentYear, "夏", 1},
+	} {
+		for _, sourceError := range []bool{false, true} {
+			page := "toolbar"
+			if sourceError {
+				page = "source_error"
+			}
+			t.Run(boundary.name+"/"+page, func(t *testing.T) {
+				s := uiFixture(t, "browse")
+				s.Year, s.Season = boundary.year, "秋"
+				if sourceError {
+					s.SourceError, s.Catalog = "来源返回 HTTP 503", nil
+				}
+				tt := ui.NewTester(s.view, 1320, 860)
+				bounds, ok := tt.Find(boundary.blocked)
+				if !ok || bounds.W <= 0 || bounds.H <= 0 {
+					t.Fatalf("%q must remain visible", boundary.blocked)
+				}
+				tt.ClickAt(bounds.X+bounds.W/2, bounds.Y+bounds.H/2)
+				if s.Year != boundary.year || s.Season != "秋" || tt.Focused(boundary.blocked) {
+					t.Fatalf("%q took input at the boundary", boundary.blocked)
+				}
+				s.changeSeason(boundary.delta)
+				if s.Year != boundary.year || s.Season != "秋" {
+					t.Fatalf("blocked navigation changed the selection to %s %s", s.Year, s.Season)
+				}
+				uiClick(t, tt, boundary.allowed)
+				if s.Year != boundary.nextYear || s.Season != boundary.nextSeason {
+					t.Fatalf("inward navigation reached %s %s", s.Year, s.Season)
+				}
+			})
+		}
+	}
+}
+
+func TestUIBrowseEarliestYearSelection(t *testing.T) {
+	s := uiFixture(t, "browse")
+	s.Year, s.Season = "2014", "冬"
+	tt := ui.NewTester(s.view, 1320, 860)
+	uiClick(t, tt, "年份")
+	uiClick(t, tt, "2013")
+	if s.Year != "2013" || s.Season != "秋" {
+		t.Fatalf("earliest year opened at %s %s, want 2013 秋", s.Year, s.Season)
+	}
+	for _, label := range []string{"冬季", "春季", "夏季"} {
+		bounds, ok := tt.Find(label)
+		if !ok || bounds.W <= 0 || bounds.H <= 0 {
+			t.Fatalf("%q must remain visible", label)
+		}
+		tt.ClickAt(bounds.X+bounds.W/2, bounds.Y+bounds.H/2)
+		if s.Season != "秋" {
+			t.Fatalf("clicking %q changed the season to %s", label, s.Season)
+		}
+	}
+}
+
+func TestCatalogYearRange(t *testing.T) {
+	years := catalogYears()
+	if years[0] != strconv.Itoa(time.Now().Year()) || years[len(years)-1] != "2013" {
+		t.Fatalf("unexpected catalog year range: %v", years)
 	}
 }
 
@@ -699,7 +773,7 @@ func TestUIFollowingCancelSubscriptionDialog(t *testing.T) {
 	}
 	uiRequireText(t, tt, "确认取消追番",
 		"取消后不再检查更新；已下载的文件保留在 "+sub.Folder,
-		"正在下载的 1 个任务会继续完成，不受影响。")
+		"下载中和排队中的 1 个任务会继续完成。")
 	uiClick(t, tt, "保留追番")
 	if s.CancelPrompt {
 		t.Fatal("保留追番 did not close the dialog")
@@ -1013,14 +1087,16 @@ type playTestEngine struct{ files []string }
 func (*playTestEngine) Snapshot() []downloader.Snapshot {
 	return []downloader.Snapshot{{ID: "render-download-3", Progress: 1}}
 }
-func (*playTestEngine) Pause(string) error          { return fmt.Errorf("unexpected pause") }
-func (*playTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
-func (*playTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
-func (*playTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
-func (*playTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
-func (*playTestEngine) SetSeedTarget(time.Duration) {}
-func (*playTestEngine) SetRatioTarget(float64)      {}
-func (*playTestEngine) SetExtraTrackers([]string)   {}
+func (*playTestEngine) Pause(string) error                    { return fmt.Errorf("unexpected pause") }
+func (*playTestEngine) Resume(string) error                   { return fmt.Errorf("unexpected resume") }
+func (*playTestEngine) Stop(string) error                     { return fmt.Errorf("unexpected stop") }
+func (*playTestEngine) Remove(string) error                   { return fmt.Errorf("unexpected removal") }
+func (*playTestEngine) SetUploadLimit(int64) error            { return fmt.Errorf("unexpected upload limit") }
+func (*playTestEngine) SetDownloadLimit(int)                  {}
+func (*playTestEngine) SetSeedTarget(time.Duration)           {}
+func (*playTestEngine) SetRatioTarget(float64)                {}
+func (*playTestEngine) SetTrackerSettings([]string, []string) {}
+func (*playTestEngine) SetRemoteTrackers([]string)            {}
 
 func (e *playTestEngine) PlayableFiles(string) ([]string, error) {
 	if e.files == nil {
@@ -1127,14 +1203,16 @@ type filesTestEngine struct{ files []downloader.DownloadedFile }
 func (*filesTestEngine) Snapshot() []downloader.Snapshot {
 	return []downloader.Snapshot{{ID: "render-download-3", Progress: 1}}
 }
-func (*filesTestEngine) Pause(string) error          { return fmt.Errorf("unexpected pause") }
-func (*filesTestEngine) Resume(string) error         { return fmt.Errorf("unexpected resume") }
-func (*filesTestEngine) Stop(string) error           { return fmt.Errorf("unexpected stop") }
-func (*filesTestEngine) Remove(string) error         { return fmt.Errorf("unexpected removal") }
-func (*filesTestEngine) SetUploadLimit(int64) error  { return fmt.Errorf("unexpected upload limit") }
-func (*filesTestEngine) SetSeedTarget(time.Duration) {}
-func (*filesTestEngine) SetRatioTarget(float64)      {}
-func (*filesTestEngine) SetExtraTrackers([]string)   {}
+func (*filesTestEngine) Pause(string) error                    { return fmt.Errorf("unexpected pause") }
+func (*filesTestEngine) Resume(string) error                   { return fmt.Errorf("unexpected resume") }
+func (*filesTestEngine) Stop(string) error                     { return fmt.Errorf("unexpected stop") }
+func (*filesTestEngine) Remove(string) error                   { return fmt.Errorf("unexpected removal") }
+func (*filesTestEngine) SetUploadLimit(int64) error            { return fmt.Errorf("unexpected upload limit") }
+func (*filesTestEngine) SetDownloadLimit(int)                  {}
+func (*filesTestEngine) SetSeedTarget(time.Duration)           {}
+func (*filesTestEngine) SetRatioTarget(float64)                {}
+func (*filesTestEngine) SetTrackerSettings([]string, []string) {}
+func (*filesTestEngine) SetRemoteTrackers([]string)            {}
 
 func (*filesTestEngine) PlayableFiles(string) ([]string, error) {
 	return nil, fmt.Errorf("unexpected play")
@@ -1278,26 +1356,19 @@ func TestUISettingsProxyModesAndCustomAddress(t *testing.T) {
 
 func TestUISettingsSeedDurationSavesAndUpdatesCopy(t *testing.T) {
 	s := uiFixture(t, "settings")
-	s.Seed = "1 小时"
 	tt := ui.NewTester(s.view, 1320, 860)
-	uiScrollTo(t, tt, "完成后分享时长")
-	uiRequireText(t, tt, "分享时长", "下载完成后把文件继续提供给其他人；暂停或离线时不计时。")
-	tt.Click("完成后分享时长")
-	tt.Advance(300 * time.Millisecond)
-	if !tt.HasText("30 分钟") {
-		t.Fatalf("seed popup did not open; texts=%q", tt.Texts())
-	}
-	tt.Click("30 分钟")
-	tt.Advance(300 * time.Millisecond)
-	if s.Seed != "30 分钟" {
+	s.TransferLimits.duration.value = "37"
+	tt.Frame()
+	uiScrollTo(t, tt, "保存限额")
+	uiClick(t, tt, "保存限额")
+	if s.Seed != "37 分钟" {
 		t.Fatalf("seed choice = %q", s.Seed)
 	}
-	uiRequireText(t, tt, "分享率达到 1:1 或分享满 30 分钟后停止分享。")
-	if s.SaveError != "" {
-		t.Fatalf("seed save failed: %q", s.SaveError)
-	}
-	s.Seed = "不限时长"
-	tt.Frame()
+	uiRequireText(t, tt, "分享率达到 1:1 或分享满 37 分钟后停止分享。")
+	uiScrollTo(t, tt, "分享时长不限")
+	uiClick(t, tt, "分享时长不限")
+	uiScrollTo(t, tt, "保存限额")
+	uiClick(t, tt, "保存限额")
 	uiRequireText(t, tt, "分享率达到 1:1 后停止分享。")
 	// The download page must reflect the same choice through seedStopRule.
 	s.Page = "downloads"
@@ -1329,7 +1400,7 @@ func TestUISettingsShowSeedAdvancedOptions(t *testing.T) {
 	s := uiFixture(t, "settings")
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiScrollTo(t, tt, "分享率上限")
-	uiRequireText(t, tt, "分享率上限", "追加 Tracker", "1:1")
+	uiRequireText(t, tt, "分享率上限", "分享率上限不限", "保存限额")
 	if s.SeedRatio != "1:1" {
 		t.Fatalf("default seed ratio = %q, want 1:1", s.SeedRatio)
 	}

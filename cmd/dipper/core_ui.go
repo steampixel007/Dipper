@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -73,6 +72,8 @@ func proxyModeIndex(mode string) int {
 
 func uploadLimit(label string) int64 {
 	switch label {
+	case "不限":
+		return -1
 	case "256 KiB/s", "256 KB/s":
 		return 256 * 1024
 	case "512 KiB/s", "512 KB/s":
@@ -109,15 +110,15 @@ func parseByteRate(label string) (int64, bool) {
 		return 0, false
 	}
 	rate := math.Round(value * float64(multiplier))
-	if rate <= 0 || rate > float64(math.MaxInt64) {
+	if rate <= 0 || rate >= float64(math.MaxInt64) {
 		return 0, false
 	}
 	return int64(rate), true
 }
 
 func uploadLabel(limit int64) string {
-	if limit <= 0 {
-		return ""
+	if limit < 0 {
+		return "不限"
 	}
 	if limit%(1024*1024) == 0 {
 		return fmt.Sprintf("%d MiB/s", limit/(1024*1024))
@@ -128,66 +129,52 @@ func uploadLabel(limit int64) string {
 	return fmt.Sprintf("%d B/s", limit)
 }
 
-func uploadChoices(current string) []string {
-	choices := []string{"256 KiB/s", "512 KiB/s", "1 MiB/s", "2 MiB/s"}
-	if current == "" || slices.Contains(choices, current) {
-		return choices
-	}
-	return append(choices, current)
-}
-
-var seedOptions = []string{"30 分钟", "1 小时", "2 小时", "不限时长"}
-
-var ratioOptions = []string{"1:1", "2:1", "3:1", "不限"}
-
-func seedMinutes(label string) int64 {
-	switch label {
-	case "30 分钟":
-		return 30
-	case "2 小时":
-		return 120
-	case "不限时长":
-		return -1
-	}
-	return 60
-}
-
 func seedLabel(minutes int64) string {
 	switch minutes {
-	case 30:
-		return "30 分钟"
-	case 120:
-		return "2 小时"
 	case -1:
 		return "不限时长"
+	case 0:
+		return "1 小时"
 	}
-	return "1 小时"
+	return fmt.Sprintf("%d 分钟", minutes)
 }
 
-func seedRatioLabel(ratio string) string {
-	for _, option := range core.SeedRatioOptions {
-		if option == ratio {
-			return option
+func downloadLimitText(limit int) string {
+	if limit == 0 {
+		limit = downloader.DefaultDownloadLimit
+	}
+	return strconv.Itoa(limit)
+}
+
+func (s *State) saveDownloadLimit() {
+	if s.Busy {
+		return
+	}
+	limit, err := strconv.Atoi(strings.TrimSpace(s.downloadLimitDraft))
+	if err != nil || limit < 1 || limit > core.MaxDownloadLimit {
+		s.downloadLimitNotice = fmt.Sprintf("请输入 1–%d 之间的整数。", core.MaxDownloadLimit)
+		s.downloadLimitError = true
+		return
+	}
+	if s.Core != nil {
+		settings, err := s.Core.GetSettings()
+		if err == nil {
+			settings.DownloadLimit = limit
+			err = s.Core.SetSettings(settings)
+		}
+		if err != nil {
+			s.downloadLimitNotice = "无法保存同时下载任务数，请重试。"
+			s.downloadLimitError = true
+			return
 		}
 	}
-	return "1:1"
-}
-
-func trackerFeedback(text string) string {
-	if trackers := core.ParseTrackers(text); len(trackers) > 0 {
-		return fmt.Sprintf("已追加 %d 个 Tracker。", len(trackers))
+	s.DownloadLimit = limit
+	s.downloadLimitDraft = downloadLimitText(limit)
+	s.downloadLimitNotice = "同时下载任务数已保存。"
+	s.downloadLimitError = false
+	if s.Engine != nil {
+		s.Engine.SetDownloadLimit(limit)
 	}
-	return ""
-}
-
-func seedDuration(minutes int64) time.Duration {
-	if minutes == -1 {
-		return -1
-	}
-	if minutes <= 0 {
-		return 0
-	}
-	return time.Duration(minutes) * time.Minute
 }
 
 func (s *State) loadSaved() error {
@@ -196,17 +183,23 @@ func (s *State) loadSaved() error {
 		return err
 	}
 	s.Root = state.Settings.DownloadRoot
-	s.Upload = uploadLabel(state.Settings.UploadLimitBytes)
-	s.Seed = seedLabel(state.Settings.SeedMinutes)
-	s.SeedRatio = seedRatioLabel(state.Settings.SeedRatio)
+	s.DownloadLimit = state.Settings.DownloadLimit
+	s.downloadLimitDraft = downloadLimitText(s.DownloadLimit)
+	s.loadTransferLimits(state.Settings)
 	s.ExtraTrackers = state.Settings.ExtraTrackers
+	s.DisabledTrackers = state.Settings.DisabledTrackers
+	s.AutomaticTrackersDisabled = state.Settings.AutomaticTrackersDisabled
+	s.TrackerLists = state.Settings.TrackerLists
 	s.ProxyMode = proxyModeIndex(state.Settings.ProxyMode)
-	s.ProxyURL = state.Settings.ProxyURL
+	s.proxyActiveMode = s.ProxyMode
+	s.ProxyURL, s.proxyUsername, s.proxyPassword = proxy.SplitAddress(state.Settings.ProxyURL)
+	s.proxyActiveAddress = s.ProxyURL
 	proxy.Configure(state.Settings.ProxyMode, state.Settings.ProxyURL)
 	s.ProxyAuto = s.describeAutoProxy()
-	if err = s.Engine.SetUploadLimit(state.Settings.UploadLimitBytes); err != nil {
+	if err = s.Engine.SetUploadLimit(state.Settings.EffectiveUploadLimit()); err != nil {
 		return err
 	}
+	s.Engine.SetDownloadLimit(state.Settings.DownloadLimit)
 	if err := s.loadPreferences(); err != nil {
 		return err
 	}
@@ -245,32 +238,16 @@ func (s *State) save() {
 	if s.Core == nil {
 		return
 	}
-	mode := proxyModes[s.ProxyMode]
-	if mode != proxy.ModeCustom {
-		s.ProxyURL = ""
+	settings, err := s.Core.GetSettings()
+	if err != nil {
+		s.SaveError = "无法读取设置：" + err.Error()
+		return
 	}
-	settings := core.Settings{DownloadRoot: s.Root, UploadLimitBytes: uploadLimit(s.Upload), SeedMinutes: seedMinutes(s.Seed), SeedRatio: seedRatioLabel(s.SeedRatio), ExtraTrackers: s.ExtraTrackers, ProxyMode: mode, ProxyURL: s.ProxyURL}
+	settings.DownloadRoot = s.Root
 	if err := s.Core.SetSettings(settings); err != nil {
-		var bad *core.TrackerError
-		if errors.As(err, &bad) {
-			s.SaveError = "设置保存失败：无法识别的 tracker 地址 " + strconv.Quote(bad.Line) + "，请修正后重试。"
-		} else {
-			s.SaveError = "设置保存失败：" + err.Error()
-		}
+		s.SaveError = "设置保存失败：" + err.Error()
 		return
 	}
-	proxy.Configure(mode, settings.ProxyURL)
-	if mode != proxy.ModeCustom {
-		s.ProxyAuto = s.describeAutoProxy()
-	}
-	if err := s.Engine.SetUploadLimit(settings.UploadLimitBytes); err != nil {
-		s.SaveError = "限速设置失败：" + err.Error()
-		return
-	}
-	s.Engine.SetSeedTarget(seedDuration(settings.SeedMinutes))
-	s.Engine.SetRatioTarget(core.SeedRatioTarget(settings.SeedRatio))
-	s.Engine.SetExtraTrackers(core.ParseTrackers(settings.ExtraTrackers))
-	s.TrackerFeedback = trackerFeedback(settings.ExtraTrackers)
 	if err := s.savePreferences(); err != nil {
 		s.SaveError = "界面设置保存失败：" + err.Error()
 	} else {
@@ -302,31 +279,6 @@ func readPreferences(dir string) (preferences, error) {
 		return pref, fmt.Errorf("读取界面设置：%w", err)
 	}
 	return pref, nil
-}
-
-func (s *State) testProxy() {
-	if s.ProxyTesting || s.Source == nil {
-		return
-	}
-	s.save()
-	if s.SaveError != "" {
-		return
-	}
-	s.ProxyTesting = true
-	s.ProxyFeedback = "正在测试连接…"
-	go func() {
-		ctx, cancel := context.WithTimeout(s.Ctx, 45*time.Second)
-		defer cancel()
-		err := s.Source.Probe(ctx)
-		s.Update(func() {
-			s.ProxyTesting = false
-			if err != nil {
-				s.ProxyFeedback = "连接失败：" + err.Error()
-				return
-			}
-			s.ProxyFeedback = "连接成功。"
-		})
-	}()
 }
 
 func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
@@ -370,9 +322,13 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 		}
 		if !sub.Paused {
 			for _, d := range s.Downloads {
-				if d.AnimeID == sub.Anime.ID && d.Progress < 1 && !d.Paused && !d.Stopped && !d.Failed {
-					v.Active = true
-					break
+				if d.AnimeID == sub.Anime.ID {
+					switch downloadState(d) {
+					case downloadsDownloading:
+						v.Active = true
+					case downloadsQueued:
+						v.Queued = true
+					}
 				}
 			}
 		}
@@ -389,6 +345,10 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 		d := Download{ID: task.Hash, AnimeID: task.AnimeID, ResourceID: r.ID, Title: r.Title, Episode: core.ParseEpisode(r.Title), Folder: task.Directory, Bytes: r.Size, MB: legacySizeMB(r.Size), Error: record.LastError, Failed: record.LastError != ""}
 		if snap, ok := byID[task.Hash]; ok {
 			d.Progress = snap.Progress
+			d.Queued = snap.Status == downloader.StatusQueued
+			if d.Queued && d.Progress >= 1 {
+				d.Progress = math.Nextafter(1, 0)
+			}
 			d.Paused = snap.Paused
 			d.Stopped = snap.ManuallyStopped || snap.AutoStopped
 			d.SeedSeconds = int(snap.SeedingSeconds)
@@ -831,14 +791,19 @@ func (s *State) pauseAllDownloads(paused bool) {
 	if s.Engine == nil {
 		return
 	}
-	var ids []string
+	var queued, ids []string
 	for _, d := range s.Downloads {
-		if downloadInQueue(d) && !d.Failed && ((paused && d.Progress < 1) || (!paused && (d.Paused || (d.Stopped && d.Progress < 1)))) {
+		switch {
+		case paused && downloadState(d) == downloadsQueued:
+			queued = append(queued, d.ID)
+		case paused && downloadState(d) == downloadsDownloading:
+			ids = append(ids, d.ID)
+		case !paused && downloadInQueue(d) && !d.Failed && (d.Paused || (d.Stopped && d.Progress < 1)):
 			ids = append(ids, d.ID)
 		}
 	}
 	s.runAction(func() error {
-		for _, id := range ids {
+		for _, id := range append(queued, ids...) {
 			var err error
 			if paused {
 				err = s.Engine.Pause(id)

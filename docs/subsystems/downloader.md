@@ -8,10 +8,9 @@ done its job. It implements `core.Downloader`, whose contract is in
 
 - The BT client, its per-task lifecycle, and resume across restarts.
 - Where a task's files live and how pieces map onto them.
-- The transfer policy: when seeding stops.
+- The download queue and the seeding stop policy.
 - The shared upload limit.
-- The built-in tracker list, the automatically refreshed public list, and the
-  per-task seeding-time target.
+- Supplemental tracker tiers and the per-task seeding-time target.
 
 ## Files
 
@@ -22,6 +21,7 @@ done its job. It implements `core.Downloader`, whose contract is in
 | `ownership.go` | Durable per-task file claims, shared-folder collision checks and per-file cleanup |
 | `safety_windows.go`, `safety_other.go` | Reparse-point and hard-link checks for payload files |
 | `policy.go` | `policyState`: byte counters, seeding time, and the stop decision |
+| `queue.go` | Download slot allocation, task order, and idle rotation |
 | `trackers.go` | The public tracker list appended to every admitted task |
 | `../../internal/trackers` | Fetching, validating and caching the remote public tracker list |
 | `platform_windows.go`, `platform_other.go` | The platform-specific pieces of the engine |
@@ -71,30 +71,37 @@ merged. If the fetch fails it falls back to the magnet; an identity mismatch
 fails outright, and a cancelled context does not fall back. The metadata request
 has a 30-second timeout and a 16 MiB cap.
 
-Every admitted task also gets a tier of announce URLs from the automatically
-refreshed public list (`internal/trackers`, currently
-XIU2/TrackersListCollection's `best.txt` via a CDN mirror with the upstream raw
-file as fallback) and then `trackers.go`'s built-in public trackers appended as
-its last tier, skipping any URL a previous tier already carries.
-The engine applies them on first admission, on restart from persisted metadata,
-and to a magnet fetched over HTTP, so a torrent whose announce list is empty,
-unreachable or blocked still has redundancy. They are deliberately few and
-well-known; peer exchange and DHT stay primary.
+The default supplemental source is the automatically refreshed public list
+(`internal/trackers`, currently XIU2/TrackersListCollection's `best.txt` via a
+CDN mirror with the upstream raw file as fallback). The engine appends the user
+tier and then the recommended tier after the task's own trackers, skipping
+URLs a previous tier already carries. It applies the tiers on first admission,
+on restart from persisted metadata, and to a magnet fetched over HTTP.
 The host refreshes the remote list at most once a day, in the background after
 startup, and never blocks admission on it: the cached list covers the run until
 a refresh succeeds, and a refresh that fails, returns an oversized body, or
 carries one line that is not an announce URL is rejected wholesale, keeping the
-previous cache. `SetRemoteTrackers` replaces the remote tier with the same
-reconciliation `SetExtraTrackers` applies to the user tier.
-`SetExtraTrackers` replaces the user tier rather than only adding to it:
-`reconciledTiers` keeps each torrent's own metadata tiers, strips the
-previously applied user URLs and the built-ins, and re-appends the current
-user tier and the built-ins, so removing a tracker in settings also stops
-announcing it on running tasks and disappears from the persisted metadata.
-The URLs actually injected as the user tier are recorded in the task
-checkpoint, so reconciliation on pause, resume and restart still strips them
-after the setting clears them, even though the saved metadata already carries
-them.
+previous cache. `SetRemoteTrackers` and `SetTrackerSettings` update the
+supplemental metadata tiers and add newly configured announce URLs to running
+tasks. The torrent client can retain registered announcers after their URLs
+are removed from the metadata. Restarting Dipper applies removals to those
+tasks without interrupting transfers when settings are saved.
+The user tier combines manual addresses with cached members of added list
+subscriptions and removes duplicates. The application checks for stale
+subscriptions at startup and hourly, refreshes them after 24 hours, and retains
+the last successful list when a refresh fails.
+`reconciledTiers` preserves each torrent's own tiers and rebuilds the user and
+recommended tiers. An address deleted in settings is excluded from both
+supplemental tiers until it is added back, including after a refresh.
+Deleting the recommended list stops scheduled refreshes and excludes its
+cached addresses at startup and when an in-flight refresh completes. The
+cache remains available if the list is added back. The checkpoint
+records the injected addresses in each tier so they can be identified when
+loading cached metadata. Restore removes any recorded legacy built-in
+addresses from the cache before applying current settings. For version 1 and
+2 checkpoints it assumes the four historical built-in addresses were added
+by the engine. Restored magnet addresses are merged from the original magnet
+before applying the current settings.
 
 The context only governs admission and the metadata request. Once a task is
 admitted its lifetime belongs to the engine, so a cancelled admission context
@@ -102,10 +109,23 @@ does not stop a transfer that already started.
 
 ## Task states
 
-`Snapshot.Status` is one of `metadata`, `downloading`, `seeding`, `paused`,
+`Snapshot.Status` is one of `queued`, `metadata`, `downloading`, `seeding`, `paused`,
 `stopped`, `completed`, `error`. `completed` means the policy stopped it;
 `Complete` is a separate field saying the files have been verified whole. A
 snapshot reports speeds in bytes per second and `Progress` in 0–1.
+
+The engine permits three concurrent payload downloads by default. It fills
+slots in admission order and saves that order in the task checkpoint, using
+the existing stored order for older checkpoints. Waiting torrents may resolve
+metadata but cannot transfer payload. Completing, pausing, stopping, failing,
+or removing a task frees its slot. Resuming a paused or stopped task, or
+retrying a failed task, enters at the tail. Seeding uses no download slot.
+
+A settings change takes effect immediately. Lowering the limit sends the
+newer downloads back to waiting with their pieces intact. If a waiting task
+can take its place, an active download with ten observed online minutes
+without progress moves to the tail. Offline time, suspension and missed
+sampling windows do not count toward those minutes.
 
 Only v1 and hybrid torrents that carry a v1 hash are accepted. A v2-only
 torrent is refused with an error.
@@ -114,10 +134,10 @@ torrent is refused with an error.
 
 `Config.DataDir` holds `tasks.json`, replaced atomically; `files.json`, the
 durable file claims; one `.torrent` per task, named by the SHA-256 of the task
-ID; and a piece completion database under `pieces/`. The version 2 checkpoint
-contains active tasks and pending removals. Version 1 checkpoints still load;
-their saved task folders remain unchanged, and saved torrent metadata supplies
-the legacy file manifest.
+ID; and a piece completion database under `pieces/`. The version 3 checkpoint
+contains active tasks and pending removals. Versions 1 and 2 still load.
+Their saved task folders remain unchanged, and saved torrent metadata supplies
+the legacy file manifest for version 1.
 
 The engine samples every 500 ms and persists on a sample, and also on pause,
 stop and a clean exit. A crash can lose the payload and time counters of the most

@@ -2,28 +2,82 @@ package core
 
 import (
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 )
-
-// SeedRatioOptions are the accepted share-ratio stop targets, in display order.
-var SeedRatioOptions = []string{"1:1", "2:1", "3:1", "不限"}
 
 // trackerSchemes are the announce URL schemes the embedded BT client speaks.
 var trackerSchemes = map[string]bool{"udp": true, "http": true, "https": true, "ws": true, "wss": true}
 
-// ValidateSeedRatio accepts a share-ratio stop label from SeedRatioOptions or
-// the empty default.
+const (
+	MaxTrackerLists    = 16
+	MaxTrackersPerList = 200
+)
+
+func ValidTrackerListURL(address string) bool {
+	parsed, err := url.Parse(address)
+	return err == nil && len(address) <= 2048 && parsed.Hostname() != "" &&
+		(parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.User == nil && parsed.Fragment == ""
+}
+
+func validateTrackerLists(lists []TrackerList) error {
+	if len(lists) > MaxTrackerLists {
+		return fmt.Errorf("too many tracker list subscriptions")
+	}
+	seen := make(map[string]bool)
+	for _, list := range lists {
+		if !ValidTrackerListURL(list.URL) || seen[list.URL] || len(list.Trackers) == 0 || len(list.Trackers) > MaxTrackersPerList {
+			return fmt.Errorf("invalid tracker list subscription")
+		}
+		seen[list.URL] = true
+		for _, tracker := range list.Trackers {
+			if tracker == "" || trackerURL(tracker) != tracker {
+				return &TrackerError{Line: tracker}
+			}
+		}
+	}
+	return nil
+}
+
+func validateDisabledTrackers(addresses []string) error {
+	for _, address := range addresses {
+		if address == "" || trackerURL(address) != address {
+			return &TrackerError{Line: address}
+		}
+	}
+	return nil
+}
+
+func (s Settings) ActiveExtraTrackers() []string {
+	urls := ParseTrackers(s.ExtraTrackers)
+	seen := make(map[string]bool)
+	for _, tracker := range urls {
+		seen[tracker] = true
+	}
+	for _, list := range s.TrackerLists {
+		if list.Disabled {
+			continue
+		}
+		for _, tracker := range list.Trackers {
+			if !seen[tracker] {
+				seen[tracker] = true
+				urls = append(urls, tracker)
+			}
+		}
+	}
+	return urls
+}
+
 func ValidateSeedRatio(label string) error {
-	if label == "" {
+	if label == "" || label == "不限" {
 		return nil
 	}
-	for _, option := range SeedRatioOptions {
-		if option == label {
-			return nil
-		}
+	if _, ok := parseSeedRatio(label); ok {
+		return nil
 	}
 	return fmt.Errorf("invalid seed ratio %q", label)
 }
@@ -31,15 +85,46 @@ func ValidateSeedRatio(label string) error {
 // SeedRatioTarget maps a share-ratio label to the engine's stop multiple: -1
 // stops only on seeding time, and unknown labels select the default 1:1.
 func SeedRatioTarget(label string) float64 {
-	switch label {
-	case "2:1":
-		return 2
-	case "3:1":
-		return 3
-	case "不限":
+	if label == "不限" {
 		return -1
 	}
+	if target, ok := parseSeedRatio(label); ok {
+		return target
+	}
 	return 1
+}
+
+func parseSeedRatio(label string) (float64, bool) {
+	number, ok := strings.CutSuffix(label, ":1")
+	if !ok || strings.ContainsAny(number, "xXpP_") {
+		return 0, false
+	}
+	target, err := strconv.ParseFloat(number, 64)
+	return target, err == nil && target > 0 && !math.IsInf(target, 0)
+}
+
+func (s Settings) EffectiveUploadLimit() int64 {
+	if s.UploadUnlimited {
+		return -1
+	}
+	return s.UploadLimitBytes
+}
+
+func (s Settings) EffectiveSeedDuration() time.Duration {
+	if s.SeedTimeUnlimited || s.SeedMinutes == -1 {
+		return -1
+	}
+	if s.SeedMinutes <= 0 || s.SeedMinutes > int64(math.MaxInt64)/int64(time.Minute) {
+		return 0
+	}
+	return time.Duration(s.SeedMinutes) * time.Minute
+}
+
+func (s Settings) EffectiveSeedRatio() float64 {
+	if s.SeedRatioUnlimited {
+		return -1
+	}
+	return SeedRatioTarget(s.SeedRatio)
 }
 
 // TrackerError reports a tracker line whose announce URL cannot be parsed.

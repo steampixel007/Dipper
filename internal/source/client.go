@@ -94,6 +94,10 @@ const MaxConcurrentCovers = 6
 // New uses DefaultOrigin when baseURL is empty. Invalid origins surface as
 // method errors, preserving a constructor that does not require error handling.
 func New(baseURL string) *Client {
+	return newClient(baseURL, proxy.Func)
+}
+
+func newClient(baseURL string, resolveProxy func(*http.Request) (*url.URL, error)) *Client {
 	if baseURL == "" {
 		baseURL = DefaultOrigin
 	}
@@ -102,7 +106,7 @@ func New(baseURL string) *Client {
 		base: u, initErr: err,
 		http: &http.Client{
 			Transport: &http.Transport{
-				Proxy:               proxy.Func,
+				Proxy:               resolveProxy,
 				ForceAttemptHTTP2:   true,
 				MaxIdleConns:        2 * MaxConcurrentCovers,
 				MaxIdleConnsPerHost: MaxConcurrentCovers + 2,
@@ -437,4 +441,14 @@ func (c *Client) Probe(ctx context.Context) error {
 	}
 	_, _, err = c.get(ctx, root, 1<<20)
 	return err
+}
+
+func (c *Client) ProbeWithProxy(ctx context.Context, mode, address string) error {
+	origin, err := c.target()
+	if err != nil {
+		return err
+	}
+	probe := newClient(origin.String(), proxy.ForSettings(mode, address))
+	defer probe.http.CloseIdleConnections()
+	return probe.Probe(ctx)
 }

@@ -229,6 +229,7 @@ func (s *State) view(c *ui.Context) {
 	s.helpDialog(c)
 	s.closeDialog(c)
 	s.filesDialog(c)
+	s.trackerDialog(c)
 	s.softwareUpdateDialog(c)
 	if s.Page == "detail" && !s.Help && !s.ClosePrompt {
 		c.OnShortcut(ui.Ctrl, ui.KeyZ, s.undoFilter)
@@ -364,8 +365,8 @@ func (s *State) browseCatalog(c *ui.Context, width float32, split bool) {
 		ui.Text(c, s.Year+" 年"+s.Season+"季番剧").FontSize(textSize(c, textTitle)).FontWeight(600).TextColor(pal.ink).Margin(0, 0, 18, 0).ContentTransition(ui.ContentTransition{Animation: &contentMotion})
 		if s.SourceError != "" && !s.catalogFromDisk && len(s.Catalog) == 0 {
 			ui.Row(c).Wrap().Gap(controlGap).Margin(0, 0, 14, 0).Children(func() {
-				quiet(c, "catalog-error-previous", "上一季", func() { s.changeSeason(-1) })
-				quiet(c, "catalog-error-next", "下一季", func() { s.changeSeason(1) }).Disabled(!s.canAdvanceSeason())
+				quiet(c, "catalog-error-previous", "上一季", func() { s.changeSeason(-1) }).Disabled(!s.canChangeSeason(-1))
+				quiet(c, "catalog-error-next", "下一季", func() { s.changeSeason(1) }).Disabled(!s.canChangeSeason(1))
 				quiet(c, "catalog-error-current", "回到当季", s.currentSeason)
 			})
 			s.empty(c, "来源暂时无法连接", s.SourceError, "重试加载", s.refreshCatalog)
@@ -426,16 +427,18 @@ func (s *State) browseCatalog(c *ui.Context, width float32, split bool) {
 
 func (s *State) browseToolbar(c *ui.Context, split bool) {
 	pal := colors(c)
+	year, _ := strconv.Atoi(s.Year)
+	firstSeason := firstCatalogSeasonIndex(year)
 	searchWidth := max(float32(220), textSize(c, textBody)*16)
 	if split {
 		searchWidth = max(180, textSize(c, textBody)*13)
 	}
 	ui.Box(c).FillWidth().Margin(0, 0, 12, 0).Children(func() {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(10).Children(func() {
-			iconButton(c, "prev-season", "上一季", "back", func() { s.changeSeason(-1) })
-			ui.Select(c.Key("year"), &s.Year, catalogYears(s.Year)).Label("年份").Width(max(88, textSize(c, textBody)*5)).MinHeight(inputHeight(c)).Radius(controlRadius).Background(pal.paper).OnChange(s.refreshCatalog)
+			iconButton(c, "prev-season", "上一季", "back", func() { s.changeSeason(-1) }).Disabled(!s.canChangeSeason(-1))
+			ui.Select(c.Key("year"), &s.Year, catalogYears()).Label("年份").Width(max(88, textSize(c, textBody)*5)).MinHeight(inputHeight(c)).Radius(controlRadius).Background(pal.paper).OnChange(s.changeCatalogYear)
 			ui.Row(c).Gap(2).Padding(3).Radius(controlRadius).Background(pal.sunken).Children(func() {
-				for _, season := range seasons {
+				for index, season := range seasons {
 					q := season
 					active := s.Season == q
 					b := ui.ButtonBase(c.Key("season-"+q)).Label(q+"季").Padding(6, 12).Radius(controlRadius - 2).Center().FontSize(textSize(c, textBody)).Cursor(ui.CursorPointer).TextColor(pal.muted)
@@ -444,10 +447,10 @@ func (s *State) browseToolbar(c *ui.Context, split bool) {
 					} else if b.Hovered() {
 						b.TextColor(pal.ink)
 					}
-					tactile(b).Children(func() { ui.Text(c, q+"季") }).OnClick(func() { s.Season = q; s.refreshCatalog() })
+					tactile(b).Children(func() { ui.Text(c, q+"季") }).OnClick(func() { s.Season = q; s.refreshCatalog() }).Disabled(index < firstSeason)
 				}
 			})
-			iconButton(c, "next-season", "下一季", "next", func() { s.changeSeason(1) }).Disabled(!s.canAdvanceSeason())
+			iconButton(c, "next-season", "下一季", "next", func() { s.changeSeason(1) }).Disabled(!s.canChangeSeason(1))
 			ui.Spacer(c)
 			if ui.TextInput(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(searchWidth).MinHeight(inputHeight(c)).Radius(controlRadius).Background(pal.paper).Changed() {
 				s.resetBrowseScroll()
@@ -537,14 +540,10 @@ func dayName(d int) string {
 	return []string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}[d%7]
 }
 
-func catalogYears(selected string) []string {
-	year, err := strconv.Atoi(selected)
-	if err != nil || year < 1 {
-		year = 2000
-	}
+func catalogYears() []string {
 	var years []string
-	for y := time.Now().Year(); y >= min(2000, year); y-- {
-		years = append(years, strconv.Itoa(y))
+	for year := time.Now().Year(); year >= earliestCatalogYear; year-- {
+		years = append(years, strconv.Itoa(year))
 	}
 	return years
 }
@@ -1061,6 +1060,8 @@ func (s *State) resourceRow(c *ui.Context, r Resource) {
 					badge(c, "已停止", colors(c).muted, colors(c).canvas)
 				case d.Progress < 1 && d.Paused:
 					badge(c, "已暂停", colors(c).muted, colors(c).canvas)
+				case d.Queued:
+					badge(c, "排队中", colors(c).muted, colors(c).canvas)
 				case d.Progress < 1:
 					badge(c, fmt.Sprintf("下载中 %d%%", int(d.Progress*100)), colors(c).blue, colors(c).blueWash)
 				default:
@@ -1205,12 +1206,12 @@ func (s *State) cancelDialog(c *ui.Context) {
 				caption(c, "取消后不再检查更新；已下载的文件保留在 "+sub.Folder)
 				flight := 0
 				for _, d := range s.Downloads {
-					if d.AnimeID == sub.AnimeID && !d.Paused && !d.Failed && d.Progress < 1 {
+					if d.AnimeID == sub.AnimeID && (downloadState(d) == downloadsDownloading || downloadState(d) == downloadsQueued) {
 						flight++
 					}
 				}
 				if flight > 0 {
-					caption(c, fmt.Sprintf("正在下载的 %d 个任务会继续完成，不受影响。", flight))
+					caption(c, fmt.Sprintf("下载中和排队中的 %d 个任务会继续完成。", flight))
 				}
 			})
 			ui.Row(c).Wrap().Justify(ui.End).Gap(controlGap).Children(func() {
@@ -1402,6 +1403,8 @@ func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
 						label = fmt.Sprintf("下载中 %d%%", int(sub.Progress*100))
 					}
 					badge(c, label, colors(c).blue, colors(c).blueWash)
+				} else if sub.Queued {
+					badge(c, "排队中", colors(c).muted, colors(c).canvas)
 				} else {
 					status := ui.Text(c, "自动追番中").FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(colors(c).green).Background(colors(c).greenWash).Radius(4).Padding(3, 7)
 					if !tile.Hovered() {
@@ -1518,6 +1521,8 @@ func (s *State) libraryEpisodeRow(c *ui.Context, index int) {
 					caption(c, "已停止")
 				case download.Paused:
 					caption(c, "已暂停")
+				case download.Queued:
+					caption(c, "排队中")
 				default:
 					caption(c, fmt.Sprintf("下载中 %d%%", int(download.Progress*100)))
 				}
@@ -1579,10 +1584,10 @@ func (s *State) seedStopRule() string {
 	ratioCopy := ""
 	switch s.SeedRatio {
 	case "不限":
-	case "2:1", "3:1":
-		ratioCopy = "分享率达到 " + s.SeedRatio
-	default:
+	case "":
 		ratioCopy = "分享率达到 1:1"
+	default:
+		ratioCopy = "分享率达到 " + s.SeedRatio
 	}
 	switch {
 	case timeCopy == "" && ratioCopy == "":
@@ -1605,6 +1610,8 @@ func downloadState(d Download) DownloadFilter {
 		return downloadsPaused
 	case d.Progress >= 1:
 		return downloadsSeeding
+	case d.Queued:
+		return downloadsQueued
 	default:
 		return downloadsDownloading
 	}
@@ -1756,8 +1763,11 @@ func (s *State) downloads(c *ui.Context) {
 				}
 			})
 			ui.Row(c.Key("download-filter")).Wrap().Gap(controlGap).Children(func() {
-				for filter, label := range []string{"全部", "下载中", "分享中", "已暂停", "失败", "已停止"} {
-					filter := DownloadFilter(filter)
+				for _, option := range []struct {
+					filter DownloadFilter
+					label  string
+				}{{downloadsAll, "全部"}, {downloadsDownloading, "下载中"}, {downloadsQueued, "排队中"}, {downloadsSeeding, "分享中"}, {downloadsPaused, "已暂停"}, {downloadsFailed, "失败"}, {downloadsStopped, "已停止"}} {
+					filter, label := option.filter, option.label
 					count := stateCounts[filter]
 					if filter == downloadsAll {
 						count = queued
@@ -1832,7 +1842,7 @@ func (s *State) downloads(c *ui.Context) {
 			for _, segment := range []struct {
 				filter DownloadFilter
 				label  string
-			}{{downloadsDownloading, "下载中"}, {downloadsSeeding, "分享中"}, {downloadsPaused, "已暂停"}, {downloadsStopped, "已停止"}, {downloadsFailed, "失败"}} {
+			}{{downloadsDownloading, "下载中"}, {downloadsQueued, "排队中"}, {downloadsSeeding, "分享中"}, {downloadsPaused, "已暂停"}, {downloadsStopped, "已停止"}, {downloadsFailed, "失败"}} {
 				if counts[segment.filter] > 0 {
 					parts = append(parts, fmt.Sprintf("%s %d", segment.label, counts[segment.filter]))
 				}
@@ -1916,6 +1926,8 @@ func (s *State) downloads(c *ui.Context) {
 											status, col, wash = "已停止", colors(c).muted, colors(c).canvas
 										case d.Paused:
 											status, col, wash = "已暂停", colors(c).muted, colors(c).canvas
+										case d.Queued:
+											status, col, wash = "排队中", colors(c).muted, colors(c).canvas
 										case d.Progress >= 1:
 											status, col, wash = "已完成，分享中", colors(c).green, colors(c).greenWash
 										}
@@ -2080,7 +2092,29 @@ func (s *State) settings(c *ui.Context) {
 				caption(c, "减少界面动画和弹层过渡；也会遵循系统设置。")
 			})
 			ui.Column(c).Gap(14).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
-				heading(c, "下载位置")
+				heading(c, "下载")
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(12).Children(func() {
+					ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 12).Gap(5).Children(func() {
+						ui.Text(c, "同时下载任务数").FontSize(textSize(c, textBody))
+						caption(c, "超出的任务会排队，有空位时自动开始。分享中的任务不占名额。")
+					})
+					ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+						ui.TextInput(c.Key("download-limit"), &s.downloadLimitDraft).Label("填写同时下载任务数").
+							Width(textSize(c, textBody) * 4).MinHeight(inputHeight(c)).
+							OnChange(func() { s.downloadLimitNotice = "" }).OnSubmit(s.saveDownloadLimit).Disabled(s.Busy)
+						caption(c, "个")
+						secondary(c, "save-download-limit", "保存", s.saveDownloadLimit).Label("保存同时下载任务数").
+							Disabled(s.Busy || s.downloadLimitDraft == downloadLimitText(s.DownloadLimit))
+					})
+				})
+				if s.downloadLimitNotice != "" {
+					if s.downloadLimitError {
+						ui.Text(c, s.downloadLimitNotice).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk)
+					} else {
+						caption(c, s.downloadLimitNotice)
+					}
+				}
+				ui.Text(c, "下载位置").FontSize(textSize(c, textBody))
 				caption(c, "每部番剧单独一个文件夹，保留原文件名。")
 				ui.Row(c).Gap(12).Children(func() {
 					ui.Text(c, s.Root).FontSize(textSize(c, textBody)).Selectable().Grow(1).MinWidth(0)
@@ -2091,6 +2125,8 @@ func (s *State) settings(c *ui.Context) {
 					}).FontSize(textSize(c, textCaption)).Disabled(s.Busy || s.PickFolder == nil)
 				})
 				caption(c, "只影响新追番；已有番剧仍保存在原文件夹。")
+				ui.Divider(c).Background(colors(c).line)
+				s.trackerSettings(c)
 			})
 			ui.Column(c).Gap(14).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
 				heading(c, "番剧来源")
@@ -2109,67 +2145,11 @@ func (s *State) settings(c *ui.Context) {
 			})
 			ui.Column(c).Gap(14).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
 				heading(c, "上传与分享")
-				ui.Row(c).Wrap().Gap(16).Children(func() {
-					ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 12).Gap(5).Children(func() {
-						ui.Text(c, "全局上传上限").FontSize(textSize(c, textBody))
-						caption(c, "所有任务共享此上限。1 MiB = 1,024 KiB。")
-					})
-					ui.Select(c.Key("upload-limit"), &s.Upload, uploadChoices(s.Upload)).Label("全局上传限速").Width(textSize(c, textBody) * 10).MinHeight(inputHeight(c)).OnChange(s.save).Disabled(s.Busy)
-				})
-				ui.Row(c).Wrap().Gap(16).Children(func() {
-					ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 12).Gap(5).Children(func() {
-						ui.Text(c, "分享时长").FontSize(textSize(c, textBody))
-						caption(c, "下载完成后把文件继续提供给其他人；暂停或离线时不计时。")
-					})
-					ui.Select(c.Key("seed-duration"), &s.Seed, seedOptions).Label("完成后分享时长").Width(textSize(c, textBody) * 10).MinHeight(inputHeight(c)).OnChange(s.save).Disabled(s.Busy)
-				})
-				ui.Row(c).Wrap().Gap(16).Children(func() {
-					ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 12).Gap(5).Children(func() {
-						ui.Text(c, "分享率上限").FontSize(textSize(c, textBody))
-						caption(c, "分享率是上传量除以下载量；时间或分享率任一达到上限，就停止分享。")
-					})
-					ui.Select(c.Key("seed-ratio"), &s.SeedRatio, ratioOptions).Label("分享率上限").Width(textSize(c, textBody) * 10).MinHeight(inputHeight(c)).OnChange(s.save).Disabled(s.Busy)
-				})
-				ui.Column(c).Gap(5).Children(func() {
-					ui.Row(c).Wrap().Gap(16).Children(func() {
-						ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 12).Gap(5).Children(func() {
-							ui.Text(c, "追加 Tracker").FontSize(textSize(c, textBody))
-							caption(c, "每行一个 udp:// 或 http(s):// 地址，按回车或保存后生效；无效的行会被拒绝。")
-						})
-						secondary(c, "save-trackers", "保存", s.save).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
-					})
-					ui.TextInput(c.Key("extra-trackers"), &s.ExtraTrackers).Label("追加 Tracker").Placeholder("udp://tracker.example.com:1337/announce").FillWidth().MinHeight(inputHeight(c)).OnChange(func() { s.TrackerFeedback = "" }).OnSubmit(s.save)
-					if s.TrackerFeedback != "" {
-						caption(c, s.TrackerFeedback)
-					}
-					caption(c, "每个任务都会自动追加这些内置 Tracker："+builtinTrackerSummary()+"。")
-				})
-				caption(c, "下载完成后，"+s.seedStopRule()+"。")
+				s.transferSettings(c)
 			})
 			ui.Column(c).Gap(14).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
 				heading(c, "网络与代理")
-				ui.Row(c).Gap(16).Children(func() {
-					ui.Column(c).Grow(1).Gap(5).Children(func() {
-						ui.Text(c, "代理").FontSize(textSize(c, textBody))
-						caption(c, s.proxyDescription())
-					})
-					ui.Segmented(c.Key("proxy-mode"), &s.ProxyMode, "自动", "关闭", "自定义").OnChange(func() {
-						s.ProxyFeedback = ""
-						s.save()
-					}).Disabled(s.Busy)
-					secondary(c, "test-proxy", "测试", func() { s.testProxy() }).FontSize(textSize(c, textCaption)).Disabled(s.Busy || s.ProxyTesting || s.Source == nil)
-				})
-				if s.ProxyMode == 2 {
-					ui.TextInput(c.Key("proxy-url"), &s.ProxyURL).Label("代理地址").Placeholder("http://127.0.0.1:7897 或 socks5://…").FillWidth().MinHeight(inputHeight(c)).OnChange(func() {
-						s.ProxyFeedback = ""
-					}).OnSubmit(func() {
-						s.save()
-					})
-					caption(c, "支持 http、https、socks5；也可只填 host:port。输入地址后按回车保存。")
-				}
-				if s.ProxyFeedback != "" {
-					caption(c, s.ProxyFeedback)
-				}
+				s.proxySettings(c)
 			})
 			s.windowSettings(c)
 			s.softwareUpdateSettings(c)

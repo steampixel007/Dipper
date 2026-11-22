@@ -66,8 +66,8 @@ func Validate(modeName, address string) error {
 		return errors.New("custom proxy requires an address")
 	}
 	u, err := parse(address)
-	if err != nil || u == nil || (u.Scheme != "http" && u.Scheme != "https" && u.Scheme != "socks5") || u.Hostname() == "" || u.User != nil {
-		return errors.New("invalid proxy address: want http, https or socks5 without userinfo")
+	if err != nil || u == nil || (u.Scheme != "http" && u.Scheme != "https" && u.Scheme != "socks5") || u.Hostname() == "" {
+		return errors.New("invalid proxy address: want http, https or socks5")
 	}
 	return nil
 }
@@ -75,6 +75,17 @@ func Validate(modeName, address string) error {
 // Func is an http.Transport Proxy function. Loopback never goes through a
 // proxy: tests and local tooling must be able to observe requests.
 func Func(req *http.Request) (*url.URL, error) {
+	modeName, address := snapshot()
+	return resolve(req, modeName, address)
+}
+
+func ForSettings(modeName, address string) func(*http.Request) (*url.URL, error) {
+	return func(req *http.Request) (*url.URL, error) {
+		return resolve(req, modeName, address)
+	}
+}
+
+func resolve(req *http.Request, modeName, address string) (*url.URL, error) {
 	if req == nil || req.URL == nil {
 		return nil, nil
 	}
@@ -82,8 +93,7 @@ func Func(req *http.Request) (*url.URL, error) {
 	if loopback(host) {
 		return nil, nil
 	}
-	m, address := snapshot()
-	switch m {
+	switch modeName {
 	case ModeDirect:
 		return nil, nil
 	case ModeCustom:
@@ -97,6 +107,33 @@ func Func(req *http.Request) (*url.URL, error) {
 		return nil, nil
 	}
 	return parse(sys.URL)
+}
+
+func SplitAddress(address string) (host, username, password string) {
+	parsed, err := parse(address)
+	if err != nil || parsed == nil || parsed.User == nil {
+		return address, "", ""
+	}
+	username = parsed.User.Username()
+	password, _ = parsed.User.Password()
+	parsed.User = nil
+	return parsed.String(), username, password
+}
+
+func AddressWithCredentials(address, username, password string) (string, error) {
+	address = strings.TrimSpace(address)
+	parsed, err := parse(address)
+	if err != nil || parsed == nil || parsed.User != nil {
+		return "", errors.New("invalid proxy address")
+	}
+	if err := Validate(ModeCustom, address); err != nil {
+		return "", err
+	}
+	if username == "" && password == "" {
+		return address, nil
+	}
+	parsed.User = url.UserPassword(username, password)
+	return parsed.String(), nil
 }
 
 func snapshot() (string, string) {

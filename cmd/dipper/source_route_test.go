@@ -96,9 +96,9 @@ func TestSourceRouteFailureRollsBackAndKeepsChoice(t *testing.T) {
 	}
 }
 
-func TestSourceRouteDefaultsToLineTwo(t *testing.T) {
+func TestSourceRouteDefaultsToLineOne(t *testing.T) {
 	const origin = "https://mikanani.me"
-	const label = "线路二（默认）：mikanani.me"
+	const label = "线路一（默认）：mikanani.me"
 	s := newState(t.TempDir())
 	s.Source = source.New("")
 	if s.SourceRoute != label || s.Source.Origin() != origin || s.sourceOrigin(s.SourceRoute) != origin {
@@ -124,8 +124,8 @@ func TestSourceRoutePreferenceRoundTrip(t *testing.T) {
 	if err := s.loadPreferences(); err != nil {
 		t.Fatal(err)
 	}
-	if s.SourceRoute != s.SourceRoutes[0].Label || s.Source.Origin() != origin {
-		t.Fatalf("saved route = %q origin = %q, want line one at %q", s.SourceRoute, s.Source.Origin(), origin)
+	if s.SourceRoute != s.SourceRoutes[1].Label || s.Source.Origin() != origin {
+		t.Fatalf("saved route = %q origin = %q, want line two at %q", s.SourceRoute, s.Source.Origin(), origin)
 	}
 	if err := s.savePreferences(); err != nil {
 		t.Fatal(err)

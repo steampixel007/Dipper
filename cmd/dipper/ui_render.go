@@ -8,6 +8,9 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/steampixel007/Dipper/internal/core"
+	"github.com/steampixel007/Dipper/internal/proxy"
+	"github.com/steampixel007/Dipper/internal/trackers"
 )
 
 // uiRenderFixture is used only by --render and UI tests; it never starts core or a source client.
@@ -63,6 +66,8 @@ func renderScreens(dir string) error {
 		configure  func(*State)
 		narrow     bool
 		hover      bool
+		scroll     float32
+		textScale  float32
 	}{
 		{name: "01-browse", page: "browse"},
 		{name: "09-anime-summary", page: "browse", configure: func(s *State) {
@@ -70,7 +75,7 @@ func renderScreens(dir string) error {
 			s.IntroHidden = true
 			s.openBrowseDetail(s.Catalog[0])
 		}},
-		{name: "16-browse-detail-narrow", page: "browse", narrow: true, configure: func(s *State) {
+		{name: "16-browse-detail-narrow", page: "browse", narrow: true, textScale: 2, configure: func(s *State) {
 			s.IntroHidden = true
 			s.openBrowseDetail(s.Catalog[0])
 		}},
@@ -118,7 +123,31 @@ func renderScreens(dir string) error {
 			s.ResourceList = nil
 			s.Checked = nil
 		}},
-		{name: "12-seed-settings", page: "settings", configure: func(s *State) { s.Seed = "30 分钟" }},
+		{name: "12-seed-settings", page: "settings", scroll: 480, configure: func(s *State) { s.Seed, s.TransferLimits.duration.value = "30 分钟", "30" }},
+		{name: "19-custom-proxy", page: "settings", scroll: 600, configure: func(s *State) {
+			s.ProxyMode = proxyModeIndex(proxy.ModeCustom)
+		}},
+		{name: "18-tracker-manager", page: "settings", configure: func(s *State) {
+			s.ExtraTrackers = "udp://tracker.example.net:1337/announce"
+			s.TrackerLists = []core.TrackerList{{
+				URL: "https://lists.example.net/trackers.txt", Trackers: []string{"https://tracker.example.net/announce"},
+				FetchedAt: time.Date(2026, time.November, 22, 8, 0, 0, 0, time.Local),
+			}}
+			s.trackerAutomatic = trackers.List{URLs: []string{"udp://recommended.example.net:1337/announce"}}
+			s.openTrackerManager()
+		}},
+		{name: "20-tracker-recommended-addresses", page: "settings", narrow: true, configure: func(s *State) {
+			s.trackerAutomatic = trackers.List{URLs: []string{"udp://recommended.example.net:1337/announce"}}
+			s.openTrackerManager()
+			s.trackerManager.selectList(automaticTrackerList)
+		}},
+		{name: "21-tracker-deleted-addresses", page: "settings", narrow: true, configure: func(s *State) {
+			s.trackerAutomatic = trackers.List{URLs: []string{"udp://recommended.example.net:1337/announce"}}
+			s.DisabledTrackers = s.trackerAutomatic.URLs
+			s.openTrackerManager()
+			s.trackerManager.selectList(automaticTrackerList)
+			s.trackerManager.showRemoved = true
+		}},
 	} {
 		for _, appearance := range []string{appearanceLight, appearanceDark} {
 			s := uiRenderFixture()
@@ -131,10 +160,13 @@ func renderScreens(dir string) error {
 				width, height = 1040, 720
 			}
 			tt := ui.NewTester(s.view, width, height)
-			if screen.narrow {
-				tt.SetPreferences(ui.Preferences{TextScale: 2, ReduceMotion: true})
+			if screen.textScale != 0 {
+				tt.SetPreferences(ui.Preferences{TextScale: screen.textScale, ReduceMotion: true})
 			}
 			tt.Advance(500 * time.Millisecond)
+			if screen.scroll != 0 {
+				tt.Scroll(float32(width)*.6, float32(height)/2, 0, screen.scroll)
+			}
 			if screen.hover {
 				poster, found := tt.Find("查看 " + s.Catalog[0].Title)
 				if !found || poster.W <= 0 || poster.H <= 0 {

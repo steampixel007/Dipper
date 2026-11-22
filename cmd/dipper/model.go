@@ -7,6 +7,7 @@ import (
 	"github.com/steampixel007/Dipper/internal/core"
 	"github.com/steampixel007/Dipper/internal/downloader"
 	"github.com/steampixel007/Dipper/internal/source"
+	"github.com/steampixel007/Dipper/internal/trackers"
 	"github.com/steampixel007/Dipper/internal/update"
 	"math"
 	"path/filepath"
@@ -58,6 +59,7 @@ type Subscription struct {
 	Recent                 []string
 	NewTitles              map[string]bool
 	Active                 bool
+	Queued                 bool
 	Progress               float64
 	// Completed counts this anime's downloads that finished without failing.
 	Completed int
@@ -72,7 +74,7 @@ type Download struct {
 	Bytes, CompletedBytes, DownloadedBytes, UploadedBytes int64
 	MB                                                    int
 	Progress                                              float64
-	Paused, Failed, Stopped                               bool
+	Paused, Failed, Stopped, Queued                       bool
 	SeedSeconds                                           int
 	UploadedMB                                            float64
 }
@@ -88,31 +90,43 @@ const (
 	downloadsPaused
 	downloadsFailed
 	downloadsStopped
+	downloadsQueued
 )
 
 type Saved struct {
-	Root                 string
-	Upload               string
-	Seed                 string
-	SeedRatio            string
-	TrackerFeedback      string
-	ExtraTrackers        string
-	ProxyMode            int
-	ProxyURL             string
-	ProxyAuto            string
-	ProxyFeedback        string
-	ProxyTesting         bool
-	SourceRoute          string
-	Subscriptions        []Subscription
-	Downloads            []Download
-	IntroHidden          bool
-	ReduceEffects        bool
-	Appearance           string
-	CloseBehavior        string
-	SoftwareAuto         bool
-	SoftwareAutoDownload bool
-	SoftwarePending      *softwarePending
-	SoftwareCheckedAt    time.Time
+	Root                      string
+	DownloadLimit             int
+	downloadLimitDraft        string
+	downloadLimitNotice       string
+	downloadLimitError        bool
+	Upload                    string
+	Seed                      string
+	SeedRatio                 string
+	TransferLimits            transferLimits
+	ExtraTrackers             string
+	TrackerLists              []core.TrackerList
+	DisabledTrackers          []string
+	AutomaticTrackersDisabled bool
+	ProxyMode                 int
+	ProxyURL                  string
+	ProxyAuto                 string
+	ProxyFeedback             string
+	ProxyTesting              bool
+	proxyActiveMode           int
+	proxyActiveAddress        string
+	proxyUsername             string
+	proxyPassword             string
+	SourceRoute               string
+	Subscriptions             []Subscription
+	Downloads                 []Download
+	IntroHidden               bool
+	ReduceEffects             bool
+	Appearance                string
+	CloseBehavior             string
+	SoftwareAuto              bool
+	SoftwareAutoDownload      bool
+	SoftwarePending           *softwarePending
+	SoftwareCheckedAt         time.Time
 }
 type downloadEngine interface {
 	Snapshot() []downloader.Snapshot
@@ -123,9 +137,11 @@ type downloadEngine interface {
 	DownloadFiles(string) ([]downloader.DownloadedFile, error)
 	Remove(string) error
 	SetUploadLimit(int64) error
+	SetDownloadLimit(int)
 	SetSeedTarget(time.Duration)
 	SetRatioTarget(float64)
-	SetExtraTrackers([]string)
+	SetTrackerSettings(extra, disabled []string)
+	SetRemoteTrackers([]string)
 }
 
 var _ downloadEngine = (*downloader.Engine)(nil)
@@ -160,52 +176,58 @@ type State struct {
 	catalogDisk                                        catalogDisk
 
 	Saved
-	Catalog                  []Anime
-	Page                     string
-	Year                     string
-	Season                   string
-	Day                      int
-	Search                   string
-	FollowSearch             string
-	AnimeID                  string
-	Group                    int
-	ChoosingGroup            bool
-	GroupSearch              string
-	Rule                     Rule
-	Checked                  map[string]bool
-	Editing                  bool
-	Keyword, AnyDraft        string
-	WordOpen, ShowAliases    bool
-	WordAnchor               string
-	UndoFilters, RedoFilters []FilterEdit
-	UndoSaved                *Subscription
-	FilterFeedback           string
-	Help, Suggestions        bool
-	CancelPrompt             bool
-	CancelID                 string
-	RemovePrompt             bool
-	RemoveID                 string
-	DownloadFilter           DownloadFilter
-	SuggestedResource        Resource
-	OnlyMatches              bool
-	OnlyDownloaded           bool
-	OnlyNew                  bool
-	EpisodeFilter            string
-	EpisodeFilterScroll      float32
-	Notice, SaveError        string
-	SourceTesting            bool
-	SourceRouteError         string
-	SourceRoutes             []sourceRoute
-	SourceFailed             bool
-	CatalogScroll            ui.ScrollState
-	browseDetail             *browseDetail
-	ResourceScroll           ui.ScrollState
-	FollowScroll             ui.ScrollState
-	DownloadScroll           ui.ScrollState
-	DownloadHistory          bool
-	DownloadHistoryScroll    ui.ScrollState
-	DownloadFilterLast       DownloadFilter
-	DownloadSearch           string
+	Catalog                        []Anime
+	Page                           string
+	Year                           string
+	Season                         string
+	Day                            int
+	Search                         string
+	FollowSearch                   string
+	AnimeID                        string
+	Group                          int
+	ChoosingGroup                  bool
+	GroupSearch                    string
+	Rule                           Rule
+	Checked                        map[string]bool
+	Editing                        bool
+	Keyword, AnyDraft              string
+	WordOpen, ShowAliases          bool
+	WordAnchor                     string
+	UndoFilters, RedoFilters       []FilterEdit
+	UndoSaved                      *Subscription
+	FilterFeedback                 string
+	Help, Suggestions              bool
+	CancelPrompt                   bool
+	CancelID                       string
+	RemovePrompt                   bool
+	RemoveID                       string
+	DownloadFilter                 DownloadFilter
+	SuggestedResource              Resource
+	OnlyMatches                    bool
+	OnlyDownloaded                 bool
+	OnlyNew                        bool
+	EpisodeFilter                  string
+	EpisodeFilterScroll            float32
+	Notice, SaveError              string
+	SourceTesting                  bool
+	SourceRouteError               string
+	SourceRoutes                   []sourceRoute
+	SourceFailed                   bool
+	trackerManagerOpen             bool
+	trackerManager                 *trackerManagerDraft
+	trackerAutomatic               trackers.List
+	automaticTrackerRefreshRunning bool
+	trackerRefreshRunning          bool
+	trackerFetcher                 trackers.Fetcher
+	CatalogScroll                  ui.ScrollState
+	browseDetail                   *browseDetail
+	ResourceScroll                 ui.ScrollState
+	FollowScroll                   ui.ScrollState
+	DownloadScroll                 ui.ScrollState
+	DownloadHistory                bool
+	DownloadHistoryScroll          ui.ScrollState
+	DownloadFilterLast             DownloadFilter
+	DownloadSearch                 string
 	// CollapsedDownloads hides one anime's download rows on the downloads
 	// page; the choice is per-session.
 	CollapsedDownloads         map[string]bool
@@ -463,12 +485,6 @@ func (s *State) toggleEpisodeFilter(ep string) {
 	}
 }
 
-// builtinTrackerSummary joins the engine's built-in announce URLs for the
-// settings page, so users can see what Dipper adds by itself.
-func builtinTrackerSummary() string {
-	return strings.Join(downloader.BuiltinTrackers(), "、")
-}
-
 // isNewRelease reports whether the title is one of the subscription's pending
 // RSS releases, so the followed resource view can mark it as new.
 func (s *State) isNewRelease(title string) bool {
@@ -516,7 +532,7 @@ func (s *State) duplicates(ep string) int {
 // downloading, or its size or speed is unknown.
 func downloadETA(d Download) string {
 	bytes := sizeBytes(d.Bytes, d.MB)
-	if bytes <= 0 || math.IsNaN(d.Progress) || d.Progress >= 1 || d.DownSpeed <= 0 || d.Paused || d.Stopped || d.Failed {
+	if bytes <= 0 || math.IsNaN(d.Progress) || d.Progress >= 1 || d.DownSpeed <= 0 || d.Paused || d.Stopped || d.Failed || d.Queued {
 		return ""
 	}
 	return etaText(float64(bytes-downloadDoneBytes(d)) / 1e6 / d.DownSpeed)
@@ -550,7 +566,7 @@ func (s *State) downloadGroupETA(indices []int) string {
 		if math.IsNaN(d.Progress) {
 			return ""
 		}
-		if d.Paused || d.Stopped || d.Failed || d.Progress >= 1 {
+		if d.Paused || d.Stopped || d.Failed || d.Queued || d.Progress >= 1 {
 			continue
 		}
 		bytes := sizeBytes(d.Bytes, d.MB)
@@ -697,29 +713,53 @@ func safeName(name string) string {
 	return strings.TrimRight(strings.NewReplacer("/", "／", `\`, "＼", ":", "：", "*", "＊", "?", "？", `"`, "＂", "<", "＜", ">", "＞", "|", "｜").Replace(name), ". ")
 }
 
-func (s *State) canAdvanceSeason() bool {
+const earliestCatalogYear = 2013
+
+func firstCatalogSeasonIndex(year int) int {
+	if year == earliestCatalogYear {
+		return len(seasons) - 1
+	}
+	return 0
+}
+
+func (s *State) changeCatalogYear() {
+	year, _ := strconv.Atoi(s.Year)
+	if first := firstCatalogSeasonIndex(year); slices.Index(seasons, s.Season) < first {
+		s.Season = seasons[first]
+	}
+	s.refreshCatalog()
+}
+
+func (s *State) adjacentCatalogSeason(delta int) (year, seasonIndex int, available bool) {
 	year, err := strconv.Atoi(s.Year)
-	currentYear := time.Now().Year()
-	return err == nil && (year < currentYear || (year == currentYear && s.Season != seasons[len(seasons)-1]))
+	seasonIndex = slices.Index(seasons, s.Season)
+	if err != nil || seasonIndex < 0 {
+		return 0, 0, false
+	}
+	seasonIndex += delta
+	if seasonIndex < 0 {
+		year--
+		seasonIndex = len(seasons) - 1
+	}
+	if seasonIndex >= len(seasons) {
+		year++
+		seasonIndex = 0
+	}
+	available = year >= earliestCatalogYear && year <= time.Now().Year() && seasonIndex >= firstCatalogSeasonIndex(year)
+	return year, seasonIndex, available
+}
+
+func (s *State) canChangeSeason(delta int) bool {
+	_, _, available := s.adjacentCatalogSeason(delta)
+	return available
 }
 
 func (s *State) changeSeason(delta int) {
-	if delta > 0 && !s.canAdvanceSeason() {
+	year, seasonIndex, available := s.adjacentCatalogSeason(delta)
+	if !available {
 		return
 	}
-	idx := slices.Index(seasons, s.Season)
-	var year int
-	_, _ = fmt.Sscan(s.Year, &year)
-	idx += delta
-	if idx < 0 {
-		year--
-		idx = 3
-	}
-	if idx > 3 {
-		year++
-		idx = 0
-	}
-	s.Year = fmt.Sprint(year)
-	s.Season = seasons[idx]
+	s.Year = strconv.Itoa(year)
+	s.Season = seasons[seasonIndex]
 	s.refreshCatalog()
 }

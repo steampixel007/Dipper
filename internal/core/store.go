@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -306,8 +307,14 @@ func (c *Core) Anime() ([]AnimeRecord, error)    { s, e := c.Snapshot(); return 
 func (c *Core) SetSettings(s Settings) error     { return c.UpdateSettings(context.Background(), s) }
 
 func (c *Core) UpdateSettings(ctx context.Context, settings Settings) error {
-	if strings.TrimSpace(settings.DownloadRoot) == "" || settings.UploadLimitBytes < 0 || settings.SeedMinutes < -1 {
+	if strings.TrimSpace(settings.DownloadRoot) == "" || settings.UploadLimitBytes < 0 {
 		return errors.New("invalid download root or upload limit")
+	}
+	if settings.SeedMinutes < -1 || settings.SeedMinutes > int64(math.MaxInt64)/int64(time.Minute) {
+		return errors.New("invalid seeding duration")
+	}
+	if settings.DownloadLimit < 0 || settings.DownloadLimit > MaxDownloadLimit {
+		return errors.New("同时下载任务数超出范围")
 	}
 	if err := proxy.Validate(settings.ProxyMode, settings.ProxyURL); err != nil {
 		return err
@@ -316,6 +323,12 @@ func (c *Core) UpdateSettings(ctx context.Context, settings Settings) error {
 		return err
 	}
 	if err := ValidateTrackers(settings.ExtraTrackers); err != nil {
+		return err
+	}
+	if err := validateTrackerLists(settings.TrackerLists); err != nil {
+		return err
+	}
+	if err := validateDisabledTrackers(settings.DisabledTrackers); err != nil {
 		return err
 	}
 

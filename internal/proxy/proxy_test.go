@@ -152,7 +152,7 @@ func TestValidateCustomAddress(t *testing.T) {
 		{name: "custom bare address means http", mode: ModeCustom, address: "192.0.2.1:7897"},
 		{name: "custom requires address", mode: ModeCustom, wantErr: true},
 		{name: "custom rejects other schemes", mode: ModeCustom, address: "file://192.0.2.1/share", wantErr: true},
-		{name: "custom rejects userinfo", mode: ModeCustom, address: "http://user:pass@192.0.2.1:7897", wantErr: true},
+		{name: "custom supports userinfo", mode: ModeCustom, address: "http://user:sample@192.0.2.1:7897"},
 		{name: "custom rejects garbage", mode: ModeCustom, address: "://", wantErr: true},
 	}
 	for _, tc := range cases {
