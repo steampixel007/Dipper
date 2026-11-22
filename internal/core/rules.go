@@ -38,7 +38,7 @@ func cleanWords(words []string) []string {
 }
 
 func NormalizeRule(r Rule) Rule {
-	out := Rule{All: cleanWords(r.All), None: cleanWords(r.None)}
+	out := Rule{All: cleanWords(r.All), None: cleanWords(r.None), Version: r.Version}
 	for _, group := range r.Any {
 		if words := cleanWords(group); len(words) > 0 {
 			out.Any = append(out.Any, words)
@@ -48,6 +48,20 @@ func NormalizeRule(r Rule) Rule {
 }
 
 func Match(title string, rule Rule) MatchResult {
+	if rule.Version != nil {
+		return MatchRelease(title, ParseReleaseVersion(title), rule)
+	}
+	return matchTitle(title, rule)
+}
+
+func MatchRelease(title string, version ReleaseVersion, rule Rule) MatchResult {
+	if rule.Version != nil && version != *rule.Version {
+		return MatchResult{false, "标题标注的版本不同"}
+	}
+	return matchTitle(title, rule)
+}
+
+func matchTitle(title string, rule Rule) MatchResult {
 	title = Normalize(title)
 	rule = NormalizeRule(rule)
 	for _, w := range rule.All {
@@ -79,6 +93,7 @@ func (r Rule) Match(title string) MatchResult { return Match(title, r) }
 
 var episodePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`第\s*(\d{1,3}(?:\.\d+)?)\s*[集话話]`),
+	regexp.MustCompile(`(?i)\bs\d{1,2}[\s._-]*e\s*p?\s*(\d{1,4}(?:\.\d+)?)(?:v\d+)?\b`),
 	regexp.MustCompile(`(?i)(?:^|[\s\[(_-])(?:EP?|Episode)\s*(\d{1,3}(?:\.\d+)?)(?:[\s\])_.-]|$)`),
 	regexp.MustCompile(`(?:\s-\s|\[)(\d{1,3}(?:\.\d+)?)(?:v\d+)?(?:[\s\]]|$)`),
 }

@@ -154,7 +154,7 @@ func (s *State) browseDetailContent(c *ui.Context, detail *browseDetail) {
 		})
 		ui.Divider(c).Background(pal.line)
 		ui.Column(c).Padding(16, 24, 20).Children(func() {
-			label := "选择字幕组"
+			label := "选择观看版本"
 			if following {
 				label = "查看资源"
 			}

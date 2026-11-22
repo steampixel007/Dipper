@@ -46,7 +46,7 @@ func TestUIBrowseDetailRoundTrip(t *testing.T) {
 	if offset <= 0 {
 		t.Fatal("long synopsis did not scroll")
 	}
-	uiClick(t, tester, "选择字幕组")
+	uiClick(t, tester, "选择观看版本")
 	if state.Page != "detail" || state.AnimeID != other.ID || state.Group != -1 || state.ViewResources {
 		t.Fatal("detail action did not open the existing group selection flow")
 	}

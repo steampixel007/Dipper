@@ -1,0 +1,3219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dipper · 选资源交互原型</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #171a1f;
+      --chrome: #1d2229;
+      --paper: #252b33;
+      --paper-hover: #2b323b;
+      --sunken: #1b2027;
+      --ink: #e8edf4;
+      --muted: #b1bdcc;
+      --quiet: #8693a3;
+      --blue: #96b9ec;
+      --blue-wash: #293b53;
+      --line: #343d48;
+      --line-soft: #2b323b;
+      --green: #9bd4b5;
+      --amber: #e5c07b;
+      --danger: #f0a3a3;
+      --radius: 10px;
+      --radius-sm: 8px;
+      --font: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #0f1216;
+      color: var(--ink);
+      font: 14px/1.5 var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    button,
+    summary {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:focus-visible,
+    summary:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 188px minmax(0, 1fr);
+      height: var(--demo-height, 900px);
+      background: var(--canvas);
+    }
+
+    .rail {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 16px 12px;
+      background: var(--chrome);
+      border-right: 1px solid var(--line-soft);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 34px;
+      padding: 0 8px;
+      margin-bottom: 26px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      flex: 0 0 28px;
+      color: var(--ink);
+    }
+
+    .brand-mark svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .brand-name {
+      font-size: 17px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
+    .nav {
+      display: grid;
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 38px;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--muted);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .nav-item:hover {
+      background: #252b33;
+      color: var(--ink);
+    }
+
+    .nav-item.is-active {
+      background: var(--blue-wash);
+      color: var(--ink);
+    }
+
+    .nav-icon {
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      flex: 0 0 20px;
+      color: currentColor;
+    }
+
+    .nav-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .nav-count {
+      margin-left: auto;
+      color: var(--quiet);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rail-bottom {
+      display: grid;
+      gap: 12px;
+      margin-top: auto;
+    }
+
+    .rail-note {
+      padding: 10px;
+      border-top: 1px solid var(--line-soft);
+      color: var(--quiet);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .workspace {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      height: 54px;
+      flex: 0 0 54px;
+      padding: 0 22px;
+      border-bottom: 1px solid var(--line-soft);
+      background: var(--chrome);
+    }
+
+    .crumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      white-space: nowrap;
+    }
+
+    .crumb .slash {
+      color: #5e6977;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .proto-pill {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 8px;
+      border: 1px solid #3d4855;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .text-btn {
+      height: 28px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .text-btn:hover {
+      background: #252b33;
+      color: var(--ink);
+    }
+
+    .content {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      scrollbar-gutter: stable;
+      background: var(--canvas);
+    }
+
+    .content::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .content::-webkit-scrollbar-thumb {
+      border: 3px solid var(--canvas);
+      border-radius: 999px;
+      background: #3d4652;
+    }
+
+    .page {
+      width: min(820px, 100%);
+      margin: 0 auto;
+      padding: 18px 24px 30px;
+    }
+
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      padding: 2px 0;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .back:hover {
+      color: var(--ink);
+    }
+
+    .anime-head {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-top: 12px;
+    }
+
+    .poster {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 72px;
+      height: 72px;
+      flex: 0 0 72px;
+      overflow: hidden;
+      border: 1px solid #d5dbca;
+      border-radius: 10px;
+      background: #e9dfbd;
+      color: #2e342b;
+    }
+
+    .poster::before {
+      position: absolute;
+      right: -13px;
+      bottom: -18px;
+      width: 58px;
+      height: 58px;
+      border: 7px solid #9aae8a;
+      border-radius: 50%;
+      content: "";
+      opacity: 0.85;
+    }
+
+    .poster::after {
+      position: absolute;
+      top: 9px;
+      left: 10px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #d88762;
+      content: "";
+    }
+
+    .poster span {
+      position: relative;
+      z-index: 1;
+      padding-right: 4px;
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.25;
+      letter-spacing: 0.04em;
+      text-align: center;
+    }
+
+    .anime-copy {
+      min-width: 0;
+    }
+
+    .anime-title {
+      margin: 4px 0 3px;
+      font-size: 25px;
+      font-weight: 680;
+      line-height: 1.22;
+      letter-spacing: -0.025em;
+    }
+
+    .anime-meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--quiet);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+    }
+
+    .eyebrow .dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #657181;
+    }
+
+    .anime-status {
+      margin-left: auto;
+      flex-shrink: 0;
+      color: var(--green);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .group-section {
+      margin-top: 24px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .section-head h2 {
+      margin: 2px 0 0;
+      font-size: 18px;
+      font-weight: 640;
+      line-height: 1.35;
+      letter-spacing: -0.01em;
+    }
+
+    .section-head p {
+      max-width: 510px;
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.6;
+    }
+
+    .section-count {
+      flex-shrink: 0;
+      margin-top: 3px;
+      color: var(--quiet);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .group-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 68px;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+    }
+
+    .group-avatar {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      border-radius: 9px;
+      background: #34445a;
+      color: #dce9fb;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .group-copy {
+      min-width: 0;
+    }
+
+    .group-copy strong {
+      display: block;
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 620;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .group-copy span {
+      display: block;
+      margin-top: 1px;
+      color: var(--quiet);
+      font-size: 11.5px;
+    }
+
+    .group-change {
+      height: 32px;
+      margin-left: auto;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: transparent;
+      color: var(--ink);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .group-change:hover {
+      border-color: #566477;
+      background: var(--paper-hover);
+    }
+
+    .version-section {
+      margin-top: 24px;
+    }
+
+    .recommendation-card {
+      display: grid;
+      gap: 6px;
+      padding: 15px 16px;
+      border: 1px solid #405675;
+      border-radius: var(--radius);
+      background: var(--blue-wash);
+    }
+
+    .recommendation-card strong {
+      font-size: 14px;
+      font-weight: 620;
+    }
+
+    .recommendation-card span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .recommendation-card.is-empty {
+      border-color: var(--line);
+      background: var(--paper);
+    }
+
+    .title-mode-link:not([hidden]) {
+      display: inline-flex;
+      margin-top: 8px;
+      min-height: 32px;
+      align-items: center;
+      color: var(--blue);
+    }
+
+    #backToRecommendation {
+      flex-shrink: 0;
+    }
+
+    .term-help > summary,
+    .other-resources > summary,
+    .condition-panel > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 30px;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .term-help > summary::-webkit-details-marker,
+    .other-resources > summary::-webkit-details-marker,
+    .condition-panel > summary::-webkit-details-marker,
+    .episodes-head::-webkit-details-marker {
+      display: none;
+    }
+
+    .term-help > summary::after,
+    .other-resources > summary::after,
+    .condition-panel > summary::after {
+      color: var(--quiet);
+      content: "＋";
+    }
+
+    .term-help[open] > summary::after,
+    .other-resources[open] > summary::after,
+    .condition-panel[open] > summary::after {
+      content: "－";
+    }
+
+    .term-help > summary:hover,
+    .other-resources > summary:hover,
+    .condition-panel > summary:hover {
+      color: var(--ink);
+    }
+
+    .term-help {
+      margin-top: 8px;
+    }
+
+    .term-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 9px;
+    }
+
+    .term-item {
+      padding: 9px 10px;
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: var(--sunken);
+    }
+
+    .term-item strong {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .term-item span {
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+
+    .filter-body {
+      display: flex;
+      gap: 6px;
+    }
+
+    .filter-input {
+      min-width: 0;
+      height: 34px;
+      flex: 1;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--sunken);
+      color: var(--ink);
+    }
+
+    .filter-input::placeholder {
+      color: #727e8d;
+    }
+
+    .filter-clear {
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .filter-clear:hover {
+      background: var(--paper-hover);
+      color: var(--ink);
+    }
+
+    .title-peek {
+      margin-top: 8px;
+    }
+
+    .title-hint {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+
+    .title-peek-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 2px 12px;
+    }
+
+    .title-peek-head strong {
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .title-peek-list {
+      margin-top: 6px;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .title-peek-row {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .title-peek-raw {
+      margin: 0;
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.9;
+      overflow-wrap: anywhere;
+      user-select: text;
+    }
+
+    .title-peek-row.is-miss .title-peek-raw {
+      color: var(--muted);
+    }
+
+    .title-word {
+      padding: 0 1px;
+      border: 0;
+      border-radius: 3px;
+      background: transparent;
+      color: var(--blue);
+      font: inherit;
+      text-decoration: underline;
+      text-decoration-color: rgba(150, 185, 236, 0.5);
+      text-underline-offset: 3px;
+      cursor: pointer;
+      user-select: text;
+    }
+
+    .title-word:hover,
+    .title-word[aria-expanded="true"] {
+      background: var(--blue-wash);
+      text-decoration-color: currentColor;
+    }
+
+    .title-word-panel {
+      display: grid;
+      gap: 5px;
+      margin-top: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--paper);
+    }
+
+    .title-word-heading {
+      margin: 0;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .title-word-heading:focus {
+      outline: none;
+    }
+
+    .title-word-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 3px;
+    }
+
+    .title-word-actions .filter-clear[aria-pressed="true"] {
+      border-color: var(--blue);
+      background: var(--blue-wash);
+      color: var(--ink);
+    }
+
+    .title-manual {
+      margin-top: 8px;
+    }
+
+    .title-manual .filter-body {
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .title-manual .filter-input {
+      flex-basis: 130px;
+    }
+
+    .title-peek-status {
+      display: block;
+      margin: 3px 0 0;
+      color: var(--quiet);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .condition-panel[hidden] {
+      display: none;
+    }
+
+    .condition-panel {
+      margin-top: 9px;
+    }
+
+    .condition-body {
+      margin-top: 7px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--sunken);
+    }
+
+    .condition-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .condition-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .condition-tab:hover {
+      border-color: #566477;
+      background: var(--paper-hover);
+      color: var(--ink);
+    }
+
+    .condition-tab.is-active {
+      border-color: rgba(150, 185, 236, 0.58);
+      background: var(--blue-wash);
+      color: var(--ink);
+    }
+
+    .condition-tab .tab-state {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+    }
+
+    .condition-tab .tab-state.is-exclude {
+      background: var(--danger);
+    }
+
+    .condition-mode-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .condition-mode-label {
+      color: var(--quiet);
+      font-size: 11px;
+    }
+
+    .condition-mode {
+      display: inline-flex;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--paper);
+    }
+
+    .condition-mode button {
+      height: 24px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .condition-mode button:hover {
+      color: var(--ink);
+    }
+
+    .condition-mode button.is-active {
+      background: var(--blue-wash);
+      color: var(--ink);
+      box-shadow: inset 0 0 0 1px rgba(150, 185, 236, 0.35);
+    }
+
+    .condition-mode button[data-condition-mode="exclude"].is-active {
+      background: #3a292b;
+      color: #f0b3b3;
+      box-shadow: inset 0 0 0 1px #6b3e42;
+    }
+
+    .condition-values {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 30px;
+      margin-top: 8px;
+    }
+
+    .condition-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .condition-actions[hidden] {
+      display: none;
+    }
+
+    .condition-value {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--paper);
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .condition-value:hover {
+      border-color: #5b6980;
+      color: var(--ink);
+    }
+
+    .condition-value.is-selected {
+      border-color: rgba(150, 185, 236, 0.58);
+      background: var(--blue-wash);
+      color: var(--ink);
+    }
+
+    .condition-value.is-excluded {
+      border-color: #6b3e42;
+      background: #3a292b;
+      color: #f0b3b3;
+    }
+
+    .condition-value .count {
+      color: var(--quiet);
+      font-size: 10.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .condition-value.is-selected .count,
+    .condition-value.is-excluded .count {
+      color: currentColor;
+      opacity: 0.72;
+    }
+
+    .condition-empty {
+      color: var(--quiet);
+      font-size: 11.5px;
+      line-height: 1.6;
+    }
+
+    .condition-active {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .condition-active[hidden] {
+      display: none;
+    }
+
+    .condition-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 26px;
+      padding: 0 4px 0 8px;
+      border: 1px solid #4a5f7c;
+      border-radius: 6px;
+      background: #223046;
+      color: #dce9fb;
+      font-size: 11px;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .condition-chip.is-exclude {
+      border-color: #6b3e42;
+      background: #3a292b;
+      color: #f0b3b3;
+    }
+
+    .condition-chip button {
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: currentColor;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .condition-chip button:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .future-toggle {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line-soft);
+      cursor: pointer;
+    }
+
+    .future-toggle[hidden] {
+      display: none;
+    }
+
+    .future-toggle input {
+      margin: 3px 0 0;
+      accent-color: var(--blue);
+    }
+
+    .future-toggle strong {
+      display: block;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .future-toggle small {
+      display: block;
+      margin-top: 1px;
+      color: var(--quiet);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .title-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .condition-result {
+      color: var(--quiet);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .quiet-action {
+      min-height: 26px;
+      padding: 0 2px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .quiet-action:hover {
+      color: var(--ink);
+    }
+
+    .quiet-action.is-current {
+      color: var(--blue);
+    }
+
+    .version-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .version-card {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      gap: 11px;
+      width: 100%;
+      padding: 13px 14px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      transition:
+        background 140ms ease,
+        border-color 140ms ease,
+        transform 140ms ease;
+    }
+
+    .version-card:hover {
+      border-color: #526072;
+      background: var(--paper-hover);
+    }
+
+    .version-card.is-selected {
+      border-color: rgba(150, 185, 236, 0.76);
+      background: var(--blue-wash);
+    }
+
+    .version-card.is-recommended {
+      border-color: rgba(150, 185, 236, 0.48);
+    }
+
+    .version-card.is-unknown {
+      border-style: dashed;
+    }
+
+    .version-card:active {
+      transform: translateY(1px);
+    }
+
+    .choice {
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      border: 1.5px solid #687688;
+      border-radius: 50%;
+      color: #10151c;
+    }
+
+    .choice svg {
+      width: 11px;
+      height: 11px;
+      opacity: 0;
+    }
+
+    .version-card.is-selected .choice {
+      border-color: var(--blue);
+      background: var(--blue);
+    }
+
+    .version-card.is-selected .choice svg {
+      opacity: 1;
+    }
+
+    .version-body {
+      min-width: 0;
+    }
+
+    .version-title-line {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .version-name {
+      overflow: hidden;
+      font-size: 14.5px;
+      font-weight: 640;
+      letter-spacing: -0.005em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      flex-shrink: 0;
+      padding: 0 7px;
+      border: 1px solid #5b6f8d;
+      border-radius: 999px;
+      color: #d6e5fb;
+      font-size: 10.5px;
+      font-weight: 600;
+    }
+
+    .badge.is-warning {
+      border-color: #6d5838;
+      color: #e5c07b;
+    }
+
+    .version-facts {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 3px 7px;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .version-facts .dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #647181;
+    }
+
+    .version-hint {
+      display: block;
+      margin-top: 5px;
+      color: var(--quiet);
+      font-size: 11.5px;
+    }
+
+    .version-card.is-selected .version-hint {
+      color: #b8cce9;
+    }
+
+    .version-raw-title {
+      display: block;
+      margin-top: 5px;
+      color: var(--quiet);
+      font-size: 11px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .preference-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin: 2px 0 8px;
+      color: var(--quiet);
+      font-size: 11.5px;
+    }
+
+    .preference-row[hidden] {
+      display: none;
+    }
+
+    .subtitle-choice {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    .subtitle-choice select {
+      min-height: 32px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--sunken);
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .segmented {
+      display: inline-flex;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--sunken);
+    }
+
+    .segment {
+      height: 26px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .segment:hover {
+      background: #2b323b;
+      color: var(--ink);
+    }
+
+    .segment.is-active {
+      background: var(--blue-wash);
+      color: var(--ink);
+      box-shadow: inset 0 0 0 1px rgba(150, 185, 236, 0.35);
+    }
+
+    .recommend-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin: 9px 0 12px;
+      padding: 10px 12px;
+      border: 1px solid #3f5876;
+      border-radius: var(--radius);
+      background: #202b39;
+    }
+
+    .recommend-card.is-warning {
+      border-color: #6d5838;
+      background: #2d271d;
+    }
+
+    .recommend-mark {
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+      margin-top: 1px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #10151c;
+    }
+
+    .recommend-card.is-warning .recommend-mark {
+      background: #d8a84e;
+    }
+
+    .recommend-mark svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    .recommend-copy {
+      min-width: 0;
+    }
+
+    .recommend-copy strong {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 620;
+    }
+
+    .recommend-copy span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+
+    .empty-action {
+      height: 28px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .empty-action:hover {
+      border-color: #5a687b;
+      background: var(--paper-hover);
+      color: var(--ink);
+    }
+
+    .infer-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .infer-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 7px;
+      border: 1px solid #4a5f7c;
+      border-radius: 5px;
+      background: #223046;
+      color: #dce9fb;
+      font-size: 10.5px;
+    }
+
+    .episodes-panel {
+      margin-top: 25px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+    }
+
+    .episodes-panel[hidden] {
+      display: none;
+    }
+
+    .episodes-panel.is-entering {
+      animation: panel-in 160ms ease-out;
+    }
+
+    @keyframes panel-in {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .episodes-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 15px 13px;
+      background: #232930;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .episodes-head::after {
+      color: var(--quiet);
+      content: "＋";
+    }
+
+    .episodes-panel[open] > .episodes-head::after {
+      content: "－";
+    }
+
+    .episodes-label {
+      flex: 1;
+    }
+
+    .episodes-label strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .episodes-summary {
+      display: block;
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .episodes-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 6px 15px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .mini-btn {
+      height: 28px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .mini-btn:hover {
+      background: #2a313a;
+      color: var(--ink);
+    }
+
+    .episode-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 18px 48px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 40px;
+      padding: 9px 15px;
+      border-top: 1px solid var(--line-soft);
+      cursor: pointer;
+    }
+
+    .episode-row:first-of-type {
+      border-top: 0;
+    }
+
+    .episode-row:hover {
+      background: var(--paper-hover);
+    }
+
+    .episode-row input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .check {
+      display: grid;
+      place-items: center;
+      width: 17px;
+      height: 17px;
+      border: 1.5px solid #657386;
+      border-radius: 4px;
+      color: #10151c;
+    }
+
+    .check svg {
+      width: 10px;
+      height: 10px;
+      opacity: 0;
+    }
+
+    .episode-row input:checked + .check {
+      border-color: var(--blue);
+      background: var(--blue);
+    }
+
+    .episode-row input:checked + .check svg {
+      opacity: 1;
+    }
+
+    .episode-row input:focus-visible + .check {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    .episode-number {
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .episode-copy {
+      min-width: 0;
+    }
+
+    .episode-copy span {
+      display: block;
+      margin-top: 1px;
+      color: var(--quiet);
+      font-size: 11px;
+    }
+
+    .episode-size {
+      color: var(--muted);
+      font-size: 11.5px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .episodes-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      padding: 10px 15px;
+      border-top: 1px solid var(--line-soft);
+      background: var(--sunken);
+      color: var(--quiet);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+
+    .episodes-note svg {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+      margin-top: 1px;
+      color: var(--blue);
+    }
+
+    .other-resources {
+      padding: 0 15px;
+      border-top: 1px solid var(--line-soft);
+      background: #232930;
+    }
+
+    .other-list {
+      padding: 2px 0 10px;
+    }
+
+    .other-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 7px 0;
+      border-top: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .other-row span:last-child {
+      flex-shrink: 0;
+      color: var(--quiet);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .other-note {
+      margin: 0 0 10px;
+      color: var(--quiet);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .page-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 20px 0 0;
+      color: var(--quiet);
+      font-size: 11.5px;
+      line-height: 1.6;
+    }
+
+    .page-note svg {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+      margin-top: 1px;
+      color: var(--blue);
+    }
+
+    .actionbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex: 0 0 auto;
+      min-height: 70px;
+      padding: 11px 22px;
+      border-top: 1px solid var(--line);
+      background: var(--chrome);
+    }
+
+    .action-summary {
+      min-width: 0;
+    }
+
+    .action-title {
+      overflow: hidden;
+      margin-top: 2px;
+      font-size: 13.5px;
+      font-weight: 620;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .action-meta {
+      margin-top: 1px;
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+
+    .action-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      height: 38px;
+      padding: 0 14px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 620;
+      white-space: nowrap;
+      cursor: pointer;
+      transition:
+        background 130ms ease,
+        border-color 130ms ease,
+        color 130ms ease;
+    }
+
+    .btn.primary {
+      background: var(--blue);
+      color: #10151c;
+    }
+
+    .btn.primary:hover:not(:disabled) {
+      background: #accaf5;
+    }
+
+    .btn.primary:disabled {
+      background: #323a45;
+      color: #778392;
+      cursor: not-allowed;
+    }
+
+    .btn.ghost {
+      border-color: var(--line);
+      background: transparent;
+      color: var(--ink);
+    }
+
+    .btn.ghost:hover:not(:disabled) {
+      border-color: #5a687b;
+      background: #272e37;
+    }
+
+    .btn.ghost:disabled {
+      border-color: #2c333c;
+      color: #677280;
+      cursor: not-allowed;
+    }
+
+    .backdrop {
+      position: fixed;
+      z-index: 50;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(7, 10, 14, 0.74);
+    }
+
+    .backdrop[hidden] {
+      display: none;
+    }
+
+    .dialog {
+      width: min(480px, 100%);
+      max-height: 720px;
+      overflow: auto;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+    }
+
+    .dialog-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .dialog h2 {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 650;
+      letter-spacing: -0.015em;
+    }
+
+    .dialog p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.65;
+    }
+
+    .dialog-close {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      flex: 0 0 28px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .dialog-close:hover {
+      background: var(--paper-hover);
+      color: var(--ink);
+    }
+
+    .dialog-close svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .group-search {
+      width: 100%;
+      height: 38px;
+      margin-top: 15px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--sunken);
+      color: var(--ink);
+    }
+
+    .group-search::placeholder {
+      color: #727e8d;
+    }
+
+    .group-options {
+      display: grid;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .group-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: transparent;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .group-option:hover {
+      background: var(--paper-hover);
+    }
+
+    .group-option.is-current {
+      border-color: rgba(150, 185, 236, 0.7);
+      background: var(--blue-wash);
+    }
+
+    .group-option-copy {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .group-option-copy strong {
+      display: block;
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .group-option-copy span {
+      display: block;
+      margin-top: 1px;
+      color: var(--quiet);
+      font-size: 11px;
+    }
+
+    .group-option-mark {
+      color: var(--blue);
+      font-size: 11px;
+    }
+
+    .dialog-empty {
+      padding: 20px 0 8px;
+      color: var(--quiet);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .dialog-actions .btn {
+      min-width: 112px;
+    }
+
+    .success-mark {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      margin-bottom: 13px;
+      border-radius: 50%;
+      background: #2a493e;
+      color: var(--green);
+    }
+
+    .success-mark svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .receipt {
+      margin-top: 15px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--sunken);
+    }
+
+    .receipt-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--line-soft);
+      font-size: 12px;
+    }
+
+    .receipt-row:first-child {
+      border-top: 0;
+    }
+
+    .receipt-row span:first-child {
+      flex-shrink: 0;
+      color: var(--quiet);
+    }
+
+    .receipt-row strong {
+      font-weight: 560;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .receipt-note {
+      margin-top: 12px !important;
+      color: var(--quiet) !important;
+      font-size: 11.5px !important;
+    }
+
+    @media (max-width: 960px) {
+      .app {
+        grid-template-columns: 60px minmax(0, 1fr);
+      }
+
+      .rail {
+        align-items: center;
+        padding: 14px 8px;
+      }
+
+      .brand {
+        justify-content: center;
+        padding: 0;
+      }
+
+      .brand-name,
+      .nav-item > span:not(.nav-icon),
+      .rail-note {
+        display: none;
+      }
+
+      .nav {
+        width: 100%;
+      }
+
+      .nav-item {
+        justify-content: center;
+        padding: 8px;
+      }
+
+      .rail-bottom {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .topbar {
+        padding: 0 16px;
+      }
+
+      .page {
+        padding: 16px 18px 26px;
+      }
+
+      .anime-status {
+        display: none;
+      }
+
+      .actionbar {
+        padding: 10px 16px;
+      }
+
+      .action-summary {
+        max-width: 250px;
+      }
+
+      .btn {
+        padding: 0 12px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .crumb span:first-child,
+      .crumb .slash,
+      .proto-pill {
+        display: none;
+      }
+
+      .actions-buttons,
+      .action-buttons {
+        gap: 6px;
+      }
+
+      .action-summary {
+        max-width: 180px;
+      }
+
+      .episode-row {
+        grid-template-columns: 18px 38px minmax(0, 1fr) auto;
+        gap: 8px;
+        padding-right: 11px;
+        padding-left: 11px;
+      }
+
+      .episodes-head,
+      .episodes-note,
+      .other-resources {
+        padding-right: 11px;
+        padding-left: 11px;
+      }
+
+      .dialog-actions {
+        flex-direction: column-reverse;
+      }
+
+      .dialog-actions .btn {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 440px) {
+      .app {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .rail {
+        display: none;
+      }
+
+      .actionbar {
+        flex-wrap: wrap;
+      }
+
+      .action-summary {
+        max-width: 100%;
+      }
+
+      .version-name {
+        overflow: visible;
+        white-space: normal;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail" aria-label="主导航">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 256 256" role="img">
+            <g transform="translate(128,128) scale(1.02) translate(-131.5,-134)">
+              <circle cx="106" cy="98" r="40" fill="currentColor"/>
+              <path fill="currentColor" d="M130 110 C158 110 182 132 182 160 C182 188 158 210 130 210 C102 210 78 188 78 160 C78 132 102 110 130 110 Z"/>
+              <path fill="currentColor" d="M76 100 L40 112 L80 124 C78.5 116 77 108 76 100 Z"/>
+              <path fill="currentColor" d="M167 149 L211 111 A9 9 0 0 1 223 123 L186 166 C180 163 172 157 167 149 Z"/>
+              <path fill="#ffffff" d="M86 120 Q109 131 135 116 C147 122 152 135 151 147 C150 160 144 170 135 175 C124 180 111 178 101 174 C92 170 87 162 85 153 C83 143 84 130 86 120 Z"/>
+              <circle cx="104" cy="94" r="8" fill="#ffffff"/>
+            </g>
+          </svg>
+        </span>
+        <span class="brand-name">Dipper</span>
+      </div>
+
+      <nav class="nav" aria-label="功能">
+        <button class="nav-item is-active" type="button">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <rect x="3.5" y="3.5" width="7" height="7" rx="1.4"/>
+              <rect x="13.5" y="3.5" width="7" height="7" rx="1.4"/>
+              <rect x="3.5" y="13.5" width="7" height="7" rx="1.4"/>
+              <rect x="13.5" y="13.5" width="7" height="7" rx="1.4"/>
+            </svg>
+          </span>
+          <span>浏览番剧</span>
+        </button>
+        <button class="nav-item" type="button">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <path d="M5 4.5h11.5l2.5 2.6v12.4H5z"/>
+              <path d="M8 4.5v5h7v-5M8 19.5v-5h8v5"/>
+            </svg>
+          </span>
+          <span>我的追番</span>
+          <span class="nav-count">6</span>
+        </button>
+        <button class="nav-item" type="button">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <path d="M12 3.5v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>
+            </svg>
+          </span>
+          <span>下载</span>
+        </button>
+      </nav>
+
+      <div class="rail-bottom">
+        <button class="nav-item" type="button">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <circle cx="12" cy="12" r="3.1"/>
+              <path d="M19 13.5v-3l-2.1-.6-.7-1.7 1.1-1.9-2.2-2.2-1.9 1.1-1.7-.7L11.9 2h-3l-.6 2.5-1.7.7-2-1.1-2.2 2.2 1.1 1.9-.7 1.7L.7 10.5v3l2.1.6.7 1.7-1.1 1.9 2.2 2.2 2-1.1 1.7.7.6 2.5h3l.6-2.5 1.7-.7 1.9 1.1 2.2-2.2-1.1-1.9.7-1.7z" transform="translate(2.1 0) scale(.83)"/>
+            </svg>
+          </span>
+          <span>设置</span>
+        </button>
+        <div class="rail-note">交互原型<br>使用示例数据</div>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="crumb">
+          <span>浏览番剧</span>
+          <span class="slash">/</span>
+          <span>开始追番</span>
+        </div>
+        <div class="top-actions">
+          <span class="proto-pill">交互原型 · 示例数据</span>
+          <button class="text-btn" type="button" id="resetDemo">重置演示</button>
+        </div>
+      </header>
+
+      <div class="content" id="content">
+        <div class="page">
+          <button class="back" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+            返回番剧详情
+          </button>
+
+          <section class="anime-head" aria-labelledby="animeTitle">
+            <div class="poster" aria-hidden="true"><span>学生<br>也会有<br>的！</span></div>
+            <div class="anime-copy">
+              <div class="eyebrow">
+                <span>TV</span>
+                <span class="dot"></span>
+                <span>6 集</span>
+                <span class="dot"></span>
+                <span>2026 秋</span>
+              </div>
+              <h1 class="anime-title" id="animeTitle">学生会也有洞！</h1>
+              <p class="anime-meta">周六更新 · 来源：蜜柑计划</p>
+            </div>
+            <span class="anime-status">连载中</span>
+          </section>
+
+          <section class="group-section" aria-labelledby="groupHeading">
+            <div class="section-head">
+              <h2 id="groupHeading">字幕组</h2>
+            </div>
+
+            <div class="group-card">
+              <span class="group-avatar" id="groupAvatar">云</span>
+              <div class="group-copy">
+                <strong id="groupName">云光字幕组</strong>
+                <span id="groupMeta">3 个版本 · 更新到第 6 集</span>
+              </div>
+              <button class="group-change" type="button" id="changeGroup">更换</button>
+            </div>
+          </section>
+
+          <section class="version-section" aria-labelledby="versionHeading">
+            <div class="section-head">
+              <div>
+                <h2 id="versionHeading" tabindex="-1">推荐版本</h2>
+                <p id="versionLead"></p>
+              </div>
+              <button class="quiet-action" type="button" id="backToRecommendation" hidden>返回推荐</button>
+            </div>
+
+            <div class="preference-row" id="preferenceRow">
+              <label class="subtitle-choice">
+                字幕语言
+                <select id="subtitleLanguage">
+                  <option value="">不限</option>
+                  <option value="simplified">简体中文</option>
+                  <option value="traditional">繁体中文</option>
+                </select>
+              </label>
+              <div class="segmented" role="group" aria-label="推荐偏好">
+                <button class="segment" type="button" data-preference="quality" aria-pressed="true">画质优先</button>
+                <button class="segment" type="button" data-preference="compatibility" aria-pressed="false">兼容优先</button>
+                <button class="segment" type="button" data-preference="space" aria-pressed="false">省空间</button>
+              </div>
+            </div>
+            <div id="versionList" aria-live="polite"></div>
+            <button class="quiet-action title-mode-link" type="button" id="showTitleRules">按原标题追番 <span aria-hidden="true">›</span></button>
+
+            <div id="titleRules" hidden>
+              <div class="condition-body">
+                <div class="condition-active" id="activeConditions" hidden></div>
+                <section class="title-peek" aria-labelledby="titlesHeading">
+                  <div class="title-peek-head">
+                    <strong id="titlesHeading">原标题样例</strong>
+                    <div class="title-actions">
+                      <span class="condition-result" id="titlePeekCount" aria-live="polite"></span>
+                      <button class="quiet-action" type="button" id="undoCondition" hidden>撤销</button>
+                      <button class="quiet-action" type="button" id="clearConditions" hidden>清空</button>
+                    </div>
+                  </div>
+                  <p class="title-hint">点标题里带下划线的词，看看它的意思和筛选结果。</p>
+                  <div class="title-peek-list" id="titlePeekList"></div>
+                </section>
+                <details class="title-manual" id="manualTitleRule">
+                  <summary class="quiet-action">手动输入标题词</summary>
+                  <form class="filter-body" id="titleForm">
+                    <input class="filter-input" id="titleWord" type="text" maxlength="100" placeholder="输入或粘贴标题里的文字" autocomplete="off" aria-label="标题词">
+                    <button class="filter-clear" type="submit" value="include">包含</button>
+                    <button class="filter-clear" type="submit" value="exclude">不包含</button>
+                  </form>
+                  <p class="title-hint">规则按标题里的文字匹配，大小写不限。</p>
+                </details>
+              </div>
+            </div>
+          </section>
+
+          <details class="episodes-panel" id="episodesPanel" hidden>
+            <summary class="episodes-head">
+              <span class="episodes-label">
+                <strong>本次下载</strong>
+                <span class="episodes-summary" id="episodesSummary"></span>
+              </span>
+            </summary>
+            <div class="episodes-actions">
+              <button class="mini-btn" type="button" id="toggleAllEpisodes">全不选</button>
+            </div>
+            <div id="episodeList"></div>
+            <div class="episodes-note">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 10.5v5M12 7.5h.01"/>
+              </svg>
+                <span>勾选这次想下载的集数。</span>
+            </div>
+          </details>
+
+        </div>
+      </div>
+
+      <footer class="actionbar">
+        <div class="action-summary">
+          <div class="action-title" id="footerTitle">正在读取版本信息</div>
+          <div class="action-meta" id="footerMeta">会先按画质优先推荐一个</div>
+        </div>
+        <div class="action-buttons">
+          <button class="btn primary" type="button" id="primaryBtn" disabled>先选一个版本</button>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <div class="backdrop" id="groupModal" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="groupDialogTitle">
+      <div class="dialog-head">
+        <div>
+          <h2 id="groupDialogTitle">更换字幕组</h2>
+        </div>
+        <button class="dialog-close" type="button" data-close="groupModal" aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <input class="group-search" id="groupSearch" type="search" placeholder="搜索字幕组" autocomplete="off" aria-label="搜索字幕组">
+      <div class="group-options" id="groupOptions"></div>
+    </div>
+  </div>
+
+  <div class="backdrop" id="successModal" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+      <div class="success-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 12.5 4.2 4.2L19 7"/></svg>
+      </div>
+      <h2 id="successTitle">已开始追番</h2>
+      <p id="successLead">以后有新集时，会按你选的版本自动下载。</p>
+      <div class="receipt" id="successReceipt"></div>
+      <p class="receipt-note" id="successNote">这次勾选的集数只影响本次下载，不会改变追番版本。</p>
+      <div class="dialog-actions">
+        <button class="btn primary" type="button" data-close="successModal">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (location.protocol === "file:" && window.top === window) {
+      const fitDemoWindow = () => {
+        document.documentElement.style.setProperty("--demo-height", `${Math.min(900, window.innerHeight)}px`);
+      };
+      fitDemoWindow();
+      window.addEventListener("resize", fitDemoWindow);
+    }
+
+    const groups = [
+      {
+        id: "yunguang",
+        name: "云光字幕组",
+        avatar: "云",
+        versions: [
+          {
+            id: "yg-jianri-mp4",
+            name: "简日双语 · MP4",
+            search: "简日双语 MP4 1080P 简体 日语 内嵌字幕",
+            rawTitle: "[云光字幕组] 学生会也有洞！ - 01 [1080P][WEBRIP][简日双语][MP4][x264][8bit][AAC]",
+            resolution: "1080P",
+            subtitle: "简日双语",
+            subtitleRank: 2,
+            video: "AVC",
+            bitDepth: 8,
+            container: "MP4",
+            source: "WEBRIP",
+            audio: "AAC",
+            episodes: [
+              { n: 1, sizeMB: 421.4, date: "10/12 21:05" },
+              { n: 2, sizeMB: 387.0, date: "10/16 20:41" },
+              { n: 3, sizeMB: 401.4, date: "10/25 21:18" },
+              { n: 4, sizeMB: 375.9, date: "11/02 20:56" },
+              { n: 5, sizeMB: 449.1, date: "11/05 21:07" },
+              { n: 6, sizeMB: 504.2, date: "11/26 10:49" }
+            ]
+          },
+          {
+            id: "yg-fanri-mp4",
+            name: "繁日双语 · MP4",
+            search: "繁日双语 MP4 1080P 繁体 日语 内嵌字幕",
+            rawTitle: "[云光字幕组] 学生会也有洞！ - 01 [1080P][WEBRIP][繁日双语][MP4][H.264][8bit][AAC]",
+            resolution: "1080P",
+            subtitle: "繁日双语",
+            subtitleRank: 2,
+            video: "AVC",
+            bitDepth: 8,
+            container: "MP4",
+            source: "WEBRIP",
+            audio: "AAC",
+            episodes: [
+              { n: 1, sizeMB: 421.4, date: "10/12 21:05" },
+              { n: 2, sizeMB: 387.0, date: "10/16 20:41" },
+              { n: 3, sizeMB: 401.4, date: "10/25 21:18" },
+              { n: 4, sizeMB: 375.9, date: "11/02 20:56" },
+              { n: 5, sizeMB: 449.1, date: "11/05 21:07" },
+              { n: 6, sizeMB: 504.2, date: "11/26 10:49" }
+            ]
+          },
+          {
+            id: "yg-multilang-mkv",
+            name: "简繁日多语 · HEVC 10bit · MKV",
+            search: "简繁日多语 MKV HEVC 10bit 1080P PGS 简体 繁体 日语",
+            rawTitle: "[云光字幕组] 学生会也有洞！ - 01 [1080P][WEB-DL][简繁日多语][MKV][x265][10bit][FLAC][内封]",
+            resolution: "1080P",
+            subtitle: "简繁日多语",
+            subtitleRank: 3,
+            video: "HEVC",
+            bitDepth: 10,
+            container: "MKV",
+            source: "WEB-DL",
+            audio: "FLAC",
+            episodes: [
+              { n: 1, sizeMB: 618.4, date: "10/12 21:07" },
+              { n: 2, sizeMB: 590.2, date: "10/16 20:44" },
+              { n: 3, sizeMB: 611.8, date: "10/25 21:20" },
+              { n: 4, sizeMB: 604.3, date: "11/02 20:59" },
+              { n: 5, sizeMB: 665.1, date: "11/05 21:10" },
+              { n: 6, sizeMB: 709.2, date: "11/26 10:52" }
+            ]
+          },
+          {
+            id: "yg-raw",
+            name: "原始发布",
+            rawTitle: "[云光字幕组] 学生会也有洞！ [第06话][手机试看版]",
+            parseStatus: "unknown",
+            episodes: [{ n: 6, sizeMB: 280.4, date: "11/26 10:41" }]
+          }
+        ]
+      },
+      {
+        id: "mengmeng",
+        name: "喵萌奶茶屋",
+        avatar: "喵",
+        versions: [
+          {
+            id: "mm-jianri-mp4",
+            name: "简日双语 · MP4",
+            rawTitle: "【喵萌奶茶屋】学生会也有洞！[01][1920x1080][简日双语][MP4][H.264][AAC][内嵌]",
+            episodes: [
+              { n: 1, sizeMB: 398.1, date: "10/13 00:12" },
+              { n: 2, sizeMB: 372.4, date: "10/17 00:08" },
+              { n: 3, sizeMB: 390.0, date: "10/26 00:15" },
+              { n: 4, sizeMB: 381.2, date: "11/03 00:11" },
+              { n: 5, sizeMB: 410.8, date: "11/06 00:09" },
+              { n: 6, sizeMB: 405.4, date: "11/27 00:14" }
+            ]
+          },
+          {
+            id: "mm-fanri-mp4",
+            name: "繁日双语 · MP4",
+            rawTitle: "【喵萌奶茶屋】学生会也有洞！[01][1920x1080][繁日双语][MP4][AVC][AAC][内嵌]",
+            episodes: [
+              { n: 1, sizeMB: 398.1, date: "10/13 00:12" },
+              { n: 2, sizeMB: 372.4, date: "10/17 00:08" },
+              { n: 3, sizeMB: 390.0, date: "10/26 00:15" },
+              { n: 4, sizeMB: 381.2, date: "11/03 00:11" },
+              { n: 5, sizeMB: 410.8, date: "11/06 00:09" },
+              { n: 6, sizeMB: 405.4, date: "11/27 00:14" }
+            ]
+          }
+        ]
+      },
+      {
+        id: "ailian",
+        name: "爱恋字幕社",
+        avatar: "爱",
+        versions: [
+          {
+            id: "al-jianri-mp4",
+            name: "简日双语 · MP4",
+            rawTitle: "[爱恋字幕社] 学生会也有洞！ [01][1080p][CHS][MP4]",
+            episodes: [
+              { n: 1, sizeMB: 371.3, date: "10/12 23:18" },
+              { n: 2, sizeMB: 365.1, date: "10/16 23:22" },
+              { n: 3, sizeMB: 378.4, date: "10/25 23:15" },
+              { n: 4, sizeMB: 360.8, date: "11/02 23:20" },
+              { n: 5, sizeMB: 392.2, date: "11/05 23:17" },
+              { n: 6, sizeMB: 395.6, date: "11/26 23:12" }
+            ]
+          }
+        ]
+      },
+      {
+        id: "unknown-demo",
+        name: "解析异常演示",
+        titleGroupName: "示例字幕组",
+        avatar: "?",
+        unknown: true,
+        versions: [
+          {
+            id: "unknown-a",
+            name: "原始发布 1",
+            rawTitle: "[示例字幕组] 学生会也有洞！ 11月26日更新 第6话 [手机版]",
+            parseStatus: "unknown",
+            episodes: [
+              { n: 6, sizeMB: 420.1, date: "11/26 22:18" }
+            ]
+          },
+          {
+            id: "unknown-b",
+            name: "原始发布 2",
+            rawTitle: "[示例字幕组] 学生会也有洞！ [06][多字版][收藏版]",
+            parseStatus: "unknown",
+            episodes: [
+              { n: 6, sizeMB: 611.7, date: "11/27 01:06" }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const fields = {
+      resolution: { label: "清晰度", values: { "2160P": /\b(?:2160p|4k|3840x2160)\b/i, "1080P": /\b(?:1080p|1920x1080)\b/i, "720P": /\b(?:720p|1280x720)\b/i } },
+      subtitle: { label: "字幕", values: { "简繁日多语": /简繁日(?:多语)?/, "简日双语": /简日/, "繁日双语": /(?<!简)繁日/, "简体中文": /\bCHS\b|简体/i, "繁体中文": /\bCHT\b|繁体/i } },
+      container: { label: "文件格式", values: { MP4: /\bMP4\b/i, MKV: /\bMKV\b/i } },
+      source: { label: "片源", values: { "WEB-DL": /\bWEB[ -]?DL\b/i, WEBRIP: /\bWEB[ -]?RIP\b/i, BDRIP: /\bBD[ -]?RIP\b/i } },
+      video: { label: "视频编码", values: { HEVC: /\b(?:HEVC|[hx][ .-]?265)\b/i, AVC: /\b(?:AVC|[hx][ .-]?264)\b/i, AV1: /\bAV1\b/i } },
+      audio: { label: "音频格式", values: { AAC: /\bAAC\b/i, FLAC: /\bFLAC\b/i, "AC3": /\bAC-?3\b/i, "EAC3": /\bE-?AC-?3\b/i, DTS: /\bDTS\b/i, OPUS: /\bOPUS\b/i } },
+      bitDepth: { label: "色深", values: { "10bit": /\b10 ?bit\b/i, "8bit": /\b8 ?bit\b/i } },
+      subtitleFormat: { label: "字幕形式", values: { "内嵌": /内嵌/, "外挂": /外挂/, "内封": /内封/ } },
+      special: { label: "资源类型", values: { "合集": /合集|\bbatch\b/i, "特别篇": /特别篇|\b(?:SP|OVA)\b/i } }
+    };
+
+    const subtitleLanguageTags = {
+      simplified: ["简体中文", "简日双语", "简繁日多语"],
+      traditional: ["繁体中文", "繁日双语", "简繁日多语"]
+    };
+    const modeLabels = { include: "包含", exclude: "不包含" };
+    const titleWordMeanings = new Map([
+      ["chs", ["简体中文字幕", "这个词按「CHS」原样匹配。标题如果只写「简体」，就不会命中。"]],
+      ["简日双语", ["简体中文和日文字幕", "适合想看简体中文、也想对照日文的人。"]],
+      ["繁日双语", ["繁体中文和日文字幕", "适合想看繁体中文、也想对照日文的人。"]],
+      ["简繁日多语", ["简体中文、繁体中文和日文字幕", "标题写明有这三种字幕，具体排版或切换方式以资源为准。"]],
+      ["1080p", ["1080p 清晰度", "表示画面分辨率，实际观感也和片源、压缩程度有关。"]],
+      ["1920x1080", ["1080p 清晰度", "这是画面的宽度和高度，也常写成「1080P」。"]],
+      ["aac", ["音频格式", "AAC 用来压缩声音，很多播放器都支持。"]],
+      ["flac", ["无损音频", "声音经过压缩，解码后仍保留编码前的音频数据。"]],
+      ["mp4", ["MP4 文件格式", "很多设备能打开 MP4，能否播放还取决于里面的视频和音频格式。"]],
+      ["mkv", ["MKV 文件格式", "可以在一个文件里装多条字幕或音轨。"]],
+      ["x264", ["H.264 视频编码", "x264 是制作 H.264 视频的编码器，很多播放器都支持这种视频。"]],
+      ["h.264", ["H.264 视频编码", "也叫 AVC，很多播放器都支持。"]],
+      ["avc", ["H.264 视频编码", "AVC 是 H.264 的另一个名字，很多播放器都支持。"]],
+      ["x265", ["H.265 视频编码", "x265 是制作 H.265 视频的编码器，播放需要设备或播放器支持 H.265。"]],
+      ["8bit", ["8 位色深", "描述每个颜色分量能表示多少级变化。"]],
+      ["10bit", ["10 位色深", "能表示更细的颜色过渡，播放需要设备或播放器支持。"]],
+      ["web-dl", ["网络片源", "通常表示视频来自流媒体下载，实际画质取决于发布的文件。"]],
+      ["webrip", ["网络片源", "通常表示视频来自网络播放源，可能经过重新压制。"]],
+      ["内嵌", ["字幕通常直接显示在画面上", "这种字幕通常随画面一起播放，无法单独关闭。"]],
+      ["内封", ["字幕和视频放在同一个文件里", "播放器支持时，可以切换或关闭字幕轨。"]]
+    ]);
+    const state = {
+      groupId: "yunguang",
+      preference: "quality",
+      subtitleLanguage: "",
+      versionId: null,
+      episodes: new Set(),
+      conditions: [],
+      conditionHistory: [],
+      inspectedWord: null
+    };
+
+    const elements = {
+      groupAvatar: document.querySelector("#groupAvatar"),
+      groupName: document.querySelector("#groupName"),
+      groupMeta: document.querySelector("#groupMeta"),
+      preferenceRow: document.querySelector("#preferenceRow"),
+      subtitleLanguage: document.querySelector("#subtitleLanguage"),
+      versionList: document.querySelector("#versionList"),
+      versionHeading: document.querySelector("#versionHeading"),
+      versionLead: document.querySelector("#versionLead"),
+      titleRules: document.querySelector("#titleRules"),
+      showTitleRules: document.querySelector("#showTitleRules"),
+      backToRecommendation: document.querySelector("#backToRecommendation"),
+      titleForm: document.querySelector("#titleForm"),
+      titleWord: document.querySelector("#titleWord"),
+      manualTitleRule: document.querySelector("#manualTitleRule"),
+      activeConditions: document.querySelector("#activeConditions"),
+      titlePeekCount: document.querySelector("#titlePeekCount"),
+      titlePeekList: document.querySelector("#titlePeekList"),
+      clearConditions: document.querySelector("#clearConditions"),
+      undoCondition: document.querySelector("#undoCondition"),
+      episodesPanel: document.querySelector("#episodesPanel"),
+      episodesSummary: document.querySelector("#episodesSummary"),
+      episodeList: document.querySelector("#episodeList"),
+      toggleAllEpisodes: document.querySelector("#toggleAllEpisodes"),
+      footerTitle: document.querySelector("#footerTitle"),
+      footerMeta: document.querySelector("#footerMeta"),
+      primaryBtn: document.querySelector("#primaryBtn"),
+      groupModal: document.querySelector("#groupModal"),
+      groupSearch: document.querySelector("#groupSearch"),
+      groupOptions: document.querySelector("#groupOptions"),
+      successModal: document.querySelector("#successModal"),
+      successTitle: document.querySelector("#successTitle"),
+      successLead: document.querySelector("#successLead"),
+      successReceipt: document.querySelector("#successReceipt"),
+      successNote: document.querySelector("#successNote"),
+      content: document.querySelector("#content")
+    };
+
+    const modalReturnFocus = new WeakMap();
+
+    function currentGroup() {
+      return groups.find((group) => group.id === state.groupId) || groups[0];
+    }
+
+    function currentVersion() {
+      return currentGroup().versions.find((version) => version.id === state.versionId) || null;
+    }
+
+    function applyRecommendedSelection(recommended = recommendedVersion()) {
+      state.versionId = recommended?.id ?? null;
+      state.episodes = new Set(recommended?.episodes.map((episode) => episode.n));
+    }
+
+    function averageEpisodeSize(version) {
+      if (!version.episodes.length || !version.episodes.every(({ sizeMB }) => Number.isFinite(sizeMB) && sizeMB > 0)) {
+        return Infinity;
+      }
+      return version.episodes.reduce((sum, episode) => sum + episode.sizeMB, 0) / version.episodes.length;
+    }
+
+    function formatSize(sizeMB) {
+      if (sizeMB >= 1024) {
+        return `${(sizeMB / 1024).toFixed(2)} GB`;
+      }
+      return `${sizeMB.toFixed(1)} MB`;
+    }
+
+    function normalizeVersion(version, group) {
+      const parseStatus = version.parseStatus || "ok";
+      const rawTitle = version.rawTitle || `[${group.name}] ${version.name}`;
+      const tags = Object.fromEntries(Object.entries(fields).map(([field, config]) => [
+        field,
+        parseStatus === "unknown" ? [] : Object.entries(config.values)
+          .filter(([, pattern]) => pattern.test(rawTitle.normalize("NFKC")))
+          .map(([label]) => label)
+      ]));
+      return {
+        ...version,
+        ...Object.fromEntries(Object.entries(tags).map(([field, values]) => [field, values[0] || ""])),
+        parseStatus,
+        rawTitle,
+        tags,
+        subtitleRank: version.subtitleRank || 0,
+        bitDepth: Number.parseInt(tags.bitDepth[0], 10) || 0
+      };
+    }
+
+    function groupVersions(group = currentGroup()) {
+      return group.versions.map((version) => normalizeVersion(version, group));
+    }
+
+    function normalizedText(text) {
+      return text.normalize("NFKC").trim().toLowerCase();
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+    }
+
+    function matchesConditions(version, conditions = state.conditions) {
+      const title = normalizedText(version.rawTitle);
+      return conditions.every(({ value, mode }) =>
+        title.includes(normalizedText(value)) === (mode === "include")
+      );
+    }
+
+    function conditionSummary() {
+      return state.conditions.map(({ value, mode }) => `${modeLabels[mode]}「${value}」`).join("，");
+    }
+
+    function renderRawTitle(version) {
+      const pattern = /(\[([^\[\]]+)\]|【([^【】]+)】)/g;
+      const group = currentGroup();
+      const groupName = group.titleGroupName ?? group.name;
+      let html = "";
+      let offset = 0;
+      let wordIndex = 0;
+      for (const match of version.rawTitle.matchAll(pattern)) {
+        const value = match[2] ?? match[3];
+        if ((match.index === 0 && value === groupName) || /^(?:第\s*)?\d+(?:v\d+)?(?:\s*[话話集])?$/i.test(value.trim())) continue;
+        const wordId = `${version.id}-${wordIndex++}`;
+        const expanded = state.inspectedWord?.id === wordId;
+        html += escapeHtml(version.rawTitle.slice(offset, match.index + 1));
+        html += `<button class="title-word" id="${wordId}" type="button" data-title-word="${escapeHtml(value)}" data-version-id="${version.id}" aria-expanded="${expanded}"${expanded ? ' aria-controls="titleWordPanel"' : ""}>${escapeHtml(value)}</button>`;
+        offset = match.index + match[0].length - 1;
+      }
+      return html + escapeHtml(version.rawTitle.slice(offset));
+    }
+
+    function renderWordPanel(versions) {
+      const { value } = state.inspectedWord;
+      const term = normalizedText(value);
+      const meaning = titleWordMeanings.get(term);
+      const currentMode = state.conditions.find((rule) => normalizedText(rule.value) === term)?.mode;
+      const occurrences = versions.filter((version) => matchesConditions(version, [{ value, mode: "include" }])).length;
+      const actions = Object.entries(modeLabels).map(([mode, label]) => {
+        const conditions = conditionsWithWord(value, mode);
+        const count = versions.filter((version) => matchesConditions(version, conditions)).length;
+        return `<button class="filter-clear" type="button" data-word-mode="${mode}" aria-pressed="${currentMode === mode}">${label} · 留下 ${count} 条</button>`;
+      }).join("");
+      return `
+        <section class="title-word-panel" id="titleWordPanel" aria-labelledby="titleWordMeaning">
+          <h3 class="title-word-heading" id="titleWordMeaning" tabindex="-1">${meaning ? `${escapeHtml(meaning[0])}（${escapeHtml(value)}）` : `「${escapeHtml(value)}」含义未识别`}</h3>
+          ${meaning ? `<p class="title-peek-status">${escapeHtml(meaning[1])}</p>` : ""}
+          <p class="title-peek-status">标题里写有「${escapeHtml(value)}」的样例有 ${occurrences} 条。${meaning ? "" : "可以先看筛选结果，再决定要不要用这个词。"}</p>
+          <div class="title-word-actions" role="group" aria-label="设置「${escapeHtml(value)}」的规则">${actions}</div>
+        </section>
+      `;
+    }
+
+    function renderTitlePreview() {
+      const versions = groupVersions();
+      const matched = versions.filter((version) => matchesConditions(version));
+      elements.titlePeekCount.textContent = state.conditions.length
+        ? `${matched.length} / ${versions.length} 条符合`
+        : `${versions.length} 条`;
+      elements.titlePeekList.innerHTML = versions.map((version) => {
+        const inspected = version.id === state.inspectedWord?.versionId;
+        const matches = matchesConditions(version);
+        const status = state.conditions.length ? matches ? "符合规则" : "不符合" : "";
+        return `
+          <div class="title-peek-row${matches ? "" : " is-miss"}">
+            <p class="title-peek-raw">${renderRawTitle(version)}</p>
+            ${status ? `<span class="title-peek-status">${status}</span>` : ""}
+            ${inspected ? renderWordPanel(versions) : ""}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderConditions() {
+      elements.activeConditions.hidden = !state.conditions.length;
+      elements.activeConditions.innerHTML = state.conditions.map(({ value, mode }, index) => `
+        <span class="condition-chip${mode === "exclude" ? " is-exclude" : ""}">
+          ${modeLabels[mode]} · ${escapeHtml(value)}
+          <button type="button" data-remove-condition="${index}" aria-label="移除条件 ${escapeHtml(value)}">×</button>
+        </span>
+      `).join("");
+      elements.clearConditions.hidden = !state.conditions.length;
+      elements.undoCondition.hidden = !state.conditionHistory.length;
+      renderTitlePreview();
+    }
+
+    function replaceConditions(conditions, record = true) {
+      if (record) state.conditionHistory.push(state.conditions);
+      state.conditions = conditions;
+      renderConditions();
+      updateFooter();
+    }
+
+    function conditionsWithWord(value, mode) {
+      const term = normalizedText(value);
+      const other = state.conditions.filter((rule) => normalizedText(rule.value) !== term);
+      return [...other, { value, mode }];
+    }
+
+    function setCondition(value, mode) {
+      const existing = state.conditions.find((rule) => normalizedText(rule.value) === normalizedText(value));
+      if (existing?.mode === mode) return;
+      replaceConditions(conditionsWithWord(value, mode));
+    }
+
+    function resetConditions() {
+      state.conditions = [];
+      state.conditionHistory = [];
+      state.inspectedWord = null;
+      elements.titleWord.value = "";
+      elements.manualTitleRule.open = false;
+      elements.titleRules.hidden = Boolean(recognizedVersions().length);
+      elements.episodesPanel.open = false;
+    }
+
+    function resolutionScore(version) {
+      if (version.resolution === "2160P") {
+        return 4000;
+      }
+      if (version.resolution === "1080P") {
+        return 3000;
+      }
+      if (version.resolution === "720P") {
+        return 2000;
+      }
+      return 0;
+    }
+
+    function sourceScore(version) {
+      if (version.source === "BDRIP") {
+        return 400;
+      }
+      if (version.source === "WEB-DL") {
+        return 300;
+      }
+      if (version.source === "WEBRIP") {
+        return 200;
+      }
+      return 100;
+    }
+
+    function qualityScore(version) {
+      return resolutionScore(version)
+        + sourceScore(version)
+        + version.bitDepth * 20
+        + version.subtitleRank;
+    }
+
+    function compatibilityScore(version) {
+      return (version.container === "MP4" ? 4 : 0)
+        + (version.video === "AVC" ? 2 : 0)
+        + (version.audio === "AAC" ? 1 : 0);
+    }
+
+    const comparePreferences = {
+      compatibility: (left, right) => compatibilityScore(right) - compatibilityScore(left),
+      space: (left, right) => averageEpisodeSize(left) - averageEpisodeSize(right)
+    };
+
+    function recognizedVersions() {
+      return groupVersions()
+        .filter((version) => version.parseStatus !== "unknown" && version.resolution);
+    }
+
+    function recommendedVersion() {
+      const compare = comparePreferences[state.preference];
+      const languageTags = subtitleLanguageTags[state.subtitleLanguage];
+      return recognizedVersions()
+        .filter((version) => !languageTags || version.tags.subtitle.some((tag) => languageTags.includes(tag)))
+        .sort((left, right) => compare?.(left, right) || qualityScore(right) - qualityScore(left))[0] ?? null;
+    }
+
+    function refreshRecommendation() {
+      const recommended = recommendedVersion();
+      if ((recommended?.id ?? null) !== state.versionId) applyRecommendedSelection(recommended);
+      renderVersions();
+    }
+
+    function recommendationReason(version) {
+      if (state.preference === "space") {
+        const average = averageEpisodeSize(version);
+        return Number.isFinite(average) ? `平均每集 ${formatSize(average)}` : "暂无单集体积可比较";
+      }
+      if (state.preference === "compatibility") {
+        const tags = [
+          version.container === "MP4" ? "MP4" : "",
+          version.video === "AVC" ? "H.264" : "",
+          version.audio === "AAC" ? "AAC" : ""
+        ].filter(Boolean);
+        return tags.length ? `兼容参考：${tags.join(" · ")}` : "暂无可判断兼容性的标注";
+      }
+      return "";
+    }
+
+    function versionFacts(version) {
+      return [
+        version.resolution,
+        version.source,
+        version.bitDepth ? `${version.bitDepth}bit` : "",
+        version.container
+      ].filter(Boolean);
+    }
+
+    function selectedSize() {
+      const version = currentVersion();
+      if (!version) {
+        return 0;
+      }
+      return version.episodes
+        .filter((episode) => state.episodes.has(episode.n))
+        .reduce((sum, episode) => sum + episode.sizeMB, 0);
+    }
+
+    function selectedEpisodes() {
+      const version = currentVersion();
+      if (!version) {
+        return [];
+      }
+      return version.episodes
+        .filter((episode) => state.episodes.has(episode.n))
+        .map((episode) => episode.n);
+    }
+
+    function formatEpisodeRange(numbers) {
+      if (!numbers.length) {
+        return "不下载已有集数";
+      }
+      if (numbers.length === 1) {
+        return `第 ${numbers[0]} 集`;
+      }
+
+      let contiguous = true;
+      for (let index = 1; index < numbers.length; index += 1) {
+        if (numbers[index] !== numbers[index - 1] + 1) {
+          contiguous = false;
+          break;
+        }
+      }
+      if (contiguous) {
+        return `第 ${numbers[0]}–${numbers[numbers.length - 1]} 集`;
+      }
+      return `第 ${numbers.join("、")} 集`;
+    }
+
+    function checkIcon() {
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <path d="m5 12.5 4.2 4.2L19 7"/>
+        </svg>
+      `;
+    }
+
+    function renderGroup() {
+      const group = currentGroup();
+      const unknownCount = group.versions.filter((version) => version.parseStatus === "unknown").length;
+      const latest = group.versions
+        .flatMap((version) => version.episodes)
+        .reduce((max, episode) => Math.max(max, episode.n), 0);
+      elements.groupAvatar.textContent = group.avatar;
+      elements.groupName.textContent = group.name;
+      elements.groupMeta.textContent = group.unknown
+        ? `${group.versions.length} 条原始发布 · 标题未识别`
+        : `${group.versions.length - unknownCount} 个版本${unknownCount ? ` · ${unknownCount} 条未识别` : ""} · 更新到第 ${latest} 集`;
+
+    }
+
+    function renderFollowMode() {
+      const byTitle = !elements.titleRules.hidden;
+      const hasRecognizedVersions = recognizedVersions().length > 0;
+      elements.versionHeading.textContent = byTitle ? "按原标题追番" : "推荐版本";
+      elements.versionLead.textContent = byTitle && !hasRecognizedVersions
+        ? "这个字幕组的版本暂未识别，可以用原标题设置追番规则。"
+        : "";
+      elements.versionLead.hidden = !elements.versionLead.textContent;
+      elements.backToRecommendation.hidden = !byTitle || !hasRecognizedVersions;
+      elements.preferenceRow.hidden = byTitle;
+      elements.versionList.hidden = byTitle;
+      elements.showTitleRules.hidden = byTitle;
+      renderEpisodes();
+      updateFooter();
+    }
+
+    function renderVersions() {
+      const version = currentVersion();
+      const parsed = version ? normalizeVersion(version, currentGroup()) : null;
+      const reason = parsed ? recommendationReason(parsed) : "";
+      elements.subtitleLanguage.value = state.subtitleLanguage;
+      const languageLabel = elements.subtitleLanguage.selectedOptions[0].text;
+      elements.preferenceRow.querySelectorAll("[data-preference]").forEach((button) => {
+        const active = button.dataset.preference === state.preference;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", active);
+      });
+      elements.versionList.innerHTML = parsed ? `
+        <div class="recommendation-card">
+          <strong>${escapeHtml(parsed.subtitle || "字幕未标注")}</strong>
+          <span>${versionFacts(parsed).join(" · ")}</span>
+          ${reason ? `<span>${escapeHtml(reason)}</span>` : ""}
+        </div>
+      ` : `
+        <div class="recommendation-card is-empty">
+          <strong>这组未识别到${escapeHtml(languageLabel)}字幕的版本</strong>
+          <span>可以更换字幕组或字幕语言，也可以查看原标题。</span>
+        </div>
+      `;
+      renderConditions();
+      renderFollowMode();
+    }
+
+    function renderEpisodes() {
+      const version = currentVersion();
+      if (!version || !elements.titleRules.hidden) {
+        elements.episodesPanel.hidden = true;
+        return;
+      }
+
+      const wasHidden = elements.episodesPanel.hidden;
+      elements.episodesPanel.hidden = false;
+      elements.episodeList.innerHTML = version.episodes.map((episode) => `
+        <label class="episode-row">
+          <input type="checkbox" data-episode="${episode.n}" ${state.episodes.has(episode.n) ? "checked" : ""}>
+          <span class="check" aria-hidden="true">${checkIcon()}</span>
+          <span class="episode-number">第 ${episode.n} 集</span>
+          <span class="episode-copy">
+            <span>更新于 ${episode.date}</span>
+          </span>
+          <span class="episode-size">${formatSize(episode.sizeMB)}</span>
+        </label>
+      `).join("");
+
+      if (wasHidden) {
+        elements.episodesPanel.classList.remove("is-entering");
+        void elements.episodesPanel.offsetWidth;
+        elements.episodesPanel.classList.add("is-entering");
+      }
+
+      refreshEpisodeSummary();
+
+    }
+
+    function refreshEpisodeSummary() {
+      const version = currentVersion();
+      if (!version) {
+        return;
+      }
+
+      const count = state.episodes.size;
+      const total = version.episodes.length;
+      const size = selectedSize();
+      elements.episodesSummary.textContent = count
+        ? `已选 ${count}/${total} 集 · ${formatSize(size)}`
+        : `本次不下载已有集数 · 以后仍按此版本更新`;
+      elements.toggleAllEpisodes.textContent = count === total ? "全不选" : "全选";
+      updateFooter();
+    }
+
+    function updateFooter() {
+      if (!elements.titleRules.hidden) {
+        const hasConditions = state.conditions.length > 0;
+        const unfinished = Boolean(elements.titleWord.value.trim());
+        elements.primaryBtn.disabled = !hasConditions || unfinished;
+        elements.primaryBtn.textContent = "按规则追番";
+        elements.footerTitle.textContent = hasConditions ? "只追后续符合规则的更新" : "添加标题条件后即可追番";
+        elements.footerMeta.textContent = unfinished
+          ? "为输入的词选择「包含」或「不包含」"
+          : hasConditions && !groupVersions().some((version) => matchesConditions(version))
+            ? "当前样例无匹配，之后有符合规则的发布时才会下载"
+            : "本次不下载已有集数";
+        return;
+      }
+      if (!currentVersion()) {
+        elements.primaryBtn.disabled = true;
+        elements.primaryBtn.textContent = "开始追番";
+        elements.footerTitle.textContent = "暂无可推荐的版本";
+        elements.footerMeta.textContent = "";
+        return;
+      }
+      const count = selectedEpisodes().length;
+      elements.primaryBtn.disabled = false;
+      elements.primaryBtn.textContent = count ? "下载并追番" : "开始追番";
+      elements.footerTitle.textContent = "以后追这个版本";
+      elements.footerMeta.textContent = count ? `本次下载 ${count} 集 · ${formatSize(selectedSize())}` : "本次不下载已有集数";
+    }
+
+    function changeGroup(groupId) {
+      if (!groups.some((group) => group.id === groupId)) {
+        return;
+      }
+
+      state.groupId = groupId;
+      applyRecommendedSelection();
+      resetConditions();
+
+      renderGroup();
+      renderVersions();
+      closeModal(elements.groupModal);
+    }
+
+    function renderGroupOptions() {
+      const query = elements.groupSearch.value.trim().toLowerCase();
+      const visibleGroups = groups.filter((group) => {
+        return !query || group.name.toLowerCase().includes(query);
+      });
+
+      elements.groupOptions.innerHTML = visibleGroups.map((group) => {
+        const current = group.id === state.groupId;
+        const meta = group.unknown
+          ? `${group.versions.length} 条原始发布 · 保留原始标题`
+          : `${group.versions.length} 个版本`;
+        return `
+          <button class="group-option${current ? " is-current" : ""}" type="button" data-group-id="${group.id}">
+            <span class="group-avatar" aria-hidden="true">${group.avatar}</span>
+            <span class="group-option-copy">
+              <strong>${group.name}</strong>
+              <span>${meta}</span>
+            </span>
+            <span class="group-option-mark">${current ? "当前" : ""}</span>
+          </button>
+        `;
+      }).join("");
+
+      if (!visibleGroups.length) {
+        elements.groupOptions.innerHTML = '<div class="dialog-empty">没有找到这个字幕组</div>';
+      }
+    }
+
+    function openModal(modal) {
+      modalReturnFocus.set(modal, document.activeElement);
+      modal.hidden = false;
+      const focusTarget = modal.querySelector("input, [data-close], button");
+      window.setTimeout(() => focusTarget?.focus(), 20);
+    }
+
+    function closeModal(modal) {
+      if (!modal || modal.hidden) {
+        return;
+      }
+      modal.hidden = true;
+      const returnFocus = modalReturnFocus.get(modal);
+      if (returnFocus && document.contains(returnFocus)) {
+        returnFocus.focus();
+      }
+      modalReturnFocus.delete(modal);
+    }
+
+    function renderSuccess(mode) {
+      const group = currentGroup();
+      const byTitle = mode === "title";
+      const version = currentVersion();
+      if (!byTitle && !version) return;
+      const parsed = byTitle ? null : normalizeVersion(version, group);
+      const episodes = byTitle ? [] : selectedEpisodes();
+      const followChoice = byTitle
+        ? conditionSummary()
+        : [parsed.subtitle || "字幕未标注", ...versionFacts(parsed)].join(" · ");
+      elements.successTitle.textContent = "已开始追番";
+      elements.successLead.textContent = byTitle ? "后续发布的标题符合全部条件时会自动下载。" : "以后会自动下载这个版本的新集。";
+      elements.successReceipt.innerHTML = `
+        <div class="receipt-row"><span>字幕组</span><strong>${escapeHtml(group.name)}</strong></div>
+        <div class="receipt-row"><span>${byTitle ? "标题规则" : "追番版本"}</span><strong>${escapeHtml(followChoice)}</strong></div>
+        <div class="receipt-row"><span>本次下载</span><strong>${episodes.length ? `${formatEpisodeRange(episodes)} · ${formatSize(selectedSize())}` : "不下载已有集数"}</strong></div>
+      `;
+      elements.successNote.textContent = "以上为演示结果。";
+      openModal(elements.successModal);
+    }
+
+    function resetDemo() {
+      state.groupId = "yunguang";
+      state.preference = "quality";
+      state.subtitleLanguage = "";
+      applyRecommendedSelection();
+      resetConditions();
+      elements.groupSearch.value = "";
+      [elements.groupModal, elements.successModal].forEach((modal) => {
+        modal.hidden = true;
+      });
+      renderGroup();
+      renderVersions();
+      elements.content.scrollTo({ top: 0, behavior: "auto" });
+    }
+
+    elements.preferenceRow.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-preference]");
+      if (!button || button.dataset.preference === state.preference) return;
+      state.preference = button.dataset.preference;
+      refreshRecommendation();
+    });
+
+    elements.subtitleLanguage.addEventListener("change", () => {
+      state.subtitleLanguage = elements.subtitleLanguage.value;
+      refreshRecommendation();
+    });
+
+    elements.showTitleRules.addEventListener("click", () => {
+      elements.titleRules.hidden = false;
+      renderFollowMode();
+      elements.versionHeading.focus({ preventScroll: true });
+    });
+
+    elements.backToRecommendation.addEventListener("click", () => {
+      elements.titleRules.hidden = true;
+      renderFollowMode();
+      elements.showTitleRules.focus({ preventScroll: true });
+    });
+
+    elements.episodeList.addEventListener("change", (event) => {
+      const input = event.target.closest("[data-episode]");
+      if (!input) {
+        return;
+      }
+      const episodeNumber = Number(input.dataset.episode);
+      if (input.checked) {
+        state.episodes.add(episodeNumber);
+      } else {
+        state.episodes.delete(episodeNumber);
+      }
+      refreshEpisodeSummary();
+    });
+
+    elements.toggleAllEpisodes.addEventListener("click", () => {
+      const version = currentVersion();
+      if (!version) {
+        return;
+      }
+      if (state.episodes.size === version.episodes.length) {
+        state.episodes.clear();
+      } else {
+        state.episodes = new Set(version.episodes.map((episode) => episode.n));
+      }
+      elements.episodeList.querySelectorAll("[data-episode]").forEach((input) => {
+        input.checked = state.episodes.has(Number(input.dataset.episode));
+      });
+      refreshEpisodeSummary();
+    });
+
+    elements.titleForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const value = elements.titleWord.value.trim();
+      if (value) {
+        elements.titleWord.value = "";
+        setCondition(value, event.submitter?.value || "include");
+        updateFooter();
+      }
+      elements.titleWord.focus({ preventScroll: true });
+    });
+    elements.titleWord.addEventListener("input", updateFooter);
+
+    elements.activeConditions.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove-condition]");
+      if (button) {
+        replaceConditions(state.conditions.filter((_, index) => index !== Number(button.dataset.removeCondition)));
+        (elements.activeConditions.querySelector("button") || elements.undoCondition).focus({ preventScroll: true });
+      }
+    });
+
+    elements.clearConditions.addEventListener("click", () => {
+      replaceConditions([]);
+      elements.undoCondition.focus({ preventScroll: true });
+    });
+
+    elements.undoCondition.addEventListener("click", () => {
+      if (!state.conditionHistory.length) return;
+      replaceConditions(state.conditionHistory.pop(), false);
+      if (elements.undoCondition.hidden) {
+        (elements.titlePeekList.querySelector(".title-word") || elements.manualTitleRule.querySelector("summary")).focus({ preventScroll: true });
+      }
+    });
+
+    elements.titlePeekList.addEventListener("click", (event) => {
+      const word = event.target.closest("[data-title-word]");
+      if (word) {
+        const isClosing = state.inspectedWord?.id === word.id;
+        state.inspectedWord = isClosing ? null : { id: word.id, versionId: word.dataset.versionId, value: word.dataset.titleWord };
+        renderTitlePreview();
+        document.getElementById(isClosing ? word.id : "titleWordMeaning")?.focus({ preventScroll: isClosing });
+        return;
+      }
+      const mode = event.target.closest("[data-word-mode]")?.dataset.wordMode;
+      if (mode && state.inspectedWord) {
+        setCondition(state.inspectedWord.value, mode);
+        elements.titlePeekList.querySelector(`[data-word-mode="${mode}"]`)?.focus({ preventScroll: true });
+      }
+    });
+
+    elements.titlePeekList.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !state.inspectedWord) return;
+      const wordId = state.inspectedWord.id;
+      state.inspectedWord = null;
+      renderTitlePreview();
+      document.getElementById(wordId)?.focus();
+    });
+
+    document.querySelector("#changeGroup").addEventListener("click", () => {
+      elements.groupSearch.value = "";
+      renderGroupOptions();
+      openModal(elements.groupModal);
+    });
+
+    elements.groupSearch.addEventListener("input", renderGroupOptions);
+
+    elements.groupOptions.addEventListener("click", (event) => {
+      const option = event.target.closest("[data-group-id]");
+      if (option) {
+        changeGroup(option.dataset.groupId);
+      }
+    });
+
+    elements.primaryBtn.addEventListener("click", () => {
+      renderSuccess(elements.titleRules.hidden ? "recommendation" : "title");
+    });
+
+    document.querySelector("#resetDemo").addEventListener("click", resetDemo);
+
+    document.querySelectorAll("[data-close]").forEach((button) => {
+      button.addEventListener("click", () => {
+        closeModal(document.querySelector(`#${button.dataset.close}`));
+      });
+    });
+
+    document.querySelectorAll(".backdrop").forEach((backdrop) => {
+      backdrop.addEventListener("click", (event) => {
+        if (event.target === backdrop) {
+          closeModal(backdrop);
+        }
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      const openModalElement = [...document.querySelectorAll(".backdrop")].find((modal) => !modal.hidden);
+      if (openModalElement) {
+        closeModal(openModalElement);
+      }
+    });
+
+    resetDemo();
+  </script>
+</body>
+</html>

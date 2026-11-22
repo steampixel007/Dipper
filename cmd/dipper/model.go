@@ -29,9 +29,10 @@ type Anime struct {
 	Summary string `json:"summary,omitempty"`
 }
 type Rule struct {
-	All  []string   `json:"all,omitempty"`
-	None []string   `json:"none,omitempty"`
-	Any  [][]string `json:"any,omitempty"`
+	All     []string             `json:"all,omitempty"`
+	None    []string             `json:"none,omitempty"`
+	Any     [][]string           `json:"any,omitempty"`
+	Version *core.ReleaseVersion `json:"version,omitempty"`
 }
 type FilterEdit struct {
 	Rule   Rule
@@ -42,6 +43,7 @@ type Resource struct {
 	Bytes                         int64
 	MB                            int
 	Tokens                        []string
+	Version                       *core.ReleaseVersion
 }
 type Subscription struct {
 	ID, GroupID, GroupName string
@@ -147,15 +149,16 @@ type downloadEngine interface {
 var _ downloadEngine = (*downloader.Engine)(nil)
 
 type State struct {
-	Core             *core.Core
-	Engine           downloadEngine
-	Source           *source.Client
-	Ctx              context.Context
-	Update           func(func())
-	Groups, GroupIDs []string
-	GroupCounts      []int
-	History          []source.Resource
-	ResourceList     []Resource
+	Core              *core.Core
+	Engine            downloadEngine
+	Source            *source.Client
+	Ctx               context.Context
+	Update            func(func())
+	Groups, GroupIDs  []string
+	GroupCounts       []int
+	GroupCountLoading bool
+	History           []source.Resource
+	ResourceList      []Resource
 	// resourceHashes bridges a viewed resource to the info hash the core
 	// resolved for it, so resource rows match downloads by content identity.
 	resourceHashes                                     map[string]string
@@ -176,58 +179,64 @@ type State struct {
 	catalogDisk                                        catalogDisk
 
 	Saved
-	Catalog                        []Anime
-	Page                           string
-	Year                           string
-	Season                         string
-	Day                            int
-	Search                         string
-	FollowSearch                   string
-	AnimeID                        string
-	Group                          int
-	ChoosingGroup                  bool
-	GroupSearch                    string
-	Rule                           Rule
-	Checked                        map[string]bool
-	Editing                        bool
-	Keyword, AnyDraft              string
-	WordOpen, ShowAliases          bool
-	WordAnchor                     string
-	UndoFilters, RedoFilters       []FilterEdit
-	UndoSaved                      *Subscription
-	FilterFeedback                 string
-	Help, Suggestions              bool
-	CancelPrompt                   bool
-	CancelID                       string
-	RemovePrompt                   bool
-	RemoveID                       string
-	DownloadFilter                 DownloadFilter
-	SuggestedResource              Resource
-	OnlyMatches                    bool
-	OnlyDownloaded                 bool
-	OnlyNew                        bool
-	EpisodeFilter                  string
-	EpisodeFilterScroll            float32
-	Notice, SaveError              string
-	SourceTesting                  bool
-	SourceRouteError               string
-	SourceRoutes                   []sourceRoute
-	SourceFailed                   bool
-	trackerManagerOpen             bool
-	trackerManager                 *trackerManagerDraft
-	trackerAutomatic               trackers.List
-	automaticTrackerRefreshRunning bool
-	trackerRefreshRunning          bool
-	trackerFetcher                 trackers.Fetcher
-	CatalogScroll                  ui.ScrollState
-	browseDetail                   *browseDetail
-	ResourceScroll                 ui.ScrollState
-	FollowScroll                   ui.ScrollState
-	DownloadScroll                 ui.ScrollState
-	DownloadHistory                bool
-	DownloadHistoryScroll          ui.ScrollState
-	DownloadFilterLast             DownloadFilter
-	DownloadSearch                 string
+	Catalog                         []Anime
+	Page                            string
+	Year                            string
+	Season                          string
+	Day                             int
+	Search                          string
+	FollowSearch                    string
+	AnimeID                         string
+	Group                           int
+	ChoosingGroup                   bool
+	GroupSearch                     string
+	Rule                            Rule
+	VersionSetup, TitleSetup        bool
+	TitleRuleDraft                  Rule
+	Versions                        []versionOption
+	VersionLanguage                 core.SubtitleLanguage
+	VersionPriority                 versionPriority
+	ActiveTitleWord, ActiveTitleRow string
+	Checked                         map[string]bool
+	Editing                         bool
+	Keyword, AnyDraft               string
+	WordOpen, ShowAliases           bool
+	WordAnchor                      string
+	UndoFilters, RedoFilters        []FilterEdit
+	UndoSaved                       *Subscription
+	FilterFeedback                  string
+	Help, Suggestions               bool
+	CancelPrompt                    bool
+	CancelID                        string
+	RemovePrompt                    bool
+	RemoveID                        string
+	DownloadFilter                  DownloadFilter
+	SuggestedResource               Resource
+	OnlyMatches                     bool
+	OnlyDownloaded                  bool
+	OnlyNew                         bool
+	EpisodeFilter                   string
+	EpisodeFilterScroll             float32
+	Notice, SaveError               string
+	SourceTesting                   bool
+	SourceRouteError                string
+	SourceRoutes                    []sourceRoute
+	SourceFailed                    bool
+	trackerManagerOpen              bool
+	trackerManager                  *trackerManagerDraft
+	trackerAutomatic                trackers.List
+	automaticTrackerRefreshRunning  bool
+	trackerRefreshRunning           bool
+	trackerFetcher                  trackers.Fetcher
+	CatalogScroll                   ui.ScrollState
+	browseDetail                    *browseDetail
+	ResourceScroll                  ui.ScrollState
+	FollowScroll                    ui.ScrollState
+	DownloadScroll                  ui.ScrollState
+	DownloadHistory                 bool
+	DownloadHistoryScroll           ui.ScrollState
+	DownloadFilterLast              DownloadFilter
+	DownloadSearch                  string
 	// CollapsedDownloads hides one anime's download rows on the downloads
 	// page; the choice is per-session.
 	CollapsedDownloads         map[string]bool
@@ -247,18 +256,24 @@ type State struct {
 	CheckTray                  func() bool
 	HideWindow                 func()
 	ShowWindow                 func()
-	FilesOpen                  bool
-	FilesID                    string
-	Files                      []downloader.DownloadedFile
-	FilesError                 string
-	FilesLoading               bool
-	filesRevision              int
-	SoftwareUpdate             softwareUpdate
-	SoftwareClient             softwareClient
-	SoftwareExecutable         func() (string, error)
-	SoftwareInstallationOffer  func(context.Context, update.Offer, string, string) (update.Offer, error)
-	OpenSoftwareFile           func(string) error
-	PrepareSoftware            func(context.Context, string, update.Download, []string) (softwareInstaller, error)
+	// CustomWindowControls is set when the view owns the window buttons because
+	// the platform's title bar is hidden without its native controls.
+	CustomWindowControls           bool
+	WindowMinimize, WindowMaximize func()
+	WindowClose                    func()
+	WindowIsMaximized              func() bool
+	FilesOpen                      bool
+	FilesID                        string
+	Files                          []downloader.DownloadedFile
+	FilesError                     string
+	FilesLoading                   bool
+	filesRevision                  int
+	SoftwareUpdate                 softwareUpdate
+	SoftwareClient                 softwareClient
+	SoftwareExecutable             func() (string, error)
+	SoftwareInstallationOffer      func(context.Context, update.Offer, string, string) (update.Offer, error)
+	OpenSoftwareFile               func(string) error
+	PrepareSoftware                func(context.Context, string, update.Download, []string) (softwareInstaller, error)
 }
 
 var seasons = []string{"冬", "春", "夏", "秋"}
@@ -294,20 +309,42 @@ func cloneRule(r Rule) Rule {
 func normalize(text string) string {
 	return core.Normalize(text)
 }
-func decide(title string, r Rule) (bool, string) {
-	result := core.Match(title, coreRule(r))
+func (resource Resource) releaseVersion() core.ReleaseVersion {
+	if resource.Version != nil {
+		return *resource.Version
+	}
+	return core.ParseReleaseVersion(resource.Title)
+}
+
+func matchResource(resource Resource, rule Rule) (bool, string) {
+	var version core.ReleaseVersion
+	if rule.Version != nil {
+		version = resource.releaseVersion()
+	}
+	result := core.MatchRelease(resource.Title, version, coreRule(rule))
 	return result.Matches, result.Reason
 }
 
 func (s *State) initSelection() {
-	for _, r := range s.resources() {
+	if s.Backfill || (s.VersionSetup && s.TitleSetup) {
+		return
+	}
+	choices, _ := s.episodeChoices(s.matchingResources())
+	for _, r := range choices {
 		if _, seen := s.Checked[r.ID]; !seen {
-			ok, _ := decide(r.Title, s.Rule)
-			if ok && !s.Backfill {
-				s.Checked[r.ID] = true
-			}
+			s.Checked[r.ID] = true
 		}
 	}
+}
+
+func (s *State) matchingResources() []Resource {
+	var matches []Resource
+	for _, resource := range s.resources() {
+		if ok, _ := matchResource(resource, s.Rule); ok {
+			matches = append(matches, resource)
+		}
+	}
+	return matches
 }
 
 type wordChoice uint8
@@ -353,7 +390,7 @@ func ruleWithWord(rule Rule, word string, choice wordChoice) Rule {
 func (s *State) countRuleMatches(rule Rule) int {
 	n := 0
 	for _, r := range s.resources() {
-		if ok, _ := decide(r.Title, rule); ok {
+		if ok, _ := matchResource(r, rule); ok {
 			n++
 		}
 	}
@@ -461,7 +498,7 @@ func (s *State) matchSummary() (int, int, int) {
 	n, total := 0, 0
 	eps := map[string]bool{}
 	for _, r := range s.resources() {
-		ok, _ := decide(r.Title, s.Rule)
+		ok, _ := matchResource(r, s.Rule)
 		if ok {
 			n++
 			total += r.MB
@@ -516,7 +553,7 @@ func (s *State) duplicates(ep string) int {
 	}
 	n := 0
 	for _, r := range s.resources() {
-		ok, _ := decide(r.Title, s.Rule)
+		ok, _ := matchResource(r, s.Rule)
 		if ok && r.Episode == ep {
 			n++
 		}
