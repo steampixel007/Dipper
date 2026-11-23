@@ -54,7 +54,6 @@ var iconPaths = map[string]string{
 	"help":      `<circle cx="12" cy="12" r="9"/><path d="M9 8a3 3 0 1 1 4 3c-1 .5-1 1-1 2m0 3v.1"/>`,
 	"more":      `<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>`,
 	"check":     `<path d="m5 12 4 4L19 6"/>`,
-	"search":    `<circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/>`,
 	"close":     `<path d="m6 6 12 12M6 18 18 6"/>`,
 	"minimize":  `<path d="M5 12h14"/>`,
 	"maximize":  `<rect x="5" y="5" width="14" height="14" rx="1"/>`,
@@ -128,8 +127,8 @@ func windowControl(c *ui.Context, key, label, name string, danger bool, action f
 func caption(c *ui.Context, text string) {
 	ui.Text(c, text).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted).LineHeight(1.5)
 }
-func badge(c *ui.Context, text string, col ui.Color, bg ui.Color) {
-	ui.Text(c, text).FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(col).Background(bg).Radius(4).Padding(3, 7)
+func badge(c *ui.Context, text string, col ui.Color, bg ui.Color) ui.Element {
+	return ui.Badge(c, text).FontWeight(600).TextColor(col).Background(bg).Padding(3, 7)
 }
 func heading(c *ui.Context, text string) {
 	ui.Text(c, text).FontSize(textSize(c, textSection)).FontWeight(600).TextColor(colors(c).ink)
@@ -257,82 +256,86 @@ func (s *State) view(c *ui.Context) {
 func (s *State) sidebar(c *ui.Context) {
 	_, height := c.Size()
 	pal := colors(c)
-	ui.Scroll(c.Key("sidebar-scroll")).Width(sidebarWidth).FillHeight().
-		Background(pal.chrome).
-		BorderWidth(0, 1, 0, 0).BorderColor(pal.line).Children(func() {
-		ui.Column(c).MinHeight(height).Padding(24, 14, 16).Gap(8).Children(func() {
-			ui.Row(c).Gap(10).Padding(0, 4, 20).Children(func() {
-				ui.Image(c, brandApp).Size(40, 40)
-				ui.Text(c, "Dipper").FontSize(textSize(c, textSection)).FontWeight(600).TextColor(colors(c).ink).Grow(1).MinWidth(0)
-			})
-			for _, nav := range []struct{ id, label string }{{"browse", "浏览番剧"}, {"following", "我的追番"}, {"downloads", "下载"}} {
-				current := nav
-				active := s.Page == nav.id || (s.Page == "detail" && nav.id == "browse") || (s.Page == "episodes" && nav.id == "following")
-				b := ui.ButtonBase(c.Key("nav-"+nav.id)).Label(current.label).FillWidth().MinHeight(44).Padding(10, 14).Gap(12).Radius(controlRadius).Cursor(ui.CursorPointer)
-				tactile(b)
-				if active {
-					b.Background(pal.blueWash).TextColor(pal.blue).FontWeight(600)
-				} else if b.Hovered() {
-					b.Background(colors(c).line)
+	selected := s.Page
+	switch selected {
+	case "detail":
+		selected = "browse"
+	case "episodes":
+		selected = "following"
+	}
+	active := selected
+	navigate := func(page string) {
+		s.enterPage(page)
+		s.Notice = ""
+	}
+	navItem := func(id, label string) ui.Element {
+		item := ui.SidebarItem(c, id, icons[id], label).Label(label).MinHeight(44)
+		if id == active {
+			item.FontWeight(600).OnClick(func() { navigate(id) })
+		}
+		return item
+	}
+	theme := *c.Theme()
+	theme.SurfacePressed = pal.blueWash
+	sidebar := ui.Themed(c, &theme).Width(sidebarWidth).FillHeight().Shrink(0)
+	sidebar.Children(func() {
+		ui.Sidebar(c.Key("sidebar-scroll"), &selected, func() {
+			ui.Column(c).MinHeight(height).Padding(24, 14, 16).Gap(8).Children(func() {
+				ui.Row(c).Gap(10).Padding(0, 4, 20).Children(func() {
+					ui.Image(c, brandApp).Size(40, 40)
+					ui.Text(c, "Dipper").FontSize(textSize(c, textSection)).FontWeight(600).TextColor(pal.ink).Grow(1).MinWidth(0)
+				})
+				navItem("browse", "浏览番剧")
+				following := navItem("following", "我的追番")
+				failed := 0
+				for _, sub := range s.Subscriptions {
+					if sub.CheckFailed {
+						failed++
+					}
 				}
-				b.Children(func() {
-					if active {
-						ui.Box(c).Absolute().Left(6).Top(18).Size(4, 4).Radius(2).Background(colors(c).blue)
+				sidebarCount(c, following, len(s.Subscriptions), failed)
+				downloads := navItem("downloads", "下载")
+				count, failed := 0, 0
+				for _, download := range s.Downloads {
+					if downloadInQueue(download) {
+						count++
+						if download.Failed {
+							failed++
+						}
 					}
-					icon(c, current.id)
-					labels := ui.Row(c).Grow(1).MinWidth(0).Gap(8)
-					if textScale(c) > 1 {
-						labels.Column().Gap(4)
-					}
-					labels.Children(func() {
-						ui.Text(c, current.label).FontSize(textSize(c, textBody))
-						if textScale(c) <= 1 {
-							ui.Spacer(c)
-						}
-						if current.id == "following" && len(s.Subscriptions) > 0 {
-							failed := 0
-							for _, sub := range s.Subscriptions {
-								if sub.CheckFailed {
-									failed++
-								}
-							}
-							if failed > 0 {
-								ui.Textf(c, "%d 失败", failed).FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(colors(c).amber)
-							} else {
-								ui.Textf(c, "%d", len(s.Subscriptions)).FontSize(textSize(c, textCaption))
-							}
-						}
-						if current.id == "downloads" {
-							count, failed := 0, 0
-							for _, d := range s.Downloads {
-								if !downloadInQueue(d) {
-									continue
-								}
-								count++
-								if d.Failed {
-									failed++
-								}
-							}
-							if failed > 0 {
-								ui.Textf(c, "%d 失败", failed).FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(colors(c).amber)
-							} else if count > 0 {
-								ui.Textf(c, "%d", count).FontSize(textSize(c, textCaption))
-							}
-						}
-					})
-				}).OnClick(func() { s.enterPage(current.id); s.Notice = "" })
+				}
+				sidebarCount(c, downloads, count, failed)
+				ui.Spacer(c)
+				ui.Divider(c).Background(pal.line)
+				navItem("settings", "设置")
+				quiet(c, "help", "追番小指南", func() { s.Help = true }).FontSize(textSize(c, textCaption)).TextColor(pal.muted)
+			})
+		}).Fill().Padding(0).Background(pal.chrome).
+			BorderWidth(0, 1, 0, 0).BorderColor(pal.line).OnChange(func() { navigate(selected) })
+	})
+}
+
+func sidebarCount(c *ui.Context, item ui.Element, count, failed int) {
+	if count == 0 {
+		return
+	}
+	label := strconv.Itoa(count)
+	if failed > 0 {
+		label = fmt.Sprintf("%d 失败", failed)
+	}
+	item.Children(func() {
+		render := func() {
+			badge := ui.Badge(c, label)
+			if failed > 0 {
+				badge.TextColor(colors(c).amber).Background(colors(c).amberWash)
 			}
-			ui.Spacer(c)
-			ui.Divider(c).Background(colors(c).line)
-			b := ui.ButtonBase(c.Key("nav-settings")).MinHeight(44).Padding(10, 14).Gap(12).Radius(controlRadius).Children(func() { icon(c, "settings"); ui.Text(c, "设置").FontSize(textSize(c, textBody)) }).OnClick(func() { s.enterPage("settings"); s.Notice = "" })
-			tactile(b)
-			if s.Page == "settings" {
-				b.Background(pal.blueWash).TextColor(pal.blue).FontWeight(600)
-			} else if b.Hovered() {
-				b.Background(colors(c).line)
-			}
-			quiet(c, "help", "追番小指南", func() { s.Help = true }).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted)
-		})
+		}
+		if textScale(c) > 1 {
+			item.Wrap()
+			ui.Row(c).FillWidth().PaddingStart(24).Children(render)
+			return
+		}
+		render()
 	})
 }
 
@@ -481,27 +484,25 @@ func (s *State) browseToolbar(c *ui.Context, split bool) {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(10).Children(func() {
 			iconButton(c, "prev-season", "上一季", "back", func() { s.changeSeason(-1) }).Disabled(!s.canChangeSeason(-1))
 			ui.Select(c.Key("year"), &s.Year, catalogYears()).Label("年份").Width(max(88, textSize(c, textBody)*5)).MinHeight(inputHeight(c)).Radius(controlRadius).Background(pal.paper).OnChange(s.changeCatalogYear)
-			ui.Row(c).Gap(2).Padding(3).Radius(controlRadius).Background(pal.sunken).Children(func() {
+			selected := slices.Index(seasons, s.Season)
+			quarters := ui.SegmentedBase(c.Key("season"), &selected, len(seasons))
+			quarters.Track.Label("季度").Gap(2).Padding(3).Radius(controlRadius).Background(pal.sunken).Children(func() {
 				for index, season := range seasons {
-					q := season
-					active := s.Season == q
-					b := ui.ButtonBase(c.Key("season-"+q)).Label(q+"季").Padding(6, 12).Radius(controlRadius - 2).Center().FontSize(textSize(c, textBody)).Cursor(ui.CursorPointer).TextColor(pal.muted)
-					if active {
+					b := quarters.Segment(index).Label(season+"季").Padding(6, 12).Radius(controlRadius - 2).Cursor(ui.CursorPointer).TextColor(pal.muted)
+					if selected == index {
 						b.Background(pal.paper).TextColor(pal.ink).FontWeight(600)
 					} else if b.Hovered() {
 						b.TextColor(pal.ink)
 					}
-					tactile(b).Children(func() { ui.Text(c, q+"季") }).OnClick(func() { s.Season = q; s.refreshCatalog() }).Disabled(index < firstSeason)
+					tactile(b).Children(func() { ui.Text(c, season+"季").SingleLine() }).Disabled(index < firstSeason)
 				}
+			}).OnChange(func() {
+				s.Season = seasons[selected]
+				s.refreshCatalog()
 			})
 			iconButton(c, "next-season", "下一季", "next", func() { s.changeSeason(1) }).Disabled(!s.canChangeSeason(1))
 			ui.Spacer(c)
-			if ui.TextInput(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(searchWidth).MinHeight(inputHeight(c)).Radius(controlRadius).Background(pal.paper).Changed() {
-				s.resetBrowseScroll()
-			}
-			if strings.TrimSpace(s.Search) != "" {
-				quiet(c, "clear-browse-search", "清除搜索", func() { s.Search = ""; s.resetBrowseScroll() }).Padding(4, 8).FontSize(textSize(c, textCaption)).TextColor(pal.blue)
-			}
+			ui.SearchField(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(searchWidth).MinHeight(inputHeight(c)).OnChange(s.resetBrowseScroll)
 		})
 	})
 }
@@ -509,33 +510,33 @@ func (s *State) browseToolbar(c *ui.Context, split bool) {
 func (s *State) browseDays(c *ui.Context) {
 	pal := colors(c)
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(2).Margin(0, 0, 14, 0).Children(func() {
-		for i, label := range []string{"全部", "周一", "周二", "周三", "周四", "周五", "周六", "周日"} {
-			day := i
-			if i == 0 {
-				day = -1
+		days := []int{-1, 1, 2, 3, 4, 5, 6, 0}
+		selected := slices.Index(days, s.Day)
+		weekdays := ui.SegmentedBase(c.Key("weekday"), &selected, len(days))
+		weekdays.Track.Label("星期").Wrap().Shrink(1).MinWidth(0).Gap(2).Children(func() {
+			for index, label := range []string{"全部", "周一", "周二", "周三", "周四", "周五", "周六", "周日"} {
+				filterSegment(c, weekdays.Segment(index), label, label, selected == index)
 			}
-			if i == 7 {
-				day = 0
-			}
-			active := s.Day == day
-			b := ui.ButtonBase(c.Key(fmt.Sprintf("day-%d", i))).Label(label).Padding(6, 10).Radius(6).FontSize(textSize(c, textBody)).Cursor(ui.CursorPointer).TextColor(pal.muted)
-			if active {
-				b.TextColor(pal.ink).FontWeight(600)
-			} else if b.Hovered() {
-				b.TextColor(pal.ink)
-			}
-			b.Draw(func(painter *ui.Painter, r ui.Rect) {
-				if active {
-					painter.Fill(ui.Rect{X: r.X + 10, Y: r.Y + r.H - 2, W: r.W - 20, H: 2}, pal.blue, 1)
-				}
-			})
-			tactile(b).Children(func() { ui.Text(c, label) }).OnClick(func() { s.Day = day; s.resetBrowseScroll() })
-		}
+		}).OnChange(func() {
+			s.Day = days[selected]
+			s.resetBrowseScroll()
+		})
 		ui.Spacer(c)
 		caption(c, "来源：蜜柑计划")
 		ui.Text(c, "·").FontSize(textSize(c, textCaption)).TextColor(pal.outline).MarginX(2)
 		quiet(c, "current-season", "回到当季", s.currentSeason).Padding(4, 8).FontSize(textSize(c, textCaption)).TextColor(pal.ink)
 	})
+}
+
+func filterSegment(c *ui.Context, segment ui.Element, label, text string, active bool) {
+	pal := colors(c)
+	segment.Label(label).Padding(6, 10).Radius(controlRadius).Shrink(0).Cursor(ui.CursorPointer).TextColor(pal.muted)
+	if active {
+		segment.Background(pal.blueWash).TextColor(pal.blue).FontWeight(600)
+	} else if segment.Hovered() {
+		segment.Background(pal.chrome).TextColor(pal.ink)
+	}
+	tactile(segment).Children(func() { ui.Text(c, text).SingleLine() })
 }
 
 func (s *State) animeCard(c *ui.Context, a Anime, width float32) ui.Element {
@@ -556,7 +557,7 @@ func (s *State) animeCard(c *ui.Context, a Anime, width float32) ui.Element {
 			Shadow(0, 2, 6, -2, pal.cardShadow).Children(func() {
 			s.posterCover(c, b, a, width)
 			if s.isFollowingAnime(a.ID) {
-				ui.Text(c, "已追番").FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(pal.ink).Background(pal.paper).Border(1, pal.line).Radius(4).Padding(3, 7).Absolute().Top(8).Left(8)
+				badge(c, "已追番", pal.ink, pal.paper).Border(1, pal.line).Absolute().Top(8).Left(8)
 			}
 			if selected {
 				ui.Box(c).Absolute().Top(0).Bottom(0).Left(0).Right(0).Radius(browseCoverRadius).Border(2, pal.blue)
@@ -593,7 +594,10 @@ func catalogYears() []string {
 }
 
 func pageLoading(c *ui.Context, text string) {
-	ui.Column(c).Grow(1).Center().Gap(14).Children(func() { caption(c, text) })
+	ui.Column(c).Grow(1).Center().Gap(14).Children(func() {
+		ui.Spinner(c).TextColor(colors(c).muted)
+		caption(c, text)
+	})
 }
 
 func (s *State) enterPage(page string) {
@@ -769,7 +773,9 @@ func (s *State) detailPreview(c *ui.Context, embedded bool) {
 		} else if !s.hasGroup() && s.GroupCountLoading {
 			pageLoading(c, "正在比较各字幕组的资源数量，也可以直接选择字幕组。")
 		} else if !s.hasGroup() {
-			pageLoading(c, "先选择一个字幕组，即可预览发布资源。")
+			ui.Column(c).Grow(1).Center().Children(func() {
+				caption(c, "先选择一个字幕组，即可预览发布资源。")
+			})
 		} else if s.HistoryLoading {
 			pageLoading(c, "正在加载发布记录…")
 		} else if s.HistoryError != "" {
@@ -830,17 +836,24 @@ func (s *State) ruleEditor(c *ui.Context) {
 			})
 		}
 		ui.Divider(c).Background(colors(c).line)
-		ui.Text(c, "添加标题词").FontSize(textSize(c, textBody)).FontWeight(600)
-		ui.TextInput(c.Key("keyword"), &s.Keyword).Label("标题关键词").Placeholder("输入标题中的词").FillWidth().MinHeight(inputHeight(c))
+		ui.Field(c.Key("keyword-field"), "标题关键词", func() {
+			ui.TextInput(c.Key("keyword"), &s.Keyword).Placeholder("输入标题中的词").FillWidth().MinHeight(inputHeight(c))
+		})
 		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
 			secondary(c, "want-custom", "只要这个词", func() { s.setWord(s.Keyword, wordWant); s.Keyword = "" }).FontSize(textSize(c, textBody)).Padding(6, 10).TextColor(colors(c).blue).Disabled(strings.TrimSpace(s.Keyword) == "")
 			secondary(c, "avoid-custom", "不要这个词", func() { s.setWord(s.Keyword, wordAvoid); s.Keyword = "" }).FontSize(textSize(c, textBody)).Padding(6, 10).TextColor(colors(c).muted).Disabled(strings.TrimSpace(s.Keyword) == "")
 		})
-		quiet(c, "toggle-aliases", "添加同义写法", func() { s.ShowAliases = !s.ShowAliases }).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Padding(3, 0)
+		aliases := ui.CollapsibleBase(c.Key("toggle-aliases"), &s.ShowAliases)
+		trigger := aliases.Trigger.Label("添加同义写法").FontSize(textSize(c, textCaption)).
+			TextColor(colors(c).blue).Padding(3, 0).Cursor(ui.CursorPointer)
+		tactile(trigger).Children(func() { ui.Text(c, "添加同义写法") })
 		if s.ShowAliases {
-			caption(c, "用 / 分隔同一类标签的不同写法，例如：简日内嵌 / CHS。")
-			ui.TextInput(c.Key("aliases"), &s.AnyDraft).Label("同义写法").Placeholder("简日内嵌 / CHS").FillWidth().MinHeight(inputHeight(c))
-			secondary(c, "add-alias-group", "添加这组写法", s.addAliases).FontSize(textSize(c, textBody)).Padding(6, 10).Disabled(strings.TrimSpace(s.AnyDraft) == "")
+			aliases.Panel(func() {
+				ui.Field(c.Key("alias-field"), "同义写法", func() {
+					ui.TextInput(c.Key("aliases"), &s.AnyDraft).Placeholder("简日内嵌 / CHS").FillWidth().MinHeight(inputHeight(c))
+				}).Description("用 / 分隔同一类标签的不同写法，例如：简日内嵌 / CHS。")
+				secondary(c, "add-alias-group", "添加这组写法", s.addAliases).FontSize(textSize(c, textBody)).Padding(6, 10).Disabled(strings.TrimSpace(s.AnyDraft) == "")
+			}).Gap(8)
 		}
 		quiet(c, "clear-rules", "重置全部条件", func() { s.applyRule(Rule{}, "重置全部条件"); s.WordOpen = false }).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted).Padding(3, 0)
 	})
@@ -879,36 +892,46 @@ func (s *State) wordChip(c *ui.Context, key, word string) {
 }
 
 func (s *State) wordPopover(c *ui.Context, anchor ui.Element, key, word string) {
+	if !s.WordOpen {
+		return
+	}
 	choice := s.wordChoice(word)
-	ui.PopoverBase(c.Key("word-popup-"+key), anchor, &s.WordOpen, func(panel ui.Element) {
-		panel.Width(320).Margin(6, 0, 0).Padding(10).Gap(6).Radius(10).Background(colors(c).paper).Border(1, colors(c).line).Shadow(0, 6, 20, 0, colors(c).popoverShadow).Transition(popupTransition)
+	selected := choice
+	ui.Popover(c.Key("word-popup-"+key), anchor, &s.WordOpen, func() {
 		ui.Text(c, "筛选「"+word+"」").FontSize(textSize(c, textBody)).FontWeight(600).Padding(4, 6)
-		for _, option := range []struct {
-			label, description string
-			choice             wordChoice
-			color, bg          ui.Color
-		}{{"只要包含", "标题里必须有这个词", wordWant, colors(c).blue, colors(c).blueWash}, {"不要包含", "标题里有这个词就不下载", wordAvoid, colors(c).muted, colors(c).sunken}} {
-			o := option
-			count := s.countRuleMatches(ruleWithWord(s.Rule, word, o.choice))
-			button := ui.ButtonBase(c.Key(fmt.Sprintf("word-choice-%d", o.choice))).Label(map[wordChoice]string{wordWant: "只要含「" + word + "」的", wordAvoid: "不要含「" + word + "」的"}[o.choice]).Column().FillWidth().Gap(5).Padding(12).Radius(6).Border(1, colors(c).line).Background(colors(c).paper).Cursor(ui.CursorPointer)
-			tactile(button)
-			if button.Hovered() || choice == o.choice {
-				button.Background(o.bg).BorderColor(o.color)
-			}
-			button.Children(func() {
-				ui.Row(c).Gap(8).Children(func() {
-					ui.Text(c, o.label).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(o.color)
-					ui.Spacer(c)
-					ui.Textf(c, "剩 %d 条", count).FontSize(textSize(c, textCaption)).TextColor(o.color)
+		ui.RadioGroup(c, func() {
+			for _, option := range []struct {
+				label, action, description string
+				choice                     wordChoice
+				color, bg                  ui.Color
+			}{
+				{"只要包含", "只要含", "标题里必须有这个词", wordWant, colors(c).blue, colors(c).blueWash},
+				{"不要包含", "不要含", "标题里有这个词就不下载", wordAvoid, colors(c).muted, colors(c).sunken},
+			} {
+				count := s.countRuleMatches(ruleWithWord(s.Rule, word, option.choice))
+				radio := ui.RadioBase(c.Key(fmt.Sprintf("word-choice-%d", option.choice)), &selected, option.choice).
+					Label(option.action+"「"+word+"」的").Column().FillWidth().Gap(5).Padding(12).
+					Radius(6).Border(1, colors(c).line).Background(colors(c).paper).Cursor(ui.CursorPointer)
+				if radio.Hovered() || choice == option.choice {
+					radio.Background(option.bg).BorderColor(option.color)
+				}
+				tactile(radio).Children(func() {
+					ui.Row(c).Gap(8).Children(func() {
+						ui.Text(c, option.label).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(option.color)
+						ui.Spacer(c)
+						ui.Textf(c, "剩 %d 条", count).FontSize(textSize(c, textCaption)).TextColor(option.color)
+					})
+					caption(c, option.description)
 				})
-				caption(c, o.description)
-			}).OnClick(func() { s.setWord(word, o.choice) })
-		}
+				bindRadio(radio, choice == option.choice, func() { s.setWord(word, option.choice) })
+			}
+		}).Label("标题词条件").Gap(6)
 		if choice != wordUnrestricted {
 			quiet(c, "unrestrict-word", "不再限制这个词", func() { s.setWord(word, wordUnrestricted) }).Label("不再限制「" + word + "」").FontSize(textSize(c, textCaption)).FillWidth()
 		}
 		caption(c, "只匹配原标题，不判断视频内容。")
-	})
+	}).Width(320).MinWidth(0).Padding(10).Gap(6).Background(colors(c).paper).
+		Shadow(0, 6, 20, 0, colors(c).popoverShadow).Transition(popupTransition)
 }
 
 func (s *State) quickFilter(c *ui.Context) {
@@ -979,15 +1002,21 @@ func (s *State) preview(c *ui.Context, embedded bool) {
 	}
 	if !s.Editing && !manual {
 		selected, _ := s.selected()
-		all := len(choices) > 0 && len(selected) == len(choices)
+		all := ui.CheckOff
+		switch {
+		case len(selected) > 0 && len(selected) == len(choices):
+			all = ui.CheckOn
+		case len(selected) > 0:
+			all = ui.CheckMixed
+		}
 		label := "全选匹配资源"
 		if s.selectsOnePerEpisode() {
 			label = "全选符合条件的集数"
 		}
 		ui.Row(c).Children(func() {
-			ui.Checkbox(c.Key("select-all"), &all, label).FontSize(textSize(c, textBody)).Disabled(n == 0).OnChange(func() {
+			ui.CheckboxState(c.Key("select-all"), &all, label).FontSize(textSize(c, textBody)).Disabled(n == 0).OnChange(func() {
 				for _, resource := range choices {
-					s.setResourceChecked(resource, all)
+					s.setResourceChecked(resource, all == ui.CheckOn)
 				}
 			})
 			ui.Spacer(c)
@@ -1393,9 +1422,9 @@ func (s *State) following(c *ui.Context) {
 	ui.Column(c).Grow(1).MinHeight(0).Padding(24, 28).Gap(20).Children(func() {
 		ui.Text(c, "我的追番").FontSize(textSize(c, textTitle)).FontWeight(600)
 		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
-			if ui.TextInput(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(240).MinHeight(inputHeight(c)).Radius(controlRadius).Background(colors(c).paper).Changed() {
+			ui.SearchField(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(240).MinHeight(inputHeight(c)).OnChange(func() {
 				s.FollowScroll = ui.ScrollState{}
-			}
+			})
 			if len(s.retryableChecks()) > 0 {
 				quiet(c, "retry-failed-checks", "重试检查", s.retryFailedChecks).TextColor(colors(c).amber).Disabled(s.Busy)
 			}
@@ -1431,15 +1460,12 @@ func (s *State) following(c *ui.Context) {
 				return 0
 			}
 		})
-		ui.Row(c).Gap(6).Children(func() {
-			caption(c, fmt.Sprintf("%d 部追番", len(subs)))
-			ui.Spacer(c)
-			if strings.TrimSpace(s.FollowSearch) != "" {
-				quiet(c, "clear-follow-search", "清除搜索", func() { s.FollowSearch = "" }).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Padding(3, 0)
-			}
-		})
+		caption(c, fmt.Sprintf("%d 部追番", len(subs)))
 		if len(subs) == 0 {
-			s.empty(c, "没有找到这部追番", "试试缩短番名，或清除搜索。", "清除搜索", func() { s.FollowSearch = "" })
+			s.empty(c, "没有找到这部追番", "试试缩短番名，或清除搜索。", "清除搜索", func() {
+				s.FollowSearch = ""
+				s.FollowScroll = ui.ScrollState{}
+			})
 			return
 		}
 		width, _ := c.Size()
@@ -1497,7 +1523,7 @@ func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
 				} else if sub.Queued {
 					badge(c, "排队中", colors(c).muted, colors(c).canvas)
 				} else {
-					status := ui.Text(c, "自动追番中").FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(colors(c).green).Background(colors(c).greenWash).Radius(4).Padding(3, 7)
+					status := badge(c, "自动追番中", pal.green, pal.greenWash)
 					if !tile.Hovered() {
 						status.Opacity(0)
 					}
@@ -1653,17 +1679,6 @@ func (s *State) libraryEpisodeRow(c *ui.Context, index int) {
 	})
 }
 
-func (s *State) libraryMenuItem(c *ui.Context, key, label, accessLabel string, disabled bool, action func()) {
-	b := ui.ButtonBase(c.Key(key)).Label(accessLabel).FillWidth().Padding(8, 12).Radius(6).Cursor(ui.CursorPointer).Disabled(disabled)
-	if b.Hovered() {
-		b.Background(colors(c).chrome)
-	}
-	tactile(b).Children(func() { ui.Text(c, label).FontSize(textSize(c, textBody)) }).OnClick(func() {
-		s.LibraryMenuOpen = false
-		action()
-	})
-}
-
 // seedStopRule describes both seeding stop conditions in one clause.
 func (s *State) seedStopRule() string {
 	timeCopy := ""
@@ -1710,15 +1725,6 @@ func downloadState(d Download) DownloadFilter {
 
 func downloadInQueue(d Download) bool {
 	return d.Failed || !(d.Progress >= 1 && d.Stopped)
-}
-
-// toggleDownloadGroup flips one anime's collapsed state on the downloads
-// page. The map is per-session, so a fresh start shows every group open.
-func (s *State) toggleDownloadGroup(animeID string) {
-	if s.CollapsedDownloads == nil {
-		s.CollapsedDownloads = make(map[string]bool)
-	}
-	s.CollapsedDownloads[animeID] = !s.CollapsedDownloads[animeID]
 }
 
 // hasNewRelease reports whether the followed resource view has any release
@@ -1822,13 +1828,8 @@ func (s *State) downloads(c *ui.Context) {
 				ui.Text(c, speedText(s.uploadSpeed(), true)).FontSize(textSize(c, textSection)).FontWeight(600)
 			})
 		})
-		ui.Row(c).Wrap().Gap(12).Children(func() {
-			if ui.TextInput(c.Key("download-search"), &s.DownloadSearch).Label("搜索下载").Placeholder("搜索番剧或任务").Width(260).MinHeight(inputHeight(c)).Changed() {
-				s.DownloadScroll = ui.ScrollState{}
-			}
-			if strings.TrimSpace(s.DownloadSearch) != "" {
-				quiet(c, "clear-download-search", "清除搜索", func() { s.clearDownloadSearch() }).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue)
-			}
+		ui.SearchField(c.Key("download-search"), &s.DownloadSearch).Label("搜索下载").Placeholder("搜索番剧或任务").Width(260).MinHeight(inputHeight(c)).OnChange(func() {
+			s.DownloadScroll = ui.ScrollState{}
 		})
 		visible := make([]int, 0, len(s.Downloads))
 		stateCounts := map[DownloadFilter]int{}
@@ -1853,21 +1854,27 @@ func (s *State) downloads(c *ui.Context) {
 					quiet(c, "pause-all", pauseLabel, func() { s.pauseAllDownloads(active > 0) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
 				}
 			})
-			ui.Row(c.Key("download-filter")).Wrap().Gap(controlGap).Children(func() {
-				for _, option := range []struct {
-					filter DownloadFilter
-					label  string
-				}{{downloadsAll, "全部"}, {downloadsDownloading, "下载中"}, {downloadsQueued, "排队中"}, {downloadsSeeding, "分享中"}, {downloadsPaused, "已暂停"}, {downloadsFailed, "失败"}, {downloadsStopped, "已停止"}} {
+			type filterOption struct {
+				filter DownloadFilter
+				label  string
+			}
+			options := []filterOption{{downloadsAll, "全部"}, {downloadsDownloading, "下载中"}, {downloadsQueued, "排队中"}, {downloadsSeeding, "分享中"}, {downloadsPaused, "已暂停"}, {downloadsFailed, "失败"}, {downloadsStopped, "已停止"}}
+			selected := slices.IndexFunc(options, func(option filterOption) bool {
+				return option.filter == s.DownloadFilter
+			})
+			filters := ui.SegmentedBase(c.Key("download-filter"), &selected, len(options))
+			filters.Track.Label("下载状态").Wrap().Gap(controlGap).Children(func() {
+				for index, option := range options {
 					filter, label := option.filter, option.label
 					count := stateCounts[filter]
 					if filter == downloadsAll {
 						count = queued
 					}
-					button := quiet(c, fmt.Sprintf("download-filter-%d", filter), fmt.Sprintf("%s %d", label, count), func() { s.DownloadFilter = filter }).Label(label).Shrink(0)
-					if filter == s.DownloadFilter {
-						button.Background(colors(c).blueWash).TextColor(colors(c).blue).FontWeight(600)
-					}
+					filterSegment(c, filters.Segment(index), label, fmt.Sprintf("%s %d", label, count), selected == index)
 				}
+			}).OnChange(func() {
+				s.DownloadFilter = options[selected].filter
+				s.DownloadScroll = ui.ScrollState{}
 			})
 		}
 		if len(s.Downloads) == 0 {
@@ -1948,11 +1955,12 @@ func (s *State) downloads(c *ui.Context) {
 				for _, g := range groups {
 					group := g
 					ui.Column(c.Key("download-group-" + group.animeID)).Gap(8).Children(func() {
-						collapsed := s.CollapsedDownloads[group.animeID]
+						open := !s.CollapsedDownloads[group.animeID]
 						toggle := "收起"
-						if collapsed {
+						if !open {
 							toggle = "展开"
 						}
+						var disclosure ui.CollapsibleParts
 						actions := func() {
 							if folder := s.groupFolder(group.animeID); folder != "" {
 								quiet(c, "open-group-folder-"+group.animeID, "打开番剧文件夹", func() {
@@ -1962,7 +1970,19 @@ func (s *State) downloads(c *ui.Context) {
 								}).FontSize(textSize(c, textCaption)).Disabled(s.OpenFolder == nil)
 							}
 							quiet(c, "group-detail-"+group.animeID, "查看详情", func() { s.openFollowedResources(group.animeID, "downloads") }).FontSize(textSize(c, textCaption))
-							quiet(c, "toggle-group-"+group.animeID, toggle, func() { s.toggleDownloadGroup(group.animeID) }).FontSize(textSize(c, textCaption))
+							disclosure = ui.CollapsibleBase(c.Key("toggle-group-"+group.animeID), &open)
+							button := disclosure.Trigger.Label(toggle).Padding(controlPaddingY, controlPaddingX).Radius(controlRadius).Cursor(ui.CursorPointer)
+							if button.Hovered() {
+								button.Background(colors(c).chrome)
+							}
+							tactile(button).Children(func() {
+								ui.Text(c, toggle).FontSize(textSize(c, textCaption))
+							}).OnChange(func() {
+								if s.CollapsedDownloads == nil {
+									s.CollapsedDownloads = make(map[string]bool)
+								}
+								s.CollapsedDownloads[group.animeID] = !open
+							})
 						}
 						if textScale(c) > 1 {
 							ui.Column(c).Gap(4).Children(func() {
@@ -1977,129 +1997,132 @@ func (s *State) downloads(c *ui.Context) {
 								actions()
 							})
 						}
-						if collapsed {
+						if !open {
 							return
 						}
-						if group.overflow {
-							caption(c, "总大小超出可显示范围")
-						} else if group.bytes > 0 {
-							share := float64(group.done) / float64(group.bytes)
-							box := ui.Box(c.Key("download-group-progress-" + group.animeID)).Height(4)
-							value := box.Animate("value", float32(share), 400*time.Millisecond)
-							box.Children(func() { ui.Progress(c, float64(value)).Height(4).Radius(2) })
-							totals := "已下载 " + byteSizeText(group.done) + " / " + byteSizeText(group.bytes)
-							if group.done == 0 {
-								totals = "已下载 0 B / " + byteSizeText(group.bytes)
+						renderTasks := func() {
+							if group.overflow {
+								caption(c, "总大小超出可显示范围")
+							} else if group.bytes > 0 {
+								share := float64(group.done) / float64(group.bytes)
+								box := ui.Box(c.Key("download-group-progress-" + group.animeID)).Height(4)
+								value := box.Animate("value", float32(share), 400*time.Millisecond)
+								box.Children(func() { ui.Progress(c, float64(value)).Height(4).Radius(2) })
+								totals := "已下载 " + byteSizeText(group.done) + " / " + byteSizeText(group.bytes)
+								if group.done == 0 {
+									totals = "已下载 0 B / " + byteSizeText(group.bytes)
+								}
+								if group.unknown > 0 {
+									totals = fmt.Sprintf("%s（另有 %d 条大小未知）", totals, group.unknown)
+								}
+								caption(c, totals)
+							} else {
+								caption(c, fmt.Sprintf("%d 条大小未知", group.unknown))
 							}
-							if group.unknown > 0 {
-								totals = fmt.Sprintf("%s（另有 %d 条大小未知）", totals, group.unknown)
-							}
-							caption(c, totals)
-						} else {
-							caption(c, fmt.Sprintf("%d 条大小未知", group.unknown))
-						}
-						ui.Column(c).Gap(12).Children(func() {
-							for _, i := range group.indices {
-								idx := i
-								d := s.Downloads[idx]
-								ui.Column(c.Key("download-"+d.ID)).Padding(16, 18).Gap(9).Background(colors(c).paper).Radius(8).Border(1, colors(c).line).Children(func() {
-									ui.Row(c).Gap(12).Children(func() {
-										ui.Spacer(c)
-										if d.Episode != "" {
-											badge(c, episodeLabel(d.Episode), colors(c).muted, colors(c).canvas)
-										}
-										status := "下载中"
-										col, wash := colors(c).blue, colors(c).blueWash
-										switch {
-										case d.Failed:
-											status, col, wash = "失败", colors(c).amber, colors(c).amberWash
-										case d.Stopped && d.Progress < 1:
-											status, col, wash = "已停止", colors(c).muted, colors(c).canvas
-										case d.Paused:
-											status, col, wash = "已暂停", colors(c).muted, colors(c).canvas
-										case d.Queued:
-											status, col, wash = "排队中", colors(c).muted, colors(c).canvas
-										case d.Progress >= 1:
-											status, col, wash = "已完成，分享中", colors(c).green, colors(c).greenWash
-										}
-										badge(c, status, col, wash)
-									})
-									ui.Text(c, d.Title).FontSize(textSize(c, textBody)).TextColor(colors(c).muted)
-									progress := ui.Box(c.Key("transfer-progress")).Height(5)
-									value := progress.Animate("value", float32(d.Progress), 400*time.Millisecond)
-									progress.Children(func() { ui.Progress(c, float64(value)).Height(5).Radius(3) })
-									metrics := func() {
-										ui.Textf(c, "%.0f%%", d.Progress*100).FontSize(textSize(c, textCaption)).FontWeight(600)
-										if bytes := sizeBytes(d.Bytes, d.MB); bytes > 0 {
-											done := byteSizeText(downloadDoneBytes(d))
-											if downloadDoneBytes(d) == 0 {
-												done = "0 B"
-											}
-											caption(c, done+" / "+byteSizeText(bytes))
-										} else {
-											caption(c, "大小未知")
-										}
-										speeds := speedText(d.DownSpeed, false) + "   " + speedText(d.UpSpeed, true)
-										if eta := downloadETA(d); eta != "" {
-											speeds += "   " + eta
-										}
-										caption(c, speeds)
-									}
-									actions := func() {
-										if d.Failed {
-											quiet(c, "retry-"+d.ID, "重试", func() { s.retryDownload(idx) }).TextColor(colors(c).blue).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
-										} else if d.Paused || d.Stopped && d.Progress < 1 {
-											quiet(c, "pause-"+d.ID, "继续", func() { s.pauseDownload(idx) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
-										} else if d.Progress < 1 {
-											quiet(c, "pause-"+d.ID, "暂停", func() { s.pauseDownload(idx) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
-										} else if !d.Stopped {
-											quiet(c, "stop-seed-"+d.ID, "停止分享", func() { s.stopDownload(idx) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
-										}
-										quiet(c, "remove-"+d.ID, "删除", func() { s.RemovePrompt, s.RemoveID = true, d.ID }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
-										quiet(c, "open-folder-"+d.ID, "打开文件夹", func() {
-											if s.OpenFolder != nil {
-												s.OpenFolder(d.Folder)
-											}
-										}).FontSize(textSize(c, textCaption)).Disabled(s.OpenFolder == nil || d.Folder == "")
-										if d.Progress >= 1 && !d.Failed {
-											quiet(c, "files-"+d.ID, "查看文件", func() { s.openFiles(idx) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
-											quiet(c, "play-"+d.ID, "播放", func() { s.playDownload(idx) }).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Disabled(s.Busy)
-										}
-									}
-									if textScale(c) > 1 {
-										ui.Row(c).Wrap().Gap(8).Children(metrics)
-										ui.Row(c).Wrap().Gap(controlGap).Children(actions)
-									} else {
-										ui.Row(c).Gap(14).Children(func() {
-											metrics()
+							ui.Column(c).Gap(12).Children(func() {
+								for _, i := range group.indices {
+									idx := i
+									d := s.Downloads[idx]
+									ui.Column(c.Key("download-"+d.ID)).Padding(16, 18).Gap(9).Background(colors(c).paper).Radius(8).Border(1, colors(c).line).Children(func() {
+										ui.Row(c).Gap(12).Children(func() {
 											ui.Spacer(c)
-											actions()
+											if d.Episode != "" {
+												badge(c, episodeLabel(d.Episode), colors(c).muted, colors(c).canvas)
+											}
+											status := "下载中"
+											col, wash := colors(c).blue, colors(c).blueWash
+											switch {
+											case d.Failed:
+												status, col, wash = "失败", colors(c).amber, colors(c).amberWash
+											case d.Stopped && d.Progress < 1:
+												status, col, wash = "已停止", colors(c).muted, colors(c).canvas
+											case d.Paused:
+												status, col, wash = "已暂停", colors(c).muted, colors(c).canvas
+											case d.Queued:
+												status, col, wash = "排队中", colors(c).muted, colors(c).canvas
+											case d.Progress >= 1:
+												status, col, wash = "已完成，分享中", colors(c).green, colors(c).greenWash
+											}
+											badge(c, status, col, wash)
 										})
-									}
-									caption(c, "保存位置："+d.Folder)
-									if d.Progress >= 1 && !d.Stopped {
-										uploaded := d.UploadedMB * 1e6
-										if d.UploadedBytes != 0 {
-											uploaded = float64(d.UploadedBytes)
+										ui.Text(c, d.Title).FontSize(textSize(c, textBody)).TextColor(colors(c).muted)
+										progress := ui.Box(c.Key("transfer-progress")).Height(5)
+										value := progress.Animate("value", float32(d.Progress), 400*time.Millisecond)
+										progress.Children(func() { ui.Progress(c, float64(value)).Height(5).Radius(3) })
+										metrics := func() {
+											ui.Textf(c, "%.0f%%", d.Progress*100).FontSize(textSize(c, textCaption)).FontWeight(600)
+											if bytes := sizeBytes(d.Bytes, d.MB); bytes > 0 {
+												done := byteSizeText(downloadDoneBytes(d))
+												if downloadDoneBytes(d) == 0 {
+													done = "0 B"
+												}
+												caption(c, done+" / "+byteSizeText(bytes))
+											} else {
+												caption(c, "大小未知")
+											}
+											speeds := speedText(d.DownSpeed, false) + "   " + speedText(d.UpSpeed, true)
+											if eta := downloadETA(d); eta != "" {
+												speeds += "   " + eta
+											}
+											caption(c, speeds)
 										}
-										bytes := d.DownloadedBytes
-										if bytes == 0 {
-											bytes = sizeBytes(d.Bytes, d.MB)
+										actions := func() {
+											if d.Failed {
+												quiet(c, "retry-"+d.ID, "重试", func() { s.retryDownload(idx) }).TextColor(colors(c).blue).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+											} else if d.Paused || d.Stopped && d.Progress < 1 {
+												quiet(c, "pause-"+d.ID, "继续", func() { s.pauseDownload(idx) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+											} else if d.Progress < 1 {
+												quiet(c, "pause-"+d.ID, "暂停", func() { s.pauseDownload(idx) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+											} else if !d.Stopped {
+												quiet(c, "stop-seed-"+d.ID, "停止分享", func() { s.stopDownload(idx) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+											}
+											quiet(c, "remove-"+d.ID, "删除", func() { s.RemovePrompt, s.RemoveID = true, d.ID }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+											quiet(c, "open-folder-"+d.ID, "打开文件夹", func() {
+												if s.OpenFolder != nil {
+													s.OpenFolder(d.Folder)
+												}
+											}).FontSize(textSize(c, textCaption)).Disabled(s.OpenFolder == nil || d.Folder == "")
+											if d.Progress >= 1 && !d.Failed {
+												quiet(c, "files-"+d.ID, "查看文件", func() { s.openFiles(idx) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+												quiet(c, "play-"+d.ID, "播放", func() { s.playDownload(idx) }).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Disabled(s.Busy)
+											}
 										}
-										if bytes > 0 && uploaded >= 0 {
-											caption(c, fmt.Sprintf("分享率 %.2f，%s", uploaded/float64(bytes), seedTimeText(d.SeedSeconds)))
+										if textScale(c) > 1 {
+											ui.Row(c).Wrap().Gap(8).Children(metrics)
+											ui.Row(c).Wrap().Gap(controlGap).Children(actions)
 										} else {
-											caption(c, "大小未知，分享率未知，"+seedTimeText(d.SeedSeconds))
+											ui.Row(c).Gap(14).Children(func() {
+												metrics()
+												ui.Spacer(c)
+												actions()
+											})
 										}
-									}
-									if d.Error != "" {
-										ui.Text(c, d.Error).FontSize(textSize(c, textCaption)).TextColor(colors(c).amber)
-									} else if d.Failed {
-										ui.Text(c, "下载失败，请检查网络后重试。").FontSize(textSize(c, textCaption)).TextColor(colors(c).amber)
-									}
-								})
-							}
-						})
+										caption(c, "保存位置："+d.Folder)
+										if d.Progress >= 1 && !d.Stopped {
+											uploaded := d.UploadedMB * 1e6
+											if d.UploadedBytes != 0 {
+												uploaded = float64(d.UploadedBytes)
+											}
+											bytes := d.DownloadedBytes
+											if bytes == 0 {
+												bytes = sizeBytes(d.Bytes, d.MB)
+											}
+											if bytes > 0 && uploaded >= 0 {
+												caption(c, fmt.Sprintf("分享率 %.2f，%s", uploaded/float64(bytes), seedTimeText(d.SeedSeconds)))
+											} else {
+												caption(c, "大小未知，分享率未知，"+seedTimeText(d.SeedSeconds))
+											}
+										}
+										if d.Error != "" {
+											ui.Text(c, d.Error).FontSize(textSize(c, textCaption)).TextColor(colors(c).amber)
+										} else if d.Failed {
+											ui.Text(c, "下载失败，请检查网络后重试。").FontSize(textSize(c, textCaption)).TextColor(colors(c).amber)
+										}
+									})
+								}
+							})
+						}
+						disclosure.Panel(renderTasks).Gap(8)
 					})
 				}
 			})
@@ -2337,22 +2360,27 @@ func (s *State) titlePreferences(c *ui.Context) {
 		caption(c, "为每个标签选择「只要」或「不要」，结果会立即更新。")
 		ui.Column(c).Gap(14).Children(func() {
 			for i, word := range s.SuggestedResource.Tokens {
-				w := word
 				ui.Column(c).Gap(6).Children(func() {
-					ui.Text(c, w).FontSize(textSize(c, textBody)).FontWeight(600)
-					ui.Row(c).Gap(4).Children(func() {
-						for _, option := range []struct {
-							label     string
-							choice    wordChoice
-							color, bg ui.Color
-						}{{"不限", wordUnrestricted, colors(c).ink, colors(c).canvas}, {"＋ 只要", wordWant, colors(c).blue, colors(c).blueWash}, {"− 不要", wordAvoid, colors(c).muted, colors(c).sunken}} {
-							o := option
-							b := quiet(c, fmt.Sprintf("suggested-%d-%d", i, o.choice), o.label, func() { s.setWord(w, o.choice) }).Label(o.label+" "+w).Grow(1).Justify(ui.Center).FontSize(textSize(c, textCaption)).Padding(controlPaddingY, controlPaddingX).Radius(controlRadius).Border(1, colors(c).line)
-							if s.wordChoice(w) == o.choice {
-								b.Background(o.bg).TextColor(o.color).BorderColor(o.color)
+					ui.Text(c, word).FontSize(textSize(c, textBody)).FontWeight(600)
+					options := []struct {
+						label     string
+						color, bg ui.Color
+					}{
+						wordUnrestricted: {"不限", colors(c).ink, colors(c).canvas},
+						wordWant:         {"＋ 只要", colors(c).blue, colors(c).blueWash},
+						wordAvoid:        {"− 不要", colors(c).muted, colors(c).sunken},
+					}
+					selected := int(s.wordChoice(word))
+					control := ui.SegmentedBase(c.Key(fmt.Sprintf("suggested-%d", i)), &selected, len(options))
+					control.Track.Label(word).Wrap().Gap(4).Children(func() {
+						for index, option := range options {
+							segment := control.Segment(index).Grow(1).Border(1, colors(c).line).FontSize(textSize(c, textCaption))
+							filterSegment(c, segment, option.label+" "+word, option.label, index == selected)
+							if index == selected {
+								segment.Background(option.bg).TextColor(option.color).BorderColor(option.color)
 							}
 						}
-					})
+					}).OnChange(func() { s.setWord(word, wordChoice(selected)) })
 				})
 			}
 		})

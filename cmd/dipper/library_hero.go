@@ -46,27 +46,30 @@ func (s *State) libraryHero(c *ui.Context, sub Subscription) {
 				}
 			})
 		})
-		more := iconButton(c, "library-menu", "更多操作", "more", nil)
-		if more.Clicked() {
-			s.LibraryMenuOpen = !s.LibraryMenuOpen
-		}
-		ui.Popover(c, more, &s.LibraryMenuOpen, func() {
-			ui.Column(c).Width(max(210, textSize(c, textBody)*9)).Padding(6).Gap(2).Children(func() {
-				s.libraryMenuItem(c, "menu-view-resources", "查看资源", "查看资源 "+sub.GroupName, s.Busy, func() { s.viewSubscriptionResources(sub.ID) })
-				s.libraryMenuItem(c, "menu-edit", "修改条件", "修改条件 "+sub.GroupName, s.Busy, func() { s.editSubscription(sub.ID) })
-				pause := "暂停追番"
-				if sub.Paused {
-					pause = "恢复追番"
-				}
-				s.libraryMenuItem(c, "menu-pause", pause, pause+" "+sub.GroupName, s.Busy, func() { s.pauseSubscription(sub.ID) })
-				s.libraryMenuItem(c, "menu-check", "检查更新", "检查更新 "+sub.GroupName, sub.Paused || s.Busy, func() { s.check(sub.ID) })
-				if sub.Folder != "" && s.OpenFolder != nil {
-					folder := sub.Folder
-					s.libraryMenuItem(c, "menu-folder", "打开番剧文件夹", "打开番剧文件夹 "+sub.GroupName, s.Busy, func() { s.OpenFolder(folder) })
-				}
-				ui.Divider(c).Background(colors(c).line)
-				s.libraryMenuItem(c, "menu-cancel", "取消追番", "取消追番 "+sub.GroupName, s.Busy, func() { s.CancelID, s.CancelPrompt = sub.ID, true })
-			})
-		})
+		iconButton(c, "library-menu", "更多操作", "more", nil).PopoverMenuButton(func(menu *ui.Menu) {
+			if menu.Item("查看资源").Disabled(s.Busy).Chosen() {
+				s.viewSubscriptionResources(sub.ID)
+			}
+			if menu.Item("修改条件").Disabled(s.Busy).Chosen() {
+				s.editSubscription(sub.ID)
+			}
+			pause := "暂停追番"
+			if sub.Paused {
+				pause = "恢复追番"
+			}
+			if menu.Item(pause).Disabled(s.Busy).Chosen() {
+				s.pauseSubscription(sub.ID)
+			}
+			if menu.Item("检查更新").Disabled(sub.Paused || s.Busy).Chosen() {
+				s.check(sub.ID)
+			}
+			if sub.Folder != "" && s.OpenFolder != nil && menu.Item("打开番剧文件夹").Disabled(s.Busy).Chosen() {
+				s.OpenFolder(sub.Folder)
+			}
+			menu.Separator()
+			if menu.Item("取消追番").Danger().Disabled(s.Busy).Chosen() {
+				s.CancelID, s.CancelPrompt = sub.ID, true
+			}
+		}, ui.PopoverMenuButtonOptions{At: ui.AnchorBottomEnd, Self: ui.AnchorTopEnd, Open: &s.LibraryMenuOpen})
 	})
 }

@@ -208,7 +208,7 @@ func trackerAddressCount(draft *trackerManagerDraft, addresses []string) int {
 }
 
 func trackerSearch(c *ui.Context, browser *trackerBrowser, label, placeholder string) {
-	ui.TextInput(c, &browser.query).Label(label).Placeholder(placeholder).MinHeight(inputHeight(c)).FillWidth().
+	ui.SearchField(c, &browser.query).Label(label).Placeholder(placeholder).MinHeight(inputHeight(c)).FillWidth().
 		OnChange(func() { browser.page = 0 })
 }
 
@@ -313,13 +313,14 @@ func trackerListUpdated(fetchedAt time.Time) string {
 }
 
 func (s *State) trackerSubscriptionEditor(c *ui.Context, draft *trackerManagerDraft) {
-	caption(c, "粘贴以 http:// 或 https:// 开头的清单链接。先预览，确认读到的地址后再订阅。")
-	ui.TextInput(c.Key("tracker-list-input"), &draft.input).Label("在线清单链接").
-		Placeholder("https://lists.example.net/trackers.txt").FillWidth().MinHeight(inputHeight(c)).
-		Disabled(draft.reading).OnChange(func() {
-		draft.preview = core.TrackerList{}
-		draft.report("", false)
-	}).OnSubmit(func() { s.readTrackerList(draft, -1) })
+	ui.Field(c.Key("tracker-list-field"), "在线清单链接", func() {
+		ui.TextInput(c.Key("tracker-list-input"), &draft.input).
+			Placeholder("https://lists.example.net/trackers.txt").FillWidth().MinHeight(inputHeight(c)).
+			Disabled(draft.reading).OnChange(func() {
+			draft.preview = core.TrackerList{}
+			draft.report("", false)
+		}).OnSubmit(func() { s.readTrackerList(draft, -1) })
+	}).Description("粘贴以 http:// 或 https:// 开头的清单链接。先预览，确认读到的地址后再订阅。")
 	if draft.preview.URL != "" {
 		current := core.Settings{ExtraTrackers: strings.Join(draft.manual, "\n"), TrackerLists: draft.lists}
 		existing := append(current.ActiveExtraTrackers(), activeAutomaticTrackers(s.trackerAutomatic, draft.automaticOff)...)

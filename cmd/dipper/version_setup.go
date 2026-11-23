@@ -209,11 +209,40 @@ func (s *State) switchVersionMode(manual bool) {
 	}
 }
 
-func setupChoice(c *ui.Context, key, label string, active bool, action func()) {
-	button := secondary(c, key, label, action).FontSize(textSize(c, textCaption)).Padding(6, 9)
+func setupRadio(c *ui.Context, button ui.Element, label string, active bool, action func()) {
+	button.Label(label).Padding(6, 9).Radius(controlRadius).Border(1, colors(c).outline).
+		Background(colors(c).paper).Cursor(ui.CursorPointer)
 	if active {
 		button.Background(colors(c).blueWash).BorderColor(colors(c).blue).TextColor(colors(c).blue)
+	} else if button.Hovered() {
+		button.Background(colors(c).chrome)
 	}
+	bindRadio(button, active, action)
+	tactile(button).Children(func() {
+		ui.Text(c, label).FontSize(textSize(c, textCaption))
+	})
+}
+
+func bindRadio(radio ui.Element, active bool, action func()) {
+	if active {
+		radio.OnClick(action)
+	} else {
+		radio.OnChange(action)
+	}
+}
+
+func setupSegments(c *ui.Context, key, label string, selected int, labels []string, choose func(int)) {
+	active := selected
+	parts := ui.SegmentedBase(c.Key(key), &selected, len(labels))
+	parts.Track.Label(label).Wrap().Gap(5).Children(func() {
+		for index, text := range labels {
+			segment := parts.Segment(index)
+			filterSegment(c, segment, text, text, index == active)
+			if index == active {
+				segment.OnClick(func() { choose(index) })
+			}
+		}
+	}).OnChange(func() { choose(selected) })
 }
 
 func (s *State) versionOptions(c *ui.Context) {
@@ -224,26 +253,15 @@ func (s *State) versionOptions(c *ui.Context) {
 		return
 	}
 	heading(c, "选字幕语言")
-	ui.Row(c).Wrap().Gap(5).Children(func() {
-		for _, choice := range []struct {
-			value core.SubtitleLanguage
-			label string
-		}{{0, "不限"}, {core.SubtitleSimplified, "简体"}, {core.SubtitleTraditional, "繁体"}} {
-			setupChoice(c, fmt.Sprintf("language-%d", choice.value), choice.label, s.VersionLanguage == choice.value, func() {
-				s.VersionLanguage = choice.value
-				s.applyRecommendedVersion()
-			})
-		}
+	languages := []core.SubtitleLanguage{core.SubtitleUnknown, core.SubtitleSimplified, core.SubtitleTraditional}
+	setupSegments(c, "version-language", "选字幕语言", slices.Index(languages, s.VersionLanguage), []string{"不限", "简体", "繁体"}, func(index int) {
+		s.VersionLanguage = languages[index]
+		s.applyRecommendedVersion()
 	})
 	heading(c, "优先考虑")
-	ui.Row(c).Wrap().Gap(5).Children(func() {
-		for index, label := range []string{"画质", "兼容性", "省空间"} {
-			priority := versionPriority(index)
-			setupChoice(c, fmt.Sprintf("priority-%d", index), label, s.VersionPriority == priority, func() {
-				s.VersionPriority = priority
-				s.applyRecommendedVersion()
-			})
-		}
+	setupSegments(c, "version-priority", "优先考虑", int(s.VersionPriority), []string{"画质", "兼容性", "省空间"}, func(index int) {
+		s.VersionPriority = versionPriority(index)
+		s.applyRecommendedVersion()
 	})
 	quiet(c, "switch-title-rules", "按原标题追番", func() { s.switchVersionMode(true) }).TextColor(colors(c).blue)
 }
@@ -278,22 +296,26 @@ func (s *State) versionSummary(c *ui.Context) {
 		if s.Rule.Version != nil {
 			caption(c, "已选 "+versionLabel(*s.Rule.Version))
 		}
-		choices := func() {
-			for index, option := range s.Versions {
-				if s.VersionLanguage != 0 && option.Language&s.VersionLanguage == 0 {
-					continue
-				}
-				label := fmt.Sprintf("%s · %d 条", versionLabel(option.ReleaseVersion), option.count)
-				if index == recommended {
-					label = "推荐 · " + label
-				}
-				setupChoice(c, fmt.Sprintf("version-%d", index), label, s.Rule.Version != nil && *s.Rule.Version == option.ReleaseVersion, func() {
-					s.pickVersion(option.ReleaseVersion)
-				})
-			}
+		selected := core.ReleaseVersion{}
+		if s.Rule.Version != nil {
+			selected = *s.Rule.Version
 		}
 		ui.Scroll(c.Key("version-choices")).MaxHeight(136).Children(func() {
-			ui.Row(c).Wrap().Gap(6).Children(choices)
+			ui.RadioGroup(c, func() {
+				for index, option := range s.Versions {
+					if s.VersionLanguage != 0 && option.Language&s.VersionLanguage == 0 {
+						continue
+					}
+					label := fmt.Sprintf("%s · %d 条", versionLabel(option.ReleaseVersion), option.count)
+					if index == recommended {
+						label = "推荐 · " + label
+					}
+					radio := ui.RadioBase(c.Key(fmt.Sprintf("version-%d", index)), &selected, option.ReleaseVersion)
+					setupRadio(c, radio, label, selected == option.ReleaseVersion, func() {
+						s.pickVersion(option.ReleaseVersion)
+					})
+				}
+			}).Label("可用版本").Row().Wrap().Gap(6)
 		})
 	})
 }
@@ -331,16 +353,19 @@ func (s *State) originalTitle(c *ui.Context, resource Resource) {
 	word := s.ActiveTitleWord
 	ui.Column(c).Padding(10).Gap(6).Radius(6).Background(colors(c).sunken).Children(func() {
 		caption(c, word+" · "+core.ReleaseWordMeaning(word))
-		ui.Row(c).Wrap().Gap(6).Children(func() {
+		selected := s.wordChoice(word)
+		ui.RadioGroup(c, func() {
 			for _, option := range []struct {
 				label  string
 				choice wordChoice
 			}{{"包含", wordWant}, {"不包含", wordAvoid}} {
 				count := s.countRuleMatches(ruleWithWord(s.Rule, word, option.choice))
-				setupChoice(c, fmt.Sprintf("title-rule-%d", option.choice), fmt.Sprintf("%s「%s」 · 剩 %d 条", option.label, word, count), s.wordChoice(word) == option.choice, func() {
+				label := fmt.Sprintf("%s「%s」 · 剩 %d 条", option.label, word, count)
+				radio := ui.RadioBase(c.Key(fmt.Sprintf("title-rule-%d", option.choice)), &selected, option.choice)
+				setupRadio(c, radio, label, selected == option.choice, func() {
 					s.setWord(word, option.choice)
 				})
 			}
-		})
+		}).Label("标题词条件").Row().Wrap().Gap(6)
 	})
 }
