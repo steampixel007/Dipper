@@ -127,12 +127,13 @@ func (s *State) transferSettings(c *ui.Context) {
 
 func (s *State) limitRow(c *ui.Context, key, label, description, unit string, input *limitInput) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(12).Children(func() {
+		var fieldLabel ui.Element
 		ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 12).Gap(5).Children(func() {
-			ui.Text(c, label).FontSize(textSize(c, textBody))
+			fieldLabel = ui.Text(c, label).FontSize(textSize(c, textBody))
 			caption(c, description)
 		})
 		ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
-			ui.TextInput(c.Key(key+"-limit"), &input.value).Label(label).Width(textSize(c, textBody) * 6).
+			ui.TextInput(c.Key(key+"-limit"), &input.value).LabelledBy(fieldLabel).Width(textSize(c, textBody) * 6).
 				MinHeight(inputHeight(c)).Disabled(input.unlimited || s.Busy).OnSubmit(s.saveTransferLimits)
 			ui.Text(c, unit).Width(textSize(c, textBody) * 3).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted)
 			ui.Checkbox(c.Key(key+"-unlimited"), &input.unlimited, "不限").Label(label + "不限").Disabled(s.Busy)

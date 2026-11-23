@@ -26,7 +26,7 @@ func TestUIBrowseSearchClearsAndResetsScroll(t *testing.T) {
 	}
 	uiRequireText(t, tt, "星海旅记")
 
-	uiClick(t, tt, "清除搜索")
+	uiClick(t, tt, "清空搜索")
 	if s.Search != "" {
 		t.Fatalf("the clear button left the search text %q", s.Search)
 	}

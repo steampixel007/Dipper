@@ -15,26 +15,53 @@ func TestUISidebarUsesSharedSelectionWash(t *testing.T) {
 			state.Appearance = appearance
 			tester := ui.NewTester(state.view, 1040, 720)
 			tester.SetPreferences(ui.Preferences{ReduceMotion: true})
+			tester.Move(500, 80)
 			palette := lightPalette
 			if appearance == appearanceDark {
 				palette = darkPalette
 			}
 			frame := tester.Image()
 			for _, sample := range []struct {
-				name  string
-				point image.Point
+				label string
 				fill  ui.Color
 			}{
-				{"selected navigation", image.Pt(180, 114), palette.blueWash},
-				{"inactive navigation", image.Pt(180, 166), palette.chrome},
+				{"浏览番剧", palette.blueWash},
+				{"我的追番", palette.chrome},
 			} {
-				pixel := color.NRGBAModel.Convert(frame.At(sample.point.X, sample.point.Y)).(color.NRGBA)
+				item, ok := tester.AccessByRole(ui.RoleTreeItem, sample.label)
+				if !ok {
+					t.Fatalf("missing sidebar item %q", sample.label)
+				}
+				pixel := color.NRGBAModel.Convert(frame.At(int(item.Bounds.X+item.Bounds.W*.8), int(item.Bounds.Y+item.Bounds.H/2))).(color.NRGBA)
 				want := color.NRGBA{R: sample.fill.R, G: sample.fill.G, B: sample.fill.B, A: 255}
 				if pixel != want {
-					t.Errorf("%s fill=%v, want %v", sample.name, pixel, want)
+					t.Errorf("%s fill=%v, want %v", sample.label, pixel, want)
 				}
 			}
 		})
+	}
+}
+
+func TestUISidebarArrowNavigation(t *testing.T) {
+	state := uiFixture(t, "detail")
+	tester := ui.NewTester(state.view, 1040, 720)
+	browse, ok := tester.Access("浏览番剧")
+	if !ok || !browse.Selected {
+		t.Fatalf("detail page does not select browse in the sidebar: %+v", browse)
+	}
+	tester.Key(0, ui.KeyTab)
+	tester.Key(0, ui.KeyDown)
+	following, ok := tester.AccessByRole(ui.RoleTreeItem, "我的追番")
+	if !ok || !following.Selected || !following.Focused || state.Page != "following" {
+		t.Fatalf("Down did not select and open following: page=%q, item=%+v", state.Page, following)
+	}
+	tester.Key(0, ui.KeyEnd)
+	if state.Page != "settings" {
+		t.Fatalf("End opened %q, want settings", state.Page)
+	}
+	tester.Key(0, ui.KeyHome)
+	if state.Page != "browse" {
+		t.Fatalf("Home opened %q, want browse", state.Page)
 	}
 }
 

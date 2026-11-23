@@ -229,9 +229,13 @@ authoritative. `anime_summary_test.go` checks the rendering boundary and
 `browse_detail_test.go` checks the return path and synopsis reuse.
 
 
-The browse page search matches the follow search: typing resets the catalog
-scroll to the top and a non-empty search offers 清除搜索 beside the input.
-Year, season, and search share one band above a text-only weekday row, so the
+The sidebar uses MyGo's Sidebar tree and badges. Detail selects Browse and
+the episode library selects Following. Arrow keys, Home, and End navigate
+the tree when it has focus.
+The browse page uses MyGo's SearchField: typing or clearing resets the
+catalog scroll to the top, and the field has a built-in clear button.
+Year, season, and search share one band above a text-only weekday row.
+Season and weekday choices use MyGo segmented controls, so the
 poster grid keeps the visual weight; `browse_layout_test.go` pins that
 hierarchy and the 200% text-scale bounds.
 Browse navigation runs from autumn 2013 through autumn of the current year.
@@ -239,8 +243,9 @@ Both source routes return the autumn 2013 catalog and an empty response for
 the advertised spring 2012 entry. Selecting 2013 opens autumn. The toolbar
 and source-error recovery actions disable arrows that would leave this range.
 The following page searches saved follows by anime title, subtitle group, or a
-word the saved rule requires; the count line reports how many follow tiles match
-and offers a clear action, and an empty result offers a way to clear the search. Cards whose last RSS check failed
+word the saved rule requires. The count line reports how many follow tiles
+match, the SearchField has a built-in clear button, and an empty result
+offers a separate clear action. Cards whose last RSS check failed
 float above the saved order so a silent failure cannot hide at the bottom.
 Card actions resolve the subscription by its stable ID, never by its position in
 the filtered list, so a narrowed search cannot pause, edit, or open the
@@ -260,12 +265,12 @@ Paused and stopped transfers are never running marks: resource rows and
 download groups label them 已暂停 / 已停止, the follow card skips them when
 deciding 下载中, and the pause-all toggle counts only transfers that are
 actually running. The download filter resets its scroll on every filter
-change, including filters whose list renders empty. A search field beside the speed summary
+change, including filters whose list renders empty. A SearchField beside the speed summary
 filters groups by anime title or release title, case/width-insensitive;
 typing resets the download scroll, and a search with no matches offers its own
-empty state with 清除搜索. Each anime group has a 收起/展开
-toggle whose state lives only for the session, so a fresh start lists every
-group open. Rows inside a group sort by episode
+empty state with 清除搜索. Each anime group has a MyGo disclosure with
+session-only state, so a fresh start lists every group open. A closed group
+removes its download rows from keyboard navigation. Rows inside a group sort by episode
 number like the resource preview — numeric ascending, releases without an
 episode last, ties keeping task order — so a season reads top to bottom. A row whose episode is known
 shows a 第 N 集 badge beside its transfer status.
