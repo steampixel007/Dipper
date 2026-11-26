@@ -14,41 +14,72 @@ const (
 )
 
 var appearanceText = struct {
-	title, light, dark, system, detail, saveError string
+	title, light, dark, system, saveError string
 }{
 	title: "界面主题", light: "浅色", dark: "夜间", system: "跟随系统",
-	detail:    "切换后立即生效，下次打开时保留。跟随系统会自动切换浅色与夜间模式。",
 	saveError: "外观设置保存失败：",
 }
 
 type colorPalette struct {
-	blue, blueHover, bluePressed, blueWash, accentText ui.Color
-	muted, ink, line, outline, hoverLine               ui.Color
-	chrome, paper, canvas, brandWash                   ui.Color
-	green, greenWash, amber, amberWash                 ui.Color
-	errorInk, errorWash                                ui.Color
-	scrim, popoverShadow, cardShadow                   ui.Color
-	sunken                                             ui.Color
+	canvas, chrome, surface, sunken ui.Color
+	ink, muted                      ui.Color
+	accent, accentHover             ui.Color
+	accentPressed, accentWash       ui.Color
+	accentInk, accentText           ui.Color
+	warningInk, warningWash         ui.Color
+	errorInk, errorWash             ui.Color
+	line, outline, hoverLine        ui.Color
+	scrim, brandWash                ui.Color
 }
 
 var lightPalette = colorPalette{
-	blue: ui.Hex("#285994"), blueHover: ui.Hex("#234d80"), bluePressed: ui.Hex("#1c406c"), blueWash: ui.Hex("#e1ebf8"), accentText: ui.Hex("#ffffff"),
-	muted: ui.Hex("#526071"), ink: ui.Hex("#222b37"), line: ui.RGBA(34, 43, 55, .09), outline: ui.RGBA(34, 43, 55, .20), hoverLine: ui.RGBA(34, 43, 55, .35),
-	chrome: ui.Hex("#edf0f4"), paper: ui.Hex("#ffffff"), canvas: ui.Hex("#f7f8fa"), brandWash: ui.Hex("#e8ecf1"),
-	green: ui.Hex("#28664f"), greenWash: ui.Hex("#e9f2ee"), amber: ui.Hex("#7d541e"), amberWash: ui.Hex("#f7efe2"),
-	errorInk: ui.Hex("#a63c38"), errorWash: ui.Hex("#f8ecec"),
-	scrim: ui.RGBA(19, 25, 34, .32), popoverShadow: ui.RGBA(19, 25, 34, .14), cardShadow: ui.RGBA(19, 25, 34, .08),
-	sunken: ui.Hex("#e6eaf0"),
+	canvas:        ui.Hex("#FFFFFF"),
+	chrome:        ui.Hex("#F5F5F7"),
+	surface:       ui.Hex("#FFFFFF"),
+	sunken:        ui.Hex("#EFEFF2"),
+	ink:           ui.Hex("#181818"),
+	muted:         ui.Hex("#6A6A6A"),
+	accent:        ui.Hex("#0071E3"),
+	accentHover:   ui.Hex("#0064CC"),
+	accentPressed: ui.Hex("#0055B3"),
+	accentWash:    ui.Hex("#E8F2FC"),
+	// accentInk uses the darker accentHover stop so accent text on accentWash
+	// and chrome exceeds 5.0:1 contrast while staying within the single blue.
+	accentInk:   ui.Hex("#0064CC"),
+	accentText:  ui.Hex("#FFFFFF"),
+	warningInk:  ui.Hex("#9A6018"),
+	warningWash: ui.Hex("#FBF4EA"),
+	errorInk:    ui.Hex("#B93232"),
+	errorWash:   ui.Hex("#FBF0F0"),
+	line:        ui.RGBA(24, 24, 24, .08),
+	outline:     ui.RGBA(24, 24, 24, .16),
+	hoverLine:   ui.RGBA(24, 24, 24, .30),
+	scrim:       ui.RGBA(0, 0, 0, .32),
+	brandWash:   ui.Hex("#EFEFF2"),
 }
 
 var darkPalette = colorPalette{
-	blue: ui.Hex("#96b9ec"), blueHover: ui.Hex("#afcaf2"), bluePressed: ui.Hex("#83a9df"), blueWash: ui.Hex("#293b53"), accentText: ui.Hex("#182535"),
-	muted: ui.Hex("#b1bdcc"), ink: ui.Hex("#e8edf4"), line: ui.RGBA(232, 237, 244, .09), outline: ui.RGBA(232, 237, 244, .22), hoverLine: ui.RGBA(232, 237, 244, .36),
-	chrome: ui.Hex("#1d2229"), paper: ui.Hex("#252b33"), canvas: ui.Hex("#171a1f"), brandWash: ui.Hex("#e8ecf1"),
-	green: ui.Hex("#9bcdb6"), greenWash: ui.Hex("#263a34"), amber: ui.Hex("#e2bf89"), amberWash: ui.Hex("#3a3228"),
-	errorInk: ui.Hex("#f0aaa8"), errorWash: ui.Hex("#3d2b30"),
-	scrim: ui.RGBA(0, 0, 0, .60), popoverShadow: ui.RGBA(0, 0, 0, .45), cardShadow: ui.RGBA(0, 0, 0, .45),
-	sunken: ui.Hex("#1b2027"),
+	canvas:        ui.Hex("#121212"),
+	chrome:        ui.Hex("#1C1C1E"),
+	surface:       ui.Hex("#1E1E20"),
+	sunken:        ui.Hex("#262629"),
+	ink:           ui.Hex("#F5F5F5"),
+	muted:         ui.Hex("#9A9A9A"),
+	accent:        ui.Hex("#2997FF"),
+	accentHover:   ui.Hex("#47A7FF"),
+	accentPressed: ui.Hex("#1482EB"),
+	accentWash:    ui.Hex("#172A3E"),
+	accentInk:     ui.Hex("#2997FF"),
+	accentText:    ui.Hex("#0B1219"),
+	warningInk:    ui.Hex("#E5B567"),
+	warningWash:   ui.Hex("#30281B"),
+	errorInk:      ui.Hex("#F28B82"),
+	errorWash:     ui.Hex("#332020"),
+	line:          ui.RGBA(245, 245, 245, .08),
+	outline:       ui.RGBA(245, 245, 245, .18),
+	hoverLine:     ui.RGBA(245, 245, 245, .32),
+	scrim:         ui.RGBA(0, 0, 0, .60),
+	brandWash:     ui.Hex("#262629"),
 }
 
 func colors(c *ui.Context) *colorPalette {
@@ -89,24 +120,24 @@ func spectrumTheme(dark bool) *ui.Theme {
 		p, t = darkPalette, ui.DarkTheme()
 	}
 	t.Background = p.canvas
-	t.Surface = p.paper
+	t.Surface = p.surface
 	t.SurfaceHover = p.chrome
-	t.SurfacePressed = p.line
+	t.SurfacePressed = p.sunken
 	t.Text = p.ink
 	t.TextMuted = p.muted
 	t.Border = p.outline
-	t.Accent = p.blue
-	t.AccentHover = p.blueHover
-	t.AccentPressed = p.bluePressed
-	t.Focus = p.blue
+	t.Accent = p.accent
+	t.AccentHover = p.accentHover
+	t.AccentPressed = p.accentPressed
+	t.Focus = p.accent
 	t.AccentText = p.accentText
-	t.Success = p.green
-	t.Warning = p.amber
+	t.Success = p.ink
+	t.Warning = p.warningInk
 	t.Danger = p.errorInk
-	t.Selection = p.blue.Alpha(.3)
-	t.Font = "Segoe UI, Microsoft YaHei UI"
-	t.FontSize = float32(textBody)
-	t.Radius = controlRadius
+	t.Selection = p.accent.Alpha(.25)
+	t.Font = uiFontFamily
+	t.FontSize = float32(textControl)
+	t.Radius = radiusSmall
 	t.Spacing = 4
 	return t
 }
@@ -129,10 +160,10 @@ func (s *State) setAppearance(value string) {
 }
 
 func (s *State) appearanceSettings(c *ui.Context) {
-	ui.Text(c, appearanceText.title).FontSize(textSize(c, textBody))
+	ui.Text(c, appearanceText.title).FontSize(textSize(c, textBody)).FontWeight(500).TextColor(colors(c).ink).LineHeight(1.5)
 	selected := normalizeAppearance(s.Appearance)
 	ui.RadioGroup(c, func() {
-		ui.Row(c).Gap(20).Children(func() {
+		ui.Row(c).Wrap().Gap(24).Children(func() {
 			for _, choice := range []struct{ value, label string }{
 				{appearanceLight, appearanceText.light}, {appearanceDark, appearanceText.dark}, {appearanceSystem, appearanceText.system},
 			} {
@@ -140,23 +171,18 @@ func (s *State) appearanceSettings(c *ui.Context) {
 			}
 		})
 	})
-	caption(c, appearanceText.detail)
 }
 
 var spectrumEase = ui.CubicBezier(0, 0, .4, 1)
 var feedbackMotion = ui.Animation{Duration: 130 * time.Millisecond, Ease: spectrumEase}
 var contentMotion = ui.Animation{Duration: 160 * time.Millisecond, Ease: spectrumEase}
 var hoverTransition = ui.ElementTransition{Colors: true, Duration: 130 * time.Millisecond, Ease: spectrumEase}
+var revealTransition = ui.ElementTransition{Duration: 130 * time.Millisecond, Ease: spectrumEase, Enter: &ui.Motion{}, Exit: &ui.Motion{}}
 var pageTransition = ui.ElementTransition{Duration: 160 * time.Millisecond, Ease: spectrumEase, Enter: &ui.Motion{}, Exit: &ui.Motion{}}
-var popupTransition = ui.ElementTransition{Duration: 140 * time.Millisecond, Ease: spectrumEase, Enter: &ui.Motion{Y: 2}, Exit: &ui.Motion{Y: 2}}
+var popupTransition = ui.ElementTransition{Duration: 140 * time.Millisecond, Ease: spectrumEase, Enter: &ui.Motion{Y: 4}, Exit: &ui.Motion{Y: 4}}
 var fadeTransition = ui.ElementTransition{Duration: 160 * time.Millisecond, Ease: spectrumEase, Colors: true, Enter: &ui.Motion{}, Exit: &ui.Motion{}}
-var rowTransition = ui.ElementTransition{Duration: 160 * time.Millisecond, Ease: spectrumEase, Position: true, Colors: true, Enter: &ui.Motion{Y: 2}, Exit: &ui.Motion{}}
+var rowTransition = ui.ElementTransition{Duration: 130 * time.Millisecond, Ease: spectrumEase, Colors: true}
 
 func tactile(e ui.Element) ui.Element {
-	e.Transition(hoverTransition)
-	pose := ui.Pose{}
-	if e.Pressed() {
-		pose.Scale = .99
-	}
-	return e.AnimatePose(pose, feedbackMotion)
+	return e.Transition(hoverTransition)
 }

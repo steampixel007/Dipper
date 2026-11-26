@@ -111,30 +111,29 @@ func (s *State) saveTransferLimits() {
 
 func (s *State) transferSettings(c *ui.Context) {
 	draft := &s.TransferLimits
-	s.limitRow(c, "upload", "全局上传上限", "所有下载任务共享这个上传速度。", "MiB/s", &draft.upload)
-	s.limitRow(c, "duration", "分享时长", "下载完成后继续提供文件。暂停或离线时不计时。", "分钟", &draft.duration)
-	s.limitRow(c, "ratio", "分享率上限", "上传量 ÷ 下载量。1:1 表示上传量与下载量相同。", ":1", &draft.ratio)
+	s.limitRow(c, "upload", "全局上传上限", "MiB/s", &draft.upload)
+	s.limitRow(c, "duration", "分享时长", "分钟", &draft.duration)
+	s.limitRow(c, "ratio", "分享率上限", ":1", &draft.ratio)
 	caption(c, "下载完成后，"+s.seedStopRule()+"。")
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(12).Children(func() {
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(16).Children(func() {
 		secondary(c, "save-transfer-limits", "保存限额", s.saveTransferLimits).Disabled(s.Busy)
 		if draft.failed {
-			ui.Text(c, draft.message).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk)
+			ui.Text(c, draft.message).FontSize(textSize(c, textMeta)).TextColor(colors(c).errorInk).LineHeight(1.5)
 		} else if draft.message != "" {
 			caption(c, draft.message)
 		}
 	})
 }
 
-func (s *State) limitRow(c *ui.Context, key, label, description, unit string, input *limitInput) {
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(12).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 12).Gap(5).Children(func() {
-			ui.Text(c, label).FontSize(textSize(c, textBody))
-			caption(c, description)
-		})
-		ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
-			ui.TextInput(c.Key(key+"-limit"), &input.value).Label(label).Width(textSize(c, textBody) * 6).
-				MinHeight(inputHeight(c)).Disabled(input.unlimited || s.Busy).OnSubmit(s.saveTransferLimits)
-			ui.Text(c, unit).Width(textSize(c, textBody) * 3).FontSize(textSize(c, textCaption)).TextColor(colors(c).muted)
+func (s *State) limitRow(c *ui.Context, key, label, unit string, input *limitInput) {
+	pal := colors(c)
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(16).Children(func() {
+		ui.Text(c, label).FontSize(textSize(c, textBody)).FontWeight(500).TextColor(pal.ink).LineHeight(1.5).Grow(1).MinWidth(textSize(c, textBody) * 10)
+		ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
+			ui.TextInput(c.Key(key+"-limit"), &input.value).Label(label).Width(textSize(c, textControl) * 6).
+				MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).
+				Disabled(input.unlimited || s.Busy).OnSubmit(s.saveTransferLimits)
+			ui.Text(c, unit).Width(textSize(c, textControl) * 4).FontSize(textSize(c, textMeta)).TextColor(pal.muted)
 			ui.Checkbox(c.Key(key+"-unlimited"), &input.unlimited, "不限").Label(label + "不限").Disabled(s.Busy)
 		})
 	})

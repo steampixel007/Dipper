@@ -68,7 +68,7 @@ func TestUIPosterTilesFitArtworkWithoutMargins(t *testing.T) {
 					if !ok {
 						t.Fatal("poster title missing")
 					}
-					if gap := title.Y - height; gap < 9 || gap > 11 {
+					if gap := title.Y - height; gap < 11 || gap > 13 {
 						t.Errorf("title must follow the artwork without an empty frame: artwork height=%g title=%+v", height, title)
 					}
 				})

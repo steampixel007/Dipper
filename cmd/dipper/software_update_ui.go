@@ -547,20 +547,22 @@ func (s *State) softwareNotice(c *ui.Context) {
 	if message == "" {
 		return
 	}
+	pal := colors(c)
 	if s.SoftwarePending != nil && s.softwareRestartReady() {
-		ui.Row(c).Wrap().Gap(12).Padding(8, 24).Background(colors(c).blueWash).Children(func() {
-			quiet(c, "restart-software-update", fmt.Sprintf(softwareText.downloadedRestart, s.SoftwareUpdate.Offer.Release.Tag), s.installSoftware).
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(12).Padding(12, pageInsetX(c)).Background(pal.accentWash).Children(func() {
+			compactQuiet(c, "restart-software-update", fmt.Sprintf(softwareText.downloadedRestart, s.SoftwareUpdate.Offer.Release.Tag), s.installSoftware).
+				TextColor(pal.accentInk).
 				Disabled(s.Busy || s.SoftwareUpdate.Busy || s.SoftwareUpdate.Installing)
-			quiet(c, "open-software-update", softwareText.notes, func() {
+			compactQuiet(c, "open-software-update", softwareText.notes, func() {
 				s.Page = "settings"
 				s.SoftwareUpdate.Dialog = true
 			})
 		})
 		return
 	}
-	ui.Row(c).Wrap().Gap(12).Padding(8, 24).Background(colors(c).blueWash).Children(func() {
-		ui.Text(c, message).FontSize(textSize(c, textCaption)).TextColor(colors(c).ink).Grow(1).MinWidth(0)
-		quiet(c, "open-software-update", softwareText.notes, func() {
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(12).Padding(12, pageInsetX(c)).Background(pal.accentWash).Children(func() {
+		ui.Text(c, message).FontSize(textSize(c, textControl)).FontWeight(500).TextColor(pal.ink).LineHeight(1.5).Grow(1).MinWidth(0)
+		compactQuiet(c, "open-software-update", softwareText.notes, func() {
 			s.Page = "settings"
 			s.SoftwareUpdate.Dialog = true
 		})
@@ -568,13 +570,11 @@ func (s *State) softwareNotice(c *ui.Context) {
 }
 
 func (s *State) softwareUpdateSettings(c *ui.Context) {
-	ui.Column(c).Gap(12).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
+	pal := colors(c)
+	ui.Column(c).Gap(16).Children(func() {
 		heading(c, softwareText.title)
-		ui.Row(c).Wrap().Gap(16).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 12).Gap(4).Children(func() {
-				ui.Text(c, softwareText.current+"："+updateVersionLabel(version)).FontSize(textSize(c, textBody)).FontWeight(600)
-				caption(c, softwareText.automaticDetail)
-			})
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(24).Children(func() {
+			ui.Text(c, softwareText.current+"："+updateVersionLabel(version)).FontSize(textSize(c, textBody)).FontWeight(500).TextColor(pal.ink).LineHeight(1.5).Grow(1).MinWidth(textSize(c, textBody) * 10)
 			automatic := s.SoftwareAuto
 			ui.Checkbox(c.Key("software-auto"), &automatic, softwareText.automatic).OnChange(func() {
 				s.setSoftwareAutomatic(automatic)
@@ -584,38 +584,37 @@ func (s *State) softwareUpdateSettings(c *ui.Context) {
 				s.setSoftwareAutoDownload(autoDownload)
 			}).Disabled(s.Busy || s.SoftwareUpdate.Busy)
 		})
-		caption(c, softwareText.autoDownloadDetail)
 		if update.Development(version) {
 			caption(c, softwareText.disabled)
 		}
 		if s.SoftwareUpdate.Status != "" {
-			ui.Text(c, s.SoftwareUpdate.Status).FontSize(textSize(c, textCaption)).TextColor(colors(c).ink).LineHeight(1.5)
+			ui.Text(c, s.SoftwareUpdate.Status).FontSize(textSize(c, textMeta)).TextColor(pal.ink).LineHeight(1.5)
 		}
 		if s.SoftwareUpdate.StartupError != "" {
-			ui.Text(c, s.SoftwareUpdate.StartupError).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk).LineHeight(1.5)
+			ui.Text(c, s.SoftwareUpdate.StartupError).FontSize(textSize(c, textMeta)).TextColor(pal.errorInk).LineHeight(1.5)
 		}
 		if s.SoftwareUpdate.Busy && s.SoftwareUpdate.Total > 0 {
 			percent := float32(s.SoftwareUpdate.Progress) / float32(s.SoftwareUpdate.Total) * 100
-			ui.Text(c, fmt.Sprintf("%.0f%%", percent)).FontSize(textSize(c, textCaption))
+			ui.Text(c, fmt.Sprintf("%.0f%%", percent)).FontSize(textSize(c, textMeta)).TextColor(pal.accentInk)
 		}
-		ui.Row(c).Wrap().Gap(controlGap).Children(func() {
-			secondary(c, "software-check", softwareText.check, func() { s.checkSoftware(true) }).FontSize(textSize(c, textCaption)).Disabled(s.Busy || s.SoftwareUpdate.Busy)
+		ui.Row(c).Wrap().Gap(12).Children(func() {
+			secondary(c, "software-check", softwareText.check, func() { s.checkSoftware(true) }).Disabled(s.Busy || s.SoftwareUpdate.Busy)
 			switch {
 			case s.SoftwareUpdate.Busy:
 				quiet(c, "software-cancel", softwareText.cancel, s.cancelSoftwareDownload)
 			case s.softwareRestartReady():
-				primary(c, "software-install", softwareText.install, s.installSoftware).FontSize(textSize(c, textCaption)).Disabled(s.Busy || s.SoftwareUpdate.Installing)
+				primary(c, "software-install", softwareText.install, s.installSoftware).Disabled(s.Busy || s.SoftwareUpdate.Installing)
 			case s.SoftwareUpdate.Downloaded.Package != "":
-				primary(c, "software-open-installer", softwareText.manualInstall, s.installSoftware).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+				primary(c, "software-open-installer", softwareText.manualInstall, s.installSoftware).Disabled(s.Busy)
 			case s.SoftwareUpdate.Available && !s.SoftwareUpdate.Installing:
-				primary(c, "software-download", softwareText.download, s.downloadSoftware).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+				primary(c, "software-download", softwareText.download, s.downloadSoftware).Disabled(s.Busy)
 			}
 			if s.SoftwareUpdate.Offer.Release.Tag != "" {
 				quiet(c, "software-notes", softwareText.notes, func() { s.SoftwareUpdate.Dialog = true })
 			}
 		})
 		if s.SoftwareUpdate.Error != "" {
-			ui.Text(c, s.SoftwareUpdate.Error).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk).LineHeight(1.5)
+			ui.Text(c, s.SoftwareUpdate.Error).FontSize(textSize(c, textMeta)).TextColor(pal.errorInk).LineHeight(1.5)
 		}
 	})
 }
@@ -624,27 +623,28 @@ func (s *State) softwareUpdateDialog(c *ui.Context) {
 	if !s.SoftwareUpdate.Dialog {
 		return
 	}
+	pal := colors(c)
 	ui.DialogBase(c, &s.SoftwareUpdate.Dialog, func(backdrop, panel ui.Element) {
-		backdrop.Background(colors(c).scrim)
-		dialogContentWithFooter(c, panel, "software-update-content", 620, func() {
-			heading(c, softwareText.title)
+		backdrop.Background(pal.scrim).Transition(fadeTransition)
+		dialogContentWithFooter(c, panel, "software-update-content", 620, radiusDialog, func() {
+			pageTitle(c, softwareText.title)
 			offer := s.SoftwareUpdate.Offer
 			if offer.Release.Tag != "" {
-				ui.Text(c, offer.Release.Tag).FontSize(textSize(c, textSection)).FontWeight(700)
+				heading(c, offer.Release.Tag)
 				if offer.Available {
-					ui.Text(c, softwareText.available+updateVersionLabel(version)+" → "+offer.Release.Tag).FontSize(textSize(c, textBody))
+					ui.Text(c, softwareText.available+updateVersionLabel(version)+" → "+offer.Release.Tag).FontSize(textSize(c, textBody)).LineHeight(1.5).TextColor(pal.ink)
 				}
 				notes := strings.TrimSpace(offer.Release.Notes)
 				if notes == "" {
 					notes = softwareText.noNotes
 				}
-				ui.Text(c, notes).FontSize(textSize(c, textBody)).LineHeight(1.6).Selectable()
+				ui.Text(c, notes).FontSize(textSize(c, textBody)).LineHeight(1.5).TextColor(pal.ink).Selectable()
 			}
 			if s.SoftwareUpdate.Status != "" {
-				ui.Text(c, s.SoftwareUpdate.Status).FontSize(textSize(c, textBody)).LineHeight(1.6).Selectable()
+				ui.Text(c, s.SoftwareUpdate.Status).FontSize(textSize(c, textBody)).LineHeight(1.5).TextColor(pal.ink).Selectable()
 			}
 			if s.SoftwareUpdate.StartupError != "" {
-				ui.Text(c, s.SoftwareUpdate.StartupError).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk).LineHeight(1.5)
+				ui.Text(c, s.SoftwareUpdate.StartupError).FontSize(textSize(c, textMeta)).TextColor(pal.errorInk).LineHeight(1.5)
 			}
 			if s.SoftwareUpdate.Busy && s.SoftwareUpdate.Total > 0 {
 				caption(c, fmt.Sprintf("%.0f%%", float64(s.SoftwareUpdate.Progress)*100/float64(s.SoftwareUpdate.Total)))
@@ -665,7 +665,7 @@ func (s *State) softwareUpdateDialog(c *ui.Context) {
 				caption(c, detail)
 			}
 			if s.SoftwareUpdate.Error != "" {
-				ui.Text(c, s.SoftwareUpdate.Error).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk).LineHeight(1.5)
+				ui.Text(c, s.SoftwareUpdate.Error).FontSize(textSize(c, textMeta)).TextColor(pal.errorInk).LineHeight(1.5)
 			}
 		}, func() {
 			quiet(c, "software-close", softwareText.installLater, func() { s.SoftwareUpdate.Dialog = false })
