@@ -63,10 +63,9 @@ func (s *State) libraryHero(c *ui.Context, sub Subscription, embedded bool) {
 		folder := sub.Folder
 		fileItems := []cascadingMenuItem{
 			{
-				Key:         "folder",
-				Label:       "打开番剧文件夹",
-				AccessLabel: "打开番剧文件夹 " + sub.GroupName,
-				Disabled:    s.Busy || folder == "" || s.OpenFolder == nil,
+				Key:      "folder",
+				Label:    "打开番剧文件夹",
+				Disabled: s.Busy || folder == "" || s.OpenFolder == nil,
 				Action: func() {
 					if s.OpenFolder != nil {
 						s.OpenFolder(folder)
@@ -74,10 +73,9 @@ func (s *State) libraryHero(c *ui.Context, sub Subscription, embedded bool) {
 				},
 			},
 			{
-				Key:         "downloads",
-				Label:       "查看下载任务",
-				AccessLabel: "查看下载任务 " + sub.GroupName,
-				Disabled:    s.Busy,
+				Key:      "downloads",
+				Label:    "查看下载任务",
+				Disabled: s.Busy,
 				Action: func() {
 					s.DownloadFilter = downloadsAll
 					s.DownloadSearch = anime.Title
@@ -85,10 +83,9 @@ func (s *State) libraryHero(c *ui.Context, sub Subscription, embedded bool) {
 				},
 			},
 			{
-				Key:         "history",
-				Label:       "查看下载记录",
-				AccessLabel: "查看下载记录 " + sub.GroupName,
-				Disabled:    s.Busy,
+				Key:      "history",
+				Label:    "查看下载记录",
+				Disabled: s.Busy,
 				Action: func() {
 					s.enterPage("downloads")
 					s.DownloadHistory = true
@@ -98,48 +95,42 @@ func (s *State) libraryHero(c *ui.Context, sub Subscription, embedded bool) {
 		}
 		menuItems := []cascadingMenuItem{
 			{
-				Key:         "view-resources",
-				Label:       "查看资源",
-				AccessLabel: "查看资源 " + sub.GroupName,
-				Disabled:    s.Busy,
-				Action:      func() { s.viewSubscriptionResources(sub.ID) },
+				Key:      "view-resources",
+				Label:    "查看资源",
+				Disabled: s.Busy,
+				Action:   func() { s.viewSubscriptionResources(sub.ID) },
 			},
 			{
-				Key:         "edit",
-				Label:       "修改条件",
-				AccessLabel: "修改条件 " + sub.GroupName,
-				Disabled:    s.Busy,
-				Action:      func() { s.editSubscription(sub.ID) },
+				Key:      "edit",
+				Label:    "修改条件",
+				Disabled: s.Busy,
+				Action:   func() { s.editSubscription(sub.ID) },
 			},
 			{
-				Key:         "pause",
-				Label:       pauseLabel,
-				AccessLabel: pauseLabel + " " + sub.GroupName,
-				Disabled:    s.Busy,
-				Action:      func() { s.pauseSubscription(sub.ID) },
+				Key:      "pause",
+				Label:    pauseLabel,
+				Disabled: s.Busy,
+				Action:   func() { s.pauseSubscription(sub.ID) },
 			},
 			{
-				Key:         "check",
-				Label:       "检查更新",
-				AccessLabel: "检查更新 " + sub.GroupName,
-				Disabled:    sub.Paused || s.Busy,
-				Action:      func() { s.check(sub.ID) },
+				Key:      "check",
+				Label:    "检查更新",
+				Disabled: sub.Paused || s.Busy,
+				Action:   func() { s.check(sub.ID) },
 			},
 			{
-				Key:         "files-group",
-				Label:       "文件与记录",
-				AccessLabel: "文件与记录 " + sub.GroupName,
-				Disabled:    s.Busy,
-				Submenu:     fileItems,
+				Key:      "files-group",
+				Label:    "文件与记录",
+				Disabled: s.Busy,
+				Submenu:  fileItems,
 			},
 			{Key: "sep-cancel", Separator: true},
 			{
-				Key:         "cancel",
-				Label:       "取消追番",
-				AccessLabel: "取消追番 " + sub.GroupName,
-				Disabled:    s.Busy,
-				Danger:      true,
-				Action:      func() { s.CancelID, s.CancelPrompt = sub.ID, true },
+				Key:      "cancel",
+				Label:    "取消追番",
+				Disabled: s.Busy,
+				Danger:   true,
+				Action:   func() { s.CancelID, s.CancelPrompt = sub.ID, true },
 			},
 		}
 		cascadingMenu(c, "library-menu-popup-"+sub.ID, more, &s.LibraryMenuOpen, menuItems)

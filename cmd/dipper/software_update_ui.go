@@ -569,6 +569,16 @@ func (s *State) softwareNotice(c *ui.Context) {
 	})
 }
 
+func (s *State) softwareUpdateProgress(c *ui.Context) {
+	if s.SoftwareUpdate.Busy && s.SoftwareUpdate.Total > 0 {
+		progress := float64(s.SoftwareUpdate.Progress) / float64(s.SoftwareUpdate.Total)
+		ui.Row(c).AlignItems(ui.Center).Gap(controlGap).Children(func() {
+			ui.Progress(c, progress).Label("更新下载进度").Grow(1)
+			caption(c, fmt.Sprintf("%.0f%%", progress*100))
+		})
+	}
+}
+
 func (s *State) softwareUpdateSettings(c *ui.Context) {
 	pal := colors(c)
 	ui.Column(c).Gap(16).Children(func() {
@@ -593,10 +603,7 @@ func (s *State) softwareUpdateSettings(c *ui.Context) {
 		if s.SoftwareUpdate.StartupError != "" {
 			ui.Text(c, s.SoftwareUpdate.StartupError).FontSize(textSize(c, textMeta)).TextColor(pal.errorInk).LineHeight(1.5)
 		}
-		if s.SoftwareUpdate.Busy && s.SoftwareUpdate.Total > 0 {
-			percent := float32(s.SoftwareUpdate.Progress) / float32(s.SoftwareUpdate.Total) * 100
-			ui.Text(c, fmt.Sprintf("%.0f%%", percent)).FontSize(textSize(c, textMeta)).TextColor(pal.accentInk)
-		}
+		s.softwareUpdateProgress(c)
 		ui.Row(c).Wrap().Gap(12).Children(func() {
 			secondary(c, "software-check", softwareText.check, func() { s.checkSoftware(true) }).Disabled(s.Busy || s.SoftwareUpdate.Busy)
 			switch {
@@ -646,9 +653,7 @@ func (s *State) softwareUpdateDialog(c *ui.Context) {
 			if s.SoftwareUpdate.StartupError != "" {
 				ui.Text(c, s.SoftwareUpdate.StartupError).FontSize(textSize(c, textMeta)).TextColor(pal.errorInk).LineHeight(1.5)
 			}
-			if s.SoftwareUpdate.Busy && s.SoftwareUpdate.Total > 0 {
-				caption(c, fmt.Sprintf("%.0f%%", float64(s.SoftwareUpdate.Progress)*100/float64(s.SoftwareUpdate.Total)))
-			}
+			s.softwareUpdateProgress(c)
 			if s.softwareSelfUpdating(offer) {
 				detail := softwareText.archiveDetail
 				if softwareOfferMode(offer) == update.ModeDebian {

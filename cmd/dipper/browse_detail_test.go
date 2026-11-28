@@ -20,12 +20,12 @@ func TestUIBrowseDetailRoundTrip(t *testing.T) {
 	first, other := state.Catalog[0], &state.Catalog[1]
 	other.Summary = strings.Repeat("远行的人们在星空下相遇，开始了新的旅程。", 100)
 	tester := ui.NewTester(state.view, 1320, 900)
-	firstLabel, otherLabel := "查看 "+first.Title, "查看 "+other.Title
+	firstLabel := "查看 " + first.Title
 	full := requireLayoutBound(t, tester, firstLabel, 1320, 900)
 	tester.Move(full.X+full.W/2, full.Y+60)
 	uiRequireText(t, tester, "查看详情")
 	originalGroup := state.Group
-	uiClick(t, tester, firstLabel)
+	tester.ClickAt(full.X+full.W/2, full.Y+60)
 	if state.Page != "browse" || state.browseDetail == nil || state.browseDetail.anime.ID != first.ID || state.Group != originalGroup {
 		t.Fatalf("poster click did not open the synopsis in browse without changing groups")
 	}
@@ -37,7 +37,8 @@ func TestUIBrowseDetailRoundTrip(t *testing.T) {
 		t.Fatalf("expected three posters beside detail: third=%+v fourth=%+v close=%+v", third, fourth, closeButton)
 	}
 
-	uiClick(t, tester, otherLabel)
+	title := requireLayoutBound(t, tester, other.Title, 1320, 900)
+	tester.ClickAt(title.X+title.W/2, title.Y+title.H/2)
 	if tester.HasText("查看资源") || state.browseDetail.anime.ID != other.ID {
 		t.Fatal("selecting a new poster did not replace the synopsis and action")
 	}

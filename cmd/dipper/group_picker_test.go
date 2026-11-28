@@ -53,12 +53,12 @@ func TestUIGroupSearchPreservesCurrentDraftAndRecovers(t *testing.T) {
 		t.Fatal("reselecting the current group reset the release draft or scroll position")
 	}
 	uiClick(t, tester, "更换")
-	uiClick(t, tester, "清除搜索")
+	uiClick(t, tester, "清空搜索")
 	uiRequireText(t, tester, "4 个字幕组", "选择字幕组 "+state.Groups[3])
 	uiClick(t, tester, "搜索字幕组")
 	tester.Type("不存在的字幕组")
 	uiRequireText(t, tester, "找到 0 / 4 个字幕组", "没有找到这个字幕组。")
-	uiClick(t, tester, "清除搜索")
+	uiClick(t, tester, "清空搜索")
 	if state.GroupSearch != "" || state.Group != 0 || !reflect.DeepEqual(state.Checked, checked) || !reflect.DeepEqual(state.Rule, rule) {
 		t.Fatal("clearing an empty search changed the current version draft")
 	}
@@ -90,7 +90,7 @@ func TestUIGroupSearchRemainsClearableAfterListShrinks(t *testing.T) {
 		state.Groups = groups
 		tester := ui.NewTester(state.view, 1120, 760)
 		uiRequireText(t, tester, "没有找到这个字幕组。")
-		uiClick(t, tester, "清除搜索")
+		uiClick(t, tester, "清空搜索")
 		if state.GroupSearch != "" {
 			t.Fatal("a reduced group list trapped the previous search")
 		}

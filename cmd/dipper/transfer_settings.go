@@ -128,9 +128,9 @@ func (s *State) transferSettings(c *ui.Context) {
 func (s *State) limitRow(c *ui.Context, key, label, unit string, input *limitInput) {
 	pal := colors(c)
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(16).Children(func() {
-		ui.Text(c, label).FontSize(textSize(c, textBody)).FontWeight(500).TextColor(pal.ink).LineHeight(1.5).Grow(1).MinWidth(textSize(c, textBody) * 10)
+		fieldLabel := ui.Text(c, label).FontSize(textSize(c, textBody)).FontWeight(500).TextColor(pal.ink).LineHeight(1.5).Grow(1).MinWidth(textSize(c, textBody) * 10)
 		ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
-			ui.TextInput(c.Key(key+"-limit"), &input.value).Label(label).Width(textSize(c, textControl) * 6).
+			ui.TextInput(c.Key(key+"-limit"), &input.value).LabelledBy(fieldLabel).Width(textSize(c, textControl) * 6).
 				MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).
 				Disabled(input.unlimited || s.Busy).OnSubmit(s.saveTransferLimits)
 			ui.Text(c, unit).Width(textSize(c, textControl) * 4).FontSize(textSize(c, textMeta)).TextColor(pal.muted)

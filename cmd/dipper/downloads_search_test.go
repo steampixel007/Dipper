@@ -48,7 +48,7 @@ func TestUIDownloadsSearchFiltersGroups(t *testing.T) {
 	}
 	uiRequireText(t, tt, "雨后的星期天")
 
-	uiClick(t, tt, "清除搜索")
+	uiClick(t, tt, "清空搜索")
 	tt.Frame()
 	uiRequireText(t, tt, "星海旅记", "雨后的星期天")
 }

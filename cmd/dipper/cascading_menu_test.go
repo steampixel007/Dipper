@@ -52,15 +52,15 @@ func TestCascadingMenuOpenCloseDelaysSafeTriangleAndKeyboard(t *testing.T) {
 		if !s.LibraryMenuOpen {
 			t.Fatal("clicking library menu trigger did not open cascading menu")
 		}
-		subTrigger := requireLayoutBound(t, tt, "文件与记录 "+s.Subscriptions[0].GroupName, 1320, 860)
-		cancelItem := requireLayoutBound(t, tt, "取消追番 "+s.Subscriptions[0].GroupName, 1320, 860)
+		subTrigger := requireLayoutBound(t, tt, "文件与记录", 1320, 860)
+		cancelItem := requireLayoutBound(t, tt, "取消追番", 1320, 860)
 		return s, tt, subTrigger, cancelItem
 	}
 
 	t.Run("open_close_delays_with_reduced_motion", func(t *testing.T) {
 		for _, reduce := range []bool{false, true} {
-			s, tt, subTrigger, _ := openHeroMenu(t, reduce)
-			subLabel := "打开番剧文件夹 " + s.Subscriptions[0].GroupName
+			_, tt, subTrigger, _ := openHeroMenu(t, reduce)
+			subLabel := "打开番剧文件夹"
 
 			// Hover submenu trigger: must NOT open before 120 ms.
 			tt.Move(subTrigger.X+subTrigger.W/2, subTrigger.Y+subTrigger.H/2)
@@ -97,8 +97,8 @@ func TestCascadingMenuOpenCloseDelaysSafeTriangleAndKeyboard(t *testing.T) {
 	})
 
 	t.Run("safe_triangle_protection", func(t *testing.T) {
-		s, tt, subTrigger, cancelItem := openHeroMenu(t, true)
-		subLabel := "打开番剧文件夹 " + s.Subscriptions[0].GroupName
+		_, tt, subTrigger, cancelItem := openHeroMenu(t, true)
+		subLabel := "打开番剧文件夹"
 
 		// Click opens submenu immediately (no 120 ms wait).
 		tt.ClickAt(subTrigger.X+subTrigger.W/2, subTrigger.Y+subTrigger.H/2)
@@ -147,7 +147,7 @@ func TestCascadingMenuOpenCloseDelaysSafeTriangleAndKeyboard(t *testing.T) {
 		s, tt, _, _ := openHeroMenu(t, true)
 		openedFolder := ""
 		s.OpenFolder = func(path string) { openedFolder = path }
-		subLabel := "打开番剧文件夹 " + s.Subscriptions[0].GroupName
+		subLabel := "打开番剧文件夹"
 
 		// Move down 5 times to reach "文件与记录" (index 4: view, edit, pause, check, files-group).
 		for i := 0; i < 5; i++ {

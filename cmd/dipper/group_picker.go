@@ -17,18 +17,12 @@ func (s *State) groupPicker(c *ui.Context) {
 		}
 	}
 	if len(s.Groups) > 1 || s.GroupSearch != "" {
-		ui.TextInput(c.Key("group-search"), &s.GroupSearch).Label("搜索字幕组").Placeholder("输入字幕组名称").FillWidth().MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).Disabled(s.Busy)
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(controlGap).Children(func() {
-			if query == "" {
-				caption(c, fmt.Sprintf("%d 个字幕组", len(s.Groups)))
-			} else {
-				caption(c, fmt.Sprintf("找到 %d / %d 个字幕组", len(matches), len(s.Groups)))
-			}
-			ui.Spacer(c)
-			if s.GroupSearch != "" {
-				compactQuiet(c, "clear-group-search", "清除搜索", func() { s.GroupSearch = "" }).TextColor(pal.accentInk).Disabled(s.Busy)
-			}
-		})
+		ui.SearchField(c.Key("group-search"), &s.GroupSearch).Label("搜索字幕组").Placeholder("输入字幕组名称").FillWidth().MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).Disabled(s.Busy)
+		if query == "" {
+			caption(c, fmt.Sprintf("%d 个字幕组", len(s.Groups)))
+		} else {
+			caption(c, fmt.Sprintf("找到 %d / %d 个字幕组", len(matches), len(s.Groups)))
+		}
 	}
 	if len(matches) == 0 {
 		if query != "" {
