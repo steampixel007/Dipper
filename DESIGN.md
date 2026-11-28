@@ -266,9 +266,11 @@ Every page obeys the rules above. What is specific to each:
 
 1. **Browse.** The season title, then the year, season, and search controls on
    one wrapping row, then weekday tabs, then the poster grid. No hint strip. The
-   synopsis opens beside the grid, or as a dialog at narrow widths, with the
-   cover, title, update day and follow state; its body scrolls on its own and
-   back restores its reading position.
+   detail panel opens beside the grid, or as a dialog at narrow widths, with the
+   cover, title, update day, premiere date, follow state (with followed subtitle
+   group names), synopsis, available subtitle groups and external links; its
+   body scrolls on its own, its primary action reuses the loaded detail, and
+   followed anime also offer 进入剧集库. Back restores its reading position.
 2. **Choose and follow.** The anime title, the release-group choice, title-word
    filters (只要 includes, 不要 excludes), the resource preview, and one confirm
    action. Matching and selected counts stay distinct. Undo and redo keep their

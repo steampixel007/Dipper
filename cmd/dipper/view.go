@@ -302,7 +302,11 @@ func (s *State) sidebar(c *ui.Context) {
 	case "detail":
 		selected = "browse"
 	case "episodes":
-		selected = "following"
+		if s.LibraryReturn == browseDetailReturn {
+			selected = "browse"
+		} else {
+			selected = "following"
+		}
 	}
 	active := selected
 	navigate := func(page string) {
@@ -389,6 +393,9 @@ func (s *State) topbar(c *ui.Context) {
 	pal := colors(c)
 	names := map[string]string{"browse": "浏览番剧", "detail": "浏览番剧 / 开始追番", "following": "我的追番", "downloads": "下载", "settings": "设置"}
 	names["episodes"] = "我的追番 / 剧集库"
+	if s.LibraryReturn == browseDetailReturn {
+		names["episodes"] = "浏览番剧 / 剧集库"
+	}
 	if s.Backfill {
 		if s.ViewResources {
 			names["detail"] = "我的追番 / 查看资源"
@@ -658,7 +665,8 @@ func (s *State) enterPage(page string) {
 	if s.Page == page {
 		return
 	}
-	if s.Page != "detail" || s.DetailReturn != browseDetailReturn || page != "browse" {
+	returningToBrowseDetail := page == "browse" && ((s.Page == "detail" && s.DetailReturn == browseDetailReturn) || (s.Page == "episodes" && s.LibraryReturn == browseDetailReturn))
+	if !returningToBrowseDetail {
 		s.closeBrowseDetail()
 	}
 	s.Page = page
@@ -1656,7 +1664,11 @@ func (s *State) library(c *ui.Context) {
 	indices := s.libraryEpisodes(sub.AnimeID)
 	renderBack := func() {
 		ui.Row(c).Padding(16, insetX-16, 0).Children(func() {
-			back := ui.ButtonBase(c.Key("back-following")).Label("返回我的追番").
+			backLabel, backPage := "返回我的追番", "following"
+			if s.LibraryReturn == browseDetailReturn {
+				backLabel, backPage = "返回番剧详情", "browse"
+			}
+			back := ui.ButtonBase(c.Key("back-following")).Label(backLabel).
 				Padding(8, 16).Gap(8).AlignItems(ui.Center).Radius(radiusSmall).
 				FontSize(textSize(c, textControl)).FontWeight(500).TextColor(pal.muted).Cursor(ui.CursorPointer)
 			if back.Hovered() {
@@ -1664,8 +1676,8 @@ func (s *State) library(c *ui.Context) {
 			}
 			tactile(back).Children(func() {
 				icon(c, "back")
-				ui.Text(c, "返回我的追番")
-			}).OnClick(func() { s.enterPage("following") })
+				ui.Text(c, backLabel)
+			}).OnClick(func() { s.enterPage(backPage) })
 		})
 	}
 	renderEpisodes := func(epViewport ui.Rect) {
