@@ -236,22 +236,31 @@ The detail page runs in one of two modes, distinguished by `Backfill`:
 - **Backfill** — pick releases from an existing subscription's history to
   download now, without changing the rule.
 Browse cards mark followed anime with a 已追番 badge. Clicking a card opens
-its synopsis. The catalog reflows
+its detail panel. The catalog reflows
 beside the right panel on wide windows and stays full width behind a centered
-dialog on narrow windows. Switching cards cancels the previous synopsis request.
-The panel retains its reading position when returning from group selection or
-resources. Closing it restores the full-width catalog's scroll position.
+dialog on narrow windows. Switching cards cancels the previous detail request.
+The panel shows the cover, title, update day, optional premiere date, synopsis,
+available subtitle groups (distinguishing an unloaded response from an empty
+group list), and validated external links (Bangumi and official site). Followed
+anime also show their followed subtitle group(s) and offer 进入剧集库 beside
+查看资源; the episode library's back button returns to browse details when
+entered from there. The panel retains its reading position when returning from
+group selection, resources, or the episode library. Closing it restores the
+full-width catalog's scroll position.
 The downloads page can open a followed anime's resource list directly. Its
 back button returns to downloads.
 
 The synopsis is shown in browse details. The group and resource pages keep the
 compact anime header and start their options with the subtitle group.
 Loading, unavailable and missing descriptions have distinct copy in browse
-details. A synopsis loaded from the active browse request stays available when
-switching posters or reopening the panel. Catalog and core state refreshes
-retain a loaded synopsis, while a successful group-page detail response is
-authoritative. `anime_summary_test.go` checks the rendering boundary and
-`browse_detail_test.go` checks the return path and synopsis reuse.
+details. A detail response loaded from the active browse request is cached per
+source origin and reused when switching posters, reopening the panel, or
+entering group selection and resources — avoiding a duplicate detail fetch;
+explicit reload buttons bypass the cache, and switching source routes invalidates
+it. Catalog and core state refreshes retain loaded anime metadata, while a
+successful group-page detail response is authoritative. `anime_summary_test.go`
+checks the rendering boundary and `browse_detail_test.go` checks the return
+path, library entry, metadata display, and detail reuse.
 
 
 The sidebar uses MyGo's Sidebar tree and badges. Detail selects Browse and

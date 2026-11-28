@@ -2,21 +2,60 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 	"slices"
+	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/steampixel007/Dipper/internal/source"
 )
 
 const browseDetailReturn = "browse-detail"
 
+type cachedDetail struct {
+	origin string
+	detail source.Detail
+}
+
 type browseDetail struct {
 	anime         Anime
+	groups        []source.Group
+	loaded        bool
 	loading       bool
 	failed        bool
 	cancel        context.CancelFunc
 	anchorID      string
 	catalogScroll ui.ScrollState
 	summaryScroll ui.ScrollState
+}
+
+func (s *State) sourceOriginKey() string {
+	if s.Source == nil {
+		return ""
+	}
+	return s.Source.Origin()
+}
+
+func (s *State) cacheDetail(id, origin string, detail source.Detail) {
+	if id == "" {
+		return
+	}
+	if s.detailCache == nil {
+		s.detailCache = map[string]cachedDetail{}
+	}
+	detail.Groups = slices.Clone(detail.Groups)
+	s.detailCache[id] = cachedDetail{origin: origin, detail: detail}
+}
+
+func (s *State) cachedDetail(id string) (source.Detail, bool) {
+	entry, ok := s.detailCache[id]
+	if !ok || entry.origin != s.sourceOriginKey() {
+		return source.Detail{}, false
+	}
+	entry.detail.Groups = slices.Clone(entry.detail.Groups)
+	return entry.detail, true
 }
 
 func (s *State) openBrowseDetail(anime Anime) {
@@ -32,12 +71,20 @@ func (s *State) openBrowseDetail(anime Anime) {
 		detail.cancel()
 		detail.cancel = nil
 	}
-	if known := s.KnownAnime[anime.ID]; known.Summary != "" {
-		anime.Summary = known.Summary
+	if known, ok := s.KnownAnime[anime.ID]; ok {
+		anime = mergeAnimeDetails(anime, known)
 	}
 	detail.anime = anime
+	detail.groups = nil
+	detail.loaded = false
 	detail.loading, detail.failed = false, false
 	detail.summaryScroll = ui.ScrollState{}
+	if cached, ok := s.cachedDetail(anime.ID); ok {
+		detail.anime = mergeAnimeDetails(detail.anime, fromAnime(cached.Anime))
+		detail.groups = slices.Clone(cached.Groups)
+		detail.loaded = true
+		return
+	}
 	if anime.Summary == "" {
 		s.loadBrowseSummary(detail)
 	}
@@ -63,6 +110,7 @@ func (s *State) loadBrowseSummary(detail *browseDetail) {
 		return
 	}
 	client, id := s.Source, detail.anime.ID
+	origin := client.Origin()
 	ctx, cancel := context.WithCancel(s.Ctx)
 	detail.cancel = cancel
 	detail.loading, detail.failed = true, false
@@ -76,21 +124,95 @@ func (s *State) loadBrowseSummary(detail *browseDetail) {
 			detail.cancel = nil
 			detail.loading = false
 			detail.failed = err != nil
-			detail.anime.Summary = result.Anime.Summary
-			if err == nil && detail.anime.Summary != "" {
-				known, ok := s.KnownAnime[id]
-				if !ok {
-					known = detail.anime
-				}
-				known.Summary = detail.anime.Summary
-				s.KnownAnime[id] = known
+			if err != nil {
+				return
 			}
+			s.applyBrowseDetailResult(detail, origin, result)
 		})
 	}()
 }
 
+func (s *State) applyBrowseDetailResult(detail *browseDetail, origin string, result source.Detail) {
+	id := detail.anime.ID
+	fetched := fromAnime(result.Anime)
+	detail.anime.Summary = fetched.Summary
+	detail.anime.BroadcastStart = fetched.BroadcastStart
+	detail.anime.OfficialURL = fetched.OfficialURL
+	detail.anime.BangumiURL = fetched.BangumiURL
+	detail.groups = slices.Clone(result.Groups)
+	detail.loaded = true
+	s.cacheDetail(id, origin, result)
+	known, ok := s.KnownAnime[id]
+	if !ok {
+		known = detail.anime
+	} else {
+		known.Summary = fetched.Summary
+		known.BroadcastStart = fetched.BroadcastStart
+		known.OfficialURL = fetched.OfficialURL
+		known.BangumiURL = fetched.BangumiURL
+	}
+	s.KnownAnime[id] = known
+}
+
+func (s *State) animeSubscriptions(id string) []Subscription {
+	var subs []Subscription
+	for _, sub := range s.Subscriptions {
+		if sub.AnimeID == id {
+			subs = append(subs, sub)
+		}
+	}
+	return subs
+}
+
 func (s *State) isFollowingAnime(id string) bool {
 	return slices.ContainsFunc(s.Subscriptions, func(sub Subscription) bool { return sub.AnimeID == id })
+}
+
+func followedGroupsText(subs []Subscription) string {
+	names := make([]string, 0, len(subs))
+	for _, sub := range subs {
+		name := strings.TrimSpace(sub.GroupName)
+		if name == "" {
+			continue
+		}
+		if sub.Paused {
+			name += "（已暂停）"
+		}
+		if !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+	return strings.Join(names, "、")
+}
+
+func formatBroadcastStart(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if parsed, err := time.Parse("1/2/2006", raw); err == nil {
+		return fmt.Sprintf("%d 年 %d 月 %d 日开播", parsed.Year(), parsed.Month(), parsed.Day())
+	}
+	return raw + " 开播"
+}
+
+func validExternalURL(raw string) (string, bool) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u == nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil {
+		return "", false
+	}
+	return u.String(), true
+}
+
+func (s *State) openExternalURL(raw string) {
+	if s.OpenURL == nil {
+		return
+	}
+	target, ok := validExternalURL(raw)
+	if !ok {
+		return
+	}
+	s.OpenURL(target)
 }
 
 func browseDetailWidth(c *ui.Context) float32 {
@@ -124,7 +246,8 @@ func (s *State) browseDetailDialog(c *ui.Context) {
 func (s *State) browseDetailContent(c *ui.Context, detail *browseDetail) {
 	pal := colors(c)
 	anime := detail.anime
-	following := s.isFollowingAnime(anime.ID)
+	subs := s.animeSubscriptions(anime.ID)
+	following := len(subs) > 0
 	ui.Column(c).Fill().MinHeight(0).Children(func() {
 		ui.Row(c).Padding(16, 16, 0).Justify(ui.End).Children(func() {
 			iconButton(c, "close-browse-detail", "关闭番剧详情", "close", s.closeBrowseDetail)
@@ -135,9 +258,16 @@ func (s *State) browseDetailContent(c *ui.Context, detail *browseDetail) {
 					s.featuredCover(c, anime, 72, 100)
 					ui.Column(c).Grow(1).MinWidth(0).Gap(8).Children(func() {
 						pageTitle(c, anime.Title)
-						caption(c, dayName(anime.Day))
+						meta := dayName(anime.Day)
+						if start := formatBroadcastStart(anime.BroadcastStart); start != "" {
+							meta += " · " + start
+						}
+						caption(c, meta)
 						if following {
 							ui.Text(c, "已追番").FontSize(textSize(c, textControl)).FontWeight(500).TextColor(pal.accentInk)
+							if groupsText := followedGroupsText(subs); groupsText != "" {
+								caption(c, "正在追："+groupsText)
+							}
 						}
 					})
 				})
@@ -155,10 +285,46 @@ func (s *State) browseDetailContent(c *ui.Context, detail *browseDetail) {
 						caption(c, "暂无简介")
 					}
 				})
+				if detail.loaded {
+					ui.Column(c).Gap(12).Children(func() {
+						if len(detail.groups) > 0 {
+							heading(c, fmt.Sprintf("字幕组（%d）", len(detail.groups)))
+							ui.Row(c).Wrap().Gap(8).Children(func() {
+								for _, group := range detail.groups {
+									if slices.ContainsFunc(subs, func(sub Subscription) bool { return sub.GroupID == group.ID }) {
+										statusPill(c, group.Name, pal.accentInk, pal.accentWash)
+									} else {
+										ui.Text(c, group.Name).FontSize(textSize(c, textMeta)).FontWeight(400).TextColor(pal.ink).Background(pal.sunken).Radius(radiusSmall).Padding(4, 8)
+									}
+								}
+							})
+						} else {
+							heading(c, "字幕组")
+							caption(c, "暂无字幕组发布资源")
+						}
+					})
+				}
+				if anime.BangumiURL != "" || anime.OfficialURL != "" {
+					ui.Column(c).Gap(12).Children(func() {
+						heading(c, "相关链接")
+						ui.Row(c).Wrap().Gap(8).Children(func() {
+							if anime.BangumiURL != "" {
+								compactSecondary(c, "browse-bangumi-link", "Bangumi 番组计划", func() {
+									s.openExternalURL(anime.BangumiURL)
+								}).Disabled(s.OpenURL == nil)
+							}
+							if anime.OfficialURL != "" {
+								compactSecondary(c, "browse-official-link", "官方网站", func() {
+									s.openExternalURL(anime.OfficialURL)
+								}).Disabled(s.OpenURL == nil)
+							}
+						})
+					})
+				}
 			})
 		})
 		ui.Divider(c).Background(pal.line)
-		ui.Column(c).Padding(20, 24, 24).Children(func() {
+		ui.Column(c).Padding(20, 24, 24).Gap(12).Children(func() {
 			label := "选择观看版本"
 			if following {
 				label = "查看资源"
@@ -166,6 +332,11 @@ func (s *State) browseDetailContent(c *ui.Context, detail *browseDetail) {
 			primary(c, "browse-detail-action", label, func() {
 				s.openFollowedResources(anime.ID, browseDetailReturn)
 			}).FillWidth()
+			if following {
+				secondary(c, "browse-detail-library", "进入剧集库", func() {
+					s.openLibraryFrom(subs[0].ID, browseDetailReturn)
+				}).FillWidth()
+			}
 		})
 	})
 }

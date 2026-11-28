@@ -293,6 +293,16 @@ func main() {
 				s.Notice = "无法打开文件夹：" + err.Error()
 			}
 		}
+		s.OpenURL = func(raw string) {
+			target, ok := validExternalURL(raw)
+			if !ok {
+				s.Notice = "无法打开无效链接。"
+				return
+			}
+			if err := mygo.Shell.OpenExternal(target); err != nil {
+				s.Notice = "无法打开链接：" + err.Error()
+			}
+		}
 		s.PlayFile = func(path string) error {
 			if err := mygo.Shell.OpenPath(path); err != nil {
 				return fmt.Errorf("无法播放：%w", err)
