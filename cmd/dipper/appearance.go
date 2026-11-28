@@ -21,26 +21,27 @@ var appearanceText = struct {
 }
 
 type colorPalette struct {
-	canvas, chrome, surface, surfaceHover, sunken ui.Color
-	ink, muted, subtle                            ui.Color
-	accent, accentHover                           ui.Color
-	accentPressed, accentWash                     ui.Color
-	accentInk, accentText                         ui.Color
-	warningInk, warningWash                       ui.Color
-	errorInk, errorWash                           ui.Color
-	line, outline, hoverLine                      ui.Color
-	segThumb, topHighlight                        ui.Color
-	glassBg, glassBorder, glassInk                ui.Color
-	scrim, brandWash                              ui.Color
-	popoverShadow, surfaceShadow                  ui.Color
-	cardShadow, cardShadowHover                   ui.Color
+	canvas, chrome, dialogSurface, surface, surfaceHover, sunken ui.Color
+	ink, muted, subtle                                           ui.Color
+	accent, accentHover                                          ui.Color
+	accentPressed, accentWash                                    ui.Color
+	accentInk, accentText                                        ui.Color
+	warningInk, warningWash                                      ui.Color
+	errorInk, errorWash                                          ui.Color
+	line, outline, hoverLine                                     ui.Color
+	segThumb, topHighlight                                       ui.Color
+	glassBg, glassBorder, glassInk                               ui.Color
+	scrim, brandWash                                             ui.Color
+	popoverShadow, surfaceShadow                                 ui.Color
+	cardShadow, cardShadowHover                                  ui.Color
 }
 
 var lightPalette = colorPalette{
 	// Monochrome Chinese ink palette: warm Xuan paper neutrals with Wu-Mo (ink black) accent.
 	canvas:          ui.Hex("#f7f5f0"),
 	chrome:          ui.Hex("#efece5"),
-	surface:         ui.Hex("#fcfbf8"),
+	dialogSurface:   ui.Hex("#f7f5f0"),
+	surface:         ui.Hex("#faf8f4"),
 	surfaceHover:    ui.Hex("#f3f0e9"),
 	sunken:          ui.Hex("#e7e3da"),
 	ink:             ui.Hex("#23201c"),
@@ -76,6 +77,7 @@ var darkPalette = colorPalette{
 	// Monochrome Chinese ink palette: warm pine-soot neutrals with Ya-Bai (warm ivory) accent.
 	canvas:          ui.Hex("#141311"),
 	chrome:          ui.Hex("#1a1816"),
+	dialogSurface:   ui.Hex("#1c1a17"),
 	surface:         ui.Hex("#22201d"),
 	surfaceHover:    ui.Hex("#2b2824"),
 	sunken:          ui.Hex("#0f0e0c"),
@@ -233,14 +235,20 @@ func appearanceSwatch(c *ui.Context, mode string) {
 	previewHalf := func(p *colorPalette) {
 		ui.Row(c).Grow(1).FillHeight().Background(p.canvas).Children(func() {
 			ui.Column(c).Width(24).FillHeight().Background(p.chrome).Padding(6, 4).Gap(4).Children(func() {
-				ui.Box(c).Height(5).Radius(2).Background(p.accent)
-				ui.Box(c).Height(4).Radius(2).Background(p.outline)
+				ui.Box(c).Height(5).Radius(2).Background(p.accentWash).Border(1, p.outline)
+				ui.Box(c).Height(4).Radius(2).Background(p.line)
+				ui.Box(c).Height(4).Radius(2).Background(p.line)
 			})
-			ui.Column(c).Grow(1).FillHeight().Padding(7).Gap(5).Children(func() {
-				ui.Box(c).Width(36).Height(5).Radius(2).Background(p.outline)
-				ui.Row(c).Grow(1).Gap(5).Children(func() {
-					ui.Box(c).Grow(1).FillHeight().Radius(4).Background(p.surface).Border(1, p.line)
-					ui.Box(c).Grow(1).FillHeight().Radius(4).Background(p.accent)
+			ui.Column(c).Grow(1).FillHeight().Padding(6).Gap(5).Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+					ui.Box(c).Width(28).Height(4).Radius(2).Background(p.ink).Opacity(0.55)
+					ui.Spacer(c)
+					ui.Box(c).Width(14).Height(5).Radius(2).Background(p.accent)
+				})
+				ui.Row(c).Grow(1).Gap(4).Children(func() {
+					ui.Box(c).Grow(1).FillHeight().Radius(4).Background(p.surface).Border(1, p.outline)
+					ui.Box(c).Grow(1).FillHeight().Radius(4).Background(p.sunken).Border(1, p.line)
+					ui.Box(c).Grow(1).FillHeight().Radius(4).Background(p.surface).Border(1, p.outline)
 				})
 			})
 		})
@@ -337,10 +345,14 @@ var (
 )
 
 type (
-	seasonThumbMatch    struct{}
-	dayUnderlineMatch   struct{}
-	downloadFilterMatch struct{}
-	posterHeroMatch     struct{ animeID string }
+	sidebarNavMatch      struct{}
+	seasonThumbMatch     struct{}
+	dayUnderlineMatch    struct{}
+	downloadFilterMatch  struct{}
+	versionLangMatch     struct{}
+	versionPriorityMatch struct{}
+	proxyModeMatch       struct{}
+	posterHeroMatch      struct{ animeID string }
 )
 
 func tactile(e ui.Element) ui.Element {
@@ -350,4 +362,46 @@ func tactile(e ui.Element) ui.Element {
 		pose.Scale = .975
 	}
 	return e.AnimatePose(pose, tactileMotion)
+}
+
+func glidingSegmented(c *ui.Context, key, label string, selected int, labels []string, match any, disabled bool, choose func(int)) {
+	pal := colors(c)
+	activeIndex := selected
+	parts := ui.SegmentedBase(c.Key(key), &selected, len(labels))
+	parts.Track.Label(label).Wrap().Gap(4).Padding(4).Radius(radiusControl).Background(pal.sunken).Border(1, pal.line).Disabled(disabled).Children(func() {
+		for index, text := range labels {
+			idx := index
+			active := activeIndex == idx
+			seg := parts.Segment(idx).Label(text).Padding(compactPaddingY, 12).Radius(radiusSmall).Center().Shrink(0).
+				FontSize(textSize(c, textControl)).FontWeight(500).Cursor(ui.CursorPointer).TextColor(pal.muted).Disabled(disabled)
+			if active {
+				seg.TextColor(pal.ink).FontWeight(600)
+			} else if seg.Hovered() {
+				seg.TextColor(pal.ink)
+			}
+			tactile(seg).Children(func() {
+				if active {
+					thumb := ui.Box(c.Key(fmt.Sprintf("%s-thumb-%d", key, idx))).Absolute().Top(0).Bottom(0).Left(0).Right(0).
+						ZIndex(-1).Radius(radiusSmall).Background(pal.segThumb).
+						Shadow(0, 1, 4, 0, pal.cardShadow).IgnoreInput(true).AccessHidden(true).
+						Transition(ui.ElementTransition{Animation: &indicatorMotion, Match: match})
+					if c.Theme().Dark {
+						thumb.InsetShadow(0, 1, 0, 0, pal.topHighlight)
+					}
+				}
+				ui.Text(c, text).SingleLine()
+			})
+			if active {
+				seg.OnClick(func() {
+					if !disabled {
+						choose(idx)
+					}
+				})
+			}
+		}
+	}).OnChange(func() {
+		if !disabled {
+			choose(selected)
+		}
+	})
 }

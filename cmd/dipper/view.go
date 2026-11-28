@@ -156,14 +156,14 @@ func iconButton(c *ui.Context, key, label, name string, action func()) ui.Elemen
 
 func windowControl(c *ui.Context, key, label, name string, danger bool, action func()) ui.Element {
 	pal := colors(c)
-	b := ui.ButtonBase(c.Key(key)).Label(label).Tooltip(label).Size(48, 32).Shrink(0).Center().Cursor(ui.CursorPointer).TextColor(pal.ink)
+	b := ui.ButtonBase(c.Key(key)).Label(label).Tooltip(label).Size(46, 36).Shrink(0).Center().Cursor(ui.CursorPointer).TextColor(pal.ink).Transition(hoverTransition)
 	if b.Hovered() {
 		b.Background(pal.chrome)
 		if danger {
 			b.Background(ui.Hex("#C42B1C")).TextColor(ui.Hex("#FFFFFF"))
 		}
 	}
-	return tactile(b).Children(func() { icon(c, name) }).OnClick(action)
+	return b.Children(func() { icon(c, name) }).OnClick(action)
 }
 func posterGlassPill(c *ui.Context, text string, dotColor ui.Color, showDot bool) ui.Element {
 	pal := colors(c)
@@ -178,14 +178,14 @@ func posterGlassPill(c *ui.Context, text string, dotColor ui.Color, showDot bool
 }
 
 func ambientCoverBackdrop(c *ui.Context, a Anime, height float32) {
+	if !c.Theme().Dark {
+		return
+	}
 	bitmap := cachedCover(coverURL(a.Cover))
 	if bitmap == nil {
 		return
 	}
-	opacity := float32(0.16)
-	if c.Theme().Dark {
-		opacity = 0.24
-	}
+	const opacity float32 = 0.12
 	black := ui.RGB(0, 0, 0)
 	ui.Box(c.Key("ambient-" + a.ID)).Absolute().Top(0).Left(0).Right(0).Height(height).
 		ZIndex(-1).IgnoreInput(true).AccessHidden(true).Clip().Cache().
@@ -202,7 +202,7 @@ func ambientCoverBackdrop(c *ui.Context, a Anime, height float32) {
 }
 
 func pageTitle(c *ui.Context, text string) ui.Element {
-	return ui.Text(c, text).FontSize(textSize(c, textTitle)).FontWeight(700).LineHeight(1.35).TextColor(colors(c).ink)
+	return ui.Text(c, text).FontSize(textSize(c, textTitle)).FontWeight(700).LineHeight(1.3).TextColor(colors(c).ink)
 }
 
 func heading(c *ui.Context, text string) ui.Element {
@@ -330,6 +330,49 @@ func (s *State) view(c *ui.Context) {
 			c.OnShortcut(0, ui.KeyEscape, func() { s.Suggestions = false })
 		}
 	}
+	noModal := !s.Help && !s.ClosePrompt && !s.CancelPrompt && !s.RemovePrompt && !s.FilesOpen && !s.trackerManagerOpen && !s.SoftwareUpdate.Dialog
+	if noModal {
+		if s.Page == "browse" || s.Page == "following" || (s.Page == "downloads" && !s.DownloadHistory) {
+			c.OnShortcut(ui.Ctrl, ui.KeyF, func() { s.focusSearch = true })
+			if !c.FocusTakesText() {
+				c.OnShortcut(0, ui.KeySlash, func() { s.focusSearch = true })
+			}
+		}
+		goBack := func() {
+			switch s.Page {
+			case "detail":
+				s.enterPage(s.detailBackPage())
+			case "episodes":
+				s.enterPage(s.libraryBackPage())
+			case "downloads":
+				if s.DownloadHistory {
+					s.DownloadHistory = false
+				}
+			}
+		}
+		c.OnShortcut(ui.Alt, ui.KeyLeft, goBack)
+		if (s.Page == "episodes" && !s.LibraryMenuOpen) || (s.Page == "downloads" && s.DownloadHistory) {
+			c.OnShortcut(0, ui.KeyEscape, goBack)
+		}
+	}
+}
+
+func (s *State) detailBackPage() string {
+	switch s.DetailReturn {
+	case "following":
+		return "following"
+	case "downloads":
+		return "downloads"
+	default:
+		return "browse"
+	}
+}
+
+func (s *State) libraryBackPage() string {
+	if s.LibraryReturn == browseDetailReturn {
+		return "browse"
+	}
+	return "following"
 }
 
 func (s *State) sidebar(c *ui.Context) {
@@ -338,13 +381,18 @@ func (s *State) sidebar(c *ui.Context) {
 	selected := s.Page
 	switch selected {
 	case "detail":
-		selected = "browse"
-	case "episodes":
-		if s.LibraryReturn == browseDetailReturn {
-			selected = "browse"
-		} else {
+		switch {
+		case s.DetailReturn == "following":
 			selected = "following"
+		case s.DetailReturn == "downloads":
+			selected = "downloads"
+		case s.ViewResources && s.DetailReturn != browseDetailReturn:
+			selected = "following"
+		default:
+			selected = "browse"
 		}
+	case "episodes":
+		selected = s.libraryBackPage()
 	}
 	active := selected
 	navigate := func(page string) {
@@ -354,7 +402,12 @@ func (s *State) sidebar(c *ui.Context) {
 	navItem := func(id, label string) ui.Element {
 		item := ui.SidebarItem(c, id, icons[id], label).Label(label).MinHeight(44).Radius(radiusControl).FontSize(textSize(c, textControl)).FontWeight(500)
 		if id == active {
-			item.TextColor(pal.accentInk).OnClick(func() { navigate(id) })
+			item.Background(ui.Transparent).TextColor(pal.accentInk).OnClick(func() { navigate(id) }).Children(func() {
+				ui.Box(c.Key("nav-pill-" + id)).Absolute().Top(0).Bottom(0).Left(0).Right(0).
+					ZIndex(-1).Radius(radiusControl).Background(pal.accentWash).
+					IgnoreInput(true).AccessHidden(true).
+					Transition(ui.ElementTransition{Animation: &indicatorMotion, Match: sidebarNavMatch{}})
+			})
 		} else {
 			item.TextColor(pal.ink)
 		}
@@ -462,7 +515,14 @@ func (s *State) topbar(c *ui.Context) {
 	}
 	if s.Backfill {
 		if s.ViewResources {
-			names["detail"] = "我的追番 / 查看资源"
+			switch s.DetailReturn {
+			case browseDetailReturn, "browse":
+				names["detail"] = "浏览番剧 / 查看资源"
+			case "downloads":
+				names["detail"] = "下载 / 查看资源"
+			default:
+				names["detail"] = "我的追番 / 查看资源"
+			}
 		} else {
 			names["detail"] = "浏览番剧 / 下载已有资源"
 		}
@@ -473,7 +533,7 @@ func (s *State) topbar(c *ui.Context) {
 	if s.CustomWindowControls {
 		rightPadding = 0
 	}
-	ui.Row(c).MinHeight(topbarHeight).Shrink(0).AlignItems(ui.Center).Padding(12, rightPadding, 12, pageInsetX(c)).Gap(12).
+	ui.Row(c).MinHeight(topbarHeight).Shrink(0).AlignItems(ui.Center).Padding(0, rightPadding, 0, pageInsetX(c)).Gap(12).
 		Background(pal.canvas).
 		DragWindow().Children(func() {
 		ui.Box(c).MinWidth(0).Grow(1).Children(func() {
@@ -481,10 +541,9 @@ func (s *State) topbar(c *ui.Context) {
 				ui.Text(c.Key("topbar-title-"+s.Page), names[s.Page]).FontSize(textSize(c, textControl)).FontWeight(500).TextColor(pal.muted).Transition(fadeTransition)
 			}
 		})
-		iconButton(c, "top-help", "打开追番指南", "help", func() { s.Help = true })
 		if s.CustomWindowControls {
 			maximized := s.WindowIsMaximized != nil && s.WindowIsMaximized()
-			ui.Row(c).Shrink(0).Gap(0).Children(func() {
+			ui.Row(c).Shrink(0).Gap(0).AlignSelf(ui.Start).Children(func() {
 				windowControl(c, "window-minimize", "最小化窗口", "minimize", false, func() {
 					if s.WindowMinimize != nil {
 						s.WindowMinimize()
@@ -502,7 +561,7 @@ func (s *State) topbar(c *ui.Context) {
 				if !maximized {
 					maximize.MaximizeButton()
 				}
-				windowControl(c, "window-close", "关闭窗口", "close", true, func() {
+				windowControl(c, "window-close", "关闭窗口", "window-close", true, func() {
 					if s.WindowClose != nil {
 						s.WindowClose()
 					}
@@ -523,7 +582,7 @@ func (s *State) browse(c *ui.Context) {
 		s.browseCatalog(c, windowWidth-sidebarWidth-detailWidth, detailWidth > 0)
 		if detailWidth > 0 {
 			ui.Column(c.Key("browse-detail-drawer")).Width(detailWidth).Shrink(0).FillHeight().MinHeight(0).
-				Background(pal.surface).BorderWidth(0, 0, 0, 1).BorderColor(pal.outline).
+				Background(pal.dialogSurface).BorderWidth(0, 0, 0, 1).BorderColor(pal.outline).
 				Transition(ui.ElementTransition{Animation: &panelMotion, Width: true, Enter: &ui.Motion{X: 24}}).
 				Children(func() { s.browseDetailContent(c, s.browseDetail) })
 		}
@@ -604,6 +663,11 @@ func (s *State) browseCatalog(c *ui.Context, width float32, split bool) {
 	})
 }
 
+func (s *State) isCurrentSeason() bool {
+	now := time.Now()
+	return s.Year == strconv.Itoa(now.Year()) && s.Season == seasons[(int(now.Month())-1)/3]
+}
+
 func (s *State) browseToolbar(c *ui.Context, split bool) {
 	pal := colors(c)
 	windowWidth, _ := c.Size()
@@ -611,19 +675,26 @@ func (s *State) browseToolbar(c *ui.Context, split bool) {
 	firstSeason := firstCatalogSeasonIndex(year)
 	currentIndex := slices.Index(seasons, s.Season)
 	searchWidth := max(float32(224), textSize(c, textControl)*16)
-	if split || windowWidth <= 1080 {
+	yearWidth := max(float32(88), textSize(c, textControl)*6)
+	segPadX := float32(12)
+	rowGap := float32(8)
+	if split {
+		yearWidth = max(float32(80), textSize(c, textControl)*5.6)
+		segPadX = 8
+		rowGap = 6
+	} else if windowWidth <= 1080 {
 		searchWidth = max(180, textSize(c, textControl)*13)
 	}
 	ui.Box(c).FillWidth().Margin(0, 0, 16, 0).Children(func() {
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(8).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(rowGap).Children(func() {
 			iconButton(c, "prev-season", "上一季", "back", func() { s.changeSeason(-1) }).Disabled(!s.canChangeSeason(-1))
-			ui.Select(c.Key("year"), &s.Year, catalogYears()).Label("年份").Width(max(88, textSize(c, textControl)*6)).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).OnChange(s.changeCatalogYear)
+			ui.Select(c.Key("year"), &s.Year, catalogYears()).Label("年份").Width(yearWidth).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).OnChange(s.changeCatalogYear)
 			selected := currentIndex
 			quarters := ui.SegmentedBase(c.Key("season"), &selected, len(seasons))
 			quarters.Track.Label("季度").Gap(4).Padding(4).Radius(radiusControl).Background(pal.sunken).Border(1, pal.line).Children(func() {
 				for index, season := range seasons {
 					active := selected == index
-					b := quarters.Segment(index).Label(season+"季").Padding(8, 12).Radius(radiusSmall).Center().FontSize(textSize(c, textControl)).FontWeight(500).Cursor(ui.CursorPointer).TextColor(pal.muted)
+					b := quarters.Segment(index).Label(season+"季").Padding(8, segPadX).Radius(radiusSmall).Center().FontSize(textSize(c, textControl)).FontWeight(500).Cursor(ui.CursorPointer).TextColor(pal.muted)
 					if active {
 						b.TextColor(pal.ink).FontWeight(600)
 					} else if b.Hovered() {
@@ -652,8 +723,19 @@ func (s *State) browseToolbar(c *ui.Context, split bool) {
 				s.refreshCatalog()
 			})
 			iconButton(c, "next-season", "下一季", "next", func() { s.changeSeason(1) }).Disabled(!s.canChangeSeason(1))
-			ui.Spacer(c)
-			ui.SearchField(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").Width(searchWidth).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).OnChange(s.resetBrowseScroll)
+			if !split {
+				ui.Spacer(c)
+			}
+			sf := ui.SearchField(c.Key("search"), &s.Search).Label("搜索番剧").Placeholder("搜索本季番剧").MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).OnChange(s.resetBrowseScroll)
+			if split {
+				sf.Grow(1).MinWidth(136).MaxWidth(searchWidth)
+			} else {
+				sf.Width(searchWidth)
+			}
+			if s.focusSearch {
+				sf.Focus()
+				s.focusSearch = false
+			}
 		})
 	})
 }
@@ -691,7 +773,9 @@ func (s *State) browseDays(c *ui.Context) {
 			s.resetBrowseScroll()
 		})
 		ui.Spacer(c)
-		compactQuiet(c, "current-season", "回到当季", s.currentSeason).TextColor(pal.muted)
+		if !s.isCurrentSeason() || s.Day != -1 || strings.TrimSpace(s.Search) != "" {
+			compactQuiet(c, "current-season", "回到当季", s.currentSeason).TextColor(pal.muted)
+		}
 	})
 }
 
@@ -809,6 +893,10 @@ func (s *State) detail(c *ui.Context) {
 		s.focusedDetail(c, a)
 		return
 	}
+	if s.ViewResources {
+		s.viewResourcesDetail(c, a)
+		return
+	}
 	pal := colors(c)
 	insetX := pageInsetX(c)
 	_, height := c.Size()
@@ -826,11 +914,14 @@ func (s *State) detail(c *ui.Context) {
 			ui.Scroll(c.Key("detail-header")).MaxHeight(height * .25).MinHeight(0).Children(func() {
 				s.detailHeader(c, a)
 			})
-			ui.Row(c).Grow(1).MinHeight(0).Gap(0).Children(func() {
-				ui.Scroll(c.Key("detail-options")).Width(304).FillHeight().Padding(24, 24, 24, insetX).BorderWidth(0, 1, 0, 0).BorderColor(pal.line).Children(func() {
-					s.detailOptions(c)
+			ui.Box(c).Grow(1).MinHeight(0).Children(func() {
+				ui.Row(c).Fill().MinHeight(0).Gap(0).Children(func() {
+					ui.Scroll(c.Key("detail-options")).Width(304).FillHeight().Padding(24, 24, 32, insetX).BorderWidth(0, 1, 0, 0).BorderColor(pal.line).Children(func() {
+						s.detailOptions(c)
+					})
+					s.detailPreview(c, false)
 				})
-				s.detailPreview(c, false)
+				bottomScrollEdge(c, pal.canvas)
 			})
 			s.detailFooter(c, false)
 		}
@@ -839,6 +930,90 @@ func (s *State) detail(c *ui.Context) {
 
 func detailUsesPageScroll(c *ui.Context, a Anime) bool {
 	return textScale(c) > 1 || len([]rune(a.Title)) > 24
+}
+
+func (s *State) viewResourcesDetail(c *ui.Context, a Anime) {
+	pal := colors(c)
+	embeddedFooter := textScale(c) > 1
+	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
+		ui.Box(c).Grow(1).MinHeight(0).Children(func() {
+			sc := ui.Scroll(c.Key("resources")).TrackScroll(&s.ResourceScroll).Fill()
+			sc.Children(func() {
+				ui.Column(c).FillWidth().AlignItems(ui.Center).Padding(16, pageInsetX(c), 40).Children(func() {
+					ui.Column(c).FillWidth().MaxWidth(840).Gap(24).Children(func() {
+						s.viewResourcesHeader(c, a)
+						s.detailPreview(c, true)
+						if embeddedFooter {
+							s.detailFooter(c, true)
+						}
+					})
+				})
+			})
+			if !embeddedFooter {
+				bottomScrollEdge(c, pal.canvas)
+			}
+		})
+		if !embeddedFooter {
+			s.detailFooter(c, false)
+		}
+	})
+}
+
+func (s *State) viewResourcesHeader(c *ui.Context, a Anime) {
+	pal := colors(c)
+	ui.Column(c).FillWidth().Gap(16).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Children(func() {
+			backLabel := "返回番剧列表"
+			backPage := "browse"
+			if s.DetailReturn == "following" {
+				backLabel = "返回我的追番"
+				backPage = "following"
+			} else if s.DetailReturn == "downloads" {
+				backLabel = "返回下载"
+				backPage = "downloads"
+			} else if s.DetailReturn == browseDetailReturn {
+				backLabel = "返回番剧详情"
+			}
+			back := ui.ButtonBase(c.Key("back-browse")).Label(backLabel).
+				Padding(8, 12, 8, 4).Gap(8).AlignItems(ui.Center).Radius(radiusSmall).
+				FontSize(textSize(c, textControl)).FontWeight(500).TextColor(pal.muted).Cursor(ui.CursorPointer)
+			if back.Hovered() {
+				back.Background(pal.chrome).TextColor(pal.ink)
+			}
+			tactile(back).Children(func() {
+				icon(c, "back")
+				ui.Text(c, backLabel)
+			}).OnClick(func() { s.enterPage(backPage) })
+		})
+		ui.Row(c).Wrap().Gap(16).AlignItems(ui.Start).Children(func() {
+			s.featuredCover(c, a, 56, 76)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(8).Children(func() {
+				pageTitle(c, a.Title)
+				meta := dayName(a.Day)
+				if s.hasGroup() {
+					meta += " · 字幕组：" + s.Groups[s.Group]
+				}
+				caption(c, meta)
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(12).Children(func() {
+					statusPill(c, "已追番资源", pal.accentInk, pal.accentWash)
+					compactQuiet(c, "fresh-selection", "重新选字幕组", func() {
+						s.EditID = ""
+						s.Backfill = false
+						s.ViewResources = false
+						s.VersionSetup = true
+						s.ChoosingGroup = true
+						s.Group = -1
+						s.Checked = map[string]bool{}
+						s.Keyword = ""
+						s.WordOpen = false
+						s.ShowViewRuleEditor = false
+						s.Rule = Rule{}
+						s.OnlyNew = false
+					}).TextColor(pal.accentInk).Disabled(s.Busy)
+				})
+			})
+		})
+	})
 }
 
 func (s *State) detailHeader(c *ui.Context, a Anime) {
@@ -891,7 +1066,7 @@ func (s *State) detailHeader(c *ui.Context, a Anime) {
 						}).TextColor(pal.accentInk).Disabled(s.Busy)
 					})
 				case s.Backfill:
-					statusPill(c, "下载已有资源", pal.accentInk, pal.accentWash)
+					statusPill(c, "下载已有资源", pal.accentInk, pal.accentWash).AlignSelf(ui.Start)
 				}
 			})
 		})
@@ -1064,14 +1239,20 @@ func (s *State) ruleEditor(c *ui.Context) {
 
 func (s *State) tagChip(c *ui.Context, key, word string) {
 	pal := colors(c)
-	col, bg := pal.ink, pal.canvas
-	if choice := s.wordChoice(word); choice == wordWant {
+	choice := s.wordChoice(word)
+	col, bg := pal.muted, ui.Transparent
+	if choice == wordWant {
 		col, bg = pal.accentInk, pal.accentWash
 	} else if choice == wordAvoid {
 		col, bg = pal.muted, pal.sunken
 	}
 	b := compactQuiet(c, key, word, func() { s.WordAnchor = key; s.WordOpen = true }).
-		Label("筛选 "+word).Padding(4, 12).Radius(radiusSmall).Border(1, pal.line).Background(bg).TextColor(col).Tooltip("选择只要、不要，或移除条件")
+		Label("筛选 "+word).Padding(4, 8).Radius(radiusSmall).Background(bg).TextColor(col).Tooltip("选择只要、不要，或移除条件")
+	if choice != wordUnrestricted {
+		b.Border(1, pal.line)
+	} else if b.Hovered() {
+		b.Background(pal.chrome).TextColor(pal.ink)
+	}
 	if s.WordAnchor == key {
 		s.wordPopover(c, b, key, word)
 	}
@@ -1172,6 +1353,29 @@ func (s *State) preview(c *ui.Context, embedded bool) {
 			}
 		} else {
 			s.quickFilter(c)
+			if s.ViewResources {
+				toggleLabel := "▸ 临时筛选条件"
+				if s.ShowViewRuleEditor || s.Suggestions {
+					toggleLabel = "▾ 收起临时筛选"
+				}
+				compactQuiet(c, "toggle-view-rule-editor", toggleLabel, func() {
+					if s.Suggestions {
+						s.Suggestions = false
+						s.ShowViewRuleEditor = false
+						return
+					}
+					s.ShowViewRuleEditor = !s.ShowViewRuleEditor
+				}).TextColor(pal.muted).AlignSelf(ui.Start)
+				if s.Suggestions {
+					ui.Column(c).FillWidth().Padding(16, 20).Radius(radiusControl).Background(pal.surface).Border(1, pal.line).Children(func() {
+						s.titlePreferences(c)
+					})
+				} else if s.ShowViewRuleEditor {
+					ui.Column(c).FillWidth().Padding(16, 20).Radius(radiusControl).Background(pal.surface).Border(1, pal.line).Children(func() {
+						s.ruleEditor(c)
+					})
+				}
+			}
 		}
 	})
 	if versionMode && !manual && s.Rule.Version == nil {
@@ -1408,8 +1612,12 @@ func (s *State) resourceRow(c *ui.Context, r Resource, episodeChoice bool, viewp
 		caption(c, published)
 		if !s.VersionSetup {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(8).Children(func() {
-				for i, word := range r.Tokens {
-					s.tagChip(c, fmt.Sprintf("tag-%s-%d", r.ID, i), word)
+				if !s.ViewResources {
+					for i, word := range r.Tokens {
+						s.tagChip(c, fmt.Sprintf("tag-%s-%d", r.ID, i), word)
+					}
+				} else {
+					caption(c, reason)
 				}
 				ui.Spacer(c)
 				intentGroupIn(c, row, viewport, working, func() {
@@ -1422,7 +1630,9 @@ func (s *State) resourceRow(c *ui.Context, r Resource, episodeChoice bool, viewp
 				})
 			})
 		}
-		caption(c, reason)
+		if !s.ViewResources {
+			caption(c, reason)
+		}
 	})
 }
 
@@ -1461,15 +1671,21 @@ func (s *State) detailFooter(c *ui.Context, embedded bool) {
 	resources := plan.New
 	_, height := c.Size()
 	focused := s.focusedVersionSetup()
+	centeredWidth := float32(0)
+	if focused {
+		centeredWidth = 760
+	} else if s.ViewResources {
+		centeredWidth = 840
+	}
 	render := func() {
 		outer := ui.Column(c).FillWidth().Padding(16, pageInsetX(c), 20).Background(pal.canvas).BorderWidth(1, 0, 0, 0).BorderColor(pal.line)
-		if focused && !embedded {
+		if centeredWidth > 0 && !embedded {
 			outer.AlignItems(ui.Center)
 		}
 		outer.Children(func() {
 			inner := ui.Column(c).FillWidth().Gap(8)
-			if focused && !embedded {
-				inner.MaxWidth(760)
+			if centeredWidth > 0 && !embedded {
+				inner.MaxWidth(centeredWidth)
 			}
 			inner.Children(func() {
 				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(12).Children(func() {
@@ -1671,11 +1887,16 @@ func (s *State) following(c *ui.Context) {
 	ui.Column(c).Grow(1).MinHeight(0).Padding(topPad, insetX, 0).Gap(20).Children(func() {
 		pageTitle(c, "我的追番")
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(12).Children(func() {
-			ui.SearchField(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(240).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).OnChange(func() {
+			sf := ui.SearchField(c.Key("follow-search"), &s.FollowSearch).Label("搜索追番").Placeholder("搜索已追番剧").Width(240).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).OnChange(func() {
 				s.FollowScroll = ui.ScrollState{}
 			})
+			if s.focusSearch {
+				sf.Focus()
+				s.focusSearch = false
+			}
+			ui.Spacer(c)
 			if len(s.retryableChecks()) > 0 {
-				quiet(c, "retry-failed-checks", "重试检查", s.retryFailedChecks).TextColor(pal.warningInk).Disabled(s.Busy)
+				quiet(c, "retry-failed-checks", "重试检查", s.retryFailedChecks).TextColor(pal.warningInk).Background(pal.warningWash).Disabled(s.Busy)
 			}
 			secondary(c, "find-more", "添加追番", func() { s.enterPage("browse") })
 		})
@@ -1795,6 +2016,20 @@ func (s *State) followTile(c *ui.Context, sub Subscription, width float32) {
 					ui.Progress(c, sub.Progress).Height(4).Radius(0).TextColor(pal.glassInk).Background(ui.Transparent)
 				})
 			}
+			if tile.Hovered() || tile.FocusVisible() {
+				bottomOffset := float32(8)
+				if sub.Active && sub.Progress > 0 {
+					bottomOffset = 12
+				}
+				ui.Row(c.Key("follow-hover-cta-"+sub.ID)).Absolute().Bottom(bottomOffset).Left(8).Right(8).Center().Gap(4).
+					Padding(8, 12).Radius(radiusSmall).
+					Material(glass.Glass{Style: glass.Clear, Tint: pal.glassBg}).
+					Border(1, pal.glassBorder).TextColor(pal.glassInk).
+					Transition(posterOverlayTransition).Children(func() {
+					ui.Text(c, "进入剧集库").FontSize(textSize(c, textControl)).FontWeight(500).TextColor(pal.glassInk)
+					icon(c, "next")
+				})
+			}
 		})
 		ui.Column(c).Gap(4).Children(func() {
 			ui.Text(c, a.Title).FontSize(textSize(c, textBody)).FontWeight(500).LineHeight(1.5).TextColor(pal.ink)
@@ -1854,13 +2089,13 @@ func (s *State) library(c *ui.Context) {
 	insetX := pageInsetX(c)
 	indices := s.libraryEpisodes(sub.AnimeID)
 	renderBack := func() {
-		ui.Row(c).Padding(16, insetX-16, 0).Children(func() {
+		ui.Row(c).Padding(16, insetX, 0).Children(func() {
 			backLabel, backPage := "返回我的追番", "following"
 			if s.LibraryReturn == browseDetailReturn {
 				backLabel, backPage = "返回番剧详情", "browse"
 			}
 			back := ui.ButtonBase(c.Key("back-following")).Label(backLabel).
-				Padding(8, 16).Gap(8).AlignItems(ui.Center).Radius(radiusSmall).
+				Padding(8, 12, 8, 4).Gap(8).AlignItems(ui.Center).Radius(radiusSmall).
 				FontSize(textSize(c, textControl)).FontWeight(500).TextColor(pal.muted).Cursor(ui.CursorPointer)
 			if back.Hovered() {
 				back.Background(pal.chrome).TextColor(pal.ink)
@@ -1885,11 +2120,18 @@ func (s *State) library(c *ui.Context) {
 			s.empty(c, "还没有下载完成的剧集", "", "查看资源", func() { s.viewSubscriptionResources(sub.ID) })
 			return
 		}
+		primaryCompletedAssigned := false
 		for position, index := range indices {
 			if position > 0 {
 				ui.Divider(c).Background(pal.line)
 			}
-			s.libraryEpisodeRow(c, index, epViewport)
+			d := s.Downloads[index]
+			primaryPlay := false
+			if d.Progress >= 1 && !d.Failed && !primaryCompletedAssigned {
+				primaryPlay = true
+				primaryCompletedAssigned = true
+			}
+			s.libraryEpisodeRow(c, index, epViewport, primaryPlay)
 		}
 	}
 	if textScale(c) > 1 {
@@ -1919,7 +2161,7 @@ func (s *State) library(c *ui.Context) {
 
 type episodeMenuOpenKey struct{}
 
-func (s *State) libraryEpisodeRow(c *ui.Context, index int, viewport ui.Rect) {
+func (s *State) libraryEpisodeRow(c *ui.Context, index int, viewport ui.Rect, primaryPlay bool) {
 	download := s.Downloads[index]
 	pal := colors(c)
 	row := ui.Row(c.Key("episode-"+download.ID)).AlignItems(ui.Center).Gap(16).Padding(16, 12).Radius(radiusControl).Transition(rowTransition)
@@ -1945,11 +2187,18 @@ func (s *State) libraryEpisodeRow(c *ui.Context, index int, viewport ui.Rect) {
 				default:
 					statusPill(c, fmt.Sprintf("下载中 %d%%", int(download.Progress*100)), pal.accentInk, pal.accentWash).
 						ContentTransition(ui.ContentTransition{Numeric: true, Animation: &contentMotion})
+					if download.DownSpeed > 0 {
+						speedInfo := speedText(download.DownSpeed, false)
+						if eta := downloadETA(download); eta != "" {
+							speedInfo += " · " + eta
+						}
+						caption(c, speedInfo)
+					}
 				}
 			})
 			caption(c, download.Title)
 			if download.Progress < 1 && !download.Failed && !download.Stopped && !download.Paused && !download.Queued {
-				bar := ui.Box(c.Key("ep-progress-" + download.ID)).MaxWidth(360).Height(5)
+				bar := ui.Box(c.Key("ep-progress-" + download.ID)).MaxWidth(480).Height(5)
 				val := bar.Animate("value", float32(download.Progress), 320*time.Millisecond)
 				bar.Children(func() {
 					ui.Progress(c, float64(val)).Height(5).Radius(3).TextColor(pal.accent).Background(pal.sunken)
@@ -1988,8 +2237,24 @@ func (s *State) libraryEpisodeRow(c *ui.Context, index int, viewport ui.Rect) {
 						Panel: menuPanelStyle(c),
 					}).Label("剧集操作 " + download.ID).FontSize(textSize(c, textControl)).MinHeight(40).Disabled(s.Busy)
 				})
-				primary(c, "play-episode-"+download.ID, "播放", func() { s.playDownload(index) }).
-					Label("播放 " + download.ID).MinWidth(76).Disabled(s.Busy)
+				if primaryPlay {
+					primary(c, "play-episode-"+download.ID, "播放", func() { s.playDownload(index) }).
+						Label("播放 " + download.ID).MinWidth(76).Disabled(s.Busy)
+				} else {
+					playBtn := ui.ButtonBase(c.Key("play-episode-"+download.ID)).
+						Label("播放 "+download.ID).
+						MinHeight(buttonHeight(c)).MinWidth(76).Padding(controlPaddingY, 16).Gap(6).
+						AlignItems(ui.Center).Justify(ui.Center).Radius(radiusControl).
+						Background(pal.surface).Border(1, pal.outline).TextColor(pal.ink).
+						Cursor(ui.CursorPointer).Disabled(s.Busy)
+					if playBtn.Hovered() {
+						playBtn.Background(pal.surfaceHover).BorderColor(pal.hoverLine)
+					}
+					tactile(playBtn).Children(func() {
+						icon(c, "play")
+						ui.Text(c, "播放").FontSize(textSize(c, textControl)).FontWeight(500)
+					}).OnClick(func() { s.playDownload(index) })
+				}
 			})
 		}
 	})
@@ -2141,9 +2406,6 @@ func (s *State) downloads(c *ui.Context) {
 				ui.Text(c, speedText(s.uploadSpeed(), true)).FontSize(textSize(c, textSection)).FontWeight(600).TextColor(pal.ink).ContentTransition(ui.ContentTransition{Numeric: true, Animation: &contentMotion})
 			})
 		})
-		ui.SearchField(c.Key("download-search"), &s.DownloadSearch).Label("搜索下载").Placeholder("搜索番剧或任务").Width(260).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).OnChange(func() {
-			s.DownloadScroll = ui.ScrollState{}
-		})
 		visible := make([]int, 0, len(s.Downloads))
 		stateCounts := map[DownloadFilter]int{}
 		for i, d := range s.Downloads {
@@ -2155,18 +2417,27 @@ func (s *State) downloads(c *ui.Context) {
 				visible = append(visible, i)
 			}
 		}
-		if queued > 0 {
-			ui.Row(c).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(12).Children(func() {
+			sf := ui.SearchField(c.Key("download-search"), &s.DownloadSearch).Label("搜索下载").Placeholder("搜索番剧或任务").Width(240).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).OnChange(func() {
+				s.DownloadScroll = ui.ScrollState{}
+			})
+			if s.focusSearch {
+				sf.Focus()
+				s.focusSearch = false
+			}
+			if queued > 0 {
 				caption(c, fmt.Sprintf("%d 个下载任务，按番剧分组", len(visible)))
-				ui.Spacer(c)
+			}
+			ui.Spacer(c)
+			if queued > 0 && (active > 0 || resumable > 0) {
 				pauseLabel := "暂停全部下载"
 				if active == 0 {
 					pauseLabel = "继续全部下载"
 				}
-				if active > 0 || resumable > 0 {
-					compactQuiet(c, "pause-all", pauseLabel, func() { s.pauseAllDownloads(active > 0) }).Disabled(s.Busy)
-				}
-			})
+				compactQuiet(c, "pause-all", pauseLabel, func() { s.pauseAllDownloads(active > 0) }).Disabled(s.Busy)
+			}
+		})
+		if queued > 0 {
 			type filterOption struct {
 				filter DownloadFilter
 				label  string
@@ -2184,9 +2455,18 @@ func (s *State) downloads(c *ui.Context) {
 						count = queued
 					}
 					active := selected == index
-					seg := filters.Segment(index).Label(label).Padding(compactPaddingY, compactPaddingX).Radius(radiusSmall).Shrink(0).FontSize(textSize(c, textControl)).FontWeight(500).Cursor(ui.CursorPointer).TextColor(pal.muted)
+					idleColor := pal.muted
+					if count == 0 {
+						idleColor = pal.subtle
+					} else if filter == downloadsFailed {
+						idleColor = pal.warningInk
+					}
+					seg := filters.Segment(index).Label(label).Padding(compactPaddingY, compactPaddingX).Radius(radiusSmall).Shrink(0).FontSize(textSize(c, textControl)).FontWeight(500).Cursor(ui.CursorPointer).TextColor(idleColor)
 					if active {
 						seg.TextColor(pal.ink).FontWeight(600)
+						if filter == downloadsFailed && count > 0 {
+							seg.TextColor(pal.warningInk)
+						}
 					} else if seg.Hovered() {
 						seg.TextColor(pal.ink)
 					}
@@ -2225,13 +2505,14 @@ func (s *State) downloads(c *ui.Context) {
 			return
 		}
 		type downloadGroup struct {
-			animeID  string
-			indices  []int
-			summary  string
-			bytes    int64
-			done     int64
-			unknown  int
-			overflow bool
+			animeID      string
+			indices      []int
+			summary      string
+			sharedFolder string
+			bytes        int64
+			done         int64
+			unknown      int
+			overflow     bool
 		}
 		var groups []downloadGroup
 		byAnime := map[string]int{}
@@ -2264,8 +2545,19 @@ func (s *State) downloads(c *ui.Context) {
 			})
 			counts := map[DownloadFilter]int{}
 			group.bytes, group.done, group.unknown, group.overflow = s.downloadGroupSizes(group.indices)
-			for _, idx := range group.indices {
-				counts[downloadState(s.Downloads[idx])]++
+			commonFolder := ""
+			folderShared := len(group.indices) > 0
+			for i, idx := range group.indices {
+				d := s.Downloads[idx]
+				counts[downloadState(d)]++
+				if i == 0 {
+					commonFolder = d.Folder
+				} else if d.Folder != commonFolder {
+					folderShared = false
+				}
+			}
+			if folderShared {
+				group.sharedFolder = commonFolder
 			}
 			parts := []string{fmt.Sprintf("%d 个下载任务", len(group.indices))}
 			for _, segment := range []struct {
@@ -2325,15 +2617,35 @@ func (s *State) downloads(c *ui.Context) {
 									s.CollapsedDownloads[group.animeID] = !open
 								})
 							}
+							toggleCollapse := func() {
+								if s.CollapsedDownloads == nil {
+									s.CollapsedDownloads = make(map[string]bool)
+								}
+								s.CollapsedDownloads[group.animeID] = open
+							}
 							if textScale(c) > 1 {
-								heading(c, s.anime(group.animeID).Title)
+								titleBtn := ui.ButtonBase(c.Key("toggle-group-title-" + group.animeID)).
+									Label(toggle + " " + s.anime(group.animeID).Title).
+									FillWidth().Row().AlignItems(ui.Center).Gap(8).Radius(radiusSmall).Cursor(ui.CursorPointer)
+								titleBtn.Children(func() {
+									ui.Box(c).TextColor(pal.muted).Rotate(90 * openProgress).Children(func() { icon(c, "next") })
+									heading(c, s.anime(group.animeID).Title).Grow(1).MinWidth(0)
+								}).OnClick(toggleCollapse)
 								caption(c, group.summary)
 								intentGroupIn(c, header, dlViewport, !open, actions).Wrap()
 							} else {
 								ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
-									ui.Box(c).TextColor(pal.muted).Rotate(90 * openProgress).Children(func() { icon(c, "next") })
-									heading(c, s.anime(group.animeID).Title)
-									caption(c, group.summary)
+									titleBtn := ui.ButtonBase(c.Key("toggle-group-title-"+group.animeID)).
+										Label(toggle+" "+s.anime(group.animeID).Title).
+										Row().AlignItems(ui.Center).Gap(12).Padding(4, 8, 4, 0).Radius(radiusSmall).Cursor(ui.CursorPointer)
+									if titleBtn.Hovered() {
+										titleBtn.Background(pal.chrome)
+									}
+									tactile(titleBtn).Children(func() {
+										ui.Box(c).TextColor(pal.muted).Rotate(90 * openProgress).Children(func() { icon(c, "next") })
+										heading(c, s.anime(group.animeID).Title)
+										caption(c, group.summary)
+									}).OnClick(toggleCollapse)
 									ui.Spacer(c)
 									intentGroupIn(c, header, dlViewport, !open, actions)
 								})
@@ -2343,8 +2655,9 @@ func (s *State) downloads(c *ui.Context) {
 							return
 						}
 						renderTasks := func() {
+							totals := ""
 							if group.overflow {
-								caption(c, "总大小超出可显示范围")
+								totals = "总大小超出可显示范围"
 							} else if group.bytes > 0 {
 								share := float64(group.done) / float64(group.bytes)
 								box := ui.Box(c.Key("download-group-progress-" + group.animeID)).Height(4)
@@ -2352,17 +2665,22 @@ func (s *State) downloads(c *ui.Context) {
 								box.Children(func() {
 									ui.Progress(c, float64(value)).Height(4).Radius(2).TextColor(pal.accent).Background(pal.sunken)
 								})
-								totals := "已下载 " + byteSizeText(group.done) + " / " + byteSizeText(group.bytes)
+								totals = "已下载 " + byteSizeText(group.done) + " / " + byteSizeText(group.bytes)
 								if group.done == 0 {
 									totals = "已下载 0 B / " + byteSizeText(group.bytes)
 								}
 								if group.unknown > 0 {
 									totals = fmt.Sprintf("%s（另有 %d 条大小未知）", totals, group.unknown)
 								}
-								caption(c, totals)
 							} else {
-								caption(c, fmt.Sprintf("%d 条大小未知", group.unknown))
+								totals = fmt.Sprintf("%d 条大小未知", group.unknown)
 							}
+							ui.Row(c).Wrap().AlignItems(ui.Center).Gap(16).Children(func() {
+								caption(c, totals)
+								if group.sharedFolder != "" {
+									caption(c, "保存位置："+group.sharedFolder)
+								}
+							})
 							ui.Column(c).Gap(0).Children(func() {
 								for pos, i := range group.indices {
 									if pos > 0 {
@@ -2464,7 +2782,9 @@ func (s *State) downloads(c *ui.Context) {
 												actionRow()
 											})
 										}
-										caption(c, "保存位置："+d.Folder)
+										if d.Folder != "" && d.Folder != group.sharedFolder {
+											caption(c, "保存位置："+d.Folder)
+										}
 										if d.Progress >= 1 && !d.Stopped {
 											uploaded := d.UploadedMB * 1e6
 											if d.UploadedBytes != 0 {
@@ -2494,7 +2814,16 @@ func (s *State) downloads(c *ui.Context) {
 				}
 			})
 		})
-		caption(c, "全局上传上限 "+s.Upload+"；完成后"+s.seedStopRule()+"。")
+		policyText := "全局上传上限 " + s.Upload + "；完成后" + s.seedStopRule() + "。"
+		policyBtn := ui.ButtonBase(c.Key("download-policy-link")).
+			Label(policyText).Tooltip("前往设置修改上传与分享限额").
+			Padding(4, 8, 4, 0).Radius(radiusSmall).AlignSelf(ui.Start).Cursor(ui.CursorPointer)
+		if policyBtn.Hovered() {
+			policyBtn.Background(pal.chrome)
+		}
+		tactile(policyBtn).Children(func() {
+			ui.Text(c, policyText).FontSize(textSize(c, textMeta)).FontWeight(400).LineHeight(1.5).TextColor(pal.muted)
+		}).OnClick(func() { s.enterPage("settings") })
 	})
 }
 
@@ -2691,7 +3020,18 @@ func (s *State) filesDialog(c *ui.Context) {
 								caption(c, dir)
 								caption(c, exactByteText(f.Size))
 							})
-							compactQuiet(c, "copy-path-"+name, "复制路径", func() { s.copyPath(f.Path) })
+							copied := s.copiedTarget == f.Path && !s.copiedUntil.IsZero() && c.Now().Before(s.copiedUntil)
+							if copied {
+								c.After(s.copiedUntil.Sub(c.Now()))
+							}
+							copyLabel := "复制路径"
+							if copied {
+								copyLabel = "已复制"
+							}
+							copyBtn := compactQuiet(c, "copy-path-"+name, copyLabel, func() { s.copyPath(c, f.Path) }).Label("复制路径 " + f.Path)
+							if copied {
+								copyBtn.TextColor(pal.accentInk)
+							}
 							if isPlayableMedia(f.Path) {
 								compactQuiet(c, "play-file-"+name, "播放此文件", func() { s.playFile(f.Path) }).Label("播放此文件 " + f.Path).TextColor(pal.accentInk)
 							}
@@ -2715,10 +3055,13 @@ func (s *State) playFile(path string) {
 	}
 }
 
-func (s *State) copyPath(path string) {
+func (s *State) copyPath(c *ui.Context, path string) {
 	s.FilesError = ""
 	if s.CopyText != nil {
 		s.CopyText(path)
+		s.copiedTarget = path
+		s.copiedUntil = c.Now().Add(1500 * time.Millisecond)
+		c.After(1500 * time.Millisecond)
 	}
 }
 

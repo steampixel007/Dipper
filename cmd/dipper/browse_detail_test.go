@@ -98,8 +98,10 @@ func TestUIBrowseDetailAtNarrowWidth(t *testing.T) {
 	}
 	closeButton := requireLayoutBound(t, tester, "关闭番剧详情", 1040, 720)
 	action := requireLayoutBound(t, tester, "查看资源", 1040, 720)
-	if center := action.X + action.W/2; closeButton.X > 960 || center < 514 || center > 526 {
-		t.Fatalf("detail should be centered: close=%+v action=%+v", closeButton, action)
+	library := requireLayoutBound(t, tester, "进入剧集库", 1040, 720)
+	center := ((action.X + action.W/2) + (library.X + library.W/2)) / 2
+	if closeButton.X > 960 || center < 514 || center > 526 {
+		t.Fatalf("detail should be centered: close=%+v action=%+v library=%+v center=%.1f", closeButton, action, library, center)
 	}
 	tester.Key(0, ui.KeyEscape)
 	if state.browseDetail != nil {

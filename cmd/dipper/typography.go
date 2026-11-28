@@ -3,6 +3,7 @@ package main
 import (
 	"math"
 
+	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -13,7 +14,7 @@ const (
 	textControl textRole = 14
 	textBody    textRole = 16
 	textSection textRole = 18
-	textTitle   textRole = 18
+	textTitle   textRole = 22
 )
 
 const (
@@ -21,8 +22,8 @@ const (
 	radiusControl    float32 = 12
 	radiusPanel      float32 = 16
 	radiusSheet      float32 = 24
-	radiusDialog     float32 = 32
-	radiusLargeSheet float32 = 40
+	radiusDialog     float32 = 24
+	radiusLargeSheet float32 = 24
 
 	controlGap      float32 = 8
 	controlPaddingY float32 = 12
@@ -89,7 +90,7 @@ func dialogContentWithFooter(c *ui.Context, panel ui.Element, key string, width,
 	panel.Width(min(windowWidth-48, width*max(1, min(textScale(c), 1.5)))).
 		MaxHeight(windowHeight-32).
 		Radius(radius).
-		Background(pal.surface).
+		Background(pal.dialogSurface).
 		Border(1, pal.outline).
 		Shadow(0, 16, 40, 0, pal.popoverShadow).
 		Transition(dialogTransition).
@@ -98,12 +99,21 @@ func dialogContentWithFooter(c *ui.Context, panel ui.Element, key string, width,
 		panel.InsetShadow(0, 1, 0, 0, pal.topHighlight)
 	}
 	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
-		ui.Scroll(c.Key(key)).Grow(1).MinHeight(0).Children(func() {
-			ui.Column(c).Padding(pad, pad, 24).Gap(24).Children(content)
+		ui.Box(c).Grow(1).MinHeight(0).Children(func() {
+			ui.Scroll(c.Key(key)).Fill().Children(func() {
+				ui.Column(c).Padding(pad, pad, 28).Gap(24).Children(content)
+			})
+			bottomScrollEdge(c, pal.dialogSurface)
 		})
 		ui.Divider(c).Background(pal.line)
 		ui.Row(c).Padding(footerPadTop, pad, footerPadBottom).Wrap().Justify(ui.End).Gap(12).Children(footer)
 	})
+}
+
+func bottomScrollEdge(c *ui.Context, bg ui.Color) {
+	ui.Box(c).Absolute().Bottom(0).Left(0).Right(0).Height(16).
+		IgnoreInput(true).AccessHidden(true).
+		Material(glass.ScrollEdge{Bottom: true, Background: bg})
 }
 
 func menuPanelStyle(c *ui.Context) func(ui.Element) {

@@ -32,43 +32,48 @@ func (s *State) proxySettings(c *ui.Context) {
 	custom := proxyModes[s.ProxyMode] == proxy.ModeCustom
 	disabled := s.Busy || s.ProxyTesting
 	clearFeedback := func() { s.ProxyFeedback = "" }
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(16).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 10).Gap(4).Children(func() {
-			ui.Text(c, "代理").FontSize(textSize(c, textBody)).FontWeight(500).TextColor(pal.ink).LineHeight(1.5)
-			caption(c, s.proxyDescription())
-		})
-		ui.Column(c).Gap(12).Children(func() {
+	ui.Column(c).Gap(12).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(16).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 10).Gap(4).Children(func() {
+				ui.Text(c, "代理").FontSize(textSize(c, textBody)).FontWeight(500).TextColor(pal.ink).LineHeight(1.5)
+				caption(c, s.proxyDescription())
+			})
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(8).Children(func() {
-				compactSecondary(c, "test-proxy", "测试", s.testProxy).
-					Disabled(disabled || s.Source == nil || (custom && strings.TrimSpace(s.ProxyURL) == ""))
-				if custom {
-					ui.TextInput(c.Key("proxy-url"), &s.ProxyURL).Label("代理地址").Placeholder("http://127.0.0.1:7890").
-						Width(textSize(c, textControl) * 16).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).
-						OnChange(clearFeedback).OnSubmit(s.saveProxy).Disabled(disabled)
+				if !custom {
+					compactSecondary(c, "test-proxy", "测试", s.testProxy).
+						Disabled(disabled || s.Source == nil)
 				}
-				ui.Segmented(c.Key("proxy-mode"), &s.ProxyMode, "自动", "关闭", "自定义").OnChange(func() {
+				glidingSegmented(c, "proxy-mode", "代理模式", s.ProxyMode, []string{"自动", "关闭", "自定义"}, proxyModeMatch{}, disabled, func(index int) {
+					s.ProxyMode = index
 					clearFeedback()
 					if proxyModes[s.ProxyMode] != proxy.ModeCustom {
 						s.saveProxy()
 					}
-				}).Disabled(disabled)
+				})
 			})
-			if custom {
+		})
+		if custom {
+			ui.Column(c).Gap(12).Children(func() {
+				ui.TextInput(c.Key("proxy-url"), &s.ProxyURL).Label("代理地址").Placeholder("http://127.0.0.1:7890").
+					FillWidth().MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).
+					OnChange(clearFeedback).OnSubmit(s.saveProxy).Disabled(disabled)
 				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(8).Children(func() {
 					ui.TextInput(c.Key("proxy-user"), &s.proxyUsername).Label("代理用户名").Placeholder("用户名（可选）").
-						Grow(1).MinWidth(0).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).
+						Grow(1).MinWidth(120).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).
 						OnChange(clearFeedback).OnSubmit(s.saveProxy).Disabled(disabled)
 					ui.TextInput(c.Key("proxy-password"), &s.proxyPassword).Label("代理密码").Placeholder("密码（可选）").Password().
-						Grow(1).MinWidth(0).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).
+						Grow(1).MinWidth(120).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface).
 						OnChange(clearFeedback).OnSubmit(s.saveProxy).Disabled(disabled)
+					compactSecondary(c, "test-proxy", "测试", s.testProxy).
+						Disabled(disabled || s.Source == nil || strings.TrimSpace(s.ProxyURL) == "")
 					secondary(c, "save-proxy", "保存", s.saveProxy).Label("保存代理").Disabled(disabled)
 				})
-			}
-		})
+			})
+		}
+		if s.ProxyFeedback != "" {
+			caption(c, s.ProxyFeedback)
+		}
 	})
-	if s.ProxyFeedback != "" {
-		caption(c, s.ProxyFeedback)
-	}
 }
 
 func (s *State) proxySelection() (mode, address string, ok bool) {

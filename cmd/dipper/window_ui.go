@@ -183,16 +183,18 @@ func (s *State) closeDialog(c *ui.Context) {
 		backdrop.Background(pal.scrim).Transition(fadeTransition)
 		dialogContentWithFooter(c, panel, "close-content", 520, radiusSheet, func() {
 			pageTitle(c, windowText.question)
-			caption(c, windowText.backgroundDetail)
-			caption(c, windowText.quitDetail)
-			if !s.TrayAvailable {
-				ui.Text(c, windowText.unavailable).FontSize(textSize(c, textMeta)).TextColor(pal.warningInk).LineHeight(1.5)
-			} else if s.Platform == "windows" {
-				caption(c, windowText.overflow)
-			}
-			if s.SaveError != "" {
-				ui.Text(c, s.SaveError).FontSize(textSize(c, textMeta)).TextColor(pal.errorInk).LineHeight(1.5)
-			}
+			ui.Column(c).Gap(8).Children(func() {
+				caption(c, windowText.backgroundDetail)
+				caption(c, windowText.quitDetail)
+				if !s.TrayAvailable {
+					ui.Text(c, windowText.unavailable).FontSize(textSize(c, textMeta)).TextColor(pal.warningInk).LineHeight(1.5)
+				} else if s.Platform == "windows" {
+					caption(c, windowText.overflow)
+				}
+				if s.SaveError != "" {
+					ui.Text(c, s.SaveError).FontSize(textSize(c, textMeta)).TextColor(pal.errorInk).LineHeight(1.5)
+				}
+			})
 			ui.Checkbox(c.Key("remember-close"), &s.RememberClose, windowText.remember).Disabled(s.Busy)
 		}, func() {
 			quiet(c, "cancel-close", windowText.cancel, func() { s.ClosePrompt = false })

@@ -321,7 +321,7 @@ func (s *State) focusedTitleSamplePicker(c *ui.Context) {
 				btn := ui.ButtonBase(c.Key(fmt.Sprintf("title-sample-%d-%s", i, item.ID))).
 					Label("选择模板 "+item.Title).
 					Column().FillWidth().AlignItems(ui.Start).Gap(6).Padding(12, 16).Radius(radiusControl).
-					Border(1, pal.line).Background(pal.canvas).Cursor(ui.CursorPointer)
+					Border(1, pal.line).Background(pal.surface).Cursor(ui.CursorPointer)
 				if btn.Hovered() {
 					btn.BorderColor(pal.accent).Background(pal.accentWash)
 				}
@@ -388,7 +388,7 @@ func (s *State) focusedTitleRuleCard(c *ui.Context) {
 		})
 
 		if hasTemplate {
-			ui.Column(c).FillWidth().Padding(12, 16).Gap(6).Radius(radiusControl).Background(pal.canvas).Children(func() {
+			ui.Column(c).FillWidth().Padding(12, 16).Gap(6).Radius(radiusControl).Background(pal.surface).Border(1, pal.line).Children(func() {
 				if s.TitleManualInput {
 					caption(c, "点击下面标题里的任意词，可查看含义或加入包含 / 排除条件：")
 					s.originalTitle(c, template)
@@ -443,7 +443,7 @@ func (s *State) focusedTitleRuleCard(c *ui.Context) {
 				limit := min(8, len(sampleRows))
 				ui.Column(c).FillWidth().Gap(8).Children(func() {
 					for _, sample := range sampleRows[:limit] {
-						ui.Column(c).FillWidth().Padding(10, 12).Radius(radiusSmall).Background(pal.canvas).Children(func() {
+						ui.Column(c).FillWidth().Padding(10, 12).Radius(radiusSmall).Background(pal.surface).Border(1, pal.line).Children(func() {
 							s.originalTitle(c, sample.Resource)
 						})
 					}

@@ -17,9 +17,14 @@ type limitInput struct {
 }
 
 type transferLimits struct {
-	upload, duration, ratio limitInput
-	message                 string
-	failed                  bool
+	upload, duration, ratio                limitInput
+	savedUpload, savedDuration, savedRatio limitInput
+	message                                string
+	failed                                 bool
+}
+
+func (draft transferLimits) dirty() bool {
+	return draft.upload != draft.savedUpload || draft.duration != draft.savedDuration || draft.ratio != draft.savedRatio
 }
 
 func (s *State) loadTransferLimits(settings core.Settings) {
@@ -31,10 +36,16 @@ func (s *State) loadTransferLimits(settings core.Settings) {
 	if ratio == "" || ratio == "不限" {
 		ratio = "1"
 	}
+	upload := limitInput{strconv.FormatFloat(float64(settings.UploadLimitBytes)/(1024*1024), 'f', -1, 64), settings.UploadUnlimited}
+	duration := limitInput{strconv.FormatInt(minutes, 10), settings.EffectiveSeedDuration() == -1}
+	ratioInput := limitInput{ratio, settings.EffectiveSeedRatio() == -1}
 	s.TransferLimits = transferLimits{
-		upload:   limitInput{strconv.FormatFloat(float64(settings.UploadLimitBytes)/(1024*1024), 'f', -1, 64), settings.UploadUnlimited},
-		duration: limitInput{strconv.FormatInt(minutes, 10), settings.EffectiveSeedDuration() == -1},
-		ratio:    limitInput{ratio, settings.EffectiveSeedRatio() == -1},
+		upload:        upload,
+		duration:      duration,
+		ratio:         ratioInput,
+		savedUpload:   upload,
+		savedDuration: duration,
+		savedRatio:    ratioInput,
 	}
 	s.Upload = uploadLabel(settings.EffectiveUploadLimit())
 	s.Seed = seedLabel(settings.SeedMinutes)
@@ -114,15 +125,15 @@ func (s *State) transferSettings(c *ui.Context) {
 	s.limitRow(c, "upload", "全局上传上限", "MiB/s", &draft.upload)
 	s.limitRow(c, "duration", "分享时长", "分钟", &draft.duration)
 	s.limitRow(c, "ratio", "分享率上限", ":1", &draft.ratio)
-	caption(c, "下载完成后，"+s.seedStopRule()+"。")
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(16).Children(func() {
-		secondary(c, "save-transfer-limits", "保存限额", s.saveTransferLimits).Disabled(s.Busy)
-		if draft.failed {
-			ui.Text(c, draft.message).FontSize(textSize(c, textMeta)).TextColor(colors(c).errorInk).LineHeight(1.5)
-		} else if draft.message != "" {
-			caption(c, draft.message)
-		}
+		caption(c, "下载完成后，"+s.seedStopRule()+"。").Grow(1).MinWidth(0)
+		secondary(c, "save-transfer-limits", "保存限额", s.saveTransferLimits).Disabled(s.Busy || !draft.dirty())
 	})
+	if draft.failed {
+		ui.Text(c, draft.message).FontSize(textSize(c, textMeta)).TextColor(colors(c).errorInk).LineHeight(1.5)
+	} else if draft.message != "" {
+		caption(c, draft.message)
+	}
 }
 
 func (s *State) limitRow(c *ui.Context, key, label, unit string, input *limitInput) {

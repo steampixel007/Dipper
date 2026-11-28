@@ -15,10 +15,11 @@ the renders linked at the end are the baseline, not the target.
    Pine-Soot Dark) paired with a monochrome ink/ivory accent (Wu-Mo in light,
    Ya-Bai in dark), large type for what matters, and space for the rest.
 2. **Flat.** Content sits on the page. A boundary is made with space and
-   alignment, not with a box. Ambient cover blur and Liquid Glass overlays are
-   used only where artwork or scrolling content sits behind them (poster status
-   pills, poster hover actions, the top scroll edge, and cached blurred
-   backdrops behind the episode library hero and browse detail header).
+   alignment, not with a box. Liquid Glass overlays are used only where artwork
+   or scrolling content sits behind them (poster status pills, poster hover
+   actions, and the top/bottom scroll edges); a subtle cached blurred cover
+   backdrop appears only behind the dark-mode episode library hero so light
+   paper surfaces and modal dialogs stay uniform.
 3. **Silent.** The interface does not describe itself. Controls are named by
    their label; nothing explains them.
 4. **On intent.** A secondary action appears when the user shows interest in
@@ -75,7 +76,8 @@ surface in both themes.
 | --- | --- | --- | --- |
 | `canvas` | `#F7F5F0` | `#141311` | Window and page ground (warm Xuan paper / pine-soot) |
 | `chrome` | `#EFECE5` | `#1A1816` | Opaque warm navigation rail and hover fill |
-| `surface` | `#FCFBF8` | `#22201D` | Dialogs, menus, inputs, selected segment |
+| `dialogSurface` | `#F7F5F0` | `#1C1A17` | Modal dialogs and browse detail drawer (same paper tone as canvas) |
+| `surface` | `#FAF8F4` | `#22201D` | Menus, inputs, secondary buttons, selected segment |
 | `surfaceHover` | `#F3F0E9` | `#2B2824` | Interactive surface hover |
 | `sunken` | `#E7E3DA` | `#0F0E0C` | Segmented well, progress wells and cover placeholders |
 | `ink` | `#23201C` | `#F2EFE9` | Titles, body, controls |
@@ -119,13 +121,13 @@ a native face per platform. Every role scales with the MyGo text scale.
 
 | Role | Size | Weight | Color | Use |
 | --- | --- | --- | --- | --- |
-| Title | 18 | 700 | `ink` | Page and anime titles |
+| Title | 22 | 700 | `ink` | Page and anime titles |
 | Section | 18 | 600 | `ink` | Section and dialog headings |
 | Body | 16 | 500 emphasis, 400 content | `ink` | Poster titles, row titles, content |
 | Control | 14 | 500 | `ink` | Buttons, navigation, status labels |
 | Meta | 14 | 400 | `muted` | Sizes, times, group names, speeds |
 
-Nothing is smaller than 14. Line height is 1.35 for 18 and 1.5 for 14 and 16.
+Nothing is smaller than 14. Line height is 1.3 for 22, 1.35 for 18 and 1.5 for 14 and 16.
 Large text is never solved by shrinking it.
 
 ## Geometry
@@ -156,16 +158,14 @@ is 1320 × 860. The grid's outer edges align with the page title.
 
 ### Radius
 
-Radius follows component size and level, from 8 to 40.
+Radius follows component size and level, from 8 to 24.
 
 | Radius | Components |
 | --- | --- |
 | 8 | Inputs, inline and compact buttons, segment items, menu items, pills |
 | 12 | Buttons, navigation items, posters, segmented well |
 | 16 | Menus, popovers, select panels |
-| 24 | Browse side drawer, confirmation dialogs |
-| 32 | Standard large dialogs |
-| 40 | The largest sheets |
+| 24 | Browse side drawer, confirmation dialogs, large dialogs and sheets |
 
 ### Icons
 

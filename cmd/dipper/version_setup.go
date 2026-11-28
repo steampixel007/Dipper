@@ -790,48 +790,55 @@ func (s *State) detailPreviewReady() bool {
 
 func (s *State) focusedDetail(c *ui.Context, a Anime) {
 	embeddedFooter := textScale(c) > 1
+	pal := colors(c)
 	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
-		ui.Scroll(c.Key("focused-detail-scroll")).TrackScroll(&s.ResourceScroll).Grow(1).MinHeight(0).Children(func() {
-			ui.Column(c).FillWidth().AlignItems(ui.Center).Padding(16, pageInsetX(c), 28).Children(func() {
-				ui.Column(c).FillWidth().MaxWidth(760).Gap(20).Children(func() {
-					s.focusedDetailHeader(c, a)
-					switch {
-					case s.DetailLoading:
-						s.focusedCard(c, func() { pageLoading(c, "正在加载字幕组…") })
-					case s.DetailError != "":
-						s.focusedCard(c, func() { s.empty(c, "字幕组加载失败", s.DetailError, "重试加载", s.refreshDetail) })
-					case len(s.Groups) == 0:
-						s.focusedCard(c, func() {
-							s.empty(c, "暂无字幕组", "来源尚未提供这部番剧的字幕组信息。", "重新加载", s.refreshDetail)
-						})
-					case !s.hasGroup() || s.ChoosingGroup:
-						s.focusedCard(c, func() {
-							ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
-								heading(c, "选择字幕组")
-								ui.Spacer(c)
-								if s.hasGroup() {
-									compactQuiet(c, "cancel-choose-group", "返回", func() { s.ChoosingGroup = false }).TextColor(colors(c).accentInk)
-								}
+		scrollHost := ui.Box(c).Grow(1).MinHeight(0)
+		scrollHost.Children(func() {
+			ui.Scroll(c.Key("focused-detail-scroll")).TrackScroll(&s.ResourceScroll).Fill().Children(func() {
+				ui.Column(c).FillWidth().AlignItems(ui.Center).Padding(16, pageInsetX(c), 40).Children(func() {
+					ui.Column(c).FillWidth().MaxWidth(760).Gap(32).Children(func() {
+						s.focusedDetailHeader(c, a)
+						switch {
+						case s.DetailLoading:
+							s.focusedCard(c, func() { pageLoading(c, "正在加载字幕组…") })
+						case s.DetailError != "":
+							s.focusedCard(c, func() { s.empty(c, "字幕组加载失败", s.DetailError, "重试加载", s.refreshDetail) })
+						case len(s.Groups) == 0:
+							s.focusedCard(c, func() {
+								s.empty(c, "暂无字幕组", "来源尚未提供这部番剧的字幕组信息。", "重新加载", s.refreshDetail)
 							})
-							s.groupPicker(c)
-						})
-					case s.HistoryLoading && !s.HistoryPreviewOnly:
-						s.focusedCard(c, func() { pageLoading(c, "正在加载发布记录…") })
-					case s.HistoryError != "":
-						s.focusedCard(c, func() { s.empty(c, "发布记录加载失败", s.HistoryError, "重试加载资源", s.refreshHistory) })
-					case s.TitleSetup:
-						s.focusedTitleSetup(c)
-					default:
-						s.focusedVersionCard(c)
-						if s.Rule.Version != nil {
-							s.focusedEpisodesCard(c)
+						case !s.hasGroup() || s.ChoosingGroup:
+							s.focusedCard(c, func() {
+								ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+									heading(c, "选择字幕组")
+									ui.Spacer(c)
+									if s.hasGroup() {
+										compactQuiet(c, "cancel-choose-group", "返回", func() { s.ChoosingGroup = false }).TextColor(colors(c).accentInk)
+									}
+								})
+								s.groupPicker(c)
+							})
+						case s.HistoryLoading && !s.HistoryPreviewOnly:
+							s.focusedCard(c, func() { pageLoading(c, "正在加载发布记录…") })
+						case s.HistoryError != "":
+							s.focusedCard(c, func() { s.empty(c, "发布记录加载失败", s.HistoryError, "重试加载资源", s.refreshHistory) })
+						case s.TitleSetup:
+							s.focusedTitleSetup(c)
+						default:
+							s.focusedVersionCard(c)
+							if s.Rule.Version != nil {
+								s.focusedEpisodesCard(c)
+							}
 						}
-					}
-					if embeddedFooter {
-						s.detailFooter(c, true)
-					}
+						if embeddedFooter {
+							s.detailFooter(c, true)
+						}
+					})
 				})
 			})
+			if !embeddedFooter {
+				bottomScrollEdge(c, pal.canvas)
+			}
 		})
 		if !embeddedFooter {
 			s.detailFooter(c, false)
@@ -840,8 +847,7 @@ func (s *State) focusedDetail(c *ui.Context, a Anime) {
 }
 
 func (s *State) focusedCard(c *ui.Context, body func()) {
-	pal := colors(c)
-	ui.Column(c).FillWidth().Padding(20, 24).Gap(14).Radius(radiusPanel).Background(pal.surface).Border(1, pal.line).Children(body)
+	ui.Column(c).FillWidth().Gap(16).Children(body)
 }
 
 func (s *State) focusedDetailHeader(c *ui.Context, a Anime) {
@@ -911,27 +917,24 @@ func (s *State) focusedVersionCard(c *ui.Context) {
 			caption(c, "已基于最新记录生成推荐，正在后台加载完整剧集…")
 		}
 		if !singleUnified && len(s.Versions) > 0 {
-			ui.Row(c).Wrap().Gap(16).AlignItems(ui.Center).Children(func() {
-				ui.Row(c).Wrap().Gap(6).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Wrap().Gap(20).AlignItems(ui.Center).Children(func() {
+				languages := []core.SubtitleLanguage{0, core.SubtitleSimplified, core.SubtitleTraditional}
+				ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
 					caption(c, "字幕")
-					for _, choice := range []struct {
-						value core.SubtitleLanguage
-						label string
-					}{{0, "不限"}, {core.SubtitleSimplified, "简体"}, {core.SubtitleTraditional, "繁体"}} {
-						setupChoice(c, fmt.Sprintf("language-%d", choice.value), choice.label, s.VersionLanguage == choice.value, func() {
-							s.setVersionLanguage(choice.value)
-						})
-					}
+					glidingSegmented(c, "focused-language", "字幕", slices.Index(languages, s.VersionLanguage), []string{"不限", "简体", "繁体"}, versionLangMatch{}, false, func(index int) {
+						s.setVersionLanguage(languages[index])
+					})
 				})
 				if len(matchingIndices) > 1 {
-					ui.Row(c).Wrap().Gap(6).AlignItems(ui.Center).Children(func() {
+					activePriority := int(s.VersionPriority)
+					if s.ManualVersion {
+						activePriority = -1
+					}
+					ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
 						caption(c, "偏好")
-						for index, label := range []string{"画质", "兼容性", "省空间"} {
-							priority := versionPriority(index)
-							setupChoice(c, fmt.Sprintf("priority-%d", index), label, !s.ManualVersion && s.VersionPriority == priority, func() {
-								s.setVersionPriority(priority)
-							})
-						}
+						glidingSegmented(c, "focused-priority", "偏好", activePriority, []string{"画质", "兼容性", "省空间"}, versionPriorityMatch{}, false, func(index int) {
+							s.setVersionPriority(versionPriority(index))
+						})
 					})
 				}
 			})
@@ -1025,20 +1028,24 @@ func (s *State) versionChoiceRow(c *ui.Context, index int, option versionOption,
 	}
 	btn := ui.ButtonBase(c.Key(fmt.Sprintf("version-%d", index))).Label(accLabel).
 		Row().FillWidth().Gap(12).AlignItems(ui.Start).Padding(12, 16).Radius(radiusControl).
-		Border(1, pal.line).Background(pal.canvas).Cursor(ui.CursorPointer)
+		Border(1, pal.line).Background(pal.surface).Cursor(ui.CursorPointer)
 	if active {
 		btn.BorderColor(pal.accent).Background(pal.accentWash)
 	} else if btn.Hovered() {
-		btn.BorderColor(pal.hoverLine)
+		btn.BorderColor(pal.hoverLine).Background(pal.surfaceHover)
 	}
 	tactile(btn).Children(func() {
 		ui.Box(c).Padding(3, 0, 0, 0).Children(func() { radioDot(c, active) })
 		ui.Column(c).Grow(1).MinWidth(0).Gap(4).Children(func() {
 			ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
 				if recommended {
-					statusPill(c, "推荐", pal.accentInk, pal.surface)
+					pillBg := pal.sunken
+					if active {
+						pillBg = pal.surface
+					}
+					statusPill(c, "推荐", pal.accentInk, pillBg)
 				}
-				ui.Text(c, coreText).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(pal.ink)
+				ui.Text(c, coreText).FontSize(textSize(c, textBody)).FontWeight(500).TextColor(pal.ink)
 				ui.Spacer(c)
 				caption(c, metrics)
 			})
@@ -1100,11 +1107,11 @@ func (s *State) focusedEpisodesCard(c *ui.Context) {
 			downloadBtn := ui.ButtonBase(c.Key("download-existing-all")).
 				Label(fmt.Sprintf("立即下载全部 %d %s，并自动追后续更新", len(choices), unit)).
 				Row().FillWidth().Gap(12).AlignItems(ui.Center).Padding(12, 16).Radius(radiusControl).
-				Border(1, pal.line).Background(pal.canvas).Cursor(ui.CursorPointer)
+				Border(1, pal.line).Background(pal.surface).Cursor(ui.CursorPointer)
 			if allSelected {
 				downloadBtn.BorderColor(pal.accent).Background(pal.accentWash)
 			} else if downloadBtn.Hovered() {
-				downloadBtn.BorderColor(pal.hoverLine)
+				downloadBtn.BorderColor(pal.hoverLine).Background(pal.surfaceHover)
 			}
 			tactile(downloadBtn).Children(func() {
 				radioDot(c, allSelected)
@@ -1114,11 +1121,11 @@ func (s *State) focusedEpisodesCard(c *ui.Context) {
 			futureBtn := ui.ButtonBase(c.Key("download-future-only")).
 				Label("暂不下载已有集数，只自动追后续更新").
 				Row().FillWidth().Gap(12).AlignItems(ui.Center).Padding(12, 16).Radius(radiusControl).
-				Border(1, pal.line).Background(pal.canvas).Cursor(ui.CursorPointer)
+				Border(1, pal.line).Background(pal.surface).Cursor(ui.CursorPointer)
 			if noneSelected {
 				futureBtn.BorderColor(pal.accent).Background(pal.accentWash)
 			} else if futureBtn.Hovered() {
-				futureBtn.BorderColor(pal.hoverLine)
+				futureBtn.BorderColor(pal.hoverLine).Background(pal.surfaceHover)
 			}
 			tactile(futureBtn).Children(func() {
 				radioDot(c, noneSelected)
@@ -1218,7 +1225,7 @@ func (s *State) focusedResourceRow(c *ui.Context, r Resource, episodeChoice bool
 				selected, _ := s.selected()
 				s.DownloadExistingChoice = len(selected) > 0
 			})
-			ui.Text(c, episodeLabel(r.Episode)).FontSize(textSize(c, textBody)).FontWeight(600).TextColor(pal.ink)
+			ui.Text(c, episodeLabel(r.Episode)).FontSize(textSize(c, textBody)).FontWeight(500).TextColor(pal.ink)
 			if count := s.duplicates(r.Episode); count > 1 && ok && episodeChoice {
 				ep := r.Episode
 				fg, bg := pal.warningInk, pal.warningWash

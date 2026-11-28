@@ -86,6 +86,7 @@ func (s *State) manualTrackerSection(c *ui.Context, draft *trackerManagerDraft) 
 					}
 					if menu.Item("复制地址").Disabled(s.CopyText == nil).Chosen() {
 						s.CopyText(address)
+						draft.message, draft.failed = "已复制地址。", false
 					}
 					if menu.Item("删除").Chosen() {
 						draft.manual = slices.Delete(draft.manual, index, index+1)

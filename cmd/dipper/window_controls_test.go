@@ -18,9 +18,13 @@ func TestCustomWindowControlsRenderAndDispatch(t *testing.T) {
 	tt := ui.NewTester(s.view, 1320, 860)
 	for _, label := range []string{"最小化窗口", "最大化窗口", "关闭窗口"} {
 		bounds := requireLayoutBound(t, tt, label, 1320, 860)
-		if bounds.X < 1100 || bounds.Y > 40 {
-			t.Fatalf("%q is not in the top-right corner: %+v", label, bounds)
+		if bounds.X < 1100 || bounds.Y != 0 {
+			t.Fatalf("%q is not flush with the top-right edge: %+v", label, bounds)
 		}
+	}
+	closeBounds := requireLayoutBound(t, tt, "关闭窗口", 1320, 860)
+	if closeBounds.X+closeBounds.W != 1320 {
+		t.Fatalf("close button does not sit flush with the right edge: %+v", closeBounds)
 	}
 	uiClick(t, tt, "最小化窗口")
 	uiClick(t, tt, "最大化窗口")

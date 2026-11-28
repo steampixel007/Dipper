@@ -27,7 +27,7 @@ components, and interaction conventions are specified in
 | `software_update_ui.go` | The software update settings card, release dialog, and update lifecycle |
 | `covers.go`, `cover_disk.go` | Cover demand, decoding, and memory and disk caches |
 | `appearance.go` | Light/dark neutral palettes, accent tokens, control theme, and motion curves |
-| `typography.go` | Type scale (`>=14 DIP`), 4 DIP grid geometry, radius scale (`8–40 DIP`), button/dialog helpers |
+| `typography.go` | Type scale (`>=14 DIP`, `22 DIP` page title), 4 DIP grid geometry, radius scale (`8–24 DIP`), button/dialog/scroll-edge helpers |
 | `fonts.go` | Embedded Geist font weights (`400`, `500`, `600`, `700`) registered with CJK fallback |
 | `icons.go` | Embedded Reicon outline icons (`18×18` glyph, `1.5 DIP` stroke, `24×24` alignment box) |
 | `intent.go` | Controls-on-intent visibility (`hover`, `FocusWithin`, scroll-near-edge, active work) |
@@ -57,26 +57,31 @@ settings sections, boxed download rows, decorative dividers, and explanatory
 subtitles or helper prose.
 
 Poster status pills and hover actions use `plugins/glass` tinted Liquid Glass
-over the artwork, and the episode library hero and browse detail header render
-a cached blurred ambient cover backdrop (`.Cache()`). A `glass.ScrollEdge`
-softly fades scrolled content into the top bar, and floating dark dialogs carry
-warm top edge highlights (`InsetShadow`).
+over the artwork, and the dark-mode episode library hero renders a subtle cached
+blurred ambient cover backdrop (`.Cache()`) while light paper surfaces and
+browse detail panels stay uniform `surface`. A `glass.ScrollEdge`
+softly fades scrolled content into the top bar and sticky footers, and floating
+dark dialogs carry warm top edge highlights (`InsetShadow`).
 
 The sidebar occupies 224 DIP. The top bar occupies a fixed 64 DIP slot with an
 opaque canvas background and no divider, showing a compact title on sub-pages
 or once a top-level page scrolls. Page content is clipped below it; `uiScrollTo`
 relies on that slot. Browse filters sit directly on the page, with weekdays
 below. Poster radii share the 12 DIP cover token and deepen their shadow on
-hover. Component radii step across the 8–40 DIP scale (`8, 12, 16, 24, 32, 40`)
+hover. Component radii step across the 8–24 DIP scale (`8, 12, 16, 24`)
 by size and hierarchy, and all spacing stays on the 4 DIP grid at 1.5×
 spaciousness. Navigation counts share the label row at normal text size and move
 below the label when text is enlarged; bottom sidebar utilities left-align with
-icons to match the main navigation rail. Settings appearance uses visual theme
-preview cards. `visual_system_test.go` and `design_system_test.go` verify
-registered Geist weights, Reicon icon box geometry, warm neutral chrome, flat
-unboxed layout, accent area budget, dark monochrome ivory primary accent,
-selected navigation, count alignment, visual theme preview cards, and clickable
-navigation at normal and doubled text size.
+icons to match the main navigation rail, and the top bar omits a duplicate help
+button. Sticky dialog, detail, and drawer footers use a bottom `glass.ScrollEdge`
+fade above their divider. Settings appearance uses visual theme
+preview cards. `visual_system_test.go`, `design_system_test.go`, and
+`ui_polish_test.go` verify registered Geist weights, Reicon icon box geometry,
+warm neutral chrome, flat unboxed layout, accent area budget, dark monochrome
+ivory primary accent, selected navigation, count alignment, visual theme preview
+cards, single-row split browse toolbar, clickable group chips and collapsible
+download group titles, shared-folder deduplication, keyboard shortcuts, and
+clickable navigation at normal and doubled text size.
 
 Browse and follow tiles use the column width and each loaded image's original
 ratio to determine poster height. This keeps the complete artwork visible
@@ -92,8 +97,9 @@ Interactions combine MyGo v0.9.0's velocity-preserving springs and Oklab color
 interpolation with controls-on-intent (`intent.go`) and cascading menus
 (`cascading_menu.go`): critically-damped 220 ms springs for tactile
 press/hover/shadow feedback, 280 ms lightly-damped springs for shared-element
-`Match` + `Fly` indicators (season thumb, weekday underline, download filter
-pill) and follow-to-library Hero poster flights, directional `ChildExit` season
+`Match` indicators (sidebar selection pill, season thumb, weekday underline,
+download filter pill, and version/proxy segmented thumbs) and follow-to-library
+Hero poster flights, directional `ChildExit` season
 switches with title `Morph`, rotating download-group disclosure chevrons, and
 `ContentTransition{Numeric: true}` for live speeds and counts.
 Secondary controls follow controls-on-intent (`intent.go`): hidden at rest

@@ -455,6 +455,7 @@ func (s *State) prepareAnimeDetail(id, from string) {
 	s.Keyword = ""
 	s.WordOpen = false
 	s.ShowAliases = false
+	s.ShowViewRuleEditor = false
 	s.UndoFilters, s.RedoFilters = nil, nil
 	s.Suggestions = false
 	s.FilterFeedback = ""
@@ -489,6 +490,25 @@ func (s *State) openFollowedResources(id, from string) {
 		}
 	}
 	s.loadDetail(true)
+}
+
+// openAnimeGroup opens an anime directly to a chosen subtitle group: if the
+// user already follows that group, it enters its resource view; otherwise it
+// opens version setup with that group preselected.
+func (s *State) openAnimeGroup(id, groupID, from string) {
+	s.prepareAnimeDetail(id, from)
+	for _, sub := range s.Subscriptions {
+		if sub.AnimeID == id && sub.GroupID == groupID {
+			s.EditID = sub.ID
+			s.Backfill = true
+			s.ViewResources = true
+			s.VersionSetup = false
+			s.Rule = cloneRule(sub.Rule)
+			s.loadDetail(true)
+			return
+		}
+	}
+	s.loadDetailForGroup(true, groupID)
 }
 
 func (s *State) editSubscription(id string) {
@@ -545,7 +565,20 @@ func (s *State) refreshDetail() {
 }
 
 func (s *State) loadDetail(allowCache bool) {
+	groupID := ""
+	if s.hasGroup() {
+		groupID = s.GroupIDs[s.Group]
+	}
+	s.loadDetailForGroup(allowCache, groupID)
+}
+
+func (s *State) loadDetailForGroup(allowCache bool, groupID string) {
 	if s.Source == nil {
+		if allowCache {
+			if cached, ok := s.cachedDetail(s.AnimeID); ok {
+				s.applyDetail(s.AnimeID, cached, "", groupID)
+			}
+		}
 		return
 	}
 	if s.detailCancel != nil {
@@ -559,10 +592,6 @@ func (s *State) loadDetail(allowCache bool) {
 	rev := s.detailRevision
 	id := s.AnimeID
 	origin := s.Source.Origin()
-	groupID := ""
-	if s.hasGroup() {
-		groupID = s.GroupIDs[s.Group]
-	}
 	ctx, cancel := context.WithCancel(s.Ctx)
 	s.detailCancel = cancel
 	if allowCache {

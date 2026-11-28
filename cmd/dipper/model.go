@@ -221,6 +221,7 @@ type State struct {
 	Editing                         bool
 	Keyword, AnyDraft               string
 	WordOpen, ShowAliases           bool
+	ShowViewRuleEditor              bool
 	WordAnchor                      string
 	UndoFilters, RedoFilters        []FilterEdit
 	UndoSaved                       *Subscription
@@ -270,6 +271,9 @@ type State struct {
 	OpenURL                    func(string)
 	PlayFile                   func(string) error
 	CopyText                   func(string)
+	copiedTarget               string
+	copiedUntil                time.Time
+	focusSearch                bool
 	Quit                       func()
 	Platform                   string
 	ClosePrompt, RememberClose bool
