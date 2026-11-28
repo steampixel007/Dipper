@@ -24,9 +24,15 @@ components, and interaction conventions are specified in
 | `source_ui.go` | The bridge to `source`: catalog, detail, history, covers |
 | `software_update_ui.go` | The software update settings card, release dialog, and update lifecycle |
 | `covers.go`, `cover_disk.go` | Cover demand, decoding, and memory and disk caches |
-| `appearance.go` | Fonts, sizing, theme values |
-| `proxy_ui.go` | The settings-page proxy card and the auto-mode description |
-| `window_ui.go` | Close/quit choices, remembered preferences, and the window/background settings card |
+| `appearance.go` | Light/dark neutral palettes, accent tokens, control theme, and motion curves |
+| `typography.go` | Type scale (`>=14 DIP`), 4 DIP grid geometry, radius scale (`8–40 DIP`), button/dialog helpers |
+| `fonts.go` | Embedded Geist font weights (`400`, `500`, `600`, `700`) registered with CJK fallback |
+| `icons.go` | Embedded Reicon outline icons (`18×18` glyph, `1.5 DIP` stroke, `24×24` alignment box) |
+| `intent.go` | Controls-on-intent visibility (`hover`, `FocusWithin`, scroll-near-edge, active work) |
+| `cascading_menu.go` | Desktop cascading submenu (`120 ms` open delay, `300 ms` close delay, safe triangle, keyboard navigation) |
+| `library_hero.go` | Episode library hero header and its cascading `···` menu |
+| `proxy_ui.go` | The settings-page proxy section and connection test controls |
+| `window_ui.go` | Close/quit choices, remembered preferences, and the window/background settings section |
 | `tray.go` | Tray registration checks, recreation after a lost registration, and cleanup |
 | `ui_render.go` | Deterministic sample state for layout rendering |
 | `startup_error_windows.go`, `startup_error_other.go` | Reporting a failure before the window exists |
@@ -34,19 +40,28 @@ components, and interaction conventions are specified in
 ## Visual system
 
 `appearance.go` owns both palettes and motion; `typography.go` owns type sizes
-and control geometry. `view.go` composes them without introducing another color
-system. Opaque slate-neutral canvas, sidebar and paper surfaces surround the
-artwork. Navigation and filters share the blue selection wash. Blue marks
-primary actions and focus, while semantic colors mark actual status. Recessed
-neutral surfaces hold blank and loading covers.
+and control geometry; `fonts.go` registers embedded Geist static weights (`400`,
+`500`, `600`, `700`) with platform CJK fallback; `icons.go` renders Reicon
+outline icons (`18×18` glyph, `1.5 DIP` stroke, centered in a transparent
+`24×24` box). `view.go` composes them without introducing another color system.
+Pure neutral light (`#FFFFFF` / `#F5F5F7` / `#EFEFF2`) and dark (`#121212` /
+`#1C1C1E` / `#1E1E20`) surfaces carry >=90% of the screen, with a single blue
+accent (`#0071E3` light / `#2997FF` dark) reserved for <=10% of the area.
+Healthy or completed states use neutral typography without green badges. Flat
+layout eliminates nested cards, bordered settings sections, boxed download rows,
+decorative dividers, shadows, and explanatory subtitles or helper prose.
 
-The top bar occupies a fixed 64 DIP slot with an opaque canvas background and
-no divider. Page content is clipped below it; `uiScrollTo` relies on that slot.
-Browse filters sit directly on the page, with weekdays below. Poster radii
-share the 8 DIP cover token and use one quiet shadow. Navigation counts share
-the label row at normal text size and move below the label when text is enlarged.
-`visual_system_test.go` verifies rendered neutral chrome, selected navigation,
-count alignment and clickable navigation at normal and doubled text size.
+The sidebar occupies 224 DIP. The top bar occupies a fixed 64 DIP slot with an
+opaque canvas background and no divider. Page content is clipped below it;
+`uiScrollTo` relies on that slot. Browse filters sit directly on the page, with
+weekdays below. Poster radii share the 12 DIP cover token with no drop shadow or
+hover lift. Component radii step across the 8–40 DIP scale (`8, 12, 16, 24, 32,
+40`) by size and hierarchy, and all spacing stays on the 4 DIP grid at 1.5×
+spaciousness. Navigation counts share the label row at normal text size and move
+below the label when text is enlarged. `visual_system_test.go` and
+`design_system_test.go` verify registered Geist weights, Reicon icon box geometry,
+neutral chrome, flat unboxed layout, accent area budget, selected navigation,
+count alignment, and clickable navigation at normal and doubled text size.
 
 Browse and follow tiles use the column width and each loaded image's original
 ratio to determine poster height. This keeps the complete artwork visible
@@ -58,12 +73,22 @@ for portrait, landscape and square covers in both grids and themes.
 page grid and disk cache so a cropped thumbnail cannot hide behind synthetic
 bitmaps.
 
-Feedback uses a 130 ms easing curve; content uses 160 ms without spring bounce.
-Pages fade without translation. Posters lift 2 DIP on hover, return on press,
-and do not scale. Ordinary buttons press to 0.99 scale. Popovers move at most
-2 DIP over 140 ms, and rows use a 160 ms transition. `State.ReduceEffects` or
-the system reduce-motion preference removes the transitions while preserving
-focus, borders and contrast.
+Feedback uses a 130 ms easing curve; content uses 160 ms without spring bounce,
+poster hover lift, or button press scale. Pages fade without translation.
+Popovers move at most 2 DIP over 140 ms, and rows use a 160 ms transition.
+Secondary controls follow controls-on-intent (`intent.go`): hidden at rest
+while reserving layout space (`Opacity` 0->1 over 130 ms, remaining keyboard
+Tab-reachable), revealed on pointer hover, `FocusWithin`, scrolling near the
+container's viewport edge, or active work (such as an open menu). Primary
+actions (`播放`) and failure recovery (`重试`) stay visible at rest. Desktop
+cascading menus (`cascading_menu.go`, used in the episode library hero's `···`
+menu) implement a 120 ms open delay, 300 ms close delay, and an 8 DIP extended
+safe triangle from the pointer to the open submenu's nearest edges, plus full
+keyboard navigation (`Up`/`Down`/`Right`/`Left`/`Escape`/`Enter`/`Space`).
+`State.ReduceEffects` or the system reduce-motion preference removes transitions
+while preserving focus, borders, contrast, and menu open/close timers.
+`intent_reveal_test.go` and `cascading_menu_test.go` verify controls-on-intent
+and cascading submenu behavior.
 
 ## State and the update loop
 
@@ -250,14 +275,13 @@ float above the saved order so a silent failure cannot hide at the bottom.
 Card actions resolve the subscription by its stable ID, never by its position in
 the filtered list, so a narrowed search cannot pause, edit, or open the
 resources of a follow the card does not show.
-Each tile is a poster: cover, title, and subtitle group, with an 进入剧集库
-hint beside the group so the tile reads as a way in, not a settings panel.
+Each tile is a poster: cover, title, and subtitle group.
 Rules, RSS timestamps, skipped-resource counts, folder paths, and recent
-release titles stay off the tile. Status is minimal: a 检查失败, 已暂停, or
+release titles stay off the tile. Status is minimal: a 检查失败, 已暂停, 排队中, or
 下载中 badge on the poster — the progress mark carries the follow's overall
 download progress, weighted by the known size of each transfer, so several
-running episodes read as one 下载中 75% badge instead of a bare mark, and the
-自动追番中 badge only appears on hover. A pending-release count keeps its
+running episodes read as one 下载中 75% badge instead of a bare mark, while
+healthy idle follows stay clean with no green status badge. A pending-release count keeps its
 新资源 N 条 button that opens that follow's resource view with 只看新资源
 already on, and a finished follow shows a quiet 已下载 N 个资源 count;
 failed transfers never count.
@@ -337,7 +361,8 @@ identifiable without rereading titles. The mark follows the subscription's
 current pending list and disappears with it.
 
 Following management actions — 查看资源, 修改条件, 暂停/恢复追番, 检查更新,
-打开番剧文件夹, and 取消追番 — collapse into the library hero's ··· popover,
+the 文件与记录 cascading submenu (打开番剧文件夹, 查看下载任务, 查看下载记录),
+and 取消追番 — collapse into the library hero's ··· cascading menu,
 so the watch view stays the primary surface. 查看资源 opens the detail page. It
 locks the saved subscription's group and rule, opens as a view-only backfill
 where nothing is selected while history loads and a later history result must
@@ -496,8 +521,8 @@ checks, regression evidence, and remaining native boundaries.
 
 ## Rendering
 
-Browse cards show their weekday only under the all-days filter. The 查看详情
-hint appears on hover and keyboard focus.
+Browse cards show their weekday only under the all-days filter, with no
+explanatory 查看详情 subtitle.
 
 `ui_render.go` holds a fixed sample state used to render each page's layout
 without a live source or database. It is how a layout change is checked in

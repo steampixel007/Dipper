@@ -210,16 +210,17 @@ func (s *State) switchVersionMode(manual bool) {
 }
 
 func setupRadio(c *ui.Context, button ui.Element, label string, active bool, action func()) {
-	button.Label(label).Padding(6, 9).Radius(controlRadius).Border(1, colors(c).outline).
-		Background(colors(c).paper).Cursor(ui.CursorPointer)
+	pal := colors(c)
+	button.Label(label).Padding(compactPaddingY, compactPaddingX).Radius(radiusSmall).Border(1, pal.outline).
+		Background(pal.surface).TextColor(pal.ink).Cursor(ui.CursorPointer)
 	if active {
-		button.Background(colors(c).blueWash).BorderColor(colors(c).blue).TextColor(colors(c).blue)
+		button.Background(pal.accentWash).BorderColor(pal.accent).TextColor(pal.accentInk)
 	} else if button.Hovered() {
-		button.Background(colors(c).chrome)
+		button.Background(pal.chrome)
 	}
 	bindRadio(button, active, action)
 	tactile(button).Children(func() {
-		ui.Text(c, label).FontSize(textSize(c, textCaption))
+		ui.Text(c, label).FontSize(textSize(c, textControl)).FontWeight(500)
 	})
 }
 
@@ -234,7 +235,7 @@ func bindRadio(radio ui.Element, active bool, action func()) {
 func setupSegments(c *ui.Context, key, label string, selected int, labels []string, choose func(int)) {
 	active := selected
 	parts := ui.SegmentedBase(c.Key(key), &selected, len(labels))
-	parts.Track.Label(label).Wrap().Gap(5).Children(func() {
+	parts.Track.Label(label).Wrap().Gap(8).Children(func() {
 		for index, text := range labels {
 			segment := parts.Segment(index)
 			filterSegment(c, segment, text, text, index == active)
@@ -246,9 +247,10 @@ func setupSegments(c *ui.Context, key, label string, selected int, labels []stri
 }
 
 func (s *State) versionOptions(c *ui.Context) {
+	pal := colors(c)
 	if s.TitleSetup {
 		heading(c, "按原标题追番")
-		quiet(c, "switch-recommendation", "返回版本推荐", func() { s.switchVersionMode(false) }).TextColor(colors(c).blue)
+		compactQuiet(c, "switch-recommendation", "返回版本推荐", func() { s.switchVersionMode(false) }).TextColor(pal.accentInk).AlignSelf(ui.Start)
 		s.ruleEditor(c)
 		return
 	}
@@ -263,12 +265,12 @@ func (s *State) versionOptions(c *ui.Context) {
 		s.VersionPriority = versionPriority(index)
 		s.applyRecommendedVersion()
 	})
-	quiet(c, "switch-title-rules", "按原标题追番", func() { s.switchVersionMode(true) }).TextColor(colors(c).blue)
+	compactQuiet(c, "switch-title-rules", "按原标题追番", func() { s.switchVersionMode(true) }).TextColor(pal.accentInk).AlignSelf(ui.Start)
 }
 
 func (s *State) versionSummary(c *ui.Context) {
 	recommended := s.recommendedVersion()
-	ui.Column(c).Padding(12).Gap(8).Radius(8).Background(colors(c).paper).Border(1, colors(c).line).Children(func() {
+	ui.Column(c).Gap(12).Children(func() {
 		heading(c, "选择版本")
 		if recommended < 0 && len(s.Versions) == 0 {
 			caption(c, "这个字幕组的版本暂未识别，可以按原标题追番。")
@@ -282,15 +284,15 @@ func (s *State) versionSummary(c *ui.Context) {
 			option := s.Versions[recommended]
 			switch s.VersionPriority {
 			case preferCompatibility:
-				caption(c, "推荐 AVC + MP4，通常更容易播放。")
+				caption(c, "推荐 AVC + MP4")
 			case preferSize:
-				caption(c, "推荐单集典型大小最小的版本，约 "+byteSizeText(option.typicalBytes)+"。")
+				caption(c, "推荐单集约 "+byteSizeText(option.typicalBytes))
 			default:
-				reason := fmt.Sprintf("按标题上的分辨率和片源推荐，优先 %dp", option.Height)
+				reason := fmt.Sprintf("推荐 %dp", option.Height)
 				if option.Source != "" {
 					reason += " · " + option.Source
 				}
-				caption(c, reason+"。")
+				caption(c, reason)
 			}
 		}
 		if s.Rule.Version != nil {
@@ -300,7 +302,7 @@ func (s *State) versionSummary(c *ui.Context) {
 		if s.Rule.Version != nil {
 			selected = *s.Rule.Version
 		}
-		ui.Scroll(c.Key("version-choices")).MaxHeight(136).Children(func() {
+		ui.Scroll(c.Key("version-choices")).MaxHeight(144).Children(func() {
 			ui.RadioGroup(c, func() {
 				for index, option := range s.Versions {
 					if s.VersionLanguage != 0 && option.Language&s.VersionLanguage == 0 {
@@ -315,7 +317,7 @@ func (s *State) versionSummary(c *ui.Context) {
 						s.pickVersion(option.ReleaseVersion)
 					})
 				}
-			}).Label("可用版本").Row().Wrap().Gap(6)
+			}).Label("可用版本").Row().Wrap().Gap(8)
 		})
 	})
 }
@@ -323,35 +325,43 @@ func (s *State) versionSummary(c *ui.Context) {
 var titleWordPattern = regexp.MustCompile(`[\p{Latin}\p{N}]+(?:[-.+×][\p{Latin}\p{N}]+)*|[\p{L}]+`)
 
 func (s *State) originalTitle(c *ui.Context, resource Resource) {
+	pal := colors(c)
 	ui.Row(c).Wrap().Gap(0).Children(func() {
 		offset := 0
 		for index, span := range titleWordPattern.FindAllStringIndex(resource.Title, -1) {
 			if span[0] > offset {
-				ui.Text(c, resource.Title[offset:span[0]]).FontSize(textSize(c, textBody))
+				ui.Text(c, resource.Title[offset:span[0]]).FontSize(textSize(c, textBody)).LineHeight(1.5).TextColor(pal.ink)
 			}
 			word := resource.Title[span[0]:span[1]]
 			active := s.ActiveTitleRow == resource.ID && s.ActiveTitleWord == word
-			button := quiet(c, fmt.Sprintf("title-word-%d", index), word, func() {
+			button := ui.ButtonBase(c.Key(fmt.Sprintf("title-word-%d", index))).
+				Label("查看标题词「"+word+"」").
+				Padding(4, 4).Radius(radiusSmall).Cursor(ui.CursorPointer).
+				FontSize(textSize(c, textBody)).FontWeight(500).TextColor(pal.accentInk)
+			tactile(button)
+			if active {
+				button.Background(pal.accentWash)
+			} else if button.Hovered() {
+				button.Background(pal.chrome)
+			}
+			button.Children(func() { ui.Text(c, word) }).OnClick(func() {
 				if s.ActiveTitleRow == resource.ID && s.ActiveTitleWord == word {
 					s.ActiveTitleWord, s.ActiveTitleRow = "", ""
 					return
 				}
 				s.ActiveTitleWord, s.ActiveTitleRow = word, resource.ID
-			}).Label("查看标题词「"+word+"」").Padding(1, 0).FontSize(textSize(c, textBody)).MinWidth(0).TextColor(colors(c).blue)
-			if active {
-				button.Background(colors(c).blueWash)
-			}
+			})
 			offset = span[1]
 		}
 		if offset < len(resource.Title) {
-			ui.Text(c, resource.Title[offset:]).FontSize(textSize(c, textBody))
+			ui.Text(c, resource.Title[offset:]).FontSize(textSize(c, textBody)).LineHeight(1.5).TextColor(pal.ink)
 		}
 	})
 	if s.ActiveTitleRow != resource.ID || s.ActiveTitleWord == "" {
 		return
 	}
 	word := s.ActiveTitleWord
-	ui.Column(c).Padding(10).Gap(6).Radius(6).Background(colors(c).sunken).Children(func() {
+	ui.Column(c).Padding(12, 16).Gap(8).Radius(radiusControl).Background(pal.sunken).Children(func() {
 		caption(c, word+" · "+core.ReleaseWordMeaning(word))
 		selected := s.wordChoice(word)
 		ui.RadioGroup(c, func() {
@@ -366,6 +376,6 @@ func (s *State) originalTitle(c *ui.Context, resource Resource) {
 					s.setWord(word, option.choice)
 				})
 			}
-		}).Label("标题词条件").Row().Wrap().Gap(6)
+		}).Label("标题词条件").Row().Wrap().Gap(8)
 	})
 }

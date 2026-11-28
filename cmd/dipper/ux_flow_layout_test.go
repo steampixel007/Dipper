@@ -233,7 +233,7 @@ func TestUXFollowingLongTitleKeepsLibraryEntryReachable(t *testing.T) {
 	tt := ui.NewTester(s.view, 1040, 720)
 	tt.SetPreferences(ui.Preferences{TextScale: 2, ReduceMotion: true})
 
-	uiScrollTo(t, tt, "进入剧集库")
+	uiScrollTo(t, tt, s.Subscriptions[0].GroupName)
 	uiClick(t, tt, "打开追番 "+s.Subscriptions[0].GroupName)
 	if _, ok := tt.Find("返回我的追番"); !ok {
 		t.Fatalf("opening the long following card did not enter the episode library; texts=%q", tt.Texts())

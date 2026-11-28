@@ -83,7 +83,7 @@ func uiRequireText(t *testing.T, tt *ui.Tester, texts ...string) {
 func TestUIViewPagesAndWindowSizes(t *testing.T) {
 	for _, size := range [][2]int{{1120, 760}, {1320, 860}, {1560, 980}} {
 		for _, page := range []struct{ id, text string }{
-			{"browse", "2025 年春季番剧"}, {"detail", "可下载资源"}, {"following", "进入剧集库"}, {"downloads", "总下载速度"}, {"settings", "上传与分享"},
+			{"browse", "2025 年春季番剧"}, {"detail", "可下载资源"}, {"following", "我的追番"}, {"downloads", "总下载速度"}, {"settings", "上传与分享"},
 		} {
 			t.Run(fmt.Sprintf("%s/%dx%d", page.id, size[0], size[1]), func(t *testing.T) {
 				s := uiFixture(t, page.id)
@@ -353,7 +353,7 @@ func TestUIBackfillEntryRequiresExplicitSelectionAndKeepsSavedRule(t *testing.T)
 			t.Fatalf("backfill automatically selected %s", id)
 		}
 	}
-	uiRequireText(t, tt, "浏览番剧 / 下载已有资源", "请选择要下载的已有资源", "下载选中资源", "不会修改追番条件")
+	uiRequireText(t, tt, "浏览番剧 / 下载已有资源", "请选择要下载的已有资源", "下载选中资源", "下载已有资源")
 	if tt.HasText("开始追番") || tt.HasText("默认全选") {
 		t.Fatal("backfill must not present itself as a new subscription")
 	}
@@ -366,7 +366,7 @@ func TestUIBackfillEntryRequiresExplicitSelectionAndKeepsSavedRule(t *testing.T)
 	if s.Busy {
 		t.Fatal("selected backfill opened a confirmation")
 	}
-	uiRequireText(t, tt, "本次下载 1 个资源", "勾选要下载的资源。筛选不会修改追番条件。")
+	uiRequireText(t, tt, "本次下载 1 个资源", "下载已有资源")
 	if !reflect.DeepEqual(savedRule, s.Subscriptions[0].Rule) || !reflect.DeepEqual(savedRule, s.Rule) {
 		t.Fatal("entering backfill changed the saved rule")
 	}
