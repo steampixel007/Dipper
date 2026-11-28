@@ -568,7 +568,7 @@ func (s *State) softwareNotice(c *ui.Context) {
 }
 
 func (s *State) softwareUpdateSettings(c *ui.Context) {
-	ui.Column(c).Gap(12).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
+	surfacePanel(c, ui.Column(c).Gap(12).Padding(22).Radius(12)).Children(func() {
 		heading(c, softwareText.title)
 		ui.Row(c).Wrap().Gap(16).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(textSize(c, textBody) * 12).Gap(4).Children(func() {

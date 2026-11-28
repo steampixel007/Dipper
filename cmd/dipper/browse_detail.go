@@ -104,11 +104,17 @@ func browseDetailWidth(c *ui.Context) float32 {
 
 func (s *State) browseDetailDialog(c *ui.Context) {
 	open := true
+	pal := colors(c)
 	ui.DialogBase(c.Key("browse-detail-dialog"), &open, func(backdrop, panel ui.Element) {
 		width, height := c.Size()
-		backdrop.Background(colors(c).scrim).Transition(fadeTransition)
+		backdrop.Background(pal.scrim).Transition(fadeTransition)
 		panel.Width(min(width-48, 520*max(1, min(textScale(c), 1.5)))).
-			Height(min(height-64, 640)).Radius(12).Background(colors(c).paper).Clip()
+			Height(min(height-64, 640)).Radius(14).Background(pal.paper).
+			Border(1, pal.outline).Shadow(0, 16, 40, 0, pal.popoverShadow).
+			Transition(dialogTransition).Clip()
+		if c.Theme().Dark {
+			panel.InsetShadow(0, 1, 0, 0, pal.topHighlight)
+		}
 		s.browseDetailContent(c, s.browseDetail)
 	})
 	if !open {
@@ -120,47 +126,54 @@ func (s *State) browseDetailContent(c *ui.Context, detail *browseDetail) {
 	pal := colors(c)
 	anime := detail.anime
 	following := s.isFollowingAnime(anime.ID)
-	ui.Column(c).Fill().MinHeight(0).Children(func() {
-		ui.Row(c).Padding(12, 12, 0).Justify(ui.End).Children(func() {
-			iconButton(c, "close-browse-detail", "关闭番剧详情", "close", s.closeBrowseDetail)
-		})
-		ui.Scroll(c.Key("browse-summary-scroll")).TrackScroll(&detail.summaryScroll).Grow(1).MinHeight(0).Children(func() {
-			ui.Column(c).Padding(0, 24, 24).Gap(20).Children(func() {
-				ui.Row(c).Gap(14).AlignItems(ui.Start).Children(func() {
-					s.featuredCover(c, anime, 68, 96)
-					ui.Column(c).Grow(1).MinWidth(0).Gap(6).Children(func() {
-						ui.Text(c, anime.Title).FontSize(textSize(c, textSection)).FontWeight(600).TextColor(pal.ink)
-						caption(c, dayName(anime.Day))
-						if following {
-							ui.Text(c, "已追番").FontSize(textSize(c, textCaption)).TextColor(pal.blue)
+	ui.Box(c).Fill().MinHeight(0).Clip().Children(func() {
+		ambientCoverBackdrop(c, anime, 176)
+		ui.Column(c).Fill().MinHeight(0).Children(func() {
+			ui.Row(c).Padding(12, 12, 0).Justify(ui.End).Children(func() {
+				iconButton(c, "close-browse-detail", "关闭番剧详情", "close", s.closeBrowseDetail)
+			})
+			ui.Scroll(c.Key("browse-summary-scroll")).TrackScroll(&detail.summaryScroll).Grow(1).MinHeight(0).Children(func() {
+				ui.Column(c).Padding(0, 24, 24).Gap(20).Children(func() {
+					ui.Row(c).Gap(16).AlignItems(ui.Start).Children(func() {
+						ui.Box(c).Radius(coverRadius).Shadow(0, 8, 20, -4, pal.cardShadowHover).Children(func() {
+							s.featuredCover(c, anime, 76, 106)
+						})
+						ui.Column(c).Grow(1).MinWidth(0).Gap(8).Children(func() {
+							ui.Text(c, anime.Title).FontSize(textSize(c, textSection)).FontWeight(600).TextColor(pal.ink)
+							ui.Row(c).Wrap().Gap(6).AlignItems(ui.Center).Children(func() {
+								badge(c, dayName(anime.Day), pal.muted, pal.line)
+								if following {
+									badge(c, "已追番", pal.green, pal.greenWash)
+								}
+							})
+						})
+					})
+					ui.Column(c).Gap(8).Children(func() {
+						heading(c, "简介")
+						switch {
+						case anime.Summary != "":
+							ui.Text(c, anime.Summary).FontSize(textSize(c, textBody)).LineHeight(1.65).TextColor(pal.ink)
+						case detail.loading:
+							caption(c, "正在加载简介…")
+						case detail.failed:
+							caption(c, "简介加载失败")
+							quiet(c, "retry-browse-summary", "重试", func() { s.loadBrowseSummary(detail) }).AlignSelf(ui.Start)
+						default:
+							caption(c, "暂无简介")
 						}
 					})
 				})
-				ui.Column(c).Gap(8).Children(func() {
-					heading(c, "简介")
-					switch {
-					case anime.Summary != "":
-						ui.Text(c, anime.Summary).FontSize(textSize(c, textBody)).LineHeight(1.6).TextColor(pal.ink)
-					case detail.loading:
-						caption(c, "正在加载简介…")
-					case detail.failed:
-						caption(c, "简介加载失败")
-						quiet(c, "retry-browse-summary", "重试", func() { s.loadBrowseSummary(detail) }).AlignSelf(ui.Start)
-					default:
-						caption(c, "暂无简介")
-					}
-				})
 			})
-		})
-		ui.Divider(c).Background(pal.line)
-		ui.Column(c).Padding(16, 24, 20).Children(func() {
-			label := "选择观看版本"
-			if following {
-				label = "查看资源"
-			}
-			primary(c, "browse-detail-action", label, func() {
-				s.openFollowedResources(anime.ID, browseDetailReturn)
-			}).FillWidth()
+			ui.Divider(c).Background(pal.line)
+			ui.Column(c).Padding(16, 24, 20).Background(pal.paper).Children(func() {
+				label := "选择观看版本"
+				if following {
+					label = "查看资源"
+				}
+				primary(c, "browse-detail-action", label, func() {
+					s.openFollowedResources(anime.ID, browseDetailReturn)
+				}).FillWidth()
+			})
 		})
 	})
 }

@@ -183,6 +183,7 @@ type State struct {
 	Page                            string
 	Year                            string
 	Season                          string
+	SeasonDirection                 int
 	Day                             int
 	Search                          string
 	FollowSearch                    string
@@ -796,6 +797,7 @@ func (s *State) changeSeason(delta int) {
 	if !available {
 		return
 	}
+	s.SeasonDirection = delta
 	s.Year = strconv.Itoa(year)
 	s.Season = seasons[seasonIndex]
 	s.refreshCatalog()

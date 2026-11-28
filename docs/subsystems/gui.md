@@ -33,20 +33,32 @@ components, and interaction conventions are specified in
 
 ## Visual system
 
-`appearance.go` owns both palettes and motion; `typography.go` owns type sizes
-and control geometry. `view.go` composes them without introducing another color
-system. Opaque slate-neutral canvas, sidebar and paper surfaces surround the
-artwork. Navigation and filters share the blue selection wash. Blue marks
-primary actions and focus, while semantic colors mark actual status. Recessed
-neutral surfaces hold blank and loading covers.
+`appearance.go` owns both palettes (warm Xuan Paper Light and Pine-Soot Dark),
+surface helpers, and motion tokens; `typography.go` owns type sizes and control
+geometry. `view.go` composes them without introducing another color system.
+Opaque warm-neutral canvas, sidebar, and paper surfaces surround the artwork,
+with dark-mode warm top edge highlights (`InsetShadow`). Normal screens use a
+monochrome ink/ivory accent (`accent` Wu-Mo `#23201C` in light, Ya-Bai `#EFECE6`
+in dark; `blue` for active navigation and links) so anime posters carry the
+color, while muted antique gold and restrained crimson appear only for actual
+failures or destructive confirmation. Recessed warm surfaces hold blank and
+loading covers.
+
+Poster status pills and hover actions use `plugins/glass` tinted Liquid Glass
+over the artwork, and the episode library hero and browse detail header render
+a cached blurred ambient cover backdrop (`.Cache()`). A `glass.ScrollEdge`
+softly fades scrolled content into the top bar.
 
 The top bar occupies a fixed 64 DIP slot with an opaque canvas background and
-no divider. Page content is clipped below it; `uiScrollTo` relies on that slot.
+no divider, showing a compact title on sub-pages or once a top-level page
+scrolls. Page content is clipped below it; `uiScrollTo` relies on that slot.
 Browse filters sit directly on the page, with weekdays below. Poster radii
-share the 8 DIP cover token and use one quiet shadow. Navigation counts share
-the label row at normal text size and move below the label when text is enlarged.
-`visual_system_test.go` verifies rendered neutral chrome, selected navigation,
-count alignment and clickable navigation at normal and doubled text size.
+share the 10 DIP cover token and deepen their shadow on hover. Navigation
+counts share the label row at normal text size and move below the label when
+text is enlarged; bottom sidebar utilities left-align with icons to match the
+main navigation rail. `visual_system_test.go` verifies rendered neutral chrome,
+selected navigation, count alignment and clickable navigation at normal and
+doubled text size.
 
 Browse and follow tiles use the column width and each loaded image's original
 ratio to determine poster height. This keeps the complete artwork visible
@@ -58,12 +70,15 @@ for portrait, landscape and square covers in both grids and themes.
 page grid and disk cache so a cropped thumbnail cannot hide behind synthetic
 bitmaps.
 
-Feedback uses a 130 ms easing curve; content uses 160 ms without spring bounce.
-Pages fade without translation. Posters lift 2 DIP on hover, return on press,
-and do not scale. Ordinary buttons press to 0.99 scale. Popovers move at most
-2 DIP over 140 ms, and rows use a 160 ms transition. `State.ReduceEffects` or
-the system reduce-motion preference removes the transitions while preserving
-focus, borders and contrast.
+Interactions use MyGo's velocity-preserving springs with Oklab color
+interpolation: critically-damped 220 ms springs for tactile press/hover/shadow
+feedback, 280 ms lightly-damped springs for shared-element `Match` + `Fly`
+indicators (navigation wash, season thumb, weekday underline, download filter
+pill) and follow-to-library Hero poster flights, directional `ChildExit` season
+switches with title `Morph`, smooth collapsible download groups with rotating
+chevrons, and `ContentTransition{Numeric: true}` for live speeds and counts.
+`State.ReduceEffects` or the system reduce-motion preference disables spatial
+motion while preserving focus, borders and contrast.
 
 ## State and the update loop
 

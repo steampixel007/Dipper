@@ -8,39 +8,48 @@ import (
 
 func (s *State) libraryHero(c *ui.Context, sub Subscription) {
 	anime := s.anime(sub.AnimeID)
+	pal := colors(c)
 	_, height := c.Size()
-	ui.Row(c).Padding(12, 28, 16).Gap(20).AlignItems(ui.Start).Children(func() {
-		s.featuredCover(c, anime, 88, 124)
+	ui.Row(c).Padding(12, 28, 18).Gap(20).AlignItems(ui.Start).Children(func() {
+		ui.Box(c.Key("library-hero-cover-"+sub.AnimeID)).Radius(coverRadius).
+			Shadow(0, 10, 24, -4, pal.cardShadowHover).
+			Transition(ui.ElementTransition{
+				Animation: &panelMotion,
+				Match:     posterHeroMatch{animeID: sub.AnimeID},
+				Fly:       true,
+			}).Children(func() {
+			s.featuredCover(c, anime, 92, 128)
+		})
 		ui.Scroll(c.Key("library-hero")).Grow(1).MinWidth(0).MaxHeight(height * .4).Children(func() {
 			ui.Column(c).Gap(8).Children(func() {
-				ui.Text(c, anime.Title).FontSize(textSize(c, textTitle)).FontWeight(600)
+				ui.Text(c, anime.Title).FontSize(textSize(c, textTitle)).FontWeight(600).TextColor(pal.ink)
 				if sub.GroupName != "" {
 					caption(c, sub.GroupName)
 				}
-				ui.Row(c).Wrap().Gap(controlGap).Children(func() {
+				ui.Row(c).Wrap().Gap(controlGap).AlignItems(ui.Center).Children(func() {
 					switch {
 					case sub.Paused:
-						badge(c, "已暂停", colors(c).muted, colors(c).canvas)
+						badge(c, "已暂停", pal.muted, pal.sunken)
 					case sub.Active:
 						label := "下载中"
 						if sub.Progress > 0 {
 							label = fmt.Sprintf("下载中 %d%%", int(sub.Progress*100))
 						}
-						badge(c, label, colors(c).blue, colors(c).blueWash)
+						badge(c, label, pal.blue, pal.blueWash)
 					default:
-						caption(c, "自动追番中")
+						badge(c, "自动追番中", pal.green, pal.greenWash)
 					}
 					if sub.NewCount > 0 {
 						quiet(c, "library-new-"+sub.ID, fmt.Sprintf("新资源 %d 条", sub.NewCount), func() {
 							s.viewSubscriptionResources(sub.ID)
 							s.OnlyNew = true
-						}).Label(fmt.Sprintf("新资源 %d 条 %s", sub.NewCount, sub.GroupName)).FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(colors(c).amber).Background(colors(c).amberWash).Disabled(s.Busy)
+						}).Label(fmt.Sprintf("新资源 %d 条 %s", sub.NewCount, sub.GroupName)).FontSize(textSize(c, textCaption)).FontWeight(600).TextColor(pal.amber).Background(pal.amberWash).Disabled(s.Busy)
 					}
 					caption(c, fmt.Sprintf("已完成 %d 个下载", s.completedDownloads(sub.AnimeID)))
 				})
 				if sub.CheckFailed {
-					ui.Column(c).Gap(controlGap).Padding(8, 12).Radius(controlRadius).Background(colors(c).amberWash).Children(func() {
-						ui.Text(c, "检查更新失败："+sourceLastErrorMessage(sub.LastError)).FontSize(textSize(c, textCaption)).TextColor(colors(c).amber)
+					ui.Column(c).Gap(controlGap).Padding(10, 12).Radius(controlRadius).Background(pal.amberWash).Border(1, pal.amber.Alpha(.25)).Children(func() {
+						ui.Text(c, "检查更新失败："+sourceLastErrorMessage(sub.LastError)).FontSize(textSize(c, textCaption)).TextColor(pal.amber)
 						quiet(c, "retry-check-"+sub.ID, "重试检查", func() { s.check(sub.ID) }).Label("重试检查 " + sub.GroupName).FontSize(textSize(c, textCaption)).Disabled(sub.Paused || s.Busy)
 					})
 				}
@@ -64,7 +73,7 @@ func (s *State) libraryHero(c *ui.Context, sub Subscription) {
 					folder := sub.Folder
 					s.libraryMenuItem(c, "menu-folder", "打开番剧文件夹", "打开番剧文件夹 "+sub.GroupName, s.Busy, func() { s.OpenFolder(folder) })
 				}
-				ui.Divider(c).Background(colors(c).line)
+				ui.Divider(c).Background(pal.line)
 				s.libraryMenuItem(c, "menu-cancel", "取消追番", "取消追番 "+sub.GroupName, s.Busy, func() { s.CancelID, s.CancelPrompt = sub.ID, true })
 			})
 		})

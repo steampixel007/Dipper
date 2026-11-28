@@ -5,15 +5,18 @@ watching downloaded episodes.
 
 ## Direction
 
-The artwork supplies the color. The application supplies a calm, legible frame:
-neutral surfaces, a single blue accent, compact navigation, consistent controls,
-and generous space between groups of information. A screen should read in this
-order: its title, its main content, its next useful action.
+The artwork supplies the color. The application supplies a calm, tactile frame:
+warm paper-and-inkstone neutrals (Xuan Paper Light and Pine-Soot Dark) paired
+with a monochrome ink/ivory accent (Wu-Mo in light, Ya-Bai in dark) so every
+screen stays free of competing chrome hues and lets the anime artwork take
+center stage. A screen should read in this order: its title, its main content,
+its next useful action.
 
-This specification replaces the glass treatment. Do not add ambient gradients,
-violet lighting, translucent navigation, oversized shadows, decorative sparkles,
-or bouncing cards. Visual polish comes from alignment, typography and useful
-content rather than additional effects.
+Ambient cover blur and Liquid Glass overlays are used only where artwork or
+scrolling content sits behind them: poster status pills, poster hover actions,
+the top scroll edge, and cached blurred backdrops behind the episode library
+hero and browse detail header. Ordinary chrome, inputs, and settings panels stay
+clean, legible, and opaque.
 
 The design-taste-frontend skill informs the neutral palette, equal edges, plain
 copy, coherent components and restrained feedback. Dipper renders with Go/MyGo.
@@ -54,20 +57,22 @@ with every status color.
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `canvas` | `#F7F8FA` | `#171A1F` | Window and page ground |
-| `chrome` | `#EDF0F4` | `#1D2229` | Opaque navigation rail |
-| `paper` | `#FFFFFF` | `#252B33` | Inputs, selected segments, panels and dialogs |
-| `sunken` | `#E6EAF0` | `#1B2027` | Recessed controls and cover placeholders |
-| `ink` | `#222B37` | `#E8EDF4` | Body text and titles |
-| `muted` | `#526071` | `#B1BDCC` | Secondary text |
-| `blue` | `#285994` | `#96B9EC` | Primary action, focus and links |
-| `blueHover` | `#234D80` | `#AFCAF2` | Primary hover |
-| `bluePressed` | `#1C406C` | `#83A9DF` | Primary press |
-| `blueWash` | `#E1EBF8` | `#293B53` | Selected navigation, filters and inclusion |
-| `accentText` | `#FFFFFF` | `#182535` | Text on primary buttons |
-| `green` / `greenWash` | `#28664F` / `#E9F2EE` | `#9BCDB6` / `#263A34` | Following and success |
-| `amber` / `amberWash` | `#7D541E` / `#F7EFE2` | `#E2BF89` / `#3A3228` | Retry and attention |
-| `errorInk` / `errorWash` | `#A63C38` / `#F8ECEC` | `#F0AAA8` / `#3D2B30` | Blocking errors and deletion |
+| `canvas` | `#F7F5F0` | `#141311` | Window and page ground (warm Xuan paper / pine-soot) |
+| `chrome` | `#EFECE5` | `#1A1816` | Opaque warm navigation rail |
+| `paper` | `#FCFBF8` | `#22201D` | Inputs, cards, panels and dialogs |
+| `paperHover` | `#F3F0E9` | `#2B2824` | Interactive surface hover |
+| `sunken` | `#E7E3DA` | `#0F0E0C` | Recessed tracks, progress wells and cover placeholders |
+| `ink` | `#23201C` | `#F2EFE9` | Body text and titles |
+| `muted` | `#615B52` | `#BEB7AC` | Secondary text |
+| `accent` | `#23201C` | `#EFECE6` | Primary button fill (Wu-Mo ink / Ya-Bai ivory) |
+| `accentHover` | `#38332D` | `#FAF8F4` | Primary hover |
+| `accentPressed` | `#141210` | `#DCD6CC` | Primary press |
+| `blue` | `#23201C` | `#F2EFE9` | Links, active navigation ink and focus |
+| `blueWash` | `#E5E1D8` | `#2C2925` | Selected navigation, filters and inclusion |
+| `accentText` | `#FCFBF8` | `#161513` | Text on primary buttons |
+| `green` / `greenWash` | `#23201C` / `#E5E1D8` | `#F2EFE9` / `#2C2925` | Monochrome following/active status |
+| `amber` / `amberWash` | `#6E5A20` / `#F4EFE0` | `#D8C382` / `#2E291C` | Muted antique-gold retry and check-failure notices |
+| `errorInk` / `errorWash` | `#8E2936` / `#F5E8EA` | `#EBA3AD` / `#321F23` | Restrained crimson blocking errors and deletion |
 
 `line`, `outline` and `hoverLine` are neutral separators, control outlines and
 hover outlines, respectively. Use stronger outlines and persistent focus rings
@@ -199,21 +204,20 @@ action. Avoid a blank content pane or permanent spinner after a failure.
 
 ## Motion
 
-Motion explains an interaction and stops promptly. Do not animate decoration.
+Motion explains spatial continuity and settles promptly using MyGo's velocity-preserving springs and Oklab color interpolation. Do not animate decoration.
 
 | Interaction | Behavior |
 | --- | --- |
-| Color / hover | 130 ms ease |
-| Button press | 130 ms ease; scale 0.99 |
-| Poster hover | 160 ms ease; lift 2 DIP, no zoom |
-| Poster press | Return to rest position; no shrink |
-| Page change | 160 ms fade, no page translation |
-| Popover | 140 ms; at most 2 DIP translation, no scaling |
-| Row changes | 160 ms; at most 2 DIP entry |
+| Color / hover / shadow | 220 ms critically-damped spring (`Bounce: 0`, `Oklab: true`) |
+| Button press | 220 ms critically-damped spring; `AnimatePose` scale `0.975` |
+| Shared indicators | 280 ms spring (`Bounce: 0.08`) with `Match` + `Fly` (nav pill, season thumb, weekday underline, download filter pill) |
+| Poster hover / press | 220 ms spring; lift `-4 DIP` with deepened shadow, press `-1 DIP` + `0.985` scale; glass CTA slides `6 DIP` |
+| Follow → Episode library | 280 ms spring (`Bounce: 0.04`) Hero poster `Match` + `Fly` |
+| Page / season change | 200 ms fade + `6 DIP` settle; season step uses directional `±20 DIP` `ChildExit` and title `Morph` |
+| Popover / dialog | 280 ms spring enter (`Scale 0.96–0.97`, `Y 4–8`), 120–130 ms `EaseIn` exit |
+| Download groups & metrics | 240 ms smooth height collapse + chevron rotation; speeds and counts use `ContentTransition{Numeric: true}` |
 
-No spring bounce or overshoot. Both the system reduce-motion preference and
-the saved reduced-effects setting disable motion while retaining focus,
-selection, contrast and all actions. Theme changes must not reset text scale.
+Both the system reduce-motion preference and the saved reduced-effects setting disable spatial motion while preserving focus, selection, contrast and all actions. Theme changes must not reset text scale.
 
 ## Page recipes
 

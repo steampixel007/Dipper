@@ -41,11 +41,12 @@ func (s *State) groupPicker(c *ui.Context) {
 	ui.Column(c).Gap(8).Children(func() {
 		for _, index := range matches {
 			name := s.Groups[index]
-			button := ui.ButtonBase(c.Key(fmt.Sprintf("group-%d", index))).Label("选择字幕组 "+name).Column().AlignItems(ui.Start).Gap(5).FillWidth().Padding(11, 13).Border(1, colors(c).line).Radius(8).Background(colors(c).paper).Cursor(ui.CursorPointer)
+			button := ui.ButtonBase(c.Key(fmt.Sprintf("group-%d", index))).Label("选择字幕组 "+name).Column().AlignItems(ui.Start).Gap(5).FillWidth().Padding(11, 13).Radius(10).Cursor(ui.CursorPointer)
+			surfacePanel(c, button)
 			if s.Group == index {
-				button.BorderColor(colors(c).blue).Background(colors(c).blueWash)
+				button.BorderColor(colors(c).accent).Background(colors(c).blueWash)
 			} else if button.Hovered() {
-				button.BorderColor(colors(c).hoverLine)
+				button.Background(colors(c).paperHover).BorderColor(colors(c).hoverLine)
 			}
 			followed := index < len(s.GroupIDs) && s.followedGroup(s.GroupIDs[index])
 			tactile(button).Children(func() {

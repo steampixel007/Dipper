@@ -52,7 +52,13 @@ func inputHeight(c *ui.Context) float32 {
 
 func dialogContent(c *ui.Context, panel ui.Element, key string, width float32, content func()) {
 	windowWidth, windowHeight := c.Size()
-	panel.Width(min(windowWidth-48, width*max(1, min(textScale(c), 1.5)))).Radius(12).Background(colors(c).paper)
+	pal := colors(c)
+	panel.Width(min(windowWidth-48, width*max(1, min(textScale(c), 1.5)))).Radius(14).
+		Background(pal.paper).Border(1, pal.outline).
+		Shadow(0, 16, 40, 0, pal.popoverShadow).Transition(dialogTransition)
+	if c.Theme().Dark {
+		panel.InsetShadow(0, 1, 0, 0, pal.topHighlight)
+	}
 	ui.Scroll(c.Key(key)).MaxHeight(windowHeight - 48).MinHeight(0).Children(func() {
 		ui.Column(c).Padding(28).Gap(18).Children(content)
 	})
@@ -60,12 +66,18 @@ func dialogContent(c *ui.Context, panel ui.Element, key string, width float32, c
 
 func dialogContentWithFooter(c *ui.Context, panel ui.Element, key string, width float32, content, footer func()) {
 	windowWidth, windowHeight := c.Size()
-	panel.Width(min(windowWidth-48, width*max(1, min(textScale(c), 1.5)))).MaxHeight(windowHeight - 32).Radius(12).Background(colors(c).paper)
+	pal := colors(c)
+	panel.Width(min(windowWidth-48, width*max(1, min(textScale(c), 1.5)))).MaxHeight(windowHeight-32).Radius(14).
+		Background(pal.paper).Border(1, pal.outline).
+		Shadow(0, 16, 40, 0, pal.popoverShadow).Transition(dialogTransition)
+	if c.Theme().Dark {
+		panel.InsetShadow(0, 1, 0, 0, pal.topHighlight)
+	}
 	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
 		ui.Scroll(c.Key(key)).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Padding(28, 28, 16).Gap(18).Children(content)
 		})
-		ui.Divider(c).Background(colors(c).line)
+		ui.Divider(c).Background(pal.line)
 		ui.Row(c).Padding(16, 28, 24).Wrap().Justify(ui.End).Gap(controlGap).Children(footer)
 	})
 }

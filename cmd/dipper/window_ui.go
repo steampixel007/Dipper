@@ -155,7 +155,7 @@ func (s *State) setCloseBehavior(value string) {
 }
 
 func (s *State) windowSettings(c *ui.Context) {
-	ui.Column(c).Gap(12).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
+	surfacePanel(c, ui.Column(c).Gap(12).Padding(22).Radius(12)).Children(func() {
 		heading(c, windowText.title)
 		if s.Platform == "darwin" {
 			caption(c, windowText.macDetail)
