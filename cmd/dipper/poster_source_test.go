@@ -86,7 +86,7 @@ func TestLoadCoversShowsOriginalPosterThroughGridAndCache(t *testing.T) {
 					title := requireLayoutBound(t, tester, anime.Title, 1304, 891)
 					_, cardWidth := gridColumns(1304)
 					wantHeight := cardWidth * float32(height) / float32(width)
-					if gap := title.Y - tile.Y - wantHeight; gap < 9 || gap > 11 {
+					if gap := title.Y - tile.Y - wantHeight; gap < 11 || gap > 13 {
 						t.Fatalf("grid crops or pads original poster: tile=%+v title=%+v imageHeight=%g", tile, title, wantHeight)
 					}
 				}

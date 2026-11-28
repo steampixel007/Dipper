@@ -20,12 +20,19 @@ import (
 
 type Anime struct {
 	ID, Title, Cover, Summary, Day string
+	BroadcastStart                 string
+	OfficialURL                    string
+	BangumiURL                     string
 }
 
 type Group struct {
 	ID, Name string
 	// Count is -1 when the detail page only contains a truncated preview.
 	Count int
+	// Preview holds the resources parsed from the detail page table. When Count
+	// is nonnegative it is the group's complete history; when Count is -1 it is
+	// a truncated preview and must not be treated as complete history.
+	Preview []Resource
 }
 
 type Resource struct {

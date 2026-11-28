@@ -61,6 +61,52 @@ type preferences struct {
 	SoftwareAutoDownload bool
 	SoftwarePending      *softwarePending
 	SoftwareCheckedAt    time.Time
+	VersionLanguage      string
+	VersionPriority      string
+}
+
+func versionLanguagePref(language core.SubtitleLanguage) string {
+	switch language {
+	case core.SubtitleSimplified:
+		return "simplified"
+	case core.SubtitleTraditional:
+		return "traditional"
+	default:
+		return "any"
+	}
+}
+
+func parseVersionLanguagePref(value string) core.SubtitleLanguage {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "simplified":
+		return core.SubtitleSimplified
+	case "traditional":
+		return core.SubtitleTraditional
+	default:
+		return core.SubtitleUnknown
+	}
+}
+
+func versionPriorityPref(priority versionPriority) string {
+	switch priority {
+	case preferCompatibility:
+		return "compatibility"
+	case preferSize:
+		return "size"
+	default:
+		return "quality"
+	}
+}
+
+func parseVersionPriorityPref(value string) versionPriority {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "compatibility":
+		return preferCompatibility
+	case "size":
+		return preferSize
+	default:
+		return preferQuality
+	}
 }
 
 var proxyModes = []string{proxy.ModeAuto, proxy.ModeDirect, proxy.ModeCustom}
@@ -233,6 +279,10 @@ func (s *State) loadPreferences() error {
 	}
 	s.SourceRoute = s.sourceLabel(origin)
 	s.SoftwarePending = pref.SoftwarePending
+	s.SavedVersionLanguage = parseVersionLanguagePref(pref.VersionLanguage)
+	s.SavedVersionPriority = parseVersionPriorityPref(pref.VersionPriority)
+	s.VersionLanguage = s.SavedVersionLanguage
+	s.VersionPriority = s.SavedVersionPriority
 	return nil
 }
 
@@ -259,13 +309,34 @@ func (s *State) save() {
 
 func (s *State) savePreferences() error {
 	automatic := s.SoftwareAuto
-	b, _ := json.Marshal(preferences{IntroHidden: s.IntroHidden, ReduceEffects: s.ReduceEffects, Appearance: normalizeAppearance(s.Appearance), CloseBehavior: s.CloseBehavior, SourceOrigin: s.sourceOrigin(s.SourceRoute), SoftwareAuto: &automatic, SoftwareAutoDownload: s.SoftwareAutoDownload, SoftwarePending: s.SoftwarePending, SoftwareCheckedAt: s.SoftwareCheckedAt})
+	b, _ := json.Marshal(preferences{
+		IntroHidden:          s.IntroHidden,
+		ReduceEffects:        s.ReduceEffects,
+		Appearance:           normalizeAppearance(s.Appearance),
+		CloseBehavior:        s.CloseBehavior,
+		SourceOrigin:         s.sourceOrigin(s.SourceRoute),
+		SoftwareAuto:         &automatic,
+		SoftwareAutoDownload: s.SoftwareAutoDownload,
+		SoftwarePending:      s.SoftwarePending,
+		SoftwareCheckedAt:    s.SoftwareCheckedAt,
+		VersionLanguage:      versionLanguagePref(s.SavedVersionLanguage),
+		VersionPriority:      versionPriorityPref(s.SavedVersionPriority),
+	})
 	path := filepath.Join(s.ConfigDir, "preferences.json")
 	err := os.WriteFile(path+".tmp", b, 0644)
 	if err == nil {
 		err = os.Rename(path+".tmp", path)
 	}
 	return err
+}
+
+func (s *State) saveVersionPreferences() {
+	s.SavedVersionLanguage = s.VersionLanguage
+	s.SavedVersionPriority = s.VersionPriority
+	if s.ConfigDir == "" {
+		return
+	}
+	_ = s.savePreferences()
 }
 
 func readPreferences(dir string) (preferences, error) {
@@ -298,7 +369,7 @@ func (s *State) project(state core.State, snapshots []downloader.Snapshot) {
 		if n, err := strconv.Atoi(a.Day); err == nil {
 			day = n
 		}
-		s.KnownAnime[a.ID] = Anime{ID: a.ID, Title: a.Title, Cover: a.Cover, Day: day, Source: "蜜柑计划", Summary: s.KnownAnime[a.ID].Summary}
+		s.KnownAnime[a.ID] = mergeAnimeDetails(Anime{ID: a.ID, Title: a.Title, Cover: a.Cover, Day: day, Source: "蜜柑计划"}, s.KnownAnime[a.ID])
 	}
 	s.Subscriptions = nil
 	for _, sub := range state.Subscriptions {

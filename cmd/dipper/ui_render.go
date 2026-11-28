@@ -10,6 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/steampixel007/Dipper/internal/core"
 	"github.com/steampixel007/Dipper/internal/proxy"
+	"github.com/steampixel007/Dipper/internal/source"
 	"github.com/steampixel007/Dipper/internal/trackers"
 )
 
@@ -20,7 +21,16 @@ func uiRenderFixture() *State {
 	s.Root = `C:\Downloads\Dipper`
 	s.ProxyAuto = "跟随系统代理：http://127.0.0.1:7897"
 	s.Catalog = []Anime{
-		{ID: "render-1", Title: "星海旅记", Day: 1, Cover: "3887.jpg", Summary: "为了寻找失落的星图，少女与伙伴们踏上穿越群岛的旅途。在陌生的港口与夜空下，一段关于相遇、离别与成长的故事缓缓展开。"},
+		{
+			ID:             "render-1",
+			Title:          "星海旅记",
+			Day:            1,
+			Cover:          "3887.jpg",
+			Summary:        "为了寻找失落的星图，少女与伙伴们踏上穿越群岛的旅途。在陌生的港口与夜空下，一段关于相遇、离别与成长的故事缓缓展开。",
+			BroadcastStart: "4/7/2025",
+			OfficialURL:    "https://example.invalid/star-voyage",
+			BangumiURL:     "https://bgm.tv/subject/400001",
+		},
 		{ID: "render-2", Title: "雨后的星期天", Day: 0, Cover: "3984.jpg"},
 		{ID: "render-3", Title: "向着下一站", Day: 3, Cover: "4031.jpg"},
 		{ID: "render-4", Title: "花与远方", Day: 5, Cover: "4056.jpg"},
@@ -51,6 +61,7 @@ func uiRenderFixture() *State {
 		{ID: "render-download-3", AnimeID: s.AnimeID, ResourceID: s.ResourceList[2].ID, Title: s.ResourceList[2].Title, Episode: s.ResourceList[2].Episode, Folder: folder, MB: 236, Progress: 1, UploadedMB: 84, UpSpeed: .12, SeedSeconds: 720},
 	}
 	s.OpenFolder = func(string) {}
+	s.OpenURL = func(string) {}
 	s.PlayFile = func(string) error { return nil }
 	s.CopyText = func(string) {}
 	return s
@@ -73,10 +84,36 @@ func renderScreens(dir string) error {
 		{name: "09-anime-summary", page: "browse", configure: func(s *State) {
 			s.Subscriptions = nil
 			s.IntroHidden = true
+			s.cacheDetail(s.Catalog[0].ID, "", source.Detail{
+				Anime: source.Anime{
+					ID: s.Catalog[0].ID, Title: s.Catalog[0].Title, Cover: s.Catalog[0].Cover,
+					Summary: s.Catalog[0].Summary, BroadcastStart: s.Catalog[0].BroadcastStart,
+					OfficialURL: s.Catalog[0].OfficialURL, BangumiURL: s.Catalog[0].BangumiURL,
+				},
+				Groups: []source.Group{
+					{ID: s.GroupIDs[0], Name: s.Groups[0], Count: s.GroupCounts[0]},
+					{ID: s.GroupIDs[1], Name: s.Groups[1], Count: s.GroupCounts[1]},
+					{ID: s.GroupIDs[2], Name: s.Groups[2], Count: s.GroupCounts[2]},
+					{ID: s.GroupIDs[3], Name: s.Groups[3], Count: s.GroupCounts[3]},
+				},
+			})
 			s.openBrowseDetail(s.Catalog[0])
 		}},
 		{name: "16-browse-detail-narrow", page: "browse", narrow: true, textScale: 2, configure: func(s *State) {
 			s.IntroHidden = true
+			s.cacheDetail(s.Catalog[0].ID, "", source.Detail{
+				Anime: source.Anime{
+					ID: s.Catalog[0].ID, Title: s.Catalog[0].Title, Cover: s.Catalog[0].Cover,
+					Summary: s.Catalog[0].Summary, BroadcastStart: s.Catalog[0].BroadcastStart,
+					OfficialURL: s.Catalog[0].OfficialURL, BangumiURL: s.Catalog[0].BangumiURL,
+				},
+				Groups: []source.Group{
+					{ID: s.GroupIDs[0], Name: s.Groups[0], Count: s.GroupCounts[0]},
+					{ID: s.GroupIDs[1], Name: s.Groups[1], Count: s.GroupCounts[1]},
+					{ID: s.GroupIDs[2], Name: s.Groups[2], Count: s.GroupCounts[2]},
+					{ID: s.GroupIDs[3], Name: s.Groups[3], Count: s.GroupCounts[3]},
+				},
+			})
 			s.openBrowseDetail(s.Catalog[0])
 		}},
 		{name: "17-browse-hover", page: "browse", hover: true, configure: func(s *State) { s.IntroHidden = true }},
@@ -94,7 +131,12 @@ func renderScreens(dir string) error {
 			s.Subscriptions, s.Downloads = nil, nil
 			s.setupVersions()
 			s.switchVersionMode(true)
-			s.ActiveTitleRow, s.ActiveTitleWord = s.ResourceList[0].ID, "简日内嵌"
+		}},
+		{name: "23-original-title-picked", page: "detail", configure: func(s *State) {
+			s.Subscriptions, s.Downloads = nil, nil
+			s.setupVersions()
+			s.switchVersionMode(true)
+			s.pickTitleSample(s.ResourceList[0])
 		}},
 		{name: "03-following", page: "following"},
 		{name: "14-following-check-failure", page: "following", configure: func(s *State) {

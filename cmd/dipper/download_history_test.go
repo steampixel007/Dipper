@@ -122,7 +122,7 @@ func TestUIDownloadsNavigationLeavesHistory(t *testing.T) {
 	state.Downloads[2].Stopped = true
 	tester := ui.NewTester(state.view, 1040, 720)
 	uiClick(t, tester, "下载记录 1")
-	uiRequireText(t, tester, "分享已结束的任务")
+	uiRequireText(t, tester, "下载记录", "返回当前下载")
 	state.enterPage("browse")
 	state.enterPage("downloads")
 	tester.Frame()

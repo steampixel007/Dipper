@@ -101,7 +101,7 @@ func TestUIBrowseControlsStayInsideAtDoubleTextScale(t *testing.T) {
 	state := uiFixture(t, "browse")
 	tester := ui.NewTester(state.view, 1040, 720)
 	tester.SetPreferences(ui.Preferences{TextScale: 2, ReduceMotion: true})
-	for _, label := range []string{"搜索番剧", "冬季", "春季", "夏季", "秋季", "全部", "周日", "来源：蜜柑计划", "回到当季"} {
+	for _, label := range []string{"搜索番剧", "冬季", "春季", "夏季", "秋季", "全部", "周日", "回到当季"} {
 		requireLayoutBound(t, tester, label, 1040, 720)
 	}
 }

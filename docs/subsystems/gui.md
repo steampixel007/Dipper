@@ -19,46 +19,64 @@ components, and interaction conventions are specified in
 | `main.go` | Process start: single instance, data directory, engine and core construction, the window |
 | `model.go` | `State`, `Saved`, the update loop, and the helpers that turn core types into UI types |
 | `view.go` | The pages: browse, detail, following, episodes, downloads, settings |
+| `version_setup.go` | Focused single-column watch-version UI, mainstream-coverage scoring, group preview ranking, and collision warnings |
+| `title_setup.go` | Two-step pick-by-example original-title rule extraction and fine-tuning UI |
 | `browse_detail.go` | Browse synopsis, its independent source request, and responsive panel |
 | `core_ui.go` | The bridge to `core`: subscriptions, tasks, settings |
 | `source_ui.go` | The bridge to `source`: catalog, detail, history, covers |
 | `software_update_ui.go` | The software update settings card, release dialog, and update lifecycle |
 | `covers.go`, `cover_disk.go` | Cover demand, decoding, and memory and disk caches |
-| `appearance.go` | Fonts, sizing, theme values |
-| `proxy_ui.go` | The settings-page proxy card and the auto-mode description |
-| `window_ui.go` | Close/quit choices, remembered preferences, and the window/background settings card |
+| `appearance.go` | Light/dark neutral palettes, accent tokens, control theme, and motion curves |
+| `typography.go` | Type scale (`>=14 DIP`), 4 DIP grid geometry, radius scale (`8–40 DIP`), button/dialog helpers |
+| `fonts.go` | Embedded Geist font weights (`400`, `500`, `600`, `700`) registered with CJK fallback |
+| `icons.go` | Embedded Reicon outline icons (`18×18` glyph, `1.5 DIP` stroke, `24×24` alignment box) |
+| `intent.go` | Controls-on-intent visibility (`hover`, `FocusWithin`, scroll-near-edge, active work) |
+| `cascading_menu.go` | Desktop cascading submenu (`120 ms` open delay, `300 ms` close delay, safe triangle, keyboard navigation) |
+| `library_hero.go` | Episode library hero header and its cascading `···` menu |
+| `proxy_ui.go` | The settings-page proxy section and connection test controls |
+| `window_ui.go` | Close/quit choices, remembered preferences, and the window/background settings section |
 | `tray.go` | Tray registration checks, recreation after a lost registration, and cleanup |
 | `ui_render.go` | Deterministic sample state for layout rendering |
 | `startup_error_windows.go`, `startup_error_other.go` | Reporting a failure before the window exists |
 
 ## Visual system
 
-`appearance.go` owns both palettes (warm Xuan Paper Light and Pine-Soot Dark),
-surface helpers, and motion tokens; `typography.go` owns type sizes and control
-geometry. `view.go` composes them without introducing another color system.
-Opaque warm-neutral canvas, sidebar, and paper surfaces surround the artwork,
-with dark-mode warm top edge highlights (`InsetShadow`). Normal screens use a
-monochrome ink/ivory accent (`accent` Wu-Mo `#23201C` in light, Ya-Bai `#EFECE6`
-in dark; `blue` for active navigation and links) so anime posters carry the
-color, while muted antique gold and restrained crimson appear only for actual
-failures or destructive confirmation. Recessed warm surfaces hold blank and
-loading covers.
+`appearance.go` owns both palettes (warm Xuan Paper Light and Pine-Soot Dark)
+and motion tokens; `typography.go` owns type sizes and control geometry;
+`fonts.go` registers embedded Geist static weights (`400`, `500`, `600`, `700`)
+with platform CJK fallback; `icons.go` renders Reicon outline icons (`18×18`
+glyph, `1.5 DIP` stroke, centered in a transparent `24×24` box). `view.go`
+composes them without introducing another color system. Warm neutral light
+(`#F7F5F0` / `#EFECE5` / `#FCFBF8`) and dark (`#141311` / `#1A1816` / `#22201D`)
+surfaces carry >=90% of the screen, paired with a monochrome ink/ivory accent
+(Wu-Mo `#23201C` in light, Ya-Bai `#EFECE6` in dark) so anime posters supply
+the color, while muted antique gold and restrained crimson appear only for
+failures or destructive confirmation. Healthy or completed states use neutral
+typography without green badges. Flat layout eliminates nested cards, bordered
+settings sections, boxed download rows, decorative dividers, and explanatory
+subtitles or helper prose.
 
 Poster status pills and hover actions use `plugins/glass` tinted Liquid Glass
 over the artwork, and the episode library hero and browse detail header render
 a cached blurred ambient cover backdrop (`.Cache()`). A `glass.ScrollEdge`
-softly fades scrolled content into the top bar.
+softly fades scrolled content into the top bar, and floating dark dialogs carry
+warm top edge highlights (`InsetShadow`).
 
-The top bar occupies a fixed 64 DIP slot with an opaque canvas background and
-no divider, showing a compact title on sub-pages or once a top-level page
-scrolls. Page content is clipped below it; `uiScrollTo` relies on that slot.
-Browse filters sit directly on the page, with weekdays below. Poster radii
-share the 10 DIP cover token and deepen their shadow on hover. Navigation
-counts share the label row at normal text size and move below the label when
-text is enlarged; bottom sidebar utilities left-align with icons to match the
-main navigation rail. `visual_system_test.go` verifies rendered neutral chrome,
-selected navigation, count alignment and clickable navigation at normal and
-doubled text size.
+The sidebar occupies 224 DIP. The top bar occupies a fixed 64 DIP slot with an
+opaque canvas background and no divider, showing a compact title on sub-pages
+or once a top-level page scrolls. Page content is clipped below it; `uiScrollTo`
+relies on that slot. Browse filters sit directly on the page, with weekdays
+below. Poster radii share the 12 DIP cover token and deepen their shadow on
+hover. Component radii step across the 8–40 DIP scale (`8, 12, 16, 24, 32, 40`)
+by size and hierarchy, and all spacing stays on the 4 DIP grid at 1.5×
+spaciousness. Navigation counts share the label row at normal text size and move
+below the label when text is enlarged; bottom sidebar utilities left-align with
+icons to match the main navigation rail. Settings appearance uses visual theme
+preview cards. `visual_system_test.go` and `design_system_test.go` verify
+registered Geist weights, Reicon icon box geometry, warm neutral chrome, flat
+unboxed layout, accent area budget, dark monochrome ivory primary accent,
+selected navigation, count alignment, visual theme preview cards, and clickable
+navigation at normal and doubled text size.
 
 Browse and follow tiles use the column width and each loaded image's original
 ratio to determine poster height. This keeps the complete artwork visible
@@ -70,15 +88,27 @@ for portrait, landscape and square covers in both grids and themes.
 page grid and disk cache so a cropped thumbnail cannot hide behind synthetic
 bitmaps.
 
-Interactions use MyGo's velocity-preserving springs with Oklab color
-interpolation: critically-damped 220 ms springs for tactile press/hover/shadow
-feedback, 280 ms lightly-damped springs for shared-element `Match` + `Fly`
-indicators (navigation wash, season thumb, weekday underline, download filter
+Interactions combine MyGo v0.9.0's velocity-preserving springs and Oklab color
+interpolation with controls-on-intent (`intent.go`) and cascading menus
+(`cascading_menu.go`): critically-damped 220 ms springs for tactile
+press/hover/shadow feedback, 280 ms lightly-damped springs for shared-element
+`Match` + `Fly` indicators (season thumb, weekday underline, download filter
 pill) and follow-to-library Hero poster flights, directional `ChildExit` season
-switches with title `Morph`, smooth collapsible download groups with rotating
-chevrons, and `ContentTransition{Numeric: true}` for live speeds and counts.
-`State.ReduceEffects` or the system reduce-motion preference disables spatial
-motion while preserving focus, borders and contrast.
+switches with title `Morph`, rotating download-group disclosure chevrons, and
+`ContentTransition{Numeric: true}` for live speeds and counts.
+Secondary controls follow controls-on-intent (`intent.go`): hidden at rest
+while reserving layout space (`Opacity` 0->1 over 130 ms, remaining keyboard
+Tab-reachable), revealed on pointer hover, `FocusWithin`, scrolling near the
+container's viewport edge, or active work (such as an open menu). Primary
+actions (`播放`) and failure recovery (`重试`) stay visible at rest. Desktop
+cascading menus (`cascading_menu.go`, used in the episode library hero's `···`
+menu) implement a 120 ms open delay, 300 ms close delay, and an 8 DIP extended
+safe triangle from the pointer to the open submenu's nearest edges, plus full
+keyboard navigation (`Up`/`Down`/`Right`/`Left`/`Escape`/`Enter`/`Space`).
+`State.ReduceEffects` or the system reduce-motion preference removes spatial
+motion and transitions while preserving focus, borders, contrast, and menu
+open/close timers. `intent_reveal_test.go` and `cascading_menu_test.go` verify
+controls-on-intent and cascading submenu behavior.
 
 ## State and the update loop
 
@@ -210,43 +240,69 @@ reset controls visible. `exact_sizes_test.go` and `downloads_filters_test.go`
 cover these distinctions.
 
 The detail page runs in one of two modes, distinguished by `Backfill`:
-- **Subscribe** — choose a group and a rule, preview which existing releases
-  match, and confirm. A new setup defaults to the group with the most releases
-  in its full history. Pending counts leave the group picker usable. An explicit
-  choice or an existing follow takes precedence.
-  Choose a subtitle language to constrain recommendations, then prioritize
-  picture quality, compatibility, or known typical release size. The initial
-  download selects one matching release per recognized episode, preferring
-  explicit revisions then the later publish date. The episode row can reveal
-  alternatives and replace that choice. Releases with an unknown episode
-  remain individually selectable. The original-title
-  workflow shows full titles with clickable terms, explanations, and preview
-  counts for inclusion and exclusion. It applies the keyword rule to future
-  releases and supports saving a rule with zero historical matches.
+- **Subscribe** — choose a group and a watch version in a focused single-column
+  layout, confirm whether to download aired episodes or follow future updates
+  only, and optionally expand the per-episode detail list (`自选集数 / 查看明细`).
+  The synopsis request caches the full `Detail` response (including each group's
+  detail-page `Preview`) per origin and anime ID so opening watch-version setup
+  reuses it without a second `Detail` fetch. A new setup defaults to the best
+  subtitle group using those previews — preferring Chinese-subtitled groups with
+  recognized versions and stronger episode coverage, breaking ties by the user's
+  saved language and priority — and skips the `History` request completely when
+  the selected group is not truncated. A truncated group renders its preview
+  recommendation immediately while blocking submission until its full history
+  loads. Language and priority choices persist in `preferences.json` using ASCII
+  keys. Recommendation ranks mainstream episode-coverage versions ahead of
+  sparse one-off releases, grades compatibility without rejecting untagged MP4
+  or HEVC/MKV-only groups, falls back gracefully when sizes are unknown, and
+  warns when non-revision same-episode releases collide under one signature.
+  The initial download selects one matching release per recognized episode,
+  preferring explicit revisions then the later publish date, with repetitive
+  original filenames hidden by default behind a `显示原标题` toggle while
+  unknown-episode rows and episode comparisons show titles automatically.
+  The pick-by-example original-title flow (`按原标题自选`) lets users pick a
+  representative sample release to extract distinguishing keywords automatically
+  (with optional fine-tuning, clickable words with explanations, and manual
+  keyword/alias entry), supports downloading matched existing episodes together
+  with following future updates, and still permits saving a zero-match future
+  rule.
 - **Backfill** — pick releases from an existing subscription's history to
   download now, without changing the rule.
 Browse cards mark followed anime with a 已追番 badge. Clicking a card opens
-its synopsis. The catalog reflows
+its detail panel. The catalog reflows
 beside the right panel on wide windows and stays full width behind a centered
-dialog on narrow windows. Switching cards cancels the previous synopsis request.
-The panel retains its reading position when returning from group selection or
-resources. Closing it restores the full-width catalog's scroll position.
+dialog on narrow windows. Switching cards cancels the previous detail request.
+The panel shows the cover, title, update day, optional premiere date, synopsis,
+available subtitle groups (distinguishing an unloaded response from an empty
+group list), and validated external links (Bangumi and official site). Followed
+anime also show their followed subtitle group(s) and offer 进入剧集库 beside
+查看资源; the episode library's back button returns to browse details when
+entered from there. The panel retains its reading position when returning from
+group selection, resources, or the episode library. Closing it restores the
+full-width catalog's scroll position.
 The downloads page can open a followed anime's resource list directly. Its
 back button returns to downloads.
 
 The synopsis is shown in browse details. The group and resource pages keep the
 compact anime header and start their options with the subtitle group.
 Loading, unavailable and missing descriptions have distinct copy in browse
-details. A synopsis loaded from the active browse request stays available when
-switching posters or reopening the panel. Catalog and core state refreshes
-retain a loaded synopsis, while a successful group-page detail response is
-authoritative. `anime_summary_test.go` checks the rendering boundary and
-`browse_detail_test.go` checks the return path and synopsis reuse.
+details. A detail response loaded from the active browse request is cached per
+source origin and reused when switching posters, reopening the panel, or
+entering group selection and resources — avoiding a duplicate detail fetch;
+explicit reload buttons bypass the cache, and switching source routes invalidates
+it. Catalog and core state refreshes retain loaded anime metadata, while a
+successful group-page detail response is authoritative. `anime_summary_test.go`
+checks the rendering boundary and `browse_detail_test.go` checks the return
+path, library entry, metadata display, and detail reuse.
 
 
-The browse page search matches the follow search: typing resets the catalog
-scroll to the top and a non-empty search offers 清除搜索 beside the input.
-Year, season, and search share one band above a text-only weekday row, so the
+The sidebar uses MyGo's Sidebar tree and badges. Detail selects Browse and
+the episode library selects Following. Arrow keys, Home, and End navigate
+the tree when it has focus.
+The browse page uses MyGo's SearchField: typing or clearing resets the
+catalog scroll to the top, and the field has a built-in clear button.
+Year, season, and search share one band above a text-only weekday row.
+Season and weekday choices use MyGo segmented controls, so the
 poster grid keeps the visual weight; `browse_layout_test.go` pins that
 hierarchy and the 200% text-scale bounds.
 Browse navigation runs from autumn 2013 through autumn of the current year.
@@ -254,20 +310,20 @@ Both source routes return the autumn 2013 catalog and an empty response for
 the advertised spring 2012 entry. Selecting 2013 opens autumn. The toolbar
 and source-error recovery actions disable arrows that would leave this range.
 The following page searches saved follows by anime title, subtitle group, or a
-word the saved rule requires; the count line reports how many follow tiles match
-and offers a clear action, and an empty result offers a way to clear the search. Cards whose last RSS check failed
+word the saved rule requires. The count line reports how many follow tiles
+match, the SearchField has a built-in clear button, and an empty result
+offers a separate clear action. Cards whose last RSS check failed
 float above the saved order so a silent failure cannot hide at the bottom.
 Card actions resolve the subscription by its stable ID, never by its position in
 the filtered list, so a narrowed search cannot pause, edit, or open the
 resources of a follow the card does not show.
-Each tile is a poster: cover, title, and subtitle group, with an 进入剧集库
-hint beside the group so the tile reads as a way in, not a settings panel.
+Each tile is a poster: cover, title, and subtitle group.
 Rules, RSS timestamps, skipped-resource counts, folder paths, and recent
-release titles stay off the tile. Status is minimal: a 检查失败, 已暂停, or
+release titles stay off the tile. Status is minimal: a 检查失败, 已暂停, 排队中, or
 下载中 badge on the poster — the progress mark carries the follow's overall
 download progress, weighted by the known size of each transfer, so several
-running episodes read as one 下载中 75% badge instead of a bare mark, and the
-自动追番中 badge only appears on hover. A pending-release count keeps its
+running episodes read as one 下载中 75% badge instead of a bare mark, while
+healthy idle follows stay clean with no green status badge. A pending-release count keeps its
 新资源 N 条 button that opens that follow's resource view with 只看新资源
 already on, and a finished follow shows a quiet 已下载 N 个资源 count;
 failed transfers never count.
@@ -275,12 +331,12 @@ Paused and stopped transfers are never running marks: resource rows and
 download groups label them 已暂停 / 已停止, the follow card skips them when
 deciding 下载中, and the pause-all toggle counts only transfers that are
 actually running. The download filter resets its scroll on every filter
-change, including filters whose list renders empty. A search field beside the speed summary
+change, including filters whose list renders empty. A SearchField beside the speed summary
 filters groups by anime title or release title, case/width-insensitive;
 typing resets the download scroll, and a search with no matches offers its own
-empty state with 清除搜索. Each anime group has a 收起/展开
-toggle whose state lives only for the session, so a fresh start lists every
-group open. Rows inside a group sort by episode
+empty state with 清除搜索. Each anime group has a MyGo disclosure with
+session-only state, so a fresh start lists every group open. A closed group
+removes its download rows from keyboard navigation. Rows inside a group sort by episode
 number like the resource preview — numeric ascending, releases without an
 episode last, ties keeping task order — so a season reads top to bottom. A row whose episode is known
 shows a 第 N 集 badge beside its transfer status.
@@ -347,7 +403,8 @@ identifiable without rereading titles. The mark follows the subscription's
 current pending list and disappears with it.
 
 Following management actions — 查看资源, 修改条件, 暂停/恢复追番, 检查更新,
-打开番剧文件夹, and 取消追番 — collapse into the library hero's ··· popover,
+the 文件与记录 cascading submenu (打开番剧文件夹, 查看下载任务, 查看下载记录),
+and 取消追番 — collapse into the library hero's ··· cascading menu,
 so the watch view stays the primary surface. 查看资源 opens the detail page. It
 locks the saved subscription's group and rule, opens as a view-only backfill
 where nothing is selected while history loads and a later history result must
@@ -506,8 +563,8 @@ checks, regression evidence, and remaining native boundaries.
 
 ## Rendering
 
-Browse cards show their weekday only under the all-days filter. The 查看详情
-hint appears on hover and keyboard focus.
+Browse cards show their weekday only under the all-days filter, with no
+explanatory 查看详情 subtitle.
 
 `ui_render.go` holds a fixed sample state used to render each page's layout
 without a live source or database. It is how a layout change is checked in

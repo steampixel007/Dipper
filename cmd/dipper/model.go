@@ -21,12 +21,15 @@ import (
 )
 
 type Anime struct {
-	ID      string `json:"id"`
-	Title   string `json:"title"`
-	Day     int    `json:"day"`
-	Cover   string `json:"cover"`
-	Source  string `json:"source"`
-	Summary string `json:"summary,omitempty"`
+	ID             string `json:"id"`
+	Title          string `json:"title"`
+	Day            int    `json:"day"`
+	Cover          string `json:"cover"`
+	Source         string `json:"source"`
+	Summary        string `json:"summary,omitempty"`
+	BroadcastStart string `json:"broadcastStart,omitempty"`
+	OfficialURL    string `json:"officialURL,omitempty"`
+	BangumiURL     string `json:"bangumiURL,omitempty"`
 }
 type Rule struct {
 	All     []string             `json:"all,omitempty"`
@@ -129,6 +132,8 @@ type Saved struct {
 	SoftwareAutoDownload      bool
 	SoftwarePending           *softwarePending
 	SoftwareCheckedAt         time.Time
+	SavedVersionLanguage      core.SubtitleLanguage
+	SavedVersionPriority      versionPriority
 }
 type downloadEngine interface {
 	Snapshot() []downloader.Snapshot
@@ -149,16 +154,18 @@ type downloadEngine interface {
 var _ downloadEngine = (*downloader.Engine)(nil)
 
 type State struct {
-	Core              *core.Core
-	Engine            downloadEngine
-	Source            *source.Client
-	Ctx               context.Context
-	Update            func(func())
-	Groups, GroupIDs  []string
-	GroupCounts       []int
-	GroupCountLoading bool
-	History           []source.Resource
-	ResourceList      []Resource
+	Core               *core.Core
+	Engine             downloadEngine
+	Source             *source.Client
+	Ctx                context.Context
+	Update             func(func())
+	Groups, GroupIDs   []string
+	GroupCounts        []int
+	GroupPreviews      [][]source.Resource
+	GroupCountLoading  bool
+	History            []source.Resource
+	HistoryPreviewOnly bool
+	ResourceList       []Resource
 	// resourceHashes bridges a viewed resource to the info hash the core
 	// resolved for it, so resource rows match downloads by content identity.
 	resourceHashes                                     map[string]string
@@ -167,11 +174,13 @@ type State struct {
 	SourceError, DetailError, HistoryError             string
 	EditID                                             string
 	LibraryID                                          string
+	LibraryReturn                                      string
 	LibraryMenuOpen                                    bool
 	ProposedFolder                                     string
 	Backfill                                           bool
 	ViewResources                                      bool
 	DetailReturn                                       string
+	detailCache                                        map[string]cachedDetail
 	catalogRevision, detailRevision, historyRevision   uint64
 	catalogCancel, detailCancel, historyCancel         context.CancelFunc
 	catalogFromDisk                                    bool
@@ -197,6 +206,16 @@ type State struct {
 	Versions                        []versionOption
 	VersionLanguage                 core.SubtitleLanguage
 	VersionPriority                 versionPriority
+	ManualVersion                   bool
+	UnclassifiedCount               int
+	CollectionCount                 int
+	ShowAllVersions                 bool
+	ShowEpisodeDetails              bool
+	ShowOriginalTitles              bool
+	DownloadExistingChoice          bool
+	TitleTemplateID                 string
+	TitleManualInput                bool
+	TitleShowAllSamples             bool
 	ActiveTitleWord, ActiveTitleRow string
 	Checked                         map[string]bool
 	Editing                         bool
@@ -248,6 +267,7 @@ type State struct {
 	ApplyAppearance            func(string)
 	PickFolder                 func()
 	OpenFolder                 func(string)
+	OpenURL                    func(string)
 	PlayFile                   func(string) error
 	CopyText                   func(string)
 	Quit                       func()
@@ -327,7 +347,10 @@ func matchResource(resource Resource, rule Rule) (bool, string) {
 }
 
 func (s *State) initSelection() {
-	if s.Backfill || (s.VersionSetup && s.TitleSetup) {
+	if s.Backfill || (s.VersionSetup && s.TitleSetup && !hasTitleConditions(s.Rule)) {
+		return
+	}
+	if s.focusedVersionSetup() && !s.DownloadExistingChoice {
 		return
 	}
 	choices, _ := s.episodeChoices(s.matchingResources())

@@ -15,26 +15,53 @@ func TestUISidebarUsesSharedSelectionWash(t *testing.T) {
 			state.Appearance = appearance
 			tester := ui.NewTester(state.view, 1040, 720)
 			tester.SetPreferences(ui.Preferences{ReduceMotion: true})
+			tester.Move(500, 80)
 			palette := lightPalette
 			if appearance == appearanceDark {
 				palette = darkPalette
 			}
 			frame := tester.Image()
 			for _, sample := range []struct {
-				name  string
-				point image.Point
+				label string
 				fill  ui.Color
 			}{
-				{"selected navigation", image.Pt(180, 114), palette.blueWash},
-				{"inactive navigation", image.Pt(180, 166), palette.chrome},
+				{"浏览番剧", palette.accentWash},
+				{"我的追番", palette.chrome},
 			} {
-				pixel := color.NRGBAModel.Convert(frame.At(sample.point.X, sample.point.Y)).(color.NRGBA)
+				item, ok := tester.AccessByRole(ui.RoleTreeItem, sample.label)
+				if !ok {
+					t.Fatalf("missing sidebar item %q", sample.label)
+				}
+				pixel := color.NRGBAModel.Convert(frame.At(int(item.Bounds.X+item.Bounds.W*.8), int(item.Bounds.Y+item.Bounds.H/2))).(color.NRGBA)
 				want := color.NRGBA{R: sample.fill.R, G: sample.fill.G, B: sample.fill.B, A: 255}
 				if pixel != want {
-					t.Errorf("%s fill=%v, want %v", sample.name, pixel, want)
+					t.Errorf("%s fill=%v, want %v", sample.label, pixel, want)
 				}
 			}
 		})
+	}
+}
+
+func TestUISidebarArrowNavigation(t *testing.T) {
+	state := uiFixture(t, "detail")
+	tester := ui.NewTester(state.view, 1040, 720)
+	browse, ok := tester.Access("浏览番剧")
+	if !ok || !browse.Selected {
+		t.Fatalf("detail page does not select browse in the sidebar: %+v", browse)
+	}
+	tester.Key(0, ui.KeyTab)
+	tester.Key(0, ui.KeyDown)
+	following, ok := tester.AccessByRole(ui.RoleTreeItem, "我的追番")
+	if !ok || !following.Selected || !following.Focused || state.Page != "following" {
+		t.Fatalf("Down did not select and open following: page=%q, item=%+v", state.Page, following)
+	}
+	tester.Key(0, ui.KeyEnd)
+	if state.Page != "settings" {
+		t.Fatalf("End opened %q, want settings", state.Page)
+	}
+	tester.Key(0, ui.KeyHome)
+	if state.Page != "browse" {
+		t.Fatalf("Home opened %q, want browse", state.Page)
 	}
 }
 
@@ -45,7 +72,7 @@ func TestUISidebarUsesAppBadge(t *testing.T) {
 			state.Appearance = appearance
 			tester := ui.NewTester(state.view, 1040, 720)
 			tester.SetPreferences(ui.Preferences{ReduceMotion: true})
-			pixel := color.NRGBAModel.Convert(tester.Image().At(28, 30)).(color.NRGBA)
+			pixel := color.NRGBAModel.Convert(tester.Image().At(30, 30)).(color.NRGBA)
 			want := color.NRGBA{R: 207, G: 226, B: 255, A: 255}
 			if pixel != want {
 				t.Errorf("sidebar badge fill=%v, want %v from the app icon", pixel, want)
@@ -64,7 +91,7 @@ func TestUIChromeStaysNeutralAcrossThemes(t *testing.T) {
 			frame := tester.Image()
 			for _, point := range []image.Point{
 				image.Pt(8, 80), image.Pt(8, 400), image.Pt(8, 680),
-				image.Pt(1032, 8), image.Pt(210, 680),
+				image.Pt(1032, 8), image.Pt(int(sidebarWidth)+16, 680),
 			} {
 				red, green, blue, _ := frame.At(point.X, point.Y).RGBA()
 				if spread := max(red, green, blue) - min(red, green, blue); spread > 14*257 {
@@ -89,8 +116,8 @@ func TestUISidebarCountSharesRowAndLargeTextRemainsReachable(t *testing.T) {
 			state.sidebar(c)
 		}, 1040, 720)
 		tester.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
-		download := requireLayoutBound(t, tester, "下载", 204, 720)
-		failure := requireLayoutBound(t, tester, "1 失败", 204, 720)
+		download := requireLayoutBound(t, tester, "下载", sidebarWidth, 720)
+		failure := requireLayoutBound(t, tester, "1 失败", sidebarWidth, 720)
 		if scale == 1 {
 			if delta := (download.Y + download.H/2) - (failure.Y + failure.H/2); delta < -2 || delta > 2 {
 				t.Errorf("navigation count consumes a second row at normal text size: download=%+v failure=%+v", download, failure)

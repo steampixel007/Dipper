@@ -826,3 +826,34 @@ func TestInvalidInputsDoNotRequest(t *testing.T) {
 		t.Error("invalid origin accepted")
 	}
 }
+
+func TestDetailPopulatesGroupPreviews(t *testing.T) {
+	body := fixture(t, "bangumi-4071.html")
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Write(body)
+	})
+	detail, err := c.Detail(t.Context(), "4071")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(detail.Groups) == 0 {
+		t.Fatal("expected subtitle groups")
+	}
+	sawComplete, sawTruncated := false, false
+	for _, g := range detail.Groups {
+		if g.Count >= 0 {
+			sawComplete = true
+			if len(g.Preview) != g.Count {
+				t.Fatalf("group %s: complete preview len=%d, count=%d", g.Name, len(g.Preview), g.Count)
+			}
+		} else {
+			sawTruncated = true
+			if len(g.Preview) == 0 {
+				t.Fatalf("group %s: truncated group missing preview rows", g.Name)
+			}
+		}
+	}
+	if !sawComplete || !sawTruncated {
+		t.Fatalf("fixture did not cover both complete (%v) and truncated (%v) groups", sawComplete, sawTruncated)
+	}
+}
