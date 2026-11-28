@@ -19,6 +19,8 @@ components, and interaction conventions are specified in
 | `main.go` | Process start: single instance, data directory, engine and core construction, the window |
 | `model.go` | `State`, `Saved`, the update loop, and the helpers that turn core types into UI types |
 | `view.go` | The pages: browse, detail, following, episodes, downloads, settings |
+| `version_setup.go` | Focused single-column watch-version UI, mainstream-coverage scoring, group preview ranking, and collision warnings |
+| `title_setup.go` | Two-step pick-by-example original-title rule extraction and fine-tuning UI |
 | `browse_detail.go` | Browse synopsis, its independent source request, and responsive panel |
 | `core_ui.go` | The bridge to `core`: subscriptions, tasks, settings |
 | `source_ui.go` | The bridge to `source`: catalog, detail, history, covers |
@@ -220,19 +222,32 @@ reset controls visible. `exact_sizes_test.go` and `downloads_filters_test.go`
 cover these distinctions.
 
 The detail page runs in one of two modes, distinguished by `Backfill`:
-- **Subscribe** — choose a group and a rule, preview which existing releases
-  match, and confirm. A new setup defaults to the group with the most releases
-  in its full history. Pending counts leave the group picker usable. An explicit
-  choice or an existing follow takes precedence.
-  Choose a subtitle language to constrain recommendations, then prioritize
-  picture quality, compatibility, or known typical release size. The initial
-  download selects one matching release per recognized episode, preferring
-  explicit revisions then the later publish date. The episode row can reveal
-  alternatives and replace that choice. Releases with an unknown episode
-  remain individually selectable. The original-title
-  workflow shows full titles with clickable terms, explanations, and preview
-  counts for inclusion and exclusion. It applies the keyword rule to future
-  releases and supports saving a rule with zero historical matches.
+- **Subscribe** — choose a group and a watch version in a focused single-column
+  layout, confirm whether to download aired episodes or follow future updates
+  only, and optionally expand the per-episode detail list (`自选集数 / 查看明细`).
+  The synopsis request caches the full `Detail` response (including each group's
+  detail-page `Preview`) per origin and anime ID so opening watch-version setup
+  reuses it without a second `Detail` fetch. A new setup defaults to the best
+  subtitle group using those previews — preferring Chinese-subtitled groups with
+  recognized versions and stronger episode coverage, breaking ties by the user's
+  saved language and priority — and skips the `History` request completely when
+  the selected group is not truncated. A truncated group renders its preview
+  recommendation immediately while blocking submission until its full history
+  loads. Language and priority choices persist in `preferences.json` using ASCII
+  keys. Recommendation ranks mainstream episode-coverage versions ahead of
+  sparse one-off releases, grades compatibility without rejecting untagged MP4
+  or HEVC/MKV-only groups, falls back gracefully when sizes are unknown, and
+  warns when non-revision same-episode releases collide under one signature.
+  The initial download selects one matching release per recognized episode,
+  preferring explicit revisions then the later publish date, with repetitive
+  original filenames hidden by default behind a `显示原标题` toggle while
+  unknown-episode rows and episode comparisons show titles automatically.
+  The pick-by-example original-title flow (`按原标题自选`) lets users pick a
+  representative sample release to extract distinguishing keywords automatically
+  (with optional fine-tuning, clickable words with explanations, and manual
+  keyword/alias entry), supports downloading matched existing episodes together
+  with following future updates, and still permits saving a zero-match future
+  rule.
 - **Backfill** — pick releases from an existing subscription's history to
   download now, without changing the rule.
 Browse cards mark followed anime with a 已追番 badge. Clicking a card opens

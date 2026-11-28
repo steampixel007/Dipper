@@ -13,7 +13,7 @@ type submissionPlan struct {
 
 func (s *State) planSubmission() submissionPlan {
 	var plan submissionPlan
-	if s.VersionSetup && s.TitleSetup && !s.Backfill {
+	if s.VersionSetup && s.TitleSetup && !s.Backfill && !hasTitleConditions(s.Rule) {
 		return plan
 	}
 	hashes := make(map[string]string, len(s.History))

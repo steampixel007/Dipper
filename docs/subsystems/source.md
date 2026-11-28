@@ -35,7 +35,10 @@ removed only after that check. A grouped size parses to the same approximate
 byte value as the ungrouped spelling.
 
 `Group.Count` is `-1` when the detail page only shows a truncated preview, which
-is different from `0`.
+is different from `0`. `Group.Preview` retains the resources parsed from that
+detail-page table: when `Count >= 0` it is the group's complete history, and
+when `Count == -1` it is a truncated preview that must not be submitted as
+complete history.
 
 ## The client
 

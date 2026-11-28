@@ -131,7 +131,12 @@ func renderScreens(dir string) error {
 			s.Subscriptions, s.Downloads = nil, nil
 			s.setupVersions()
 			s.switchVersionMode(true)
-			s.ActiveTitleRow, s.ActiveTitleWord = s.ResourceList[0].ID, "简日内嵌"
+		}},
+		{name: "23-original-title-picked", page: "detail", configure: func(s *State) {
+			s.Subscriptions, s.Downloads = nil, nil
+			s.setupVersions()
+			s.switchVersionMode(true)
+			s.pickTitleSample(s.ResourceList[0])
 		}},
 		{name: "03-following", page: "following"},
 		{name: "14-following-check-failure", page: "following", configure: func(s *State) {

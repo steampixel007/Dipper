@@ -17,7 +17,6 @@ import (
 	"github.com/steampixel007/Dipper/internal/core"
 	"github.com/steampixel007/Dipper/internal/source"
 	"github.com/steampixel007/Dipper/internal/update"
-	"golang.org/x/sync/errgroup"
 )
 
 type sourceRoute struct {
@@ -57,7 +56,7 @@ func (s *State) sourceLabel(origin string) string {
 }
 
 func newState(dir string) *State {
-	s := &State{Dir: dir, ConfigDir: dir, Platform: runtime.GOOS, Appearance: appearanceLight, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, detailCache: map[string]cachedDetail{}, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes, SoftwareAuto: true, SoftwareClient: update.NewClient(), SoftwareExecutable: os.Executable, OpenSoftwareFile: update.OpenDownloaded}
+	s := &State{Dir: dir, ConfigDir: dir, Platform: runtime.GOOS, Appearance: appearanceLight, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, detailCache: map[string]cachedDetail{}, DownloadExistingChoice: true, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes, SoftwareAuto: true, SoftwareClient: update.NewClient(), SoftwareExecutable: os.Executable, OpenSoftwareFile: update.OpenDownloaded}
 	if dir != "" {
 		s.CoverDir = filepath.Join(dir, "covers")
 	}
@@ -422,19 +421,31 @@ func (s *State) prepareAnimeDetail(id, from string) {
 	s.Groups = nil
 	s.GroupIDs = nil
 	s.GroupCounts = nil
+	s.GroupPreviews = nil
 	s.GroupCountLoading = false
 	s.History = nil
+	s.HistoryPreviewOnly = false
 	s.ResourceList = nil
 	s.ChoosingGroup = false
 	s.GroupSearch = ""
 	s.Rule = Rule{}
-	s.VersionSetup = false
+	s.VersionSetup = true
 	s.TitleSetup = false
 	s.TitleRuleDraft = Rule{}
 	s.Versions = nil
-	s.VersionLanguage = 0
-	s.VersionPriority = 0
-	s.ActiveTitleWord = ""
+	s.VersionLanguage = s.SavedVersionLanguage
+	s.VersionPriority = s.SavedVersionPriority
+	s.ManualVersion = false
+	s.UnclassifiedCount = 0
+	s.CollectionCount = 0
+	s.ShowAllVersions = false
+	s.ShowEpisodeDetails = false
+	s.ShowOriginalTitles = false
+	s.DownloadExistingChoice = true
+	s.TitleTemplateID = ""
+	s.TitleManualInput = false
+	s.TitleShowAllSamples = false
+	s.ActiveTitleWord, s.ActiveTitleRow = "", ""
 	s.Checked = map[string]bool{}
 	s.EditID = ""
 	s.Editing = false
@@ -472,6 +483,7 @@ func (s *State) openFollowedResources(id, from string) {
 			s.EditID = sub.ID
 			s.Backfill = true
 			s.ViewResources = true
+			s.VersionSetup = false
 			s.Rule = cloneRule(sub.Rule)
 			break
 		}
@@ -500,6 +512,7 @@ func (s *State) viewSubscriptionResources(id string) {
 	s.EditID = sub.ID
 	s.Backfill = true
 	s.ViewResources = true
+	s.VersionSetup = false
 	s.Rule = cloneRule(sub.Rule)
 	s.Notice = ""
 	s.loadDetail(true)
@@ -542,21 +555,22 @@ func (s *State) loadDetail(allowCache bool) {
 		s.historyCancel()
 	}
 	s.historyRevision++
-	ctx, cancel := context.WithCancel(s.Ctx)
-	s.detailCancel = cancel
 	s.detailRevision++
 	rev := s.detailRevision
 	id := s.AnimeID
+	origin := s.Source.Origin()
 	groupID := ""
 	if s.hasGroup() {
 		groupID = s.GroupIDs[s.Group]
 	}
+	ctx, cancel := context.WithCancel(s.Ctx)
+	s.detailCancel = cancel
 	if allowCache {
 		if cached, ok := s.cachedDetail(id); ok {
 			s.DetailLoading = false
 			s.GroupCountLoading = false
 			s.DetailError = ""
-			s.applyDetail(ctx, rev, id, groupID, cached, "")
+			s.applyDetail(id, cached, "", groupID)
 			if s.Core != nil {
 				coreClient, title := s.Core, cached.Anime.Title
 				go func() {
@@ -578,7 +592,6 @@ func (s *State) loadDetail(allowCache bool) {
 	s.DetailLoading = true
 	s.GroupCountLoading = false
 	s.DetailError = ""
-	origin := s.Source.Origin()
 	go func() {
 		d, err := s.Source.Detail(ctx, id)
 		folder := ""
@@ -595,12 +608,12 @@ func (s *State) loadDetail(allowCache bool) {
 				return
 			}
 			s.cacheDetail(id, origin, d)
-			s.applyDetail(ctx, rev, id, groupID, d, folder)
+			s.applyDetail(id, d, folder, groupID)
 		})
 	}()
 }
 
-func (s *State) applyDetail(ctx context.Context, rev uint64, id, groupID string, d source.Detail, folder string) {
+func (s *State) applyDetail(id string, d source.Detail, folder, previousGroupID string) {
 	a := fromAnime(d.Anime)
 	if old, ok := s.KnownAnime[id]; ok && a.Day < 0 {
 		a.Day = old.Day
@@ -620,10 +633,12 @@ func (s *State) applyDetail(ctx context.Context, rev uint64, id, groupID string,
 	s.Groups = nil
 	s.GroupIDs = nil
 	s.GroupCounts = nil
+	s.GroupPreviews = nil
 	for _, g := range d.Groups {
 		s.Groups = append(s.Groups, g.Name)
 		s.GroupIDs = append(s.GroupIDs, g.ID)
 		s.GroupCounts = append(s.GroupCounts, g.Count)
+		s.GroupPreviews = append(s.GroupPreviews, g.Preview)
 	}
 	if s.EditID != "" {
 		for _, sub := range s.Subscriptions {
@@ -631,79 +646,52 @@ func (s *State) applyDetail(ctx context.Context, rev uint64, id, groupID string,
 				for i, gid := range s.GroupIDs {
 					if gid == sub.GroupID {
 						s.Group = i
-						s.refreshHistory()
+						s.loadGroupHistory(i)
 						return
 					}
 				}
 			}
 		}
 	}
-	if groupID != "" {
-		if index := slices.Index(s.GroupIDs, groupID); index >= 0 {
+	if previousGroupID != "" {
+		if index := slices.Index(s.GroupIDs, previousGroupID); index >= 0 {
 			s.Group = index
-			s.refreshHistory()
+			s.loadGroupHistory(index)
 			return
 		}
 	}
 	s.Group = -1
 	if s.EditID == "" && len(d.Groups) > 0 {
-		s.selectLargestGroup(ctx, rev, id)
+		s.selectDefaultGroup()
 	}
 }
 
-func (s *State) selectLargestGroup(ctx context.Context, revision uint64, animeID string) {
-	counts := slices.Clone(s.GroupCounts)
-	ids := slices.Clone(s.GroupIDs)
-	histories := make([][]source.Resource, len(ids))
-	selectGroup := func() {
-		if ctx.Err() != nil || revision != s.detailRevision || s.AnimeID != animeID || s.Page != "detail" {
-			return
-		}
-		s.GroupCounts = counts
-		s.GroupCountLoading = false
-		if s.hasGroup() || s.ChoosingGroup || s.EditID != "" {
-			return
-		}
-		best := -1
-		for index, count := range counts {
-			if ids[index] != "" && count >= 0 && (best < 0 || count > counts[best]) {
-				best = index
-			}
-		}
-		if best >= 0 {
-			s.setGroup(best)
-			if histories[best] != nil {
-				s.setHistory(histories[best])
-			} else {
-				s.refreshHistory()
-			}
-		}
-	}
-	if !slices.Contains(counts, -1) {
-		selectGroup()
+func (s *State) selectDefaultGroup() {
+	s.GroupCountLoading = false
+	if s.hasGroup() || s.ChoosingGroup || s.EditID != "" {
 		return
 	}
-	s.GroupCountLoading = true
-	go func() {
-		var requests errgroup.Group
-		requests.SetLimit(4)
-		for index, count := range counts {
-			if count >= 0 || ctx.Err() != nil {
-				continue
-			}
-			requests.Go(func() error {
-				rows, err := s.Source.History(ctx, animeID, ids[index])
-				if err == nil {
-					counts[index], histories[index] = len(rows), rows
-				}
-				return nil
-			})
-		}
-		_ = requests.Wait()
-		if ctx.Err() == nil {
-			s.Update(selectGroup)
-		}
-	}()
+	best := s.bestDefaultGroup()
+	if best >= 0 {
+		s.setGroup(best)
+		s.loadGroupHistory(best)
+	}
+}
+
+func (s *State) loadGroupHistory(index int) {
+	if index < 0 || index >= len(s.GroupIDs) {
+		return
+	}
+	if index < len(s.GroupPreviews) && index < len(s.GroupCounts) &&
+		s.GroupCounts[index] >= 0 && len(s.GroupPreviews[index]) == s.GroupCounts[index] &&
+		(s.GroupCounts[index] > 0 || s.GroupPreviews[index] != nil) {
+		s.setHistory(s.GroupPreviews[index])
+		return
+	}
+	if index < len(s.GroupPreviews) && len(s.GroupPreviews[index]) > 0 {
+		s.setPreviewHistory(s.GroupPreviews[index])
+	}
+	s.refreshHistory()
 }
 
 func (s *State) chooseGroup(index int) {
@@ -715,7 +703,7 @@ func (s *State) chooseGroup(index int) {
 	}
 	if s.Group != index {
 		s.setGroup(index)
-		s.refreshHistory()
+		s.loadGroupHistory(index)
 	}
 	s.ChoosingGroup = false
 }
@@ -740,7 +728,15 @@ func (s *State) setGroup(index int) {
 	s.Suggestions = false
 	s.TitleSetup = false
 	s.TitleRuleDraft = Rule{}
-	s.ActiveTitleWord = ""
+	s.TitleTemplateID = ""
+	s.TitleManualInput = false
+	s.TitleShowAllSamples = false
+	s.ManualVersion = false
+	s.ShowAllVersions = false
+	s.ShowEpisodeDetails = false
+	s.DownloadExistingChoice = true
+	s.HistoryPreviewOnly = false
+	s.ActiveTitleWord, s.ActiveTitleRow = "", ""
 	s.Keyword = ""
 	s.ResourceScroll = ui.ScrollState{}
 	s.EpisodeFilter = ""
@@ -759,10 +755,13 @@ func (s *State) refreshHistory() {
 	s.historyRevision++
 	rev := s.historyRevision
 	animeID, groupID := s.AnimeID, s.GroupIDs[s.Group]
+	groupIndex := s.Group
 	s.HistoryLoading = true
 	s.HistoryError = ""
 	s.History = nil
-	s.ResourceList = nil
+	if !s.HistoryPreviewOnly {
+		s.ResourceList = nil
+	}
 	go func() {
 		rows, err := s.Source.History(ctx, animeID, groupID)
 		s.Update(func() {
@@ -771,23 +770,46 @@ func (s *State) refreshHistory() {
 			}
 			s.HistoryLoading = false
 			if err != nil {
+				s.HistoryPreviewOnly = false
+				s.ResourceList = nil
 				s.HistoryError = sourceErrorMessage(err)
 				return
+			}
+			if groupIndex >= 0 && groupIndex < len(s.GroupCounts) {
+				s.GroupCounts[groupIndex] = len(rows)
+			}
+			if groupIndex >= 0 && groupIndex < len(s.GroupPreviews) {
+				s.GroupPreviews[groupIndex] = rows
 			}
 			s.setHistory(rows)
 		})
 	}()
 }
 
+func buildResources(rows []source.Resource) []Resource {
+	list := make([]Resource, 0, len(rows))
+	for _, r := range rows {
+		version := core.ParseReleaseVersion(r.Title)
+		list = append(list, Resource{ID: r.ID, Title: r.Title, Published: r.Published, Episode: core.ParseEpisode(r.Title), Bytes: r.Size, MB: legacySizeMB(r.Size), Tokens: core.ReleaseTags(r.Title), Version: &version})
+	}
+	return list
+}
+
+func (s *State) setPreviewHistory(rows []source.Resource) {
+	s.HistoryPreviewOnly = true
+	s.HistoryError = ""
+	s.History = nil
+	s.ResourceList = buildResources(rows)
+	s.setupVersions()
+	s.initSelection()
+}
+
 func (s *State) setHistory(rows []source.Resource) {
+	s.HistoryPreviewOnly = false
 	s.HistoryLoading = false
 	s.HistoryError = ""
 	s.History = rows
-	s.ResourceList = nil
-	for _, r := range rows {
-		version := core.ParseReleaseVersion(r.Title)
-		s.ResourceList = append(s.ResourceList, Resource{ID: r.ID, Title: r.Title, Published: r.Published, Episode: core.ParseEpisode(r.Title), Bytes: r.Size, MB: legacySizeMB(r.Size), Tokens: core.ReleaseTags(r.Title), Version: &version})
-	}
+	s.ResourceList = buildResources(rows)
 	s.setupVersions()
 	s.initSelection()
 	s.Notice = fmt.Sprintf("已加载 %d 条历史资源", len(rows))

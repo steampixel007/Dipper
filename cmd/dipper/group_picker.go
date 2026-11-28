@@ -63,7 +63,11 @@ func (s *State) groupPicker(c *ui.Context) {
 				if index < len(s.GroupCounts) && s.GroupCounts[index] >= 0 {
 					count = fmt.Sprintf("%d 条资源", s.GroupCounts[index])
 				}
-				caption(c, count)
+				if summary := s.groupPreviewSummary(index); summary != "" {
+					caption(c, summary+" · "+count)
+				} else {
+					caption(c, count)
+				}
 			}).OnClick(func() { s.chooseGroup(index) }).Disabled(s.Busy || index >= len(s.GroupIDs) || s.GroupIDs[index] == "")
 		}
 	})

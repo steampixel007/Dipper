@@ -206,7 +206,7 @@ func (c *Client) Detail(ctx context.Context, animeID string) (Detail, error) {
 			count = -1
 		}
 		seen[id] = true
-		result.Groups = append(result.Groups, Group{ID: id, Name: name, Count: count})
+		result.Groups = append(result.Groups, Group{ID: id, Name: name, Count: count, Preview: resources})
 		return true
 	})
 	if parseErr != nil {
