@@ -129,6 +129,8 @@ type Saved struct {
 	SoftwareAutoDownload      bool
 	SoftwarePending           *softwarePending
 	SoftwareCheckedAt         time.Time
+	SavedVersionLanguage      core.SubtitleLanguage
+	SavedVersionPriority      versionPriority
 }
 type downloadEngine interface {
 	Snapshot() []downloader.Snapshot
@@ -148,17 +150,24 @@ type downloadEngine interface {
 
 var _ downloadEngine = (*downloader.Engine)(nil)
 
+type detailCacheKey struct {
+	Origin, AnimeID string
+}
+
 type State struct {
-	Core              *core.Core
-	Engine            downloadEngine
-	Source            *source.Client
-	Ctx               context.Context
-	Update            func(func())
-	Groups, GroupIDs  []string
-	GroupCounts       []int
-	GroupCountLoading bool
-	History           []source.Resource
-	ResourceList      []Resource
+	Core               *core.Core
+	Engine             downloadEngine
+	Source             *source.Client
+	Ctx                context.Context
+	Update             func(func())
+	Groups, GroupIDs   []string
+	GroupCounts        []int
+	GroupPreviews      [][]source.Resource
+	GroupCountLoading  bool
+	History            []source.Resource
+	HistoryPreviewOnly bool
+	ResourceList       []Resource
+	detailCache        map[detailCacheKey]source.Detail
 	// resourceHashes bridges a viewed resource to the info hash the core
 	// resolved for it, so resource rows match downloads by content identity.
 	resourceHashes                                     map[string]string
@@ -196,6 +205,16 @@ type State struct {
 	Versions                        []versionOption
 	VersionLanguage                 core.SubtitleLanguage
 	VersionPriority                 versionPriority
+	ManualVersion                   bool
+	UnclassifiedCount               int
+	CollectionCount                 int
+	ShowAllVersions                 bool
+	ShowEpisodeDetails              bool
+	ShowOriginalTitles              bool
+	DownloadExistingChoice          bool
+	TitleTemplateID                 string
+	TitleManualInput                bool
+	TitleShowAllSamples             bool
 	ActiveTitleWord, ActiveTitleRow string
 	Checked                         map[string]bool
 	Editing                         bool
@@ -326,7 +345,10 @@ func matchResource(resource Resource, rule Rule) (bool, string) {
 }
 
 func (s *State) initSelection() {
-	if s.Backfill || (s.VersionSetup && s.TitleSetup) {
+	if s.Backfill || (s.VersionSetup && s.TitleSetup && !hasTitleConditions(s.Rule)) {
+		return
+	}
+	if s.focusedVersionSetup() && !s.DownloadExistingChoice {
 		return
 	}
 	choices, _ := s.episodeChoices(s.matchingResources())

@@ -621,6 +621,10 @@ func (s *State) empty(c *ui.Context, title, body, button string, action func()) 
 
 func (s *State) detail(c *ui.Context) {
 	a := s.anime(s.AnimeID)
+	if s.focusedVersionSetup() {
+		s.focusedDetail(c, a)
+		return
+	}
 	_, height := c.Size()
 	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
 		if detailUsesPageScroll(c, a) {
@@ -683,6 +687,7 @@ func (s *State) detailHeader(c *ui.Context, a Anime) {
 							s.EditID = ""
 							s.Backfill = false
 							s.ViewResources = false
+							s.VersionSetup = true
 							s.ChoosingGroup = true
 							s.Group = -1
 							s.Checked = map[string]bool{}
@@ -724,7 +729,7 @@ func (s *State) detailOptions(c *ui.Context) {
 		s.detailGroups(c)
 		if s.detailReady() {
 			ui.Divider(c).Background(colors(c).line).Margin(2, 0)
-			if s.VersionSetup {
+			if s.VersionSetup && !s.Backfill && !s.ViewResources {
 				s.versionOptions(c)
 			} else if s.Suggestions {
 				heading(c, "你想要什么版本")
@@ -785,7 +790,7 @@ func (s *State) hasGroup() bool {
 }
 
 func (s *State) detailReady() bool {
-	return s.hasGroup() && !s.DetailLoading && !s.HistoryLoading && s.DetailError == "" && s.HistoryError == ""
+	return s.hasGroup() && !s.DetailLoading && !s.HistoryLoading && !s.HistoryPreviewOnly && s.DetailError == "" && s.HistoryError == ""
 }
 
 func (s *State) ruleEditor(c *ui.Context) {
@@ -923,8 +928,9 @@ func (s *State) quickFilter(c *ui.Context) {
 }
 
 func (s *State) preview(c *ui.Context, embedded bool) {
-	manual := s.VersionSetup && s.TitleSetup
-	if s.VersionSetup {
+	versionMode := s.VersionSetup && !s.Backfill && !s.ViewResources
+	manual := versionMode && s.TitleSetup
+	if versionMode {
 		if manual {
 			caption(c, "点原标题里的词，看含义和筛选结果。")
 		} else {
@@ -1129,28 +1135,7 @@ func (s *State) resourceRow(c *ui.Context, r Resource, episodeChoice bool) {
 				}
 			}
 			if d, idx, found := s.downloadForResource(r); found {
-				switch {
-				case d.Failed:
-					badge(c, "失败", colors(c).amber, colors(c).amberWash)
-				case d.Progress < 1 && d.Stopped:
-					badge(c, "已停止", colors(c).muted, colors(c).canvas)
-				case d.Progress < 1 && d.Paused:
-					badge(c, "已暂停", colors(c).muted, colors(c).canvas)
-				case d.Queued:
-					badge(c, "排队中", colors(c).muted, colors(c).canvas)
-				case d.Progress < 1:
-					badge(c, fmt.Sprintf("下载中 %d%%", int(d.Progress*100)), colors(c).blue, colors(c).blueWash)
-				default:
-					badge(c, "已有任务", colors(c).green, colors(c).greenWash)
-				}
-				if d.Progress >= 1 && !d.Failed {
-					quiet(c, "play-resource-"+r.ID, "播放", func() { s.playDownload(idx) }).Label("播放 "+r.ID).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Padding(3, 0).Disabled(s.Busy)
-					quiet(c, "open-resource-folder-"+r.ID, "打开文件夹", func() {
-						if s.OpenFolder != nil {
-							s.OpenFolder(d.Folder)
-						}
-					}).Label("打开文件夹 "+r.ID).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Padding(3, 0).Disabled(s.Busy || s.OpenFolder == nil)
-				}
+				s.resourceDownloadBadges(c, r, d, idx)
 			}
 			ui.Spacer(c)
 			if bytes := sizeBytes(r.Bytes, r.MB); bytes > 0 {
@@ -1191,84 +1176,130 @@ func (s *State) resourceRow(c *ui.Context, r Resource, episodeChoice bool) {
 	})
 }
 
+func (s *State) resourceDownloadBadges(c *ui.Context, r Resource, d Download, idx int) {
+	switch {
+	case d.Failed:
+		badge(c, "失败", colors(c).amber, colors(c).amberWash)
+	case d.Progress < 1 && d.Stopped:
+		badge(c, "已停止", colors(c).muted, colors(c).canvas)
+	case d.Progress < 1 && d.Paused:
+		badge(c, "已暂停", colors(c).muted, colors(c).canvas)
+	case d.Queued:
+		badge(c, "排队中", colors(c).muted, colors(c).canvas)
+	case d.Progress < 1:
+		badge(c, fmt.Sprintf("下载中 %d%%", int(d.Progress*100)), colors(c).blue, colors(c).blueWash)
+	default:
+		badge(c, "已有任务", colors(c).green, colors(c).greenWash)
+	}
+	if d.Progress >= 1 && !d.Failed {
+		quiet(c, "play-resource-"+r.ID, "播放", func() { s.playDownload(idx) }).Label("播放 "+r.ID).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Padding(3, 0).Disabled(s.Busy)
+		quiet(c, "open-resource-folder-"+r.ID, "打开文件夹", func() {
+			if s.OpenFolder != nil {
+				s.OpenFolder(d.Folder)
+			}
+		}).Label("打开文件夹 "+r.ID).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Padding(3, 0).Disabled(s.Busy || s.OpenFolder == nil)
+	}
+}
+
 func (s *State) detailFooter(c *ui.Context, embedded bool) {
 	var plan submissionPlan
-	if s.detailReady() {
+	if s.detailPreviewReady() {
 		plan = s.planSubmission()
 	}
 	resources := plan.New
 	_, height := c.Size()
+	focused := s.focusedVersionSetup()
 	render := func() {
-		ui.Column(c).Padding(14, 28).Gap(7).Background(colors(c).paper).BorderWidth(1, 0, 0, 0).BorderColor(colors(c).line).Children(func() {
-			ui.Row(c).Wrap().Gap(controlGap).Children(func() {
-				ui.Column(c).FillWidth().MinWidth(0).Gap(5).Children(func() {
-					title := fmt.Sprintf("本次下载 %d 个资源，%s", len(resources), resourceSizes(resources))
-					if len(resources) == 0 {
-						title = "本次不下载，只追后续更新"
+		outer := ui.Column(c).FillWidth().Padding(14, 28).Background(colors(c).paper).BorderWidth(1, 0, 0, 0).BorderColor(colors(c).line)
+		if focused && !embedded {
+			outer.AlignItems(ui.Center)
+		}
+		outer.Children(func() {
+			inner := ui.Column(c).FillWidth().Gap(7)
+			if focused && !embedded {
+				inner.MaxWidth(760)
+			}
+			inner.Children(func() {
+				ui.Row(c).FillWidth().Wrap().Gap(controlGap).AlignItems(ui.Center).Children(func() {
+					info := ui.Column(c).MinWidth(0).Gap(4)
+					if focused && !embedded {
+						info.Grow(1)
+					} else {
+						info.FillWidth()
 					}
-					if s.Editing {
-						title = "保存后，只下载以后发布的资源"
-					}
-					if s.Backfill {
-						title = fmt.Sprintf("本次下载 %d 个资源，%s", len(resources), resourceSizes(resources))
+					info.Children(func() {
+						title := fmt.Sprintf("本次下载 %d 个资源，%s", len(resources), resourceSizes(resources))
 						if len(resources) == 0 {
-							title = "请选择要下载的已有资源"
-							if plan.Incomplete+plan.Completed+plan.Failed > 0 {
-								title = "所选资源已有下载任务"
+							title = "本次不下载，只追后续更新"
+						}
+						if s.Editing {
+							title = "保存后，只下载以后发布的资源"
+						}
+						if s.Backfill {
+							title = fmt.Sprintf("本次下载 %d 个资源，%s", len(resources), resourceSizes(resources))
+							if len(resources) == 0 {
+								title = "请选择要下载的已有资源"
+								if plan.Incomplete+plan.Completed+plan.Failed > 0 {
+									title = "所选资源已有下载任务"
+								}
 							}
 						}
-					}
-					if !s.detailReady() {
-						title = "请先加载字幕组和资源"
-					} else if !s.canSaveDetailRule() {
-						title = "选好版本后即可追番"
-						if s.TitleSetup {
-							title = "添加标题条件后即可追番"
+						if !s.detailReady() {
+							if s.HistoryLoading && s.HistoryPreviewOnly {
+								title = "正在加载完整剧集…"
+							} else {
+								title = "请先加载字幕组和资源"
+							}
+						} else if !s.canSaveDetailRule() {
+							title = "选好版本后即可追番"
+							if s.TitleSetup {
+								title = "选择参考资源或添加标题条件后即可追番"
+							}
 						}
+						ui.Text(c, title).FontSize(textSize(c, textBody)).FontWeight(600)
+						if plan.Incomplete+plan.Completed+plan.Failed > 0 {
+							caption(c, fmt.Sprintf("已有任务：未完成 %d 个，已完成 %d 个，失败 %d 个", plan.Incomplete, plan.Completed, plan.Failed))
+						}
+						caption(c, "保存到："+s.targetFolder())
+					})
+					label := "下载并追番"
+					if len(resources) == 0 {
+						label = "开启自动追番"
 					}
-					ui.Text(c, title).FontSize(textSize(c, textBody)).FontWeight(600)
-					if plan.Incomplete+plan.Completed+plan.Failed > 0 {
-						caption(c, fmt.Sprintf("已有任务：未完成 %d 个，已完成 %d 个，失败 %d 个", plan.Incomplete, plan.Completed, plan.Failed))
+					if s.Editing {
+						label = "保存追番条件"
 					}
-					caption(c, "保存到："+s.targetFolder())
+					if s.Backfill {
+						label = "下载选中资源"
+					}
+					if s.Busy {
+						label = "正在提交…"
+					}
+					if plan.Failed > 0 {
+						quiet(c, "submission-recovery", "查看失败任务并重试", func() {
+							s.WordOpen, s.Suggestions = false, false
+							s.DownloadFilter = downloadsFailed
+							s.DownloadSearch = ""
+							s.enterPage("downloads")
+						}).Disabled(s.Busy)
+					}
+					if s.Editing {
+						quiet(c, "begin-backfill", "下载已有资源", s.beginBackfill).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Disabled(!s.detailReady() || s.Busy)
+					}
+					primary(c, "start-follow", label, s.commit).Disabled(!s.canSaveDetailRule() || s.Busy || (s.Backfill && len(resources) == 0))
 				})
-				label := "下载并追番"
-				if len(resources) == 0 {
-					label = "开启自动追番"
-				}
-				if s.Editing {
-					label = "保存追番条件"
-				}
 				if s.Backfill {
-					label = "下载选中资源"
+					if sub, ok := s.subscription(s.EditID); ok && sub.Paused {
+						caption(c, "追番已暂停；现在只会排队，恢复追番后开始下载。")
+					}
+				} else if !s.Editing && !s.ViewResources && !focused && textScale(c) <= 1 {
+					if s.Rule.Version != nil {
+						caption(c, "以后发布的同版本资源会自动下载。")
+					} else if !s.VersionSetup {
+						caption(c, "以后发布的资源会按这些标题条件自动下载。")
+					}
 				}
-				if s.Busy {
-					label = "正在提交…"
-				}
-				if plan.Failed > 0 {
-					quiet(c, "submission-recovery", "查看失败任务并重试", func() {
-						s.WordOpen, s.Suggestions = false, false
-						s.DownloadFilter = downloadsFailed
-						s.DownloadSearch = ""
-						s.enterPage("downloads")
-					}).Disabled(s.Busy)
-				}
-				if s.Editing {
-					quiet(c, "begin-backfill", "下载已有资源", s.beginBackfill).FontSize(textSize(c, textCaption)).TextColor(colors(c).blue).Disabled(!s.detailReady() || s.Busy)
-				}
-				primary(c, "start-follow", label, s.commit).Disabled(!s.canSaveDetailRule() || s.Busy || (s.Backfill && len(resources) == 0))
 			})
-			if s.Backfill {
-				if sub, ok := s.subscription(s.EditID); ok && sub.Paused {
-					caption(c, "追番已暂停；现在只会排队，恢复追番后开始下载。")
-				}
-			} else if !s.Editing && !s.ViewResources && textScale(c) <= 1 {
-				if s.Rule.Version != nil {
-					caption(c, "以后发布的同版本资源会自动下载。")
-				} else if !s.VersionSetup {
-					caption(c, "以后发布的资源会按这些标题条件自动下载。")
-				}
-			}
 		})
 	}
 	if embedded {

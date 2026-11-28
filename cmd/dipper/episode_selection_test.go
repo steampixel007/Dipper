@@ -38,6 +38,22 @@ func TestVersionSetupOneReleasePerEpisode(t *testing.T) {
 	requireSelection(defaults...)
 
 	tester := ui.NewTester(state.view, 1320, 1000)
+	if tester.HasText(original) || tester.HasText(revision) {
+		t.Fatal("episode details should start collapsed in focused watch-version setup")
+	}
+	uiClick(t, tester, "暂不下载已有集数，只自动追后续更新")
+	requireSelection()
+	uiClick(t, tester, "立即下载全部 4 个资源，并自动追后续更新")
+	requireSelection(defaults...)
+
+	uiClick(t, tester, "自选集数 / 查看明细 (4) ▾")
+	// Unknown-episode rows show their original title automatically; recognized
+	// episode rows stay compact until 显示原标题 or comparison opens them.
+	uiRequireText(t, tester, "[桜都字幕组] 学生会也有洞！ [预告][1080P][简繁内封]")
+	if tester.HasText(revision) {
+		t.Fatal("recognized episode should hide repetitive BT title before 显示原标题 is enabled")
+	}
+	uiClick(t, tester, "显示原标题")
 	if tester.HasText(original) {
 		t.Fatal("unselected alternative is visible before opening the episode")
 	}
@@ -54,7 +70,7 @@ func TestVersionSetupOneReleasePerEpisode(t *testing.T) {
 	uiRequireText(t, tester, revision)
 	state.OnlyMatches = true
 	tester.Frame()
-	uiClick(t, tester, "本集匹配 2 个版本 · 换一个")
+	uiClick(t, tester, "已选 v2 · 更换发布 (2)")
 	uiRequireText(t, tester, original, revision)
 	uiClick(t, tester, "选择 original")
 	chosen := []string{"original", "second-newer", "unknown-one", "unknown-two"}

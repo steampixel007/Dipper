@@ -24,7 +24,7 @@ func episodeRevision(resource Resource) int {
 }
 
 func (s *State) selectsOnePerEpisode() bool {
-	return s.VersionSetup && !s.Editing && !s.Backfill && s.Rule.Version != nil
+	return s.VersionSetup && !s.Editing && !s.Backfill && (s.Rule.Version != nil || (s.TitleSetup && hasTitleConditions(s.Rule)))
 }
 
 func (s *State) episodeChoices(matches []Resource) ([]Resource, map[string]Resource) {
