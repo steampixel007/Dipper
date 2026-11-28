@@ -85,9 +85,7 @@ func (s *State) openBrowseDetail(anime Anime) {
 		detail.loaded = true
 		return
 	}
-	if anime.Summary == "" {
-		s.loadBrowseSummary(detail)
-	}
+	s.loadBrowseSummary(detail)
 }
 
 func (s *State) closeBrowseDetail() {
@@ -285,7 +283,8 @@ func (s *State) browseDetailContent(c *ui.Context, detail *browseDetail) {
 						caption(c, "暂无简介")
 					}
 				})
-				if detail.loaded {
+				switch {
+				case detail.loaded:
 					ui.Column(c).Gap(12).Children(func() {
 						if len(detail.groups) > 0 {
 							heading(c, fmt.Sprintf("字幕组（%d）", len(detail.groups)))
@@ -302,6 +301,17 @@ func (s *State) browseDetailContent(c *ui.Context, detail *browseDetail) {
 							heading(c, "字幕组")
 							caption(c, "暂无字幕组发布资源")
 						}
+					})
+				case detail.loading && anime.Summary != "":
+					ui.Column(c).Gap(12).Children(func() {
+						heading(c, "字幕组")
+						caption(c, "正在加载字幕组…")
+					})
+				case detail.failed && anime.Summary != "":
+					ui.Column(c).Gap(12).Children(func() {
+						heading(c, "字幕组")
+						caption(c, "字幕组加载失败")
+						compactQuiet(c, "retry-browse-groups", "重新加载字幕组", func() { s.loadBrowseSummary(detail) }).AlignSelf(ui.Start)
 					})
 				}
 				if anime.BangumiURL != "" || anime.OfficialURL != "" {
