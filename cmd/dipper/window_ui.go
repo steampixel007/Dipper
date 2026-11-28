@@ -155,48 +155,49 @@ func (s *State) setCloseBehavior(value string) {
 }
 
 func (s *State) windowSettings(c *ui.Context) {
-	ui.Column(c).Gap(12).Padding(22).Background(colors(c).paper).Border(1, colors(c).line).Radius(10).Children(func() {
+	ui.Column(c).Gap(16).Children(func() {
 		heading(c, windowText.title)
 		if s.Platform == "darwin" {
 			caption(c, windowText.macDetail)
 		} else {
-			caption(c, windowText.closeLabel)
+			ui.Text(c, windowText.closeLabel).FontSize(textSize(c, textBody)).FontWeight(500).TextColor(colors(c).ink).LineHeight(1.5)
 			selected := normalizeCloseBehavior(s.CloseBehavior)
 			ui.RadioGroup(c, func() {
-				for _, choice := range []struct{ value, label string }{{closeAsk, windowText.ask}, {closeBackground, windowText.background}, {closeQuit, windowText.exitChoice}} {
-					ui.Radio(c.Key("close-"+choice.value), &selected, choice.value, choice.label).OnChange(func() { s.setCloseBehavior(selected) }).Disabled(s.Busy)
-				}
+				ui.Row(c).Wrap().Gap(24).Children(func() {
+					for _, choice := range []struct{ value, label string }{{closeAsk, windowText.ask}, {closeBackground, windowText.background}, {closeQuit, windowText.exitChoice}} {
+						ui.Radio(c.Key("close-"+choice.value), &selected, choice.value, choice.label).OnChange(func() { s.setCloseBehavior(selected) }).Disabled(s.Busy)
+					}
+				})
 			})
-			caption(c, windowText.backgroundDetail+windowText.quitDetail)
 			if !s.TrayAvailable {
-				caption(c, windowText.unavailable)
+				ui.Text(c, windowText.unavailable).FontSize(textSize(c, textMeta)).TextColor(colors(c).warningInk).LineHeight(1.5)
 			}
 		}
-		secondary(c, "quit", windowText.quit, s.exitApp).AlignSelf(ui.Start).FontSize(textSize(c, textCaption)).Disabled(s.Busy)
+		secondary(c, "quit", windowText.quit, s.exitApp).AlignSelf(ui.Start).Disabled(s.Busy)
 	})
 }
 
 func (s *State) closeDialog(c *ui.Context) {
+	pal := colors(c)
 	ui.DialogBase(c, &s.ClosePrompt, func(backdrop, panel ui.Element) {
-		backdrop.Background(colors(c).scrim).Transition(fadeTransition)
-		dialogContent(c, panel, "close-content", 510, func() {
-			ui.Text(c, windowText.question).FontSize(textSize(c, textTitle)).FontWeight(700)
+		backdrop.Background(pal.scrim).Transition(fadeTransition)
+		dialogContentWithFooter(c, panel, "close-content", 520, radiusSheet, func() {
+			pageTitle(c, windowText.question)
 			caption(c, windowText.backgroundDetail)
 			caption(c, windowText.quitDetail)
 			if !s.TrayAvailable {
-				ui.Text(c, windowText.unavailable).FontSize(textSize(c, textCaption)).TextColor(colors(c).amber).LineHeight(1.5)
+				ui.Text(c, windowText.unavailable).FontSize(textSize(c, textMeta)).TextColor(pal.warningInk).LineHeight(1.5)
 			} else if s.Platform == "windows" {
 				caption(c, windowText.overflow)
 			}
 			if s.SaveError != "" {
-				ui.Text(c, s.SaveError).FontSize(textSize(c, textCaption)).TextColor(colors(c).errorInk).LineHeight(1.5)
+				ui.Text(c, s.SaveError).FontSize(textSize(c, textMeta)).TextColor(pal.errorInk).LineHeight(1.5)
 			}
 			ui.Checkbox(c.Key("remember-close"), &s.RememberClose, windowText.remember).Disabled(s.Busy)
-			ui.Row(c).Wrap().Justify(ui.End).Gap(controlGap).Children(func() {
-				quiet(c, "cancel-close", windowText.cancel, func() { s.ClosePrompt = false })
-				secondary(c, "close-quit", windowText.quit, func() { s.finishClose(closeQuit, s.RememberClose) }).Disabled(s.Busy)
-				primary(c, "close-background", windowText.background, func() { s.finishClose(closeBackground, s.RememberClose) }).Disabled(s.Busy || !s.TrayAvailable)
-			})
+		}, func() {
+			quiet(c, "cancel-close", windowText.cancel, func() { s.ClosePrompt = false })
+			secondary(c, "close-quit", windowText.quit, func() { s.finishClose(closeQuit, s.RememberClose) }).Disabled(s.Busy)
+			primary(c, "close-background", windowText.background, func() { s.finishClose(closeBackground, s.RememberClose) }).Disabled(s.Busy || !s.TrayAvailable)
 		})
 	})
 }

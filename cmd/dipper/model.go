@@ -21,12 +21,15 @@ import (
 )
 
 type Anime struct {
-	ID      string `json:"id"`
-	Title   string `json:"title"`
-	Day     int    `json:"day"`
-	Cover   string `json:"cover"`
-	Source  string `json:"source"`
-	Summary string `json:"summary,omitempty"`
+	ID             string `json:"id"`
+	Title          string `json:"title"`
+	Day            int    `json:"day"`
+	Cover          string `json:"cover"`
+	Source         string `json:"source"`
+	Summary        string `json:"summary,omitempty"`
+	BroadcastStart string `json:"broadcastStart,omitempty"`
+	OfficialURL    string `json:"officialURL,omitempty"`
+	BangumiURL     string `json:"bangumiURL,omitempty"`
 }
 type Rule struct {
 	All     []string             `json:"all,omitempty"`
@@ -150,10 +153,6 @@ type downloadEngine interface {
 
 var _ downloadEngine = (*downloader.Engine)(nil)
 
-type detailCacheKey struct {
-	Origin, AnimeID string
-}
-
 type State struct {
 	Core               *core.Core
 	Engine             downloadEngine
@@ -167,7 +166,6 @@ type State struct {
 	History            []source.Resource
 	HistoryPreviewOnly bool
 	ResourceList       []Resource
-	detailCache        map[detailCacheKey]source.Detail
 	// resourceHashes bridges a viewed resource to the info hash the core
 	// resolved for it, so resource rows match downloads by content identity.
 	resourceHashes                                     map[string]string
@@ -176,11 +174,13 @@ type State struct {
 	SourceError, DetailError, HistoryError             string
 	EditID                                             string
 	LibraryID                                          string
+	LibraryReturn                                      string
 	LibraryMenuOpen                                    bool
 	ProposedFolder                                     string
 	Backfill                                           bool
 	ViewResources                                      bool
 	DetailReturn                                       string
+	detailCache                                        map[string]cachedDetail
 	catalogRevision, detailRevision, historyRevision   uint64
 	catalogCancel, detailCancel, historyCancel         context.CancelFunc
 	catalogFromDisk                                    bool
@@ -266,6 +266,7 @@ type State struct {
 	ApplyAppearance            func(string)
 	PickFolder                 func()
 	OpenFolder                 func(string)
+	OpenURL                    func(string)
 	PlayFile                   func(string) error
 	CopyText                   func(string)
 	Quit                       func()

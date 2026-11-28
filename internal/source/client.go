@@ -20,6 +20,9 @@ import (
 
 type Anime struct {
 	ID, Title, Cover, Summary, Day string
+	BroadcastStart                 string
+	OfficialURL                    string
+	BangumiURL                     string
 }
 
 type Group struct {

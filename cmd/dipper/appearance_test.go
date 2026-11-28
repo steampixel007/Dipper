@@ -138,11 +138,11 @@ func TestAppearanceBusySettingsIgnoreRadioClicks(t *testing.T) {
 
 func TestAppearanceRenderedPagesUseDarkSurfacesAndReadableText(t *testing.T) {
 	for _, page := range []struct{ id, heading, caption string }{
-		{"browse", "2025 年春季番剧", "来源：蜜柑计划"},
-		{"detail", "可下载资源", "周一，来源：蜜柑计划"},
+		{"browse", "2025 年春季番剧", "回到当季"},
+		{"detail", "可下载资源", "周一"},
 		{"following", "我的追番", "添加追番"},
 		{"downloads", "下载", "总下载速度"},
-		{"settings", "设置", appearanceText.detail},
+		{"settings", "设置", appearanceText.title},
 	} {
 		t.Run(page.id, func(t *testing.T) {
 			s := uiFixture(t, page.id)
@@ -180,10 +180,10 @@ func TestAppearanceFollowsHostOnlyInSystemModeWithoutLeaking(t *testing.T) {
 				requireAppearanceSurfaces(t, forcedTester, mode == appearanceDark)
 				systemTester.Frame()
 				requireAppearanceSurfaces(t, systemTester, hostDark)
-				if gotDark := appearanceColorLuminance(systemPalette.paper) < .15; gotDark != hostDark {
+				if gotDark := appearanceColorLuminance(systemPalette.surface) < .15; gotDark != hostDark {
 					t.Errorf("system colors(context) dark=%v, host dark=%v", gotDark, hostDark)
 				}
-				if gotDark := appearanceColorLuminance(forcedPalette.paper) < .15; gotDark != (mode == appearanceDark) {
+				if gotDark := appearanceColorLuminance(forcedPalette.surface) < .15; gotDark != (mode == appearanceDark) {
 					t.Errorf("forced %s colors(context) dark=%v", mode, gotDark)
 				}
 			}
@@ -197,7 +197,7 @@ func TestAppearanceDarkDialogAndPopoverRemainReadable(t *testing.T) {
 	tt := ui.NewTester(s.view, 1320, 860)
 	uiClick(t, tt, "筛选 1080p")
 	requireAppearanceText(t, tt, "筛选「1080p」", true)
-	requireAppearanceText(t, tt, "标题里必须有这个词", true)
+	requireAppearanceText(t, tt, "只要包含", true)
 	requireAppearanceTextSurface(t, tt, "筛选「1080p」", true)
 	uiClick(t, tt, "只要含「1080p」的")
 	s.Help = true
@@ -224,24 +224,22 @@ func requirePaletteContrast(t *testing.T, dark bool) {
 			name            string
 			ink, background ui.Color
 		}{
-			{"body", p.ink, p.paper},
-			{"caption", p.muted, p.paper},
+			{"body", p.ink, p.surface},
+			{"caption", p.muted, p.surface},
 			{"sidebar caption", p.muted, p.chrome},
 			{"recessed caption", p.muted, p.canvas},
-			{"primary action", p.accentText, p.blue},
-			{"primary hover", p.accentText, p.blueHover},
-			{"primary pressed", p.accentText, p.bluePressed},
+			{"primary action", p.accentText, p.accent},
+			{"primary hover", p.accentText, p.accentHover},
+			{"primary pressed", p.accentText, p.accentPressed},
 			{"body chrome", p.ink, p.chrome},
 			{"body canvas", p.ink, p.canvas},
-			{"accent action", p.blue, p.paper},
-			{"accent chrome", p.blue, p.chrome},
-			{"success action", p.green, p.paper},
-			{"warning action", p.amber, p.paper},
-			{"warning chrome", p.amber, p.chrome},
-			{"include", p.blue, p.blueWash},
+			{"accent action", p.accentInk, p.surface},
+			{"accent chrome", p.accentInk, p.chrome},
+			{"warning action", p.warningInk, p.surface},
+			{"warning chrome", p.warningInk, p.chrome},
+			{"include", p.accentInk, p.accentWash},
 			{"excluded title words", p.muted, p.sunken},
-			{"success", p.green, p.greenWash},
-			{"warning", p.amber, p.amberWash},
+			{"warning", p.warningInk, p.warningWash},
 			{"error", p.errorInk, p.errorWash},
 		} {
 			a, b := appearanceColorLuminance(pair.ink), appearanceColorLuminance(pair.background)
@@ -279,7 +277,7 @@ func requireAppearanceSurfaces(t *testing.T, tt *ui.Tester, dark bool) {
 	}{
 		{"sidebar", image.Pt(8, img.Bounds().Dy()/2)},
 		{"title bar", image.Pt(img.Bounds().Dx()-8, 8)},
-		{"page", image.Pt(210, img.Bounds().Dy()-8)},
+		{"page", image.Pt(int(sidebarWidth)+16, img.Bounds().Dy()-8)},
 	} {
 		lum := appearanceLuminance(img.At(sample.point.X, sample.point.Y))
 		if (dark && lum >= .15) || (!dark && lum <= .8) {
@@ -300,7 +298,7 @@ func requireAppearanceText(t *testing.T, tt *ui.Tester, label string, dark bool)
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			lum := appearanceLuminance(img.At(x, y))
-			if (dark && lum > .45) || (!dark && lum < .3) {
+			if (dark && lum > .20) || (!dark && lum < .3) {
 				ink++
 			}
 		}

@@ -204,15 +204,19 @@ func TestVersionSetupEndToEnd(t *testing.T) {
 				}
 				first, _ := versionTestTorrent(1)
 				second, _ := versionTestTorrent(2)
+				uiScrollTo(t, tt, "自选集数 / 查看明细 (2) ▾")
 				uiClick(t, tt, "自选集数 / 查看明细 (2) ▾")
+				uiScrollTo(t, tt, "选择 "+first)
 				uiClick(t, tt, "选择 "+first)
 				uiClick(t, tt, "下载并追番")
 				expected = append(expected, second)
 			} else {
+				uiScrollTo(t, tt, "都不是想要的？按原标题自选")
 				uiClick(t, tt, "都不是想要的？按原标题自选")
 				if s.canSaveDetailRule() {
 					t.Fatal("empty title rules can save a new subscription")
 				}
+				uiScrollTo(t, tt, "没有想要的？手动输入关键词 ›")
 				uiClick(t, tt, "没有想要的？手动输入关键词 ›")
 				uiScrollTo(t, tt, "查看标题词「CHS」")
 				uiClick(t, tt, "查看标题词「CHS」")
@@ -222,9 +226,12 @@ func TestVersionSetupEndToEnd(t *testing.T) {
 				uiScrollTo(t, tt, "标题关键词")
 				uiClick(t, tt, "标题关键词")
 				tt.Type("样片")
+				uiScrollTo(t, tt, "不要这个词")
 				uiClick(t, tt, "不要这个词")
+				uiScrollTo(t, tt, "标题关键词")
 				uiClick(t, tt, "标题关键词")
 				tt.Type("07")
+				uiScrollTo(t, tt, "只要这个词")
 				uiClick(t, tt, "只要这个词")
 				if s.countRuleMatches(s.Rule) != 0 || !s.canSaveDetailRule() {
 					t.Fatal("zero historical matches should permit a future-only subscription")

@@ -75,10 +75,9 @@ func TestUISettingsShowsOnlyXIU2AsDefaultTrackerSource(t *testing.T) {
 	s.trackerAutomatic = trackers.List{URLs: []string{address}}
 	tt := ui.NewTester(s.view, 1040, 720)
 	uiScrollTo(t, tt, "管理地址")
-	uiRequireText(t, tt, "查找下载来源", "下载时，Dipper 会用这些地址查找正在分享文件的人。平时保留默认设置即可。")
+	uiRequireText(t, tt, "查找下载来源", "管理地址")
 	uiClick(t, tt, "管理地址")
-	uiRequireText(t, tt, "查找下载来源", "Dipper 推荐清单", "1 个地址 · 自动更新 · 来自 XIU2",
-		"保存后，新任务会使用这份设置。已有任务会在重开 Dipper 后完全应用。")
+	uiRequireText(t, tt, "查找下载来源", "Dipper 推荐清单", "1 个地址 · 自动更新 · 来自 XIU2")
 	if tt.HasText("默认地址") {
 		t.Fatal("manager still shows a separate default address list")
 	}

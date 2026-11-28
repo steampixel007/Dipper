@@ -56,7 +56,7 @@ func (s *State) sourceLabel(origin string) string {
 }
 
 func newState(dir string) *State {
-	s := &State{Dir: dir, ConfigDir: dir, Platform: runtime.GOOS, Appearance: appearanceLight, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, detailCache: map[detailCacheKey]source.Detail{}, DownloadExistingChoice: true, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes, SoftwareAuto: true, SoftwareClient: update.NewClient(), SoftwareExecutable: os.Executable, OpenSoftwareFile: update.OpenDownloaded}
+	s := &State{Dir: dir, ConfigDir: dir, Platform: runtime.GOOS, Appearance: appearanceLight, CloseBehavior: closeAsk, Page: "browse", Day: -1, Group: -1, Checked: map[string]bool{}, KnownAnime: map[string]Anime{}, detailCache: map[string]cachedDetail{}, DownloadExistingChoice: true, Ctx: context.Background(), SourceRoutes: defaultSourceRoutes, SoftwareAuto: true, SoftwareClient: update.NewClient(), SoftwareExecutable: os.Executable, OpenSoftwareFile: update.OpenDownloaded}
 	if dir != "" {
 		s.CoverDir = filepath.Join(dir, "covers")
 	}
@@ -95,7 +95,33 @@ func fromAnime(a source.Anime) Anime {
 	if n, err := strconv.Atoi(a.Day); err == nil {
 		day = n
 	}
-	return Anime{ID: a.ID, Title: a.Title, Cover: a.Cover, Day: day, Source: "蜜柑计划", Summary: a.Summary}
+	return Anime{
+		ID:             a.ID,
+		Title:          a.Title,
+		Cover:          a.Cover,
+		Day:            day,
+		Source:         "蜜柑计划",
+		Summary:        a.Summary,
+		BroadcastStart: a.BroadcastStart,
+		OfficialURL:    a.OfficialURL,
+		BangumiURL:     a.BangumiURL,
+	}
+}
+
+func mergeAnimeDetails(target, existing Anime) Anime {
+	if target.Summary == "" {
+		target.Summary = existing.Summary
+	}
+	if target.BroadcastStart == "" {
+		target.BroadcastStart = existing.BroadcastStart
+	}
+	if target.OfficialURL == "" {
+		target.OfficialURL = existing.OfficialURL
+	}
+	if target.BangumiURL == "" {
+		target.BangumiURL = existing.BangumiURL
+	}
+	return target
 }
 
 func (s *State) refreshCatalog() {
@@ -153,8 +179,7 @@ func (s *State) refreshCatalog() {
 func (s *State) setCatalog(key catalogKey, rows []source.Anime) {
 	s.Catalog = make([]Anime, 0, len(rows))
 	for _, row := range rows {
-		anime := fromAnime(row)
-		anime.Summary = s.KnownAnime[row.ID].Summary
+		anime := mergeAnimeDetails(fromAnime(row), s.KnownAnime[row.ID])
 		s.Catalog = append(s.Catalog, anime)
 		s.KnownAnime[row.ID] = anime
 	}
@@ -377,31 +402,19 @@ func (s *State) switchSourceRoute(label string) {
 			}
 			s.SourceRouteError = ""
 			s.Notice = "已切换线路，现有追番不受影响。"
+			s.detailCache = nil
 			s.save()
 			s.refreshCatalog()
 		})
 	}()
 }
 
-func (s *State) cacheDetail(origin, id string, d source.Detail) {
-	if origin == "" || id == "" {
-		return
+func (s *State) prepareAnimeDetail(id, from string) {
+	if s.browseDetail != nil && s.browseDetail.cancel != nil {
+		s.browseDetail.cancel()
+		s.browseDetail.cancel = nil
+		s.browseDetail.loading = false
 	}
-	if s.detailCache == nil {
-		s.detailCache = map[detailCacheKey]source.Detail{}
-	}
-	s.detailCache[detailCacheKey{Origin: origin, AnimeID: id}] = d
-}
-
-func (s *State) cachedDetail(origin, id string) (source.Detail, bool) {
-	if origin == "" || id == "" || s.detailCache == nil {
-		return source.Detail{}, false
-	}
-	d, ok := s.detailCache[detailCacheKey{Origin: origin, AnimeID: id}]
-	return d, ok
-}
-
-func (s *State) resetAnimeDetail(id, from string) {
 	s.AnimeID = id
 	s.Page = "detail"
 	s.Group = -1
@@ -456,15 +469,15 @@ func (s *State) resetAnimeDetail(id, from string) {
 }
 
 func (s *State) openAnime(id, from string) {
-	s.resetAnimeDetail(id, from)
-	s.refreshDetail()
+	s.prepareAnimeDetail(id, from)
+	s.loadDetail(true)
 }
 
 // openFollowedResources opens an anime that already has a follow straight
 // into its resource list; anime without a follow fall back to the normal
 // version-selection flow.
 func (s *State) openFollowedResources(id, from string) {
-	s.resetAnimeDetail(id, from)
+	s.prepareAnimeDetail(id, from)
 	for _, sub := range s.Subscriptions {
 		if sub.AnimeID == id {
 			s.EditID = sub.ID
@@ -475,7 +488,7 @@ func (s *State) openFollowedResources(id, from string) {
 			break
 		}
 	}
-	s.refreshDetail()
+	s.loadDetail(true)
 }
 
 func (s *State) editSubscription(id string) {
@@ -483,11 +496,11 @@ func (s *State) editSubscription(id string) {
 	if !ok {
 		return
 	}
-	s.resetAnimeDetail(sub.AnimeID, "following")
+	s.prepareAnimeDetail(sub.AnimeID, "following")
 	s.EditID = sub.ID
 	s.Editing = true
 	s.Rule = cloneRule(sub.Rule)
-	s.refreshDetail()
+	s.loadDetail(true)
 }
 
 func (s *State) viewSubscriptionResources(id string) {
@@ -495,31 +508,43 @@ func (s *State) viewSubscriptionResources(id string) {
 	if !ok {
 		return
 	}
-	s.resetAnimeDetail(sub.AnimeID, "following")
+	s.prepareAnimeDetail(sub.AnimeID, "following")
 	s.EditID = sub.ID
 	s.Backfill = true
 	s.ViewResources = true
 	s.VersionSetup = false
 	s.Rule = cloneRule(sub.Rule)
 	s.Notice = ""
-	s.refreshDetail()
+	s.loadDetail(true)
 }
 
 // openLibrary shows one follow's episode library: the anime's downloaded
 // episodes, ready to play. The resource view behind it stays the way to pick
 // releases or change the rule.
 func (s *State) openLibrary(id string) {
+	s.openLibraryFrom(id, "following")
+}
+
+func (s *State) openLibraryFrom(id, from string) {
 	_, ok := s.subscription(id)
 	if !ok {
 		return
 	}
+	if from != browseDetailReturn {
+		s.closeBrowseDetail()
+	}
 	s.LibraryID = id
+	s.LibraryReturn = from
 	s.LibraryMenuOpen = false
 	s.Page = "episodes"
 	s.Notice = ""
 }
 
 func (s *State) refreshDetail() {
+	s.loadDetail(false)
+}
+
+func (s *State) loadDetail(allowCache bool) {
 	if s.Source == nil {
 		return
 	}
@@ -538,21 +563,32 @@ func (s *State) refreshDetail() {
 	if s.hasGroup() {
 		groupID = s.GroupIDs[s.Group]
 	}
-	if s.DetailError == "" {
-		if cached, ok := s.cachedDetail(origin, id); ok {
-			folder := ""
-			if s.Core != nil {
-				folder, _ = s.Core.PreviewDirectory(core.Anime{ID: id, Title: cached.Anime.Title})
-			}
+	ctx, cancel := context.WithCancel(s.Ctx)
+	s.detailCancel = cancel
+	if allowCache {
+		if cached, ok := s.cachedDetail(id); ok {
 			s.DetailLoading = false
 			s.GroupCountLoading = false
 			s.DetailError = ""
-			s.applyDetail(id, cached, folder, groupID)
+			s.applyDetail(id, cached, "", groupID)
+			if s.Core != nil {
+				coreClient, title := s.Core, cached.Anime.Title
+				go func() {
+					folder, _ := coreClient.PreviewDirectory(core.Anime{ID: id, Title: title})
+					if ctx.Err() != nil {
+						return
+					}
+					s.Update(func() {
+						if rev != s.detailRevision || s.AnimeID != id {
+							return
+						}
+						s.ProposedFolder = folder
+					})
+				}()
+			}
 			return
 		}
 	}
-	ctx, cancel := context.WithCancel(s.Ctx)
-	s.detailCancel = cancel
 	s.DetailLoading = true
 	s.GroupCountLoading = false
 	s.DetailError = ""
@@ -571,7 +607,7 @@ func (s *State) refreshDetail() {
 				s.DetailError = sourceErrorMessage(err)
 				return
 			}
-			s.cacheDetail(origin, id, d)
+			s.cacheDetail(id, origin, d)
 			s.applyDetail(id, d, folder, groupID)
 		})
 	}()
@@ -583,6 +619,16 @@ func (s *State) applyDetail(id string, d source.Detail, folder, previousGroupID 
 		a.Day = old.Day
 	}
 	s.KnownAnime[id] = a
+	if s.browseDetail != nil && s.browseDetail.anime.ID == id {
+		s.browseDetail.anime.Summary = a.Summary
+		s.browseDetail.anime.BroadcastStart = a.BroadcastStart
+		s.browseDetail.anime.OfficialURL = a.OfficialURL
+		s.browseDetail.anime.BangumiURL = a.BangumiURL
+		s.browseDetail.groups = slices.Clone(d.Groups)
+		s.browseDetail.loaded = true
+		s.browseDetail.loading = false
+		s.browseDetail.failed = false
+	}
 	s.ProposedFolder = folder
 	s.Groups = nil
 	s.GroupIDs = nil

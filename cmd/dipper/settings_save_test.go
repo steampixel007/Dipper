@@ -140,6 +140,17 @@ func TestUISettingsDownloadLimitKeepsIndependentSettings(t *testing.T) {
 	}
 }
 
+func TestUITransferLimitCaptionFocusesInput(t *testing.T) {
+	s := uiFixture(t, "settings")
+	s.TransferLimits.upload = limitInput{}
+	tt := ui.NewTester(s.transferSettings, 600, 460)
+	uiClick(t, tt, "全局上传上限")
+	tt.Type("2.5")
+	if got := s.TransferLimits.upload.value; got != "2.5" {
+		t.Fatalf("typing after clicking the upload caption entered %q, want 2.5", got)
+	}
+}
+
 func TestUITransferLimitsPersistAndRetainFiniteValues(t *testing.T) {
 	kernel, err := core.Open(filepath.Join(t.TempDir(), "dipper.db"), core.Options{DisableScheduler: true})
 	if err != nil {

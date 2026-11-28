@@ -85,7 +85,7 @@ func TestUIFollowingViewResourcesFixtureBackReturnsToFollowing(t *testing.T) {
 	tester := ui.NewTester(state.view, 1320, 860)
 	uiClick(t, tester, "打开追番 "+sub.GroupName)
 	uiClick(t, tester, "更多操作")
-	uiClick(t, tester, "查看资源 "+sub.GroupName)
+	uiClick(t, tester, "查看资源")
 	uiRequireText(t, tester, "我的追番 / 查看资源", "已追番资源", "返回我的追番")
 	uiClick(t, tester, "返回我的追番")
 	if state.Page != "following" {
@@ -113,7 +113,7 @@ func TestUIFollowingViewResourcesManualSelectionAndReturn(t *testing.T) {
 	tester := ui.NewTester(state.view, 1320, 860)
 	uiClick(t, tester, "打开追番 "+sub.GroupName)
 	uiClick(t, tester, "更多操作")
-	uiClick(t, tester, "查看资源 "+sub.GroupName)
+	uiClick(t, tester, "查看资源")
 	if state.Page != "detail" || !state.ViewResources || !state.Backfill || state.EditID != sub.ID || state.DetailReturn != "following" {
 		t.Fatalf("wrong view state: page=%q view=%v backfill=%v id=%q return=%q", state.Page, state.ViewResources, state.Backfill, state.EditID, state.DetailReturn)
 	}
@@ -136,7 +136,7 @@ func TestUIFollowingViewResourcesManualSelectionAndReturn(t *testing.T) {
 			t.Fatal("view mode auto-selected a resource")
 		}
 	}
-	uiRequireText(t, tester, "我的追番 / 查看资源", "已追番资源", "下载选中资源", "不会修改追番条件", "返回我的追番")
+	uiRequireText(t, tester, "我的追番 / 查看资源", "已追番资源", "下载选中资源", "返回我的追番")
 	uiClick(t, tester, "返回我的追番")
 	if state.Page != "following" {
 		t.Fatalf("back did not return to following: page=%q", state.Page)
@@ -161,7 +161,7 @@ func TestUIFollowingViewResourcesAllowsExplicitBackfillSelection(t *testing.T) {
 	tester := ui.NewTester(state.view, 1320, 860)
 	uiClick(t, tester, "打开追番 "+sub.GroupName)
 	uiClick(t, tester, "更多操作")
-	uiClick(t, tester, "查看资源 "+sub.GroupName)
+	uiClick(t, tester, "查看资源")
 	if !state.ViewResources || !state.Backfill {
 		t.Fatalf("wrong view state: view=%v backfill=%v", state.ViewResources, state.Backfill)
 	}
@@ -186,7 +186,7 @@ func TestUIFollowingViewResourcesAllowsExplicitBackfillSelection(t *testing.T) {
 		t.Fatal("manual selection did not apply")
 	}
 	uiClick(t, tester, "下载选中资源")
-	uiRequireText(t, tester, "本次下载 1 个资源", "勾选要下载的资源。筛选不会修改追番条件。")
+	uiRequireText(t, tester, "本次下载 1 个资源", "已追番资源")
 }
 
 func TestUIFollowedResourceViewKeepsSavedGroupAndRule(t *testing.T) {

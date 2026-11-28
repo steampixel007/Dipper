@@ -111,7 +111,12 @@ failure means the page structure changed and retrying will not help.
 Detail pages provide an optional synopsis in the direct `.header2-desc` child
 of the desktop `.central-container`. It is normalized as plain text and kept
 in `Anime.Summary`; descriptions inside individual resource entries are not
-anime synopses. A missing synopsis is valid and does not block subtitle groups.
+anime synopses. Detail metadata rows (`.bangumi-info`) also provide optional
+premiere dates (`放送开始：`, kept in `Anime.BroadcastStart`) and external links
+(`官方网站：` and `Bangumi番组计划链接：`, validated as absolute HTTP(S) URLs
+without userinfo and kept in `Anime.OfficialURL` and `Anime.BangumiURL`).
+Missing or unsafe optional metadata is ignored and does not block subtitle
+groups.
 
 The catalog and history parsers are positional: they read a table's rows and
 cells by their place in the markup. This is why `testdata/` holds saved pages —

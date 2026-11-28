@@ -285,7 +285,7 @@ func (s *State) focusedTitleSetup(c *ui.Context) {
 	pal := colors(c)
 	ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
 		if len(s.Versions) > 0 {
-			quiet(c, "switch-recommendation", "← 返回版本推荐", func() { s.switchVersionMode(false) }).FontSize(textSize(c, textCaption)).TextColor(pal.blue).Padding(2, 0)
+			compactQuiet(c, "switch-recommendation", "← 返回版本推荐", func() { s.switchVersionMode(false) }).TextColor(pal.accentInk)
 		}
 		ui.Spacer(c)
 		s.focusedGroupStrip(c)
@@ -320,10 +320,10 @@ func (s *State) focusedTitleSamplePicker(c *ui.Context) {
 				item := sample
 				btn := ui.ButtonBase(c.Key(fmt.Sprintf("title-sample-%d-%s", i, item.ID))).
 					Label("选择模板 "+item.Title).
-					Column().FillWidth().AlignItems(ui.Start).Gap(5).Padding(11, 13).Radius(8).
+					Column().FillWidth().AlignItems(ui.Start).Gap(6).Padding(12, 16).Radius(radiusControl).
 					Border(1, pal.line).Background(pal.canvas).Cursor(ui.CursorPointer)
 				if btn.Hovered() {
-					btn.BorderColor(pal.blue).Background(pal.blueWash)
+					btn.BorderColor(pal.accent).Background(pal.accentWash)
 				}
 				tactile(btn).Children(func() {
 					ui.Text(c, item.Title).FontSize(textSize(c, textBody)).LineHeight(1.5).TextColor(pal.ink)
@@ -339,7 +339,7 @@ func (s *State) focusedTitleSamplePicker(c *ui.Context) {
 							caption(c, byteSizeText(bytes))
 						}
 						ui.Spacer(c)
-						ui.Text(c, "照这条追番 ›").FontSize(textSize(c, textCaption)).TextColor(pal.blue)
+						ui.Text(c, "照这条追番 ›").FontSize(textSize(c, textControl)).FontWeight(500).TextColor(pal.accentInk)
 					})
 				}).OnClick(func() { s.pickTitleSample(item.Resource) })
 			}
@@ -350,10 +350,10 @@ func (s *State) focusedTitleSamplePicker(c *ui.Context) {
 				if s.TitleShowAllSamples {
 					toggleLabel = fmt.Sprintf("只看代表样本（%d 类）", len(samples))
 				}
-				quiet(c, "toggle-all-samples", toggleLabel, func() { s.TitleShowAllSamples = !s.TitleShowAllSamples }).FontSize(textSize(c, textCaption)).TextColor(pal.muted).Padding(2, 0)
+				compactQuiet(c, "toggle-all-samples", toggleLabel, func() { s.TitleShowAllSamples = !s.TitleShowAllSamples }).TextColor(pal.muted)
 			}
 			ui.Spacer(c)
-			quiet(c, "manual-title-input", "没有想要的？手动输入关键词 ›", func() { s.TitleManualInput = true }).FontSize(textSize(c, textCaption)).TextColor(pal.blue).Padding(2, 0)
+			compactQuiet(c, "manual-title-input", "没有想要的？手动输入关键词 ›", func() { s.TitleManualInput = true }).TextColor(pal.accentInk)
 		})
 	})
 }
@@ -370,36 +370,36 @@ func (s *State) focusedTitleRuleCard(c *ui.Context) {
 			}
 			ui.Spacer(c)
 			if len(s.UndoFilters) > 0 {
-				quiet(c, "undo-filter", "撤销", s.undoFilter).FontSize(textSize(c, textCaption)).TextColor(pal.blue).Padding(2, 0)
+				compactQuiet(c, "undo-filter", "撤销", s.undoFilter).TextColor(pal.accentInk)
 			}
 			if len(s.RedoFilters) > 0 {
-				quiet(c, "redo-filter", "重做", s.redoFilter).FontSize(textSize(c, textCaption)).TextColor(pal.blue).Padding(2, 0)
+				compactQuiet(c, "redo-filter", "重做", s.redoFilter).TextColor(pal.accentInk)
 			}
 			if len(s.resources()) > 0 {
-				quiet(c, "repick-title-sample", "重选一条", func() {
+				compactQuiet(c, "repick-title-sample", "重选一条", func() {
 					s.TitleTemplateID = ""
 					s.TitleManualInput = false
 					s.Rule = Rule{}
 					s.Checked = map[string]bool{}
 					s.ActiveTitleWord, s.ActiveTitleRow = "", ""
 					s.FilterFeedback = ""
-				}).FontSize(textSize(c, textCaption)).TextColor(pal.blue).Padding(2, 0)
+				}).TextColor(pal.accentInk)
 			}
 		})
 
 		if hasTemplate {
-			ui.Column(c).FillWidth().Padding(10, 12).Gap(4).Radius(8).Background(pal.canvas).Children(func() {
+			ui.Column(c).FillWidth().Padding(12, 16).Gap(6).Radius(radiusControl).Background(pal.canvas).Children(func() {
 				if s.TitleManualInput {
 					caption(c, "点击下面标题里的任意词，可查看含义或加入包含 / 排除条件：")
 					s.originalTitle(c, template)
 				} else {
-					ui.Text(c, template.Title).FontSize(textSize(c, textCaption)).LineHeight(1.5).TextColor(pal.muted)
+					ui.Text(c, template.Title).FontSize(textSize(c, textMeta)).LineHeight(1.5).TextColor(pal.muted)
 				}
 			})
 		}
 
 		if hasTitleConditions(s.Rule) {
-			ui.Row(c).Wrap().Gap(6).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
 				for i, word := range s.Rule.All {
 					w := word
 					key := fmt.Sprintf("want-chip-%d", i)
@@ -410,15 +410,15 @@ func (s *State) focusedTitleRuleCard(c *ui.Context) {
 				for i, word := range s.Rule.None {
 					w := word
 					key := fmt.Sprintf("avoid-chip-%d", i)
-					secondary(c, key+"-btn", "不要 "+w+" ×", func() { s.setWord(w, wordUnrestricted) }).FontSize(textSize(c, textCaption)).Padding(6, 10).Background(pal.sunken).TextColor(pal.muted)
+					compactSecondary(c, key+"-btn", "不要 "+w+" ×", func() { s.setWord(w, wordUnrestricted) }).Background(pal.sunken).TextColor(pal.muted)
 				}
 				for idx, g := range s.Rule.Any {
 					groupIndex := idx
-					secondary(c, fmt.Sprintf("any-chip-%d", idx), "任一："+strings.Join(g, " / ")+" ×", func() {
+					compactSecondary(c, fmt.Sprintf("any-chip-%d", idx), "任一："+strings.Join(g, " / ")+" ×", func() {
 						rule := cloneRule(s.Rule)
 						rule.Any = slices.Delete(rule.Any, groupIndex, groupIndex+1)
 						s.applyRule(rule, "移除任意词组")
-					}).FontSize(textSize(c, textCaption)).Padding(6, 10).Background(pal.blueWash).BorderColor(pal.blue).TextColor(pal.blue)
+					}).Background(pal.accentWash).BorderColor(pal.accent).TextColor(pal.accentInk)
 				}
 			})
 		} else {
@@ -433,7 +433,7 @@ func (s *State) focusedTitleRuleCard(c *ui.Context) {
 		if s.TitleManualInput {
 			tuneLabel = "▾ 收起微调"
 		}
-		quiet(c, "toggle-title-tune", tuneLabel, func() { s.TitleManualInput = !s.TitleManualInput }).FontSize(textSize(c, textCaption)).TextColor(pal.blue).AlignSelf(ui.Start)
+		compactQuiet(c, "toggle-title-tune", tuneLabel, func() { s.TitleManualInput = !s.TitleManualInput }).TextColor(pal.accentInk).AlignSelf(ui.Start)
 
 		if s.TitleManualInput || !hasTitleConditions(s.Rule) {
 			ui.Divider(c).Background(pal.line)
@@ -443,29 +443,29 @@ func (s *State) focusedTitleRuleCard(c *ui.Context) {
 				limit := min(8, len(sampleRows))
 				ui.Column(c).FillWidth().Gap(8).Children(func() {
 					for _, sample := range sampleRows[:limit] {
-						ui.Column(c).FillWidth().Padding(8, 10).Radius(6).Background(pal.canvas).Children(func() {
+						ui.Column(c).FillWidth().Padding(10, 12).Radius(radiusSmall).Background(pal.canvas).Children(func() {
 							s.originalTitle(c, sample.Resource)
 						})
 					}
 				})
 			}
-			ui.Column(c).FillWidth().Gap(8).Children(func() {
+			ui.Column(c).FillWidth().Gap(10).Children(func() {
 				ui.Row(c).Wrap().Gap(controlGap).AlignItems(ui.Center).Children(func() {
-					ui.TextInput(c.Key("keyword"), &s.Keyword).Label("标题关键词").Placeholder("输入标题中的词").Grow(1).MinWidth(200).MinHeight(inputHeight(c))
-					secondary(c, "want-custom", "只要这个词", func() { s.setWord(s.Keyword, wordWant); s.Keyword = "" }).FontSize(textSize(c, textCaption)).Padding(6, 10).TextColor(pal.blue).Disabled(strings.TrimSpace(s.Keyword) == "")
-					secondary(c, "avoid-custom", "不要这个词", func() { s.setWord(s.Keyword, wordAvoid); s.Keyword = "" }).FontSize(textSize(c, textCaption)).Padding(6, 10).TextColor(pal.muted).Disabled(strings.TrimSpace(s.Keyword) == "")
+					ui.TextInput(c.Key("keyword"), &s.Keyword).Label("标题关键词").Placeholder("输入标题中的词").Grow(1).MinWidth(200).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface)
+					compactSecondary(c, "want-custom", "只要这个词", func() { s.setWord(s.Keyword, wordWant); s.Keyword = "" }).TextColor(pal.accentInk).Disabled(strings.TrimSpace(s.Keyword) == "")
+					compactSecondary(c, "avoid-custom", "不要这个词", func() { s.setWord(s.Keyword, wordAvoid); s.Keyword = "" }).TextColor(pal.muted).Disabled(strings.TrimSpace(s.Keyword) == "")
 				})
 				ui.Row(c).Wrap().Gap(12).Children(func() {
-					quiet(c, "toggle-aliases", "添加同义写法", func() { s.ShowAliases = !s.ShowAliases }).FontSize(textSize(c, textCaption)).TextColor(pal.blue).Padding(2, 0)
+					compactQuiet(c, "toggle-aliases", "添加同义写法", func() { s.ShowAliases = !s.ShowAliases }).TextColor(pal.accentInk)
 					if hasTitleConditions(s.Rule) {
-						quiet(c, "clear-rules", "重置全部条件", func() { s.applyRule(Rule{}, "重置全部条件"); s.WordOpen = false }).FontSize(textSize(c, textCaption)).TextColor(pal.muted).Padding(2, 0)
+						compactQuiet(c, "clear-rules", "重置全部条件", func() { s.applyRule(Rule{}, "重置全部条件"); s.WordOpen = false }).TextColor(pal.muted)
 					}
 				})
 				if s.ShowAliases {
 					caption(c, "用 / 分隔同一类标签的不同写法，例如：简日内嵌 / CHS。")
 					ui.Row(c).Wrap().Gap(controlGap).AlignItems(ui.Center).Children(func() {
-						ui.TextInput(c.Key("aliases"), &s.AnyDraft).Label("同义写法").Placeholder("简日内嵌 / CHS").Grow(1).MinWidth(200).MinHeight(inputHeight(c))
-						secondary(c, "add-alias-group", "添加这组写法", s.addAliases).FontSize(textSize(c, textCaption)).Padding(6, 10).Disabled(strings.TrimSpace(s.AnyDraft) == "")
+						ui.TextInput(c.Key("aliases"), &s.AnyDraft).Label("同义写法").Placeholder("简日内嵌 / CHS").Grow(1).MinWidth(200).MinHeight(inputHeight(c)).Radius(radiusSmall).Background(pal.surface)
+						compactSecondary(c, "add-alias-group", "添加这组写法", s.addAliases).Disabled(strings.TrimSpace(s.AnyDraft) == "")
 					})
 				}
 			})

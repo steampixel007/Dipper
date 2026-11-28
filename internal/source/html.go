@@ -158,8 +158,20 @@ func (c *Client) Detail(ctx context.Context, animeID string) (Detail, error) {
 	result := Detail{Anime: Anime{ID: animeID, Title: clean(title.Text()), Cover: cover,
 		Summary: clean(doc.Find(".central-container > .header2-desc, .bangumi-summary, .bangumi-description").First().Text())}, Groups: make([]Group, 0)}
 	doc.Find(".bangumi-info").Each(func(_ int, info *goquery.Selection) {
-		if text := clean(info.Text()); strings.HasPrefix(text, "放送日期：") {
+		text := clean(info.Text())
+		switch {
+		case strings.HasPrefix(text, "放送日期："):
 			result.Anime.Day = weekday(strings.TrimSpace(strings.TrimPrefix(text, "放送日期：")))
+		case strings.HasPrefix(text, "放送开始："):
+			result.Anime.BroadcastStart = strings.TrimSpace(strings.TrimPrefix(text, "放送开始："))
+		case strings.HasPrefix(text, "官方网站："):
+			if u, err := httpURL(info.Find("a[href]").First().AttrOr("href", "")); err == nil {
+				result.Anime.OfficialURL = u.String()
+			}
+		case strings.HasPrefix(text, "Bangumi番组计划链接："):
+			if u, err := httpURL(info.Find("a[href]").First().AttrOr("href", "")); err == nil {
+				result.Anime.BangumiURL = u.String()
+			}
 		}
 	})
 	seen := make(map[string]bool)
