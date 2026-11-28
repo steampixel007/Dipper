@@ -123,6 +123,13 @@ func TestBrowseSummaryCachesOnlyActiveResponse(t *testing.T) {
 	defer server.Close()
 	state := uiFixture(t, "browse")
 	state.Ctx, state.Source = context.Background(), source.New(server.URL)
+	state.cacheDetail(state.Catalog[0].ID, state.Source.Origin(), source.Detail{
+		Anime: source.Anime{
+			ID: state.Catalog[0].ID, Title: state.Catalog[0].Title, Cover: state.Catalog[0].Cover,
+			Summary: state.Catalog[0].Summary, BroadcastStart: state.Catalog[0].BroadcastStart,
+			OfficialURL: state.Catalog[0].OfficialURL, BangumiURL: state.Catalog[0].BangumiURL,
+		},
+	})
 	updates := make(chan func(), 1)
 	state.Update = func(update func()) { updates <- update }
 	result := func() func() {
@@ -324,6 +331,9 @@ func TestUIBrowseDetailEmptySummaryReusesCacheAndEmptyGroupsState(t *testing.T) 
 	defer server.Close()
 	state := uiFixture(t, "browse")
 	state.Ctx, state.Source = context.Background(), source.New(server.URL)
+	state.cacheDetail(state.Catalog[0].ID, state.Source.Origin(), source.Detail{
+		Anime: source.Anime{ID: state.Catalog[0].ID, Title: state.Catalog[0].Title, Summary: state.Catalog[0].Summary},
+	})
 	updates := make(chan func(), 8)
 	state.Update = func(update func()) { updates <- update }
 
@@ -356,4 +366,101 @@ func TestUIBrowseDetailEmptySummaryReusesCacheAndEmptyGroupsState(t *testing.T) 
 	state.browseDetail.loaded = true
 	tester = ui.NewTester(state.view, 1320, 900)
 	uiRequireText(t, tester, "暂无字幕组发布资源")
+}
+
+func TestUIBrowseDetailReloadsAfterCacheInvalidation(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("..", "..", "internal", "source", "testdata", "bangumi-4071.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var routeOneCalls, routeTwoCalls atomic.Int32
+	routeOne := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch {
+		case request.URL.Path == "/Home/Bangumi/4071":
+			routeOneCalls.Add(1)
+			writer.Write(body)
+		case strings.HasPrefix(request.URL.Path, "/images/"):
+			http.NotFound(writer, request)
+		default:
+			t.Errorf("unexpected route 1 request: %s", request.URL)
+			http.NotFound(writer, request)
+		}
+	}))
+	defer routeOne.Close()
+
+	var failNext atomic.Bool
+	failNext.Store(true)
+	routeTwo := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch {
+		case request.URL.Path == "/Home/Bangumi/4071":
+			routeTwoCalls.Add(1)
+			if failNext.Swap(false) {
+				http.Error(writer, "temporary failure", http.StatusServiceUnavailable)
+				return
+			}
+			writer.Write(body)
+		case strings.HasPrefix(request.URL.Path, "/images/"):
+			http.NotFound(writer, request)
+		default:
+			t.Errorf("unexpected route 2 request: %s", request.URL)
+			http.NotFound(writer, request)
+		}
+	}))
+	defer routeTwo.Close()
+
+	state := uiFixture(t, "browse")
+	state.Subscriptions = nil
+	state.Ctx, state.Source = context.Background(), source.New(routeOne.URL)
+	updates := make(chan func(), 16)
+	state.Update = func(update func()) { updates <- update }
+	waitDone := func() {
+		t.Helper()
+		for state.browseDetail != nil && state.browseDetail.loading {
+			select {
+			case update := <-updates:
+				update()
+			case <-time.After(5 * time.Second):
+				t.Fatal("browse detail load did not finish")
+			}
+		}
+	}
+
+	anime := Anime{ID: "4071", Title: "至高之力", Day: 0}
+	state.Catalog = append([]Anime{anime}, state.Catalog...)
+	state.KnownAnime[anime.ID] = anime
+	state.openBrowseDetail(anime)
+	waitDone()
+	if routeOneCalls.Load() != 1 || !state.browseDetail.loaded || state.KnownAnime[anime.ID].Summary == "" {
+		t.Fatalf("initial route load failed: calls=%d loaded=%v", routeOneCalls.Load(), state.browseDetail.loaded)
+	}
+
+	// Simulate switching source routes: detailCache is cleared while KnownAnime keeps the synopsis.
+	state.closeBrowseDetail()
+	if err := state.Source.Retarget(routeTwo.URL); err != nil {
+		t.Fatal(err)
+	}
+	state.detailCache = nil
+
+	// Reopening the poster must trigger a fresh detail load despite the retained synopsis.
+	state.openBrowseDetail(anime)
+	if !state.browseDetail.loading {
+		t.Fatal("reopening poster after cache invalidation skipped detail reload because synopsis was retained")
+	}
+	tester := ui.NewTester(state.view, 1320, 900)
+	uiRequireText(t, tester, state.KnownAnime[anime.ID].Summary, "正在加载字幕组…")
+
+	// First attempt on route 2 fails: retained synopsis stays visible and a group retry control is offered.
+	waitDone()
+	if !state.browseDetail.failed || state.browseDetail.loaded {
+		t.Fatalf("expected transient failure before retry: failed=%v loaded=%v", state.browseDetail.failed, state.browseDetail.loaded)
+	}
+	tester = ui.NewTester(state.view, 1320, 900)
+	uiRequireText(t, tester, state.KnownAnime[anime.ID].Summary, "字幕组加载失败", "重新加载字幕组")
+	tester.Scroll(1110, 480, 0, 500)
+	uiClick(t, tester, "重新加载字幕组")
+	waitDone()
+	if routeTwoCalls.Load() != 2 || !state.browseDetail.loaded || len(state.browseDetail.groups) != 5 {
+		t.Fatalf("retry after cache invalidation did not reload subtitle groups: calls=%d loaded=%v groups=%d", routeTwoCalls.Load(), state.browseDetail.loaded, len(state.browseDetail.groups))
+	}
+	state.closeBrowseDetail()
 }
